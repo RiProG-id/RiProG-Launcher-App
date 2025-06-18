@@ -1,0 +1,28 @@
+android {
+    compileSdkVersion 33
+
+    defaultConfig {
+        applicationId "com.riprog.launcher"
+        minSdkVersion 21
+        targetSdkVersion 33
+        versionCode 10
+        versionName "1.0"
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled true
+            shrinkResources true
+        }
+        debug {
+            minifyEnabled false
+            shrinkResources false
+        }
+    }
+
+    namespace 'com.riprog.launcher'
+}
+
+dependencies {
+	
+}
