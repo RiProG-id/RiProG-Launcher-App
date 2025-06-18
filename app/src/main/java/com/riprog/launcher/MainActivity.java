@@ -82,50 +82,76 @@ public class MainActivity extends Activity {
 			}
 		}
 		Collections.sort(apps, new ResolveInfo.DisplayNameComparator(pm));
+
 		gridView.setAdapter(new BaseAdapter() {
 			@Override
 			public int getCount() {
 				return apps.size();
 			}
+
 			@Override
 			public Object getItem(int position) {
 				return apps.get(position);
 			}
+
 			@Override
 			public long getItemId(int position) {
 				return position;
 			}
+
 			@Override
 			public View getView(int position, View convertView, ViewGroup parent) {
-				LinearLayout layout = new LinearLayout(MainActivity.this);
-				layout.setOrientation(LinearLayout.VERTICAL);
-				layout.setGravity(Gravity.CENTER_HORIZONTAL);
-				layout.setLayoutParams(new ViewGroup.LayoutParams(dpToPx(80), dpToPx(120)));
+				ViewHolder holder;
 
-				ImageView iconView = new ImageView(MainActivity.this);
-				Drawable icon = apps.get(position).loadIcon(pm);
-				iconView.setImageDrawable(icon);
-				LinearLayout.LayoutParams iconParams = new LinearLayout.LayoutParams(dpToPx(64), dpToPx(64));
-				iconParams.topMargin = dpToPx(8);
-				iconParams.gravity = Gravity.CENTER_HORIZONTAL;
-				iconView.setLayoutParams(iconParams);
-				layout.addView(iconView);
+				if (convertView == null) {
+					LinearLayout layout = new LinearLayout(MainActivity.this);
+					layout.setOrientation(LinearLayout.VERTICAL);
+					layout.setGravity(Gravity.CENTER_HORIZONTAL);
+					layout.setLayoutParams(new ViewGroup.LayoutParams(dpToPx(80), dpToPx(120)));
 
-				TextView textView = new TextView(MainActivity.this);
-				textView.setText(apps.get(position).loadLabel(pm));
-				textView.setGravity(Gravity.CENTER);
-				textView.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12);
-				textView.setMaxLines(2);
-				textView.setEllipsize(TextUtils.TruncateAt.END);
-				LinearLayout.LayoutParams textParams = new LinearLayout.LayoutParams(
-						ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-				textParams.topMargin = dpToPx(4);
-				textView.setLayoutParams(textParams);
-				layout.addView(textView);
+					ImageView iconView = new ImageView(MainActivity.this);
+					LinearLayout.LayoutParams iconParams = new LinearLayout.LayoutParams(dpToPx(64), dpToPx(64));
+					iconParams.topMargin = dpToPx(8);
+					iconParams.gravity = Gravity.CENTER_HORIZONTAL;
+					iconView.setLayoutParams(iconParams);
 
-				return layout;
+					TextView textView = new TextView(MainActivity.this);
+					textView.setGravity(Gravity.CENTER);
+					textView.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12);
+					textView.setMaxLines(2);
+					textView.setEllipsize(TextUtils.TruncateAt.END);
+					LinearLayout.LayoutParams textParams = new LinearLayout.LayoutParams(
+							ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+					textParams.topMargin = dpToPx(4);
+					textView.setLayoutParams(textParams);
+
+					layout.addView(iconView);
+					layout.addView(textView);
+
+					holder = new ViewHolder(iconView, textView);
+					layout.setTag(holder);
+					convertView = layout;
+				} else {
+					holder = (ViewHolder) convertView.getTag();
+				}
+
+				ResolveInfo app = apps.get(position);
+				holder.iconView.setImageDrawable(app.loadIcon(pm));
+				holder.textView.setText(app.loadLabel(pm));
+
+				return convertView;
 			}
 		});
+	}
+
+	private static class ViewHolder {
+		ImageView iconView;
+		TextView textView;
+
+		ViewHolder(ImageView iconView, TextView textView) {
+			this.iconView = iconView;
+			this.textView = textView;
+		}
 	}
 
 	private int dpToPx(int dp) {
