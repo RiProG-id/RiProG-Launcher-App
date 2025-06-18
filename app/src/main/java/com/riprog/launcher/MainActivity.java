@@ -24,7 +24,9 @@ import java.util.List;
 
 public class MainActivity extends Activity {
 
-	private List<ResolveInfo> apps;
+	private List<ResolveInfo> apps = new ArrayList<>();
+	private PackageManager pm;
+	private GridView gridView;
 
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
@@ -35,25 +37,8 @@ public class MainActivity extends Activity {
 		getWindow().getDecorView().setSystemUiVisibility(View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
 				| View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN | View.SYSTEM_UI_FLAG_LAYOUT_STABLE);
 
-		final PackageManager pm = getPackageManager();
-		String selfPackage = getPackageName();
-
-		Intent mainIntent = new Intent(Intent.ACTION_MAIN, null);
-		mainIntent.addCategory(Intent.CATEGORY_LAUNCHER);
-
-		List<ResolveInfo> allApps = pm.queryIntentActivities(mainIntent, 0);
-		apps = new ArrayList<>();
-
-		for (ResolveInfo info : allApps) {
-			String packageName = info.activityInfo.packageName;
-			if (!packageName.equals(selfPackage)) {
-				apps.add(info);
-			}
-		}
-
-		Collections.sort(apps, new ResolveInfo.DisplayNameComparator(pm));
-
-		GridView gridView = new GridView(this);
+		pm = getPackageManager();
+		gridView = new GridView(this);
 		gridView.setNumColumns(4);
 		gridView.setVerticalSpacing(dpToPx(16));
 		gridView.setHorizontalSpacing(dpToPx(16));
@@ -64,22 +49,52 @@ public class MainActivity extends Activity {
 		gridView.setFitsSystemWindows(true);
 		gridView.setVerticalScrollBarEnabled(false);
 
+		gridView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+			public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
+				ResolveInfo app = apps.get(position);
+				Intent launchIntent = pm.getLaunchIntentForPackage(app.activityInfo.packageName);
+				if (launchIntent != null) {
+					startActivity(launchIntent);
+				}
+			}
+		});
+
+		setContentView(gridView);
+		refreshApps();
+	}
+
+	@Override
+	protected void onResume() {
+		super.onResume();
+		refreshApps();
+	}
+
+	private void refreshApps() {
+		String selfPackage = getPackageName();
+		Intent mainIntent = new Intent(Intent.ACTION_MAIN, null);
+		mainIntent.addCategory(Intent.CATEGORY_LAUNCHER);
+		List<ResolveInfo> allApps = pm.queryIntentActivities(mainIntent, 0);
+		apps.clear();
+		for (ResolveInfo info : allApps) {
+			String packageName = info.activityInfo.packageName;
+			if (!packageName.equals(selfPackage)) {
+				apps.add(info);
+			}
+		}
+		Collections.sort(apps, new ResolveInfo.DisplayNameComparator(pm));
 		gridView.setAdapter(new BaseAdapter() {
 			@Override
 			public int getCount() {
 				return apps.size();
 			}
-
 			@Override
 			public Object getItem(int position) {
 				return apps.get(position);
 			}
-
 			@Override
 			public long getItemId(int position) {
 				return position;
 			}
-
 			@Override
 			public View getView(int position, View convertView, ViewGroup parent) {
 				LinearLayout layout = new LinearLayout(MainActivity.this);
@@ -111,18 +126,6 @@ public class MainActivity extends Activity {
 				return layout;
 			}
 		});
-
-		gridView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
-			public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
-				ResolveInfo app = apps.get(position);
-				Intent launchIntent = pm.getLaunchIntentForPackage(app.activityInfo.packageName);
-				if (launchIntent != null) {
-					startActivity(launchIntent);
-				}
-			}
-		});
-
-		setContentView(gridView);
 	}
 
 	private int dpToPx(int dp) {
