@@ -7,6 +7,7 @@ import android.content.pm.ResolveInfo;
 import android.graphics.drawable.Drawable;
 import android.os.Bundle;
 import android.text.TextUtils;
+import android.util.LruCache;
 import android.util.TypedValue;
 import android.view.Gravity;
 import android.view.View;
@@ -27,6 +28,7 @@ public class MainActivity extends Activity {
 	private List<ResolveInfo> apps = new ArrayList<>();
 	private PackageManager pm;
 	private GridView gridView;
+	private LruCache<String, Drawable> iconCache;
 
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
@@ -38,6 +40,10 @@ public class MainActivity extends Activity {
 				| View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN | View.SYSTEM_UI_FLAG_LAYOUT_STABLE);
 
 		pm = getPackageManager();
+
+		final int cacheSize = 64;
+		iconCache = new LruCache<>(cacheSize);
+
 		gridView = new GridView(this);
 		gridView.setNumColumns(4);
 		gridView.setVerticalSpacing(dpToPx(16));
@@ -136,7 +142,14 @@ public class MainActivity extends Activity {
 				}
 
 				ResolveInfo app = apps.get(position);
-				holder.iconView.setImageDrawable(app.loadIcon(pm));
+				String pkg = app.activityInfo.packageName;
+
+				Drawable icon = iconCache.get(pkg);
+				if (icon == null) {
+					icon = app.loadIcon(pm);
+					iconCache.put(pkg, icon);
+				}
+				holder.iconView.setImageDrawable(icon);
 				holder.textView.setText(app.loadLabel(pm));
 
 				return convertView;
