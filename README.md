@@ -2,9 +2,10 @@
 
 Ultra-lightweight Android launcher. Minimal, fast, and distraction-free.
 
-## More Information
+## ℹ️ More Information
 
-**Author:** [RiProG](https://github.com/RiProG-id)
+**Author:** [RiProG](https://github.com/RiProG-id)  
+**Contributor:** [Youngupdatesource](https://github.com/Youngupdatesource)
 
 ### Visit:
 
