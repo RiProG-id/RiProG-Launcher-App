@@ -134,9 +134,12 @@ public class MainActivity extends Activity {
     }
 
     private View createAppView(HomeItem item) {
+        FrameLayout container = new FrameLayout(this);
         ImageView iconView = new ImageView(this);
         int size = getResources().getDimensionPixelSize(R.dimen.grid_icon_size);
-        iconView.setLayoutParams(new FrameLayout.LayoutParams(size, size));
+        FrameLayout.LayoutParams iconParams = new FrameLayout.LayoutParams(size, size);
+        iconParams.gravity = Gravity.CENTER;
+        iconView.setLayoutParams(iconParams);
 
         AppItem app = findApp(item.packageName);
         if (app != null) {
@@ -144,7 +147,8 @@ public class MainActivity extends Activity {
         } else {
             iconView.setImageResource(android.R.drawable.sym_def_app_icon);
         }
-        return iconView;
+        container.addView(iconView);
+        return container;
     }
 
     private View createWidgetView(HomeItem item) {
@@ -271,15 +275,17 @@ public class MainActivity extends Activity {
         String[] labels = new String[allApps.size()];
         for (int i = 0; i < allApps.size(); i++) labels[i] = allApps.get(i).label;
 
-        new AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert)
+        AlertDialog dialog = new AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert)
             .setTitle("Pick App")
-            .setItems(labels, (dialog, which) -> {
+            .setItems(labels, (d, which) -> {
                 AppItem selected = allApps.get(which);
                 HomeItem item = HomeItem.createApp(selected.packageName, selected.className, col, row, page);
                 homeItems.add(item);
                 renderHomeItem(item);
                 saveHomeState();
-            }).show();
+            }).create();
+        dialog.show();
+        if (dialog.getWindow() != null) dialog.getWindow().setBackgroundDrawableResource(R.drawable.glass_bg);
     }
 
     private void openWallpaperPicker() {
@@ -482,8 +488,12 @@ public class MainActivity extends Activity {
                         break;
                     case MotionEvent.ACTION_MOVE:
                         float dy = ev.getY() - startY;
-                        if (dy > touchSlop * 2 && dy > Math.abs(ev.getX() - startX) && drawerView.isAtTop()) {
-                            return true;
+                        float dx = ev.getX() - startX;
+                        // Swipe down to close (more sensitive if at top)
+                        if (dy > touchSlop && dy > Math.abs(dx)) {
+                            if (drawerView.isAtTop() || dy > touchSlop * 4) {
+                                return true;
+                            }
                         }
                         break;
                 }
@@ -539,9 +549,15 @@ public class MainActivity extends Activity {
                 if (event.getAction() == MotionEvent.ACTION_DOWN) {
                     startX = event.getX();
                     startY = event.getY();
+                } else if (event.getAction() == MotionEvent.ACTION_MOVE) {
+                    float dy = event.getY() - startY;
+                    if (dy > touchSlop) {
+                        closeDrawer();
+                        return true;
+                    }
                 } else if (event.getAction() == MotionEvent.ACTION_UP) {
                     float dy = event.getY() - startY;
-                    if (dy > touchSlop * 3) closeDrawer();
+                    if (dy > touchSlop) closeDrawer();
                 }
                 return true;
             }
@@ -647,15 +663,18 @@ public class MainActivity extends Activity {
         }
 
         public void openDrawer() {
+            if (isDrawerOpen) return;
             isDrawerOpen = true;
             drawerView.setVisibility(View.VISIBLE);
-            drawerView.setTranslationY(getHeight());
+            drawerView.setAlpha(0f);
+            drawerView.setTranslationY(getHeight() / 4f);
             drawerView.animate()
                 .translationY(0)
-                .setDuration(300)
+                .alpha(1f)
+                .setDuration(250)
                 .setInterpolator(new android.view.animation.DecelerateInterpolator())
                 .start();
-            homeView.animate().alpha(0).setDuration(300).start();
+            homeView.animate().alpha(0).setDuration(250).start();
             drawerView.onOpen();
         }
 
@@ -672,17 +691,20 @@ public class MainActivity extends Activity {
         }
 
         public void closeDrawer() {
+            if (!isDrawerOpen) return;
             isDrawerOpen = false;
             drawerView.animate()
-                .translationY(getHeight())
-                .setDuration(300)
+                .translationY(getHeight() / 4f)
+                .alpha(0f)
+                .setDuration(200)
                 .setInterpolator(new android.view.animation.AccelerateInterpolator())
                 .withEndAction(() -> {
                     drawerView.setVisibility(View.GONE);
                     homeView.setVisibility(View.VISIBLE);
                 })
                 .start();
-            homeView.animate().alpha(1).setDuration(300).start();
+            homeView.setVisibility(View.VISIBLE);
+            homeView.animate().alpha(1).setDuration(200).start();
             InputMethodManager imm = (InputMethodManager)
                     getContext().getSystemService(Context.INPUT_METHOD_SERVICE);
             imm.hideSoftInputFromWindow(getWindowToken(), 0);
