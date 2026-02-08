@@ -8,6 +8,7 @@ import android.text.util.Linkify;
 import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.FrameLayout;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.TextView;
@@ -21,31 +22,30 @@ public class SettingsActivity extends Activity {
         super.onCreate(savedInstanceState);
         settingsManager = new SettingsManager(this);
 
+        FrameLayout rootContainer = new FrameLayout(this);
+        rootContainer.setPadding(dpToPx(16), dpToPx(48), dpToPx(16), dpToPx(32));
+
         ScrollView scrollView = new ScrollView(this);
         scrollView.setBackgroundResource(R.drawable.glass_bg);
+        scrollView.setVerticalScrollBarEnabled(false);
+        rootContainer.addView(scrollView);
 
         LinearLayout root = new LinearLayout(this);
         root.setOrientation(LinearLayout.VERTICAL);
-        root.setPadding(dpToPx(24), dpToPx(48), dpToPx(24), dpToPx(24));
+        root.setPadding(dpToPx(24), dpToPx(32), dpToPx(24), dpToPx(32));
         scrollView.addView(root);
 
         TextView title = new TextView(this);
-        title.setText("Settings");
+        title.setText("⚙️ Settings");
         title.setTextSize(32);
         title.setTextColor(getColor(R.color.foreground));
         title.setPadding(0, 0, 0, dpToPx(32));
         root.addView(title);
 
-        addSettingItem(root, "Grid Columns", "Change number of columns in app drawer", v -> {
-            String[] options = {"4 Columns", "5 Columns", "6 Columns"};
-            AlertDialog dialog = new AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert)
-                .setTitle("Select Columns")
-                .setItems(options, (d, which) -> {
-                    settingsManager.setColumns(which + 4);
-                })
-                .create();
-            dialog.show();
-            if (dialog.getWindow() != null) dialog.getWindow().setBackgroundDrawableResource(R.drawable.glass_bg);
+        addSettingItem(root, "🛸 Freeform Home", "Allow free placement of items without grid alignment. Disable to automatically organize home layout.", v -> {
+            boolean current = settingsManager.isFreeformHome();
+            settingsManager.setFreeformHome(!current);
+            recreate();
         });
 
         View divider = new View(this);
@@ -55,7 +55,7 @@ public class SettingsActivity extends Activity {
         root.addView(divider, dividerParams);
 
         TextView aboutTitle = new TextView(this);
-        aboutTitle.setText("About");
+        aboutTitle.setText("ℹ️ About");
         aboutTitle.setTextSize(24);
         aboutTitle.setTextColor(getColor(R.color.foreground));
         aboutTitle.setPadding(0, 0, 0, dpToPx(16));
@@ -90,7 +90,7 @@ public class SettingsActivity extends Activity {
         aboutContent.setMovementMethod(LinkMovementMethod.getInstance());
         root.addView(aboutContent);
 
-        setContentView(scrollView);
+        setContentView(rootContainer);
     }
 
     private void addSettingItem(LinearLayout parent, String title, String summary, View.OnClickListener listener) {
