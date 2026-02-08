@@ -4,7 +4,9 @@
 
     <application
         android:label="RiProG Launcher v2.0.1"
-        android:theme="@android:style/Theme.DeviceDefault.NoActionBar">
+        android:theme="@android:style/Theme.DeviceDefault.NoActionBar"
+        android:allowBackup="true"
+        android:icon="@android:drawable/sym_def_app_icon">
 
         <activity
             android:name=".MainActivity"

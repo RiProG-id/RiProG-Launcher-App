@@ -68,21 +68,43 @@ public class MainActivity extends Activity {
     }
 
     private void showSettings() {
-        String[] options = {"4 Columns", "5 Columns", "6 Columns", "Add Widget", "Remove Widget"};
+        String[] options = {
+            "Grid: 4 Columns",
+            "Grid: 5 Columns",
+            "Grid: 6 Columns",
+            "Add Widget",
+            "Remove Widget",
+            "System Info"
+        };
         AlertDialog.Builder builder = new AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert);
-        builder.setTitle("Settings")
+        builder.setTitle("RiProG Launcher Settings")
                .setItems(options, (dialog, which) -> {
-                   if (which < 3) {
-                       int columns = which + 4;
-                       settingsManager.setColumns(columns);
-                       drawerView.setColumns(columns);
-                   } else if (which == 3) {
-                       pickWidget();
-                   } else {
-                       removeWidget();
+                   switch (which) {
+                       case 0: case 1: case 2:
+                           int columns = which + 4;
+                           settingsManager.setColumns(columns);
+                           if (drawerView != null) drawerView.setColumns(columns);
+                           break;
+                       case 3:
+                           pickWidget();
+                           break;
+                       case 4:
+                           removeWidget();
+                           break;
+                       case 5:
+                           showSystemInfo();
+                           break;
                    }
                })
                .show();
+    }
+
+    private void showSystemInfo() {
+        new AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert)
+            .setTitle("System Info")
+            .setMessage("RiProG Launcher v2.0.1\nUltra-lightweight & Minimal\n\nAndroid Version: " + android.os.Build.VERSION.RELEASE)
+            .setPositiveButton("OK", null)
+            .show();
     }
 
     private void removeWidget() {
@@ -109,9 +131,15 @@ public class MainActivity extends Activity {
     }
 
     private void loadApps() {
+        if (model == null) return;
         model.loadApps(apps -> {
-            drawerView.setApps(apps, model);
-            homeView.setFavorites(apps.subList(0, Math.min(apps.size(), 8)), model);
+            if (apps == null) return;
+            if (drawerView != null) {
+                drawerView.setApps(apps, model);
+            }
+            if (homeView != null) {
+                homeView.setFavorites(apps.subList(0, Math.min(apps.size(), 8)), model);
+            }
         });
     }
 
@@ -137,7 +165,7 @@ public class MainActivity extends Activity {
     }
 
     @Override
-    protected void onTrimMemory(int level) {
+    public void onTrimMemory(int level) {
         super.onTrimMemory(level);
         if (model != null) {
             model.onTrimMemory(level);
@@ -211,7 +239,7 @@ public class MainActivity extends Activity {
 
         public MainLayout(Context context) {
             super(context);
-            setBackgroundColor(Color.BLACK);
+            setBackgroundResource(R.color.background);
             gestureDetector = new GestureDetector(context, new GestureDetector.SimpleOnGestureListener() {
                 @Override
                 public boolean onFling(MotionEvent e1, MotionEvent e2, float velocityX, float velocityY) {
