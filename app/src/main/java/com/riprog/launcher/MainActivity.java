@@ -223,13 +223,13 @@ public class MainActivity extends Activity {
     }
 
     private void uninstallApp(HomeItem item, View view) {
-        if (item == null || item.type != HomeItem.Type.APP) {
+        if (item == null || item.type != HomeItem.Type.APP || item.packageName == null || item.packageName.isEmpty()) {
             removeHomeItem(item, view);
             return;
         }
         try {
             Intent intent = new Intent(Intent.ACTION_DELETE);
-            intent.setData(android.net.Uri.fromParts("package", item.packageName, null));
+            intent.setData(android.net.Uri.parse("package:" + item.packageName));
             intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
             startActivity(intent);
             // Remove from home screen as requested by dragging to uninstall zone
@@ -628,7 +628,11 @@ public class MainActivity extends Activity {
                 longPressTriggered = true;
                 if (touchedView != null) {
                     isDragging = true;
-                    if (dragOverlay != null) dragOverlay.setVisibility(View.VISIBLE);
+                    if (dragOverlay != null) {
+                        HomeItem item = (HomeItem) touchedView.getTag();
+                        tvUninstall.setVisibility(item != null && item.type == HomeItem.Type.APP ? View.VISIBLE : View.GONE);
+                        dragOverlay.setVisibility(View.VISIBLE);
+                    }
                     homeView.startDragging(touchedView, startX, startY);
                 } else {
                     int cellWidth = getWidth() / HomeView.GRID_COLUMNS;
@@ -802,7 +806,8 @@ public class MainActivity extends Activity {
                             if (event.getY() < overlayHeight + touchSlop * 2) {
                                 HomeItem item = (HomeItem) touchedView.getTag();
                                 if (item != null) {
-                                    if (event.getX() < overlayWidth / 2f) {
+                                    boolean canUninstall = tvUninstall.getVisibility() == View.VISIBLE;
+                                    if (!canUninstall || event.getX() < overlayWidth / 2f) {
                                         removeHomeItem(item, touchedView);
                                     } else {
                                         uninstallApp(item, touchedView);
@@ -879,7 +884,11 @@ public class MainActivity extends Activity {
 
         public void startExternalDrag(View v) {
             isDragging = true;
-            if (dragOverlay != null) dragOverlay.setVisibility(View.VISIBLE);
+            if (dragOverlay != null) {
+                HomeItem item = (HomeItem) v.getTag();
+                tvUninstall.setVisibility(item != null && item.type == HomeItem.Type.APP ? View.VISIBLE : View.GONE);
+                dragOverlay.setVisibility(View.VISIBLE);
+            }
             touchedView = v;
 
             int iconSize = getResources().getDimensionPixelSize(R.dimen.grid_icon_size);
@@ -894,9 +903,10 @@ public class MainActivity extends Activity {
 
             int overlayHeight = dragOverlay.getHeight();
             int overlayWidth = dragOverlay.getWidth();
+            boolean canUninstall = tvUninstall.getVisibility() == View.VISIBLE;
 
             if (y < overlayHeight + touchSlop * 2) {
-                if (x < overlayWidth / 2f) {
+                if (!canUninstall || x < overlayWidth / 2f) {
                     tvRemove.setBackgroundColor(0x40FFFFFF);
                     tvUninstall.setBackgroundColor(Color.TRANSPARENT);
                 } else {
