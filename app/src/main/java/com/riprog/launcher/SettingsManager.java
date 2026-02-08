@@ -14,6 +14,7 @@ public class SettingsManager {
     private static final String KEY_WIDGET_ID = "widget_id";
     private static final String KEY_USAGE_PREFIX = "usage_";
     private static final String KEY_HOME_ITEMS = "home_items";
+    private static final String KEY_FREEFORM_HOME = "freeform_home";
 
     private final SharedPreferences prefs;
 
@@ -37,6 +38,14 @@ public class SettingsManager {
         prefs.edit().putInt(KEY_WIDGET_ID, widgetId).apply();
     }
 
+    public boolean isFreeformHome() {
+        return prefs.getBoolean(KEY_FREEFORM_HOME, false);
+    }
+
+    public void setFreeformHome(boolean freeform) {
+        prefs.edit().putBoolean(KEY_FREEFORM_HOME, freeform).apply();
+    }
+
     public void incrementUsage(String packageName) {
         int current = prefs.getInt(KEY_USAGE_PREFIX + packageName, 0);
         prefs.edit().putInt(KEY_USAGE_PREFIX + packageName, current + 1).apply();
@@ -54,8 +63,8 @@ public class SettingsManager {
                 obj.put("type", item.type.name());
                 obj.put("packageName", item.packageName);
                 obj.put("className", item.className);
-                obj.put("col", item.col);
-                obj.put("row", item.row);
+                obj.put("col", (double) item.col);
+                obj.put("row", (double) item.row);
                 obj.put("spanX", item.spanX);
                 obj.put("spanY", item.spanY);
                 obj.put("page", item.page);
@@ -79,8 +88,8 @@ public class SettingsManager {
                 item.packageName = obj.optString("packageName", null);
                 item.className = obj.optString("className", null);
                 // Fallback to x/y if col/row missing (for migration)
-                item.col = obj.optInt("col", obj.optInt("x", 0) / 100);
-                item.row = obj.optInt("row", obj.optInt("y", 0) / 100);
+                item.col = (float) obj.optDouble("col", obj.optDouble("x", 0) / 100.0);
+                item.row = (float) obj.optDouble("row", obj.optDouble("y", 0) / 100.0);
                 item.spanX = obj.optInt("spanX", obj.optInt("width", 100) / 100);
                 item.spanY = obj.optInt("spanY", obj.optInt("height", 100) / 100);
                 if (item.spanX <= 0) item.spanX = 1;

@@ -48,7 +48,7 @@ public class DrawerView extends LinearLayout {
         setPadding(0, dpToPx(48), 0, 0);
 
         searchBar = new EditText(context);
-        searchBar.setHint("Search...");
+        searchBar.setHint("🔍 Search apps...");
         searchBar.setHintTextColor(context.getColor(R.color.foreground_dim));
         searchBar.setTextColor(context.getColor(R.color.foreground));
         searchBar.setBackgroundColor(context.getColor(R.color.search_background));

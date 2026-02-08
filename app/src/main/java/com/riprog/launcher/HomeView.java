@@ -30,6 +30,7 @@ public class HomeView extends FrameLayout {
     private final LinearLayout pagesContainer;
     private final PageIndicator pageIndicator;
     private final List<FrameLayout> pages = new ArrayList<>();
+    private final SettingsManager settingsManager;
     private int currentPage = 0;
     private int accentColor = Color.WHITE;
 
@@ -55,6 +56,7 @@ public class HomeView extends FrameLayout {
 
     public HomeView(Context context) {
         super(context);
+        settingsManager = new SettingsManager(context);
 
         pagesContainer = new LinearLayout(context);
         pagesContainer.setOrientation(LinearLayout.HORIZONTAL);
@@ -104,8 +106,16 @@ public class HomeView extends FrameLayout {
             return;
         }
 
-        LayoutParams lp = new LayoutParams(cellWidth * item.spanX, cellHeight * item.spanY);
+        LayoutParams lp;
+        if (item.type == HomeItem.Type.WIDGET) {
+            lp = new LayoutParams(cellWidth * item.spanX, cellHeight * item.spanY);
+        } else {
+            // Apps and other items have standard size unless freeform allows scaling (not requested yet)
+            int size = getResources().getDimensionPixelSize(R.dimen.grid_icon_size);
+            lp = new LayoutParams(size * 2, size * 2); // Container size
+        }
         view.setLayoutParams(lp);
+
         view.setX(item.col * cellWidth);
         view.setY(item.row * cellHeight);
     }
@@ -165,14 +175,19 @@ public class HomeView extends FrameLayout {
         int cellWidth = getWidth() / GRID_COLUMNS;
         int cellHeight = getHeight() / GRID_ROWS;
 
-        item.col = Math.max(0, Math.min(GRID_COLUMNS - item.spanX, Math.round(v.getX() / cellWidth)));
-        item.row = Math.max(0, Math.min(GRID_ROWS - item.spanY, Math.round(v.getY() / cellHeight)));
+        if (settingsManager.isFreeformHome()) {
+            item.col = v.getX() / (float) cellWidth;
+            item.row = v.getY() / (float) cellHeight;
+        } else {
+            item.col = Math.max(0, Math.min(GRID_COLUMNS - item.spanX, Math.round(v.getX() / (float) cellWidth)));
+            item.row = Math.max(0, Math.min(GRID_ROWS - item.spanY, Math.round(v.getY() / (float) cellHeight)));
 
-        v.animate()
-                .x(item.col * cellWidth)
-                .y(item.row * cellHeight)
-                .setDuration(200)
-                .start();
+            v.animate()
+                    .x(item.col * cellWidth)
+                    .y(item.row * cellHeight)
+                    .setDuration(200)
+                    .start();
+        }
 
         if (getContext() instanceof MainActivity) {
             ((MainActivity) getContext()).saveHomeState();
@@ -202,6 +217,46 @@ public class HomeView extends FrameLayout {
 
     public int getPageCount() {
         return pages.size();
+    }
+
+    public void refreshIcons(LauncherModel model) {
+        for (FrameLayout page : pages) {
+            for (int i = 0; i < page.getChildCount(); i++) {
+                View view = page.getChildAt(i);
+                HomeItem item = (HomeItem) view.getTag();
+                if (item != null && item.type == HomeItem.Type.APP) {
+                    if (view instanceof FrameLayout) {
+                        ImageView iv = findImageView((FrameLayout) view);
+                        if (iv != null) {
+                            model.loadIcon(new AppItem("", item.packageName, item.className), iv::setImageBitmap);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private ImageView findImageView(FrameLayout container) {
+        for (int i = 0; i < container.getChildCount(); i++) {
+            if (container.getChildAt(i) instanceof ImageView) {
+                return (ImageView) container.getChildAt(i);
+            }
+        }
+        return null;
+    }
+
+    public void refreshLayout() {
+        post(() -> {
+            for (FrameLayout page : pages) {
+                for (int i = 0; i < page.getChildCount(); i++) {
+                    View v = page.getChildAt(i);
+                    HomeItem item = (HomeItem) v.getTag();
+                    if (item != null) {
+                        updateViewPosition(item, v);
+                    }
+                }
+            }
+        });
     }
 
     public void setAccentColor(int color) {

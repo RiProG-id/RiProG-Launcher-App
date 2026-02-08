@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="background">#AAFFFFFF</color>
-    <color name="foreground">#222222</color>
-    <color name="foreground_dim">#666666</color>
-    <color name="search_background">#20000000</color>
+    <color name="background">#C0FFFFFF</color>
+    <color name="foreground">#111111</color>
+    <color name="foreground_dim">#444444</color>
+    <color name="search_background">#15000000</color>
 </resources>

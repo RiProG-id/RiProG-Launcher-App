@@ -6,8 +6,8 @@ public class HomeItem {
     public Type type;
     public String packageName;
     public String className;
-    public int row;
-    public int col;
+    public float row;
+    public float col;
     public int spanX = 1;
     public int spanY = 1;
     public int page;
@@ -15,7 +15,7 @@ public class HomeItem {
 
     public HomeItem() {}
 
-    public static HomeItem createApp(String packageName, String className, int col, int row, int page) {
+    public static HomeItem createApp(String packageName, String className, float col, float row, int page) {
         HomeItem item = new HomeItem();
         item.type = Type.APP;
         item.packageName = packageName;
@@ -28,7 +28,7 @@ public class HomeItem {
         return item;
     }
 
-    public static HomeItem createWidget(int widgetId, int col, int row, int spanX, int spanY, int page) {
+    public static HomeItem createWidget(int widgetId, float col, float row, int spanX, int spanY, int page) {
         HomeItem item = new HomeItem();
         item.type = Type.WIDGET;
         item.widgetId = widgetId;
@@ -40,7 +40,7 @@ public class HomeItem {
         return item;
     }
 
-    public static HomeItem createClock(int col, int row, int spanX, int spanY, int page) {
+    public static HomeItem createClock(float col, float row, int spanX, int spanY, int page) {
         HomeItem item = new HomeItem();
         item.type = Type.CLOCK;
         item.col = col;

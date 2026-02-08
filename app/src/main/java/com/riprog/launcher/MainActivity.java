@@ -47,7 +47,7 @@ public class MainActivity extends Activity {
     private AppInstallReceiver appInstallReceiver;
     private List<HomeItem> homeItems = new ArrayList<>();
     private List<AppItem> allApps = new ArrayList<>();
-    private int lastGridCol, lastGridRow;
+    private float lastGridCol, lastGridRow;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -247,10 +247,10 @@ public class MainActivity extends Activity {
         return null;
     }
 
-    private void showHomeContextMenu(int col, int row, int page) {
-        String[] options = {"Widgets", "Wallpaper", "Launcher Settings", "Layout Options"};
+    private void showHomeContextMenu(float col, float row, int page) {
+        String[] options = {"🧩 Widgets", "🖼️ Wallpaper", "⚙️ Launcher Settings", "📐 Layout Options"};
         AlertDialog dialog = new AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert)
-            .setTitle("Home Menu")
+            .setTitle("🏠 Home Menu")
             .setItems(options, (d, which) -> {
                 switch (which) {
                     case 0:
@@ -290,7 +290,18 @@ public class MainActivity extends Activity {
 
     private void openWallpaperPicker() {
         Intent intent = new Intent(Intent.ACTION_SET_WALLPAPER);
-        startActivity(Intent.createChooser(intent, "Select Wallpaper"));
+        try {
+            startActivity(intent);
+        } catch (Exception e) {
+            try {
+                // Fallback to gallery/internal chooser
+                Intent pickIntent = new Intent(Intent.ACTION_GET_CONTENT);
+                pickIntent.setType("image/*");
+                startActivity(Intent.createChooser(pickIntent, "Select Wallpaper"));
+            } catch (Exception e2) {
+                Toast.makeText(this, "Wallpaper picker not available", Toast.LENGTH_SHORT).show();
+            }
+        }
     }
 
     private void openSettings() {
@@ -332,6 +343,9 @@ public class MainActivity extends Activity {
             if (drawerView != null) {
                 drawerView.setApps(apps, model);
             }
+            if (homeView != null) {
+                homeView.refreshIcons(model);
+            }
         });
     }
 
@@ -346,6 +360,12 @@ public class MainActivity extends Activity {
         } else {
             registerReceiver(appInstallReceiver, filter);
         }
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        if (homeView != null) homeView.refreshLayout();
     }
 
     @Override
@@ -443,8 +463,8 @@ public class MainActivity extends Activity {
                 } else {
                     int cellWidth = getWidth() / HomeView.GRID_COLUMNS;
                     int cellHeight = getHeight() / HomeView.GRID_ROWS;
-                    int col = (int) (startX / (cellWidth > 0 ? cellWidth : 1));
-                    int row = (int) (startY / (cellHeight > 0 ? cellHeight : 1));
+                    float col = startX / (cellWidth > 0 ? (float) cellWidth : 1.0f);
+                    float row = startY / (cellHeight > 0 ? (float) cellHeight : 1.0f);
                     showHomeContextMenu(col, row, homeView.getCurrentPage());
                 }
             }
