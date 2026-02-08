@@ -3,6 +3,8 @@ package com.riprog.launcher;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.os.Bundle;
+import android.text.method.LinkMovementMethod;
+import android.text.util.Linkify;
 import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
@@ -60,21 +62,32 @@ public class SettingsActivity extends Activity {
         root.addView(aboutTitle);
 
         TextView aboutContent = new TextView(this);
-        aboutContent.setText("RiProG Launcher v2.1.0\n\nUltra-lightweight Android launcher — minimal, fast, and distraction-free.\n\n" +
-                "TECHNICAL DETAILS\n" +
-                "Min SDK: 23 (Android 6.0)\n" +
-                "Target SDK: 34 (Android 14)\n" +
-                "Language: Java 17\n\n" +
-                "DONATE / SUPPORT\n" +
-                "Dana / GoPay: 0831-4095-0951\n" +
-                "Bank Jago: 503442488516\n" +
-                "PayPal: paypal.me/RiProG\n\n" +
-                "LINKS\n" +
-                "GitHub: RiProG-id/RiProG-Launcher-App\n" +
-                "Support: t.me/RiOpSo");
+        aboutContent.setText("RiProG Launcher v2.1.0\n\n" +
+                "Ultra-lightweight Android launcher — minimal, fast, and distraction-free.\n\n" +
+                "FEATURES\n" +
+                "• Ultra-Lightweight & Fast\n" +
+                "• App Drawer with Search & Quick Index\n" +
+                "• Gesture Support (Swipe up/down)\n" +
+                "• Widget Support\n" +
+                "• Liquid Glass UI Consistency\n\n" +
+                "LINKS & SUPPORT\n" +
+                "GitHub: https://github.com/RiProG-id/RiProG-Launcher-App\n" +
+                "Telegram Channel: https://t.me/RiOpSo\n" +
+                "Telegram Group: https://t.me/RiOpSoDisc\n" +
+                "Support Me (Telegram): https://t.me/RiOpSo/2848\n\n" +
+                "DONATE\n" +
+                "PayPal: https://paypal.me/RiProG\n" +
+                "Sociabuzz: https://sociabuzz.com/riprog/tribe\n" +
+                "Dana / GoPay / ShopeePay: 0831-4095-0951\n" +
+                "Bank Jago Syariah: 503442488516\n\n" +
+                "FREE DONATION\n" +
+                "Safelinku: https://sfl.gl/NTX6\n" +
+                "Arahlink: https://arahlink.id/WAUR");
         aboutContent.setTextColor(getColor(R.color.foreground_dim));
         aboutContent.setTextSize(14);
         aboutContent.setPadding(0, 0, 0, dpToPx(32));
+        Linkify.addLinks(aboutContent, Linkify.WEB_URLS);
+        aboutContent.setMovementMethod(LinkMovementMethod.getInstance());
         root.addView(aboutContent);
 
         setContentView(scrollView);

@@ -7,6 +7,7 @@ import android.text.Editable;
 import android.text.TextUtils;
 import android.text.TextWatcher;
 import android.view.Gravity;
+import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.inputmethod.InputMethodManager;
@@ -70,11 +71,30 @@ public class DrawerView extends LinearLayout {
         gridView.setNumColumns(4);
         gridView.setVerticalSpacing(dpToPx(16));
         gridView.setPadding(dpToPx(8), dpToPx(16), dpToPx(32), dpToPx(16));
+        gridView.setVerticalScrollBarEnabled(false);
         contentFrame.addView(gridView);
 
         indexBar = new LinearLayout(context);
         indexBar.setOrientation(LinearLayout.VERTICAL);
         indexBar.setGravity(Gravity.CENTER);
+        indexBar.setOnTouchListener((v, event) -> {
+            if (event.getAction() == MotionEvent.ACTION_DOWN || event.getAction() == MotionEvent.ACTION_MOVE) {
+                float y = event.getY();
+                int childCount = indexBar.getChildCount();
+                if (childCount > 0) {
+                    float itemHeight = (float) indexBar.getHeight() / childCount;
+                    int index = (int) (y / itemHeight);
+                    if (index >= 0 && index < childCount) {
+                        View child = indexBar.getChildAt(index);
+                        if (child instanceof TextView) {
+                            scrollToLetter(((TextView) child).getText().toString());
+                        }
+                    }
+                }
+                return true;
+            }
+            return false;
+        });
         FrameLayout.LayoutParams indexParams = new FrameLayout.LayoutParams(dpToPx(30), ViewGroup.LayoutParams.MATCH_PARENT);
         indexParams.gravity = Gravity.END;
         contentFrame.addView(indexBar, indexParams);
@@ -87,6 +107,14 @@ public class DrawerView extends LinearLayout {
             AppItem item = filteredApps.get(position);
             Intent intent = getContext().getPackageManager().getLaunchIntentForPackage(item.packageName);
             if (intent != null) getContext().startActivity(intent);
+        });
+        gridView.setOnItemLongClickListener((parent, view, position, id) -> {
+            if (longClickListener != null) {
+                AppItem item = filteredApps.get(position);
+                longClickListener.onAppLongClick(item);
+                return true;
+            }
+            return false;
         });
     }
 
@@ -102,6 +130,7 @@ public class DrawerView extends LinearLayout {
     }
 
     private void setupIndexBar() {
+        indexBar.removeAllViews();
         String[] alphabet = "#ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
         for (String letter : alphabet) {
             if (letter.isEmpty()) continue;
@@ -111,15 +140,16 @@ public class DrawerView extends LinearLayout {
             tv.setGravity(Gravity.CENTER);
             tv.setTextColor(getContext().getColor(R.color.foreground_dim));
             tv.setPadding(0, dpToPx(2), 0, dpToPx(2));
-            tv.setOnClickListener(v -> {
-                for (int i = 0; i < filteredApps.size(); i++) {
-                    if (filteredApps.get(i).label.toUpperCase().startsWith(letter)) {
-                        gridView.setSelection(i);
-                        break;
-                    }
-                }
-            });
             indexBar.addView(tv);
+        }
+    }
+
+    private void scrollToLetter(String letter) {
+        for (int i = 0; i < filteredApps.size(); i++) {
+            if (filteredApps.get(i).label.toUpperCase().startsWith(letter)) {
+                gridView.setSelection(i);
+                break;
+            }
         }
     }
 
@@ -199,14 +229,6 @@ public class DrawerView extends LinearLayout {
                     }
                 });
             }
-
-            convertView.setOnLongClickListener(v -> {
-                if (longClickListener != null) {
-                    longClickListener.onAppLongClick(item);
-                    return true;
-                }
-                return false;
-            });
 
             return convertView;
         }
