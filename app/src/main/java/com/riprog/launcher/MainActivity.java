@@ -149,7 +149,11 @@ public class MainActivity extends Activity {
         filter.addAction(Intent.ACTION_PACKAGE_ADDED);
         filter.addAction(Intent.ACTION_PACKAGE_REMOVED);
         filter.addDataScheme("package");
-        registerReceiver(appInstallReceiver, filter);
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+            registerReceiver(appInstallReceiver, filter, Context.RECEIVER_NOT_EXPORTED);
+        } else {
+            registerReceiver(appInstallReceiver, filter);
+        }
     }
 
     @Override
@@ -175,13 +179,20 @@ public class MainActivity extends Activity {
     @Override
     protected void onDestroy() {
         super.onDestroy();
-        unregisterReceiver(appInstallReceiver);
+        if (appInstallReceiver != null) {
+            try {
+                unregisterReceiver(appInstallReceiver);
+            } catch (Exception ignored) {}
+        }
+        if (model != null) {
+            model.shutdown();
+        }
     }
 
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
-        if (resultCode == RESULT_OK) {
+        if (resultCode == RESULT_OK && data != null) {
             if (requestCode == REQUEST_PICK_APPWIDGET) {
                 configureWidget(data);
             } else if (requestCode == REQUEST_CREATE_APPWIDGET) {
@@ -197,8 +208,12 @@ public class MainActivity extends Activity {
 
     private void configureWidget(Intent data) {
         Bundle extras = data.getExtras();
+        if (extras == null) return;
         int appWidgetId = extras.getInt(AppWidgetManager.EXTRA_APPWIDGET_ID, -1);
+        if (appWidgetId == -1) return;
         AppWidgetProviderInfo appWidgetInfo = appWidgetManager.getAppWidgetInfo(appWidgetId);
+        if (appWidgetInfo == null) return;
+
         if (appWidgetInfo.configure != null) {
             Intent intent = new Intent(AppWidgetManager.ACTION_APPWIDGET_CONFIGURE);
             intent.setComponent(appWidgetInfo.configure);
@@ -211,9 +226,12 @@ public class MainActivity extends Activity {
 
     private void createWidget(Intent data) {
         Bundle extras = data.getExtras();
+        if (extras == null) return;
         int appWidgetId = extras.getInt(AppWidgetManager.EXTRA_APPWIDGET_ID, -1);
+        if (appWidgetId == -1) return;
         settingsManager.setWidgetId(appWidgetId);
         AppWidgetProviderInfo appWidgetInfo = appWidgetManager.getAppWidgetInfo(appWidgetId);
+        if (appWidgetInfo == null) return;
         AppWidgetHostView hostView = appWidgetHost.createView(this, appWidgetId, appWidgetInfo);
         hostView.setAppWidget(appWidgetId, appWidgetInfo);
         homeView.setWidget(hostView);

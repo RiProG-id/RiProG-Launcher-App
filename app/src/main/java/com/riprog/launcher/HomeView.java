@@ -22,6 +22,7 @@ public class HomeView extends FrameLayout {
     private final TextView dateView;
     private final GridLayout favoritesGrid;
     private final FrameLayout widgetContainer;
+    private final Runnable clockRunnable = this::updateClock;
 
     public HomeView(Context context) {
         super(context);
@@ -60,17 +61,23 @@ public class HomeView extends FrameLayout {
     }
 
     private void updateClock() {
-        if (!isAttachedToWindow()) return;
+        if (clockView == null || dateView == null) return;
         Calendar cal = Calendar.getInstance();
         clockView.setText(DateFormat.getTimeFormat(getContext()).format(cal.getTime()));
         dateView.setText(DateFormat.getMediumDateFormat(getContext()).format(cal.getTime()));
-        postDelayed(this::updateClock, 10000);
+        postDelayed(clockRunnable, 10000);
     }
 
     @Override
     protected void onAttachedToWindow() {
         super.onAttachedToWindow();
         updateClock();
+    }
+
+    @Override
+    protected void onDetachedFromWindow() {
+        super.onDetachedFromWindow();
+        removeCallbacks(clockRunnable);
     }
 
     public void setFavorites(List<AppItem> favorites, LauncherModel model) {
