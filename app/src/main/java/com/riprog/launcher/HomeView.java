@@ -76,6 +76,9 @@ public class HomeView extends FrameLayout {
 
     public void addItemView(HomeItem item, View view) {
         if (item.page >= pages.size()) return;
+        if (view.getParent() instanceof ViewGroup) {
+            ((ViewGroup) view.getParent()).removeView(view);
+        }
         FrameLayout page = pages.get(item.page);
 
         LayoutParams lp = new LayoutParams(

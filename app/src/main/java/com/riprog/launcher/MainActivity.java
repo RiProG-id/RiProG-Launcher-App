@@ -17,6 +17,7 @@ import android.view.GestureDetector;
 import android.view.Gravity;
 import android.view.MotionEvent;
 import android.view.View;
+import android.view.ViewGroup;
 import android.view.Window;
 import android.view.WindowManager;
 import android.view.inputmethod.InputMethodManager;
@@ -379,6 +380,7 @@ public class MainActivity extends Activity {
     private void configureWidget(Intent data) {
         int appWidgetId = data.getIntExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, -1);
         AppWidgetProviderInfo info = appWidgetManager.getAppWidgetInfo(appWidgetId);
+        if (info == null) return;
         if (info.configure != null) {
             Intent intent = new Intent(AppWidgetManager.ACTION_APPWIDGET_CONFIGURE);
             intent.setComponent(info.configure);
