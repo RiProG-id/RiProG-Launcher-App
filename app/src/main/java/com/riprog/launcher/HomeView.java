@@ -240,16 +240,33 @@ public class HomeView extends FrameLayout {
         return pages.size();
     }
 
-    public void refreshIcons(LauncherModel model) {
+    public void refreshIcons(LauncherModel model, List<AppItem> allApps) {
         for (FrameLayout page : pages) {
             for (int i = 0; i < page.getChildCount(); i++) {
                 View view = page.getChildAt(i);
                 HomeItem item = (HomeItem) view.getTag();
                 if (item != null && item.type == HomeItem.Type.APP) {
-                    if (view instanceof FrameLayout) {
-                        ImageView iv = findImageView((FrameLayout) view);
-                        if (iv != null) {
-                            model.loadIcon(new AppItem("", item.packageName, item.className), iv::setImageBitmap);
+                    if (view instanceof ViewGroup) {
+                        ViewGroup container = (ViewGroup) view;
+                        ImageView iv = findImageView(container);
+                        TextView tv = findTextView(container);
+
+                        AppItem app = null;
+                        for (AppItem a : allApps) {
+                            if (a.packageName.equals(item.packageName)) {
+                                app = a;
+                                break;
+                            }
+                        }
+
+                        if (iv != null && app != null) {
+                            final AppItem finalApp = app;
+                            model.loadIcon(app, bitmap -> {
+                                if (bitmap != null) {
+                                    iv.setImageBitmap(bitmap);
+                                    if (tv != null) tv.setText(finalApp.label);
+                                }
+                            });
                         }
                     }
                 }
@@ -257,10 +274,27 @@ public class HomeView extends FrameLayout {
         }
     }
 
-    private ImageView findImageView(FrameLayout container) {
+    private ImageView findImageView(ViewGroup container) {
         for (int i = 0; i < container.getChildCount(); i++) {
-            if (container.getChildAt(i) instanceof ImageView) {
-                return (ImageView) container.getChildAt(i);
+            View child = container.getChildAt(i);
+            if (child instanceof ImageView) {
+                return (ImageView) child;
+            } else if (child instanceof ViewGroup) {
+                ImageView iv = findImageView((ViewGroup) child);
+                if (iv != null) return iv;
+            }
+        }
+        return null;
+    }
+
+    private TextView findTextView(ViewGroup container) {
+        for (int i = 0; i < container.getChildCount(); i++) {
+            View child = container.getChildAt(i);
+            if (child instanceof TextView) {
+                return (TextView) child;
+            } else if (child instanceof ViewGroup) {
+                TextView tv = findTextView((ViewGroup) child);
+                if (tv != null) return tv;
             }
         }
         return null;

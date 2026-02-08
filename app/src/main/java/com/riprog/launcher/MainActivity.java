@@ -147,6 +147,7 @@ public class MainActivity extends Activity {
         container.setGravity(Gravity.CENTER);
 
         ImageView iconView = new ImageView(this);
+        iconView.setScaleType(ImageView.ScaleType.FIT_CENTER);
         int baseSize = getResources().getDimensionPixelSize(R.dimen.grid_icon_size);
         float scale = settingsManager.getIconScale();
         int size = (int) (baseSize * scale);
@@ -390,7 +391,7 @@ public class MainActivity extends Activity {
                 drawerView.setApps(apps, model);
             }
             if (homeView != null) {
-                homeView.refreshIcons(model);
+                homeView.refreshIcons(model, apps);
             }
         });
     }

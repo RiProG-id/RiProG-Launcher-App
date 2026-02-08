@@ -134,21 +134,21 @@ public class LauncherModel {
 
     private Bitmap drawableToBitmap(Drawable drawable) {
         if (drawable == null) return null;
-        if (drawable instanceof BitmapDrawable) {
-            return ((BitmapDrawable) drawable).getBitmap();
-        }
-        int width = Math.max(1, drawable.getIntrinsicWidth());
-        int height = Math.max(1, drawable.getIntrinsicHeight());
-        if (width <= 0) width = 128;
-        if (height <= 0) height = 128;
+
+        // Use a consistent size for all icons (192x192 for high quality)
+        int size = 192;
 
         try {
-            Bitmap bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888);
+            Bitmap bitmap = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888);
             Canvas canvas = new Canvas(bitmap);
             drawable.setBounds(0, 0, canvas.getWidth(), canvas.getHeight());
             drawable.draw(canvas);
             return bitmap;
         } catch (OutOfMemoryError e) {
+            // Fallback for low-memory situations
+            if (drawable instanceof BitmapDrawable) {
+                return ((BitmapDrawable) drawable).getBitmap();
+            }
             return null;
         }
     }
