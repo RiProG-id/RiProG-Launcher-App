@@ -13,10 +13,11 @@ import android.content.IntentFilter;
 import android.graphics.Color;
 import android.graphics.Typeface;
 import android.os.Bundle;
-import android.view.GestureDetector;
+import android.os.Handler;
 import android.view.Gravity;
 import android.view.MotionEvent;
 import android.view.View;
+import android.view.ViewConfiguration;
 import android.view.ViewGroup;
 import android.view.Window;
 import android.view.WindowManager;
@@ -46,7 +47,7 @@ public class MainActivity extends Activity {
     private AppInstallReceiver appInstallReceiver;
     private List<HomeItem> homeItems = new ArrayList<>();
     private List<AppItem> allApps = new ArrayList<>();
-    private float lastLongPressX, lastLongPressY;
+    private int lastGridCol, lastGridRow;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -102,10 +103,8 @@ public class MainActivity extends Activity {
     }
 
     private void setupDefaultHome() {
-        HomeItem clockItem = HomeItem.createClock(0, 0, 0);
-        // Center it roughly
-        clockItem.x = (homeView.getWidth() - dpToPx(200)) / 2;
-        clockItem.y = (homeView.getHeight() - dpToPx(100)) / 3;
+        // Clock centered horizontally at the top
+        HomeItem clockItem = HomeItem.createClock(0, 0, 4, 2, 0);
         homeItems.add(clockItem);
         renderHomeItem(clockItem);
         saveHomeState();
@@ -137,14 +136,6 @@ public class MainActivity extends Activity {
         AppItem app = findApp(item.packageName);
         if (app != null) {
             model.loadIcon(app, iconView::setImageBitmap);
-            iconView.setOnClickListener(v -> {
-                Intent intent = getPackageManager().getLaunchIntentForPackage(item.packageName);
-                if (intent != null) startActivity(intent);
-            });
-            iconView.setOnLongClickListener(v -> {
-                showAppOptions(item, iconView);
-                return true;
-            });
         } else {
             iconView.setImageResource(android.R.drawable.sym_def_app_icon);
         }
@@ -156,10 +147,6 @@ public class MainActivity extends Activity {
         if (info == null) return null;
         AppWidgetHostView hostView = appWidgetHost.createView(this, item.widgetId, info);
         hostView.setAppWidget(item.widgetId, info);
-        hostView.setOnLongClickListener(v -> {
-            showWidgetOptions(item, hostView);
-            return true;
-        });
         return hostView;
     }
 
@@ -173,26 +160,20 @@ public class MainActivity extends Activity {
     }
 
     private void showResizeDialog(HomeItem item, View hostView) {
-        String[] sizes = {"Small", "Medium", "Large", "Full Width"};
+        String[] sizes = {"1x1", "2x1", "2x2", "4x2", "4x1"};
         new AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert)
             .setTitle("Resize Widget")
             .setItems(sizes, (dialog, which) -> {
                 switch (which) {
-                    case 0: item.width = 150; item.height = 100; break;
-                    case 1: item.width = 250; item.height = 150; break;
-                    case 2: item.width = 350; item.height = 250; break;
-                    case 3: item.width = pxToDp(homeView.getWidth()) - 40; item.height = 150; break;
+                    case 0: item.spanX = 1; item.spanY = 1; break;
+                    case 1: item.spanX = 2; item.spanY = 1; break;
+                    case 2: item.spanX = 2; item.spanY = 2; break;
+                    case 3: item.spanX = 4; item.spanY = 2; break;
+                    case 4: item.spanX = 4; item.spanY = 1; break;
                 }
-                updateViewSize(item, hostView);
+                homeView.updateViewPosition(item, hostView);
                 saveHomeState();
             }).show();
-    }
-
-    private void updateViewSize(HomeItem item, View view) {
-        FrameLayout.LayoutParams lp = (FrameLayout.LayoutParams) view.getLayoutParams();
-        lp.width = dpToPx(item.width);
-        lp.height = dpToPx(item.height);
-        view.setLayoutParams(lp);
     }
 
     private void removeHomeItem(HomeItem item, View view) {
@@ -201,18 +182,6 @@ public class MainActivity extends Activity {
             ((ViewGroup) view.getParent()).removeView(view);
         }
         saveHomeState();
-    }
-
-    private int pxToDp(int px) {
-        return (int) (px / getResources().getDisplayMetrics().density);
-    }
-
-    private void showAppOptions(HomeItem item, View view) {
-        String[] options = {"Remove"};
-        new AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert)
-            .setItems(options, (dialog, which) -> {
-                if (which == 0) removeHomeItem(item, view);
-            }).show();
     }
 
     private View createClockView(HomeItem item) {
@@ -254,14 +223,18 @@ public class MainActivity extends Activity {
         return null;
     }
 
-    private void showContextMenu(float x, float y, int page) {
+    private void showHomeContextMenu(int col, int row, int page) {
         String[] options = {"Add App", "Widgets", "Wallpaper", "Launcher Settings", "Layout Options"};
         new AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert)
             .setTitle("Home Menu")
             .setItems(options, (dialog, which) -> {
                 switch (which) {
-                    case 0: pickAppForHome((int)x, (int)y, page); break;
-                    case 1: pickWidget(); break;
+                    case 0: pickAppForHome(col, row, page); break;
+                    case 1:
+                        lastGridCol = col;
+                        lastGridRow = row;
+                        pickWidget();
+                        break;
                     case 2: openWallpaperPicker(); break;
                     case 3: openSettings(); break;
                     case 4: showLayoutOptions(); break;
@@ -269,7 +242,7 @@ public class MainActivity extends Activity {
             }).show();
     }
 
-    private void pickAppForHome(int x, int y, int page) {
+    private void pickAppForHome(int col, int row, int page) {
         if (allApps.isEmpty()) {
             Toast.makeText(this, "Apps not loaded yet", Toast.LENGTH_SHORT).show();
             return;
@@ -281,7 +254,7 @@ public class MainActivity extends Activity {
             .setTitle("Pick App")
             .setItems(labels, (dialog, which) -> {
                 AppItem selected = allApps.get(which);
-                HomeItem item = HomeItem.createApp(selected.packageName, selected.className, x, y, page);
+                HomeItem item = HomeItem.createApp(selected.packageName, selected.className, col, row, page);
                 homeItems.add(item);
                 renderHomeItem(item);
                 saveHomeState();
@@ -393,7 +366,7 @@ public class MainActivity extends Activity {
 
     private void createWidget(Intent data) {
         int appWidgetId = data.getIntExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, -1);
-        HomeItem item = HomeItem.createWidget(appWidgetId, (int)lastLongPressX, (int)lastLongPressY, 200, 100, homeView.getCurrentPage());
+        HomeItem item = HomeItem.createWidget(appWidgetId, lastGridCol, lastGridRow, 2, 1, homeView.getCurrentPage());
         homeItems.add(item);
         renderHomeItem(item);
         saveHomeState();
@@ -420,44 +393,176 @@ public class MainActivity extends Activity {
 
     private class MainLayout extends FrameLayout {
         private boolean isDrawerOpen = false;
-        private GestureDetector gestureDetector;
+        private float startX, startY;
+        private long downTime;
+        private boolean isGestureCanceled = false;
+        private final int touchSlop;
+        private final Handler longPressHandler = new Handler();
+        private View touchedView = null;
+        private boolean longPressTriggered = false;
+        private boolean isDragging = false;
+
+        private final Runnable longPressRunnable = new Runnable() {
+            @Override
+            public void run() {
+                longPressTriggered = true;
+                if (touchedView != null) {
+                    isDragging = true;
+                    homeView.startDragging(touchedView, startX, startY);
+                } else {
+                    int cellWidth = getWidth() / HomeView.GRID_COLUMNS;
+                    int cellHeight = getHeight() / HomeView.GRID_ROWS;
+                    int col = (int) (startX / (cellWidth > 0 ? cellWidth : 1));
+                    int row = (int) (startY / (cellHeight > 0 ? cellHeight : 1));
+                    showHomeContextMenu(col, row, homeView.getCurrentPage());
+                }
+            }
+        };
 
         public MainLayout(Context context) {
             super(context);
             setBackgroundResource(R.color.background);
-            gestureDetector = new GestureDetector(context, new GestureDetector.SimpleOnGestureListener() {
-                @Override
-                public boolean onFling(MotionEvent e1, MotionEvent e2, float velocityX, float velocityY) {
-                    if (e1 == null || e2 == null) return false;
-                    float diffY = e2.getY() - e1.getY();
-                    if (Math.abs(diffY) > 100 && velocityY < -100) {
-                        if (!isDrawerOpen) { openDrawer(); return true; }
-                    } else if (Math.abs(diffY) > 100 && velocityY > 100) {
-                        if (isDrawerOpen) { closeDrawer(); return true; }
-                    }
-                    return false;
-                }
-
-                @Override
-                public void onLongPress(MotionEvent e) {
-                    if (!isDrawerOpen) {
-                        lastLongPressX = e.getX();
-                        lastLongPressY = e.getY();
-                        MainActivity.this.showContextMenu(e.getX(), e.getY(), homeView.getCurrentPage());
-                    }
-                }
-            });
+            touchSlop = ViewConfiguration.get(context).getScaledTouchSlop();
         }
 
         @Override
         public boolean onInterceptTouchEvent(MotionEvent ev) {
-            gestureDetector.onTouchEvent(ev);
-            return false;
+            if (isDrawerOpen) return false;
+
+            switch (ev.getAction()) {
+                case MotionEvent.ACTION_DOWN:
+                    startX = ev.getX();
+                    startY = ev.getY();
+                    downTime = System.currentTimeMillis();
+                    isGestureCanceled = false;
+                    longPressTriggered = false;
+                    isDragging = false;
+                    touchedView = findTouchedHomeItem(startX, startY);
+                    longPressHandler.removeCallbacks(longPressRunnable);
+                    longPressHandler.postDelayed(longPressRunnable, 400);
+                    return false;
+
+                case MotionEvent.ACTION_MOVE:
+                    float dx = ev.getX() - startX;
+                    float dy = ev.getY() - startY;
+                    if (Math.abs(dx) > touchSlop || Math.abs(dy) > touchSlop) {
+                        longPressHandler.removeCallbacks(longPressRunnable);
+                        if (!longPressTriggered) {
+                            return true; // Intercept for swipe
+                        }
+                    }
+                    return isDragging;
+
+                case MotionEvent.ACTION_UP:
+                case MotionEvent.ACTION_CANCEL:
+                    if (isDragging) return true;
+                    long duration = System.currentTimeMillis() - downTime;
+                    if (duration < 80) { // Accidental touch/debounce
+                        longPressHandler.removeCallbacks(longPressRunnable);
+                        return false;
+                    }
+                    break;
+            }
+            return isDragging;
         }
 
         @Override
         public boolean onTouchEvent(MotionEvent event) {
-            return gestureDetector.onTouchEvent(event);
+            if (isDrawerOpen) {
+                // Handle swipe down to close drawer
+                if (event.getAction() == MotionEvent.ACTION_DOWN) {
+                    startX = event.getX();
+                    startY = event.getY();
+                } else if (event.getAction() == MotionEvent.ACTION_UP) {
+                    float dy = event.getY() - startY;
+                    if (dy > touchSlop * 3) closeDrawer();
+                }
+                return true;
+            }
+
+            switch (event.getAction()) {
+                case MotionEvent.ACTION_DOWN:
+                    // Should not happen as we return false in intercept,
+                    // unless no child handles it.
+                    return true;
+
+                case MotionEvent.ACTION_MOVE:
+                    float dx = event.getX() - startX;
+                    float dy = event.getY() - startY;
+
+                    if (isDragging) {
+                        homeView.handleDrag(event.getX(), event.getY());
+                        return true;
+                    }
+
+                    if (!isGestureCanceled && (Math.abs(dx) > touchSlop || Math.abs(dy) > touchSlop)) {
+                        longPressHandler.removeCallbacks(longPressRunnable);
+                        if (Math.abs(dy) > Math.abs(dx)) {
+                            if (dy < -touchSlop * 2) {
+                                openDrawer();
+                                isGestureCanceled = true;
+                            }
+                        } else {
+                            if (dx > touchSlop * 2 && homeView.getCurrentPage() > 0) {
+                                homeView.scrollToPage(homeView.getCurrentPage() - 1);
+                                isGestureCanceled = true;
+                            } else if (dx < -touchSlop * 2 && homeView.getCurrentPage() < homeView.getPageCount() - 1) {
+                                homeView.scrollToPage(homeView.getCurrentPage() + 1);
+                                isGestureCanceled = true;
+                            }
+                        }
+                    }
+                    return true;
+
+                case MotionEvent.ACTION_UP:
+                case MotionEvent.ACTION_CANCEL:
+                    longPressHandler.removeCallbacks(longPressRunnable);
+                    if (isDragging) {
+                        homeView.endDragging();
+                        isDragging = false;
+                        return true;
+                    }
+                    if (!isGestureCanceled && !longPressTriggered) {
+                        long duration = System.currentTimeMillis() - downTime;
+                        float finalDx = event.getX() - startX;
+                        float finalDy = event.getY() - startY;
+                        float dist = (float) Math.sqrt(finalDx * finalDx + finalDy * finalDy);
+                        if (duration >= 80 && duration < 150 && dist < touchSlop) {
+                            if (touchedView != null) handleItemClick(touchedView);
+                        }
+                    }
+                    return true;
+            }
+            return true;
+        }
+
+        private View findTouchedHomeItem(float x, float y) {
+            int page = homeView.getCurrentPage();
+            ViewGroup pagesContainer = (ViewGroup) homeView.getChildAt(0);
+            if (pagesContainer != null && page < pagesContainer.getChildCount()) {
+                ViewGroup pageLayout = (ViewGroup) pagesContainer.getChildAt(page);
+                float adjustedX = x - pagesContainer.getPaddingLeft();
+                float adjustedY = y - pagesContainer.getPaddingTop();
+                for (int i = pageLayout.getChildCount() - 1; i >= 0; i--) {
+                    View child = pageLayout.getChildAt(i);
+                    if (adjustedX >= child.getX() && adjustedX <= child.getX() + child.getWidth() &&
+                        adjustedY >= child.getY() && adjustedY <= child.getY() + child.getHeight()) {
+                        return child;
+                    }
+                }
+            }
+            return null;
+        }
+
+        private void handleItemClick(View v) {
+            HomeItem item = (HomeItem) v.getTag();
+            if (item == null) return;
+            if (item.type == HomeItem.Type.APP) {
+                Intent intent = getPackageManager().getLaunchIntentForPackage(item.packageName);
+                if (intent != null) startActivity(intent);
+            } else if (item.type == HomeItem.Type.WIDGET) {
+                showWidgetOptions(item, v);
+            }
         }
 
         public void openDrawer() {

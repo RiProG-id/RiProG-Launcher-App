@@ -30,7 +30,6 @@ public class DrawerView extends LinearLayout {
     private LauncherModel model;
     private final EditText searchBar;
     private final LinearLayout indexBar;
-    private final LinearLayout suggestionBar;
 
     public DrawerView(Context context) {
         super(context);
@@ -55,12 +54,6 @@ public class DrawerView extends LinearLayout {
         });
         addView(searchBar);
 
-        suggestionBar = new LinearLayout(context);
-        suggestionBar.setOrientation(HORIZONTAL);
-        suggestionBar.setGravity(Gravity.CENTER);
-        suggestionBar.setPadding(0, dpToPx(8), 0, dpToPx(8));
-        addView(suggestionBar);
-
         FrameLayout contentFrame = new FrameLayout(context);
         addView(contentFrame, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1));
 
@@ -83,7 +76,6 @@ public class DrawerView extends LinearLayout {
 
         gridView.setOnItemClickListener((parent, view, position, id) -> {
             AppItem item = filteredApps.get(position);
-            new SettingsManager(getContext()).incrementUsage(item.packageName);
             Intent intent = getContext().getPackageManager().getLaunchIntentForPackage(item.packageName);
             if (intent != null) getContext().startActivity(intent);
         });
@@ -92,38 +84,12 @@ public class DrawerView extends LinearLayout {
     public void setApps(List<AppItem> apps, LauncherModel model) {
         this.allApps = apps;
         this.model = model;
-        sortAppsByUsage();
-        updateSuggestions();
+        sortAppsAlphabetically();
         filter(searchBar.getText().toString());
     }
 
-    private void updateSuggestions() {
-        suggestionBar.removeAllViews();
-        int count = Math.min(allApps.size(), 5);
-        for (int i = 0; i < count; i++) {
-            AppItem item = allApps.get(i);
-            ImageView iv = new ImageView(getContext());
-            int size = dpToPx(40);
-            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(size, size);
-            lp.setMargins(dpToPx(8), 0, dpToPx(8), 0);
-            iv.setLayoutParams(lp);
-            model.loadIcon(item, iv::setImageBitmap);
-            iv.setOnClickListener(v -> {
-                Intent intent = getContext().getPackageManager().getLaunchIntentForPackage(item.packageName);
-                if (intent != null) getContext().startActivity(intent);
-            });
-            suggestionBar.addView(iv);
-        }
-    }
-
-    private void sortAppsByUsage() {
-        SettingsManager sm = new SettingsManager(getContext());
-        Collections.sort(allApps, (a, b) -> {
-            int usageA = sm.getUsage(a.packageName);
-            int usageB = sm.getUsage(b.packageName);
-            if (usageA != usageB) return Integer.compare(usageB, usageA);
-            return a.label.compareToIgnoreCase(b.label);
-        });
+    private void sortAppsAlphabetically() {
+        Collections.sort(allApps, (a, b) -> a.label.compareToIgnoreCase(b.label));
     }
 
     private void setupIndexBar() {

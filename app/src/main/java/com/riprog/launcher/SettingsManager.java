@@ -54,10 +54,10 @@ public class SettingsManager {
                 obj.put("type", item.type.name());
                 obj.put("packageName", item.packageName);
                 obj.put("className", item.className);
-                obj.put("x", item.x);
-                obj.put("y", item.y);
-                obj.put("width", item.width);
-                obj.put("height", item.height);
+                obj.put("col", item.col);
+                obj.put("row", item.row);
+                obj.put("spanX", item.spanX);
+                obj.put("spanY", item.spanY);
                 obj.put("page", item.page);
                 obj.put("widgetId", item.widgetId);
                 array.put(obj);
@@ -78,10 +78,13 @@ public class SettingsManager {
                 item.type = HomeItem.Type.valueOf(obj.getString("type"));
                 item.packageName = obj.optString("packageName", null);
                 item.className = obj.optString("className", null);
-                item.x = obj.getInt("x");
-                item.y = obj.getInt("y");
-                item.width = obj.getInt("width");
-                item.height = obj.getInt("height");
+                // Fallback to x/y if col/row missing (for migration)
+                item.col = obj.optInt("col", obj.optInt("x", 0) / 100);
+                item.row = obj.optInt("row", obj.optInt("y", 0) / 100);
+                item.spanX = obj.optInt("spanX", obj.optInt("width", 100) / 100);
+                item.spanY = obj.optInt("spanY", obj.optInt("height", 100) / 100);
+                if (item.spanX <= 0) item.spanX = 1;
+                if (item.spanY <= 0) item.spanY = 1;
                 item.page = obj.getInt("page");
                 item.widgetId = obj.getInt("widgetId");
                 items.add(item);
