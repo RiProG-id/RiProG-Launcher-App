@@ -22,6 +22,7 @@ import android.widget.TextView;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Locale;
 
 public class DrawerView extends LinearLayout {
     private final GridView gridView;
@@ -40,7 +41,17 @@ public class DrawerView extends LinearLayout {
     private LauncherModel model;
     private final SettingsManager settingsManager;
     private final EditText searchBar;
-    private final LinearLayout indexBar;
+    private final IndexBar indexBar;
+
+    private static class IndexBar extends LinearLayout {
+        public IndexBar(Context context) {
+            super(context);
+        }
+        @Override
+        public boolean performClick() {
+            return super.performClick();
+        }
+    }
 
     public DrawerView(Context context) {
         super(context);
@@ -50,7 +61,7 @@ public class DrawerView extends LinearLayout {
         setPadding(0, dpToPx(48), 0, 0);
 
         searchBar = new EditText(context);
-        searchBar.setHint("🔍 Search apps...");
+        searchBar.setHint(R.string.search_hint);
         searchBar.setHintTextColor(context.getColor(R.color.foreground_dim));
         searchBar.setTextColor(context.getColor(R.color.foreground));
         searchBar.setBackgroundColor(context.getColor(R.color.search_background));
@@ -76,11 +87,14 @@ public class DrawerView extends LinearLayout {
         gridView.setVerticalScrollBarEnabled(false);
         contentFrame.addView(gridView);
 
-        indexBar = new LinearLayout(context);
+        indexBar = new IndexBar(context);
         indexBar.setOrientation(LinearLayout.VERTICAL);
         indexBar.setGravity(Gravity.CENTER);
         indexBar.setOnTouchListener((v, event) -> {
             if (event.getAction() == MotionEvent.ACTION_DOWN || event.getAction() == MotionEvent.ACTION_MOVE) {
+                if (event.getAction() == MotionEvent.ACTION_DOWN) {
+                    v.performClick();
+                }
                 float y = event.getY();
                 int childCount = indexBar.getChildCount();
                 if (childCount > 0) {
@@ -148,7 +162,7 @@ public class DrawerView extends LinearLayout {
 
     private void scrollToLetter(String letter) {
         for (int i = 0; i < filteredApps.size(); i++) {
-            if (filteredApps.get(i).label.toUpperCase().startsWith(letter)) {
+            if (filteredApps.get(i).label.toUpperCase(Locale.getDefault()).startsWith(letter)) {
                 gridView.setSelection(i);
                 break;
             }
