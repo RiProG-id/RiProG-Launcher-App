@@ -16,6 +16,7 @@ import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.SeekBar;
+import android.widget.Switch;
 import android.widget.TextView;
 
 public class SettingsActivity extends Activity {
@@ -60,11 +61,7 @@ public class SettingsActivity extends Activity {
         titleLayout.addView(title);
         root.addView(titleLayout);
 
-        addSettingItem(root, "Freeform Home", "Allow free placement of items without grid alignment. Disable to auto organize layout.", v -> {
-            boolean current = settingsManager.isFreeformHome();
-            settingsManager.setFreeformHome(!current);
-            recreate();
-        });
+        addFreeformSetting(root);
 
         addThemeSetting(root);
         addScaleSetting(root);
@@ -109,8 +106,7 @@ public class SettingsActivity extends Activity {
                 "LINKS & SUPPORT\n" +
                 "GitHub: https://github.com/RiProG-id/RiProG-Launcher-App\n" +
                 "Telegram Channel: https://t.me/RiOpSo\n" +
-                "Telegram Group: https://t.me/RiOpSoDisc\n" +
-                "Support Me (Telegram): https://t.me/RiOpSo/2848\n\n" +
+                "Telegram Group: https://t.me/RiOpSoDisc\n\n" +
                 "DONATE\n" +
                 "PayPal: https://paypal.me/RiProG\n" +
                 "Sociabuzz: https://sociabuzz.com/riprog/tribe\n" +
@@ -187,6 +183,42 @@ public class SettingsActivity extends Activity {
             else if ("dark".equals(mode)) nightMode = UiModeManager.MODE_NIGHT_YES;
             uiModeManager.setApplicationNightMode(nightMode);
         }
+    }
+
+    private void addFreeformSetting(LinearLayout parent) {
+        LinearLayout item = new LinearLayout(this);
+        item.setOrientation(LinearLayout.HORIZONTAL);
+        item.setGravity(Gravity.CENTER_VERTICAL);
+        item.setPadding(0, dpToPx(16), 0, dpToPx(16));
+
+        LinearLayout textLayout = new LinearLayout(this);
+        textLayout.setOrientation(LinearLayout.VERTICAL);
+        LinearLayout.LayoutParams textParams = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1);
+        item.addView(textLayout, textParams);
+
+        TextView titleView = new TextView(this);
+        titleView.setText("Freeform Home");
+        titleView.setTextSize(18);
+        titleView.setTextColor(getColor(R.color.foreground));
+        textLayout.addView(titleView);
+
+        TextView summaryView = new TextView(this);
+        summaryView.setText("Allow free placement of items without grid alignment. Disable to auto organize layout.");
+        summaryView.setTextSize(14);
+        summaryView.setTextColor(getColor(R.color.foreground_dim));
+        textLayout.addView(summaryView);
+
+        Switch toggle = new Switch(this);
+        toggle.setChecked(settingsManager.isFreeformHome());
+        toggle.setOnCheckedChangeListener((v, isChecked) -> {
+            settingsManager.setFreeformHome(isChecked);
+            // We need to refresh HomeView when we go back.
+            // recreate() helps update this Activity's UI if needed,
+            // but HomeView will refresh in its onResume.
+        });
+        item.addView(toggle);
+
+        parent.addView(item);
     }
 
     private void addScaleSetting(LinearLayout parent) {

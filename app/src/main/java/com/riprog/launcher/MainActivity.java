@@ -226,10 +226,16 @@ public class MainActivity extends Activity {
             removeHomeItem(item, view);
             return;
         }
-        Intent intent = new Intent(Intent.ACTION_DELETE);
-        intent.setData(android.net.Uri.parse("package:" + item.packageName));
-        startActivity(intent);
-        removeHomeItem(item, view);
+        try {
+            Intent intent = new Intent(Intent.ACTION_DELETE);
+            intent.setData(android.net.Uri.fromParts("package", item.packageName, null));
+            intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            startActivity(intent);
+            // Remove from home screen as requested by dragging to uninstall zone
+            removeHomeItem(item, view);
+        } catch (Exception e) {
+            Toast.makeText(this, "Uninstall failed: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+        }
     }
 
     private View createClockView(HomeItem item) {
@@ -506,10 +512,17 @@ public class MainActivity extends Activity {
                 item.setClickable(true);
                 item.setBackgroundResource(android.R.drawable.list_selector_background);
 
-                // Visual preview shape (lightweight)
-                View preview = new View(this);
+                // Visual preview
+                ImageView preview = new ImageView(this);
                 int spanX = Math.max(1, info.minWidth / (getResources().getDisplayMetrics().widthPixels / HomeView.GRID_COLUMNS));
                 int spanY = Math.max(1, info.minHeight / (getResources().getDisplayMetrics().heightPixels / HomeView.GRID_ROWS));
+
+                Drawable previewDrawable = info.loadPreviewImage(this, 0);
+                if (previewDrawable == null) {
+                    previewDrawable = info.loadIcon(this, 0);
+                }
+                preview.setImageDrawable(previewDrawable);
+                preview.setScaleType(ImageView.ScaleType.FIT_CENTER);
 
                 android.graphics.drawable.GradientDrawable shape = new android.graphics.drawable.GradientDrawable();
                 shape.setColor(getColor(R.color.search_background));
@@ -517,7 +530,7 @@ public class MainActivity extends Activity {
                 shape.setStroke(dpToPx(1), getColor(R.color.foreground_dim));
                 preview.setBackground(shape);
 
-                LinearLayout.LayoutParams previewParams = new LinearLayout.LayoutParams(dpToPx(40), dpToPx(30));
+                LinearLayout.LayoutParams previewParams = new LinearLayout.LayoutParams(dpToPx(60), dpToPx(60));
                 previewParams.rightMargin = dpToPx(12);
                 item.addView(preview, previewParams);
 

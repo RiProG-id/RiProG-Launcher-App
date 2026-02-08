@@ -44,7 +44,6 @@ Swipe up to open app drawer, swipe down to close.
 ## 🔗 Links
 
 - **GitHub**: [RiProG-id/RiProG-Launcher-App](https://github.com/RiProG-id/RiProG-Launcher-App)
-- **Support Me**: [Telegram](https://t.me/RiOpSo/2848)
 - **Telegram Channel**: [@RiOpSo](https://t.me/RiOpSo)
 - **Telegram Group**: [@RiOpSoDisc](https://t.me/RiOpSoDisc)
 
