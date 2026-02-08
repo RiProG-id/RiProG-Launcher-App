@@ -2,6 +2,9 @@ package com.riprog.launcher;
 
 import android.app.Activity;
 import android.app.AlertDialog;
+import android.app.UiModeManager;
+import android.content.Context;
+import android.graphics.drawable.GradientDrawable;
 import android.os.Bundle;
 import android.text.method.LinkMovementMethod;
 import android.text.util.Linkify;
@@ -9,8 +12,10 @@ import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.FrameLayout;
+import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
+import android.widget.SeekBar;
 import android.widget.TextView;
 
 public class SettingsActivity extends Activity {
@@ -21,6 +26,7 @@ public class SettingsActivity extends Activity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         settingsManager = new SettingsManager(this);
+        applyThemeMode(settingsManager.getThemeMode());
 
         FrameLayout rootContainer = new FrameLayout(this);
         rootContainer.setPadding(dpToPx(16), dpToPx(48), dpToPx(16), dpToPx(32));
@@ -35,18 +41,33 @@ public class SettingsActivity extends Activity {
         root.setPadding(dpToPx(24), dpToPx(32), dpToPx(24), dpToPx(32));
         scrollView.addView(root);
 
+        LinearLayout titleLayout = new LinearLayout(this);
+        titleLayout.setOrientation(LinearLayout.HORIZONTAL);
+        titleLayout.setGravity(Gravity.CENTER_VERTICAL);
+        titleLayout.setPadding(0, 0, 0, dpToPx(32));
+
+        ImageView titleIcon = new ImageView(this);
+        titleIcon.setImageResource(R.drawable.ic_settings);
+        titleIcon.setColorFilter(getColor(R.color.foreground));
+        LinearLayout.LayoutParams iconParams = new LinearLayout.LayoutParams(dpToPx(32), dpToPx(32));
+        iconParams.rightMargin = dpToPx(12);
+        titleLayout.addView(titleIcon, iconParams);
+
         TextView title = new TextView(this);
-        title.setText("⚙️ Settings");
+        title.setText("Settings");
         title.setTextSize(32);
         title.setTextColor(getColor(R.color.foreground));
-        title.setPadding(0, 0, 0, dpToPx(32));
-        root.addView(title);
+        titleLayout.addView(title);
+        root.addView(titleLayout);
 
-        addSettingItem(root, "🛸 Freeform Home", "Allow free placement of items without grid alignment. Disable to automatically organize home layout.", v -> {
+        addSettingItem(root, "Freeform Home", "Allow free placement of items without grid alignment. Disable to auto organize layout.", v -> {
             boolean current = settingsManager.isFreeformHome();
             settingsManager.setFreeformHome(!current);
             recreate();
         });
+
+        addThemeSetting(root);
+        addScaleSetting(root);
 
         View divider = new View(this);
         divider.setBackgroundColor(getColor(R.color.foreground_dim));
@@ -54,22 +75,37 @@ public class SettingsActivity extends Activity {
         dividerParams.setMargins(0, dpToPx(24), 0, dpToPx(24));
         root.addView(divider, dividerParams);
 
+        LinearLayout aboutTitleLayout = new LinearLayout(this);
+        aboutTitleLayout.setOrientation(LinearLayout.HORIZONTAL);
+        aboutTitleLayout.setGravity(Gravity.CENTER_VERTICAL);
+        aboutTitleLayout.setPadding(0, 0, 0, dpToPx(16));
+
+        ImageView aboutIcon = new ImageView(this);
+        aboutIcon.setImageResource(R.drawable.ic_about);
+        aboutIcon.setColorFilter(getColor(R.color.foreground));
+        LinearLayout.LayoutParams aboutIconParams = new LinearLayout.LayoutParams(dpToPx(24), dpToPx(24));
+        aboutIconParams.rightMargin = dpToPx(8);
+        aboutTitleLayout.addView(aboutIcon, aboutIconParams);
+
         TextView aboutTitle = new TextView(this);
-        aboutTitle.setText("ℹ️ About");
+        aboutTitle.setText("About");
         aboutTitle.setTextSize(24);
         aboutTitle.setTextColor(getColor(R.color.foreground));
-        aboutTitle.setPadding(0, 0, 0, dpToPx(16));
-        root.addView(aboutTitle);
+        aboutTitleLayout.addView(aboutTitle);
+        root.addView(aboutTitleLayout);
 
         TextView aboutContent = new TextView(this);
         aboutContent.setText("RiProG Launcher v2.1.0\n\n" +
                 "Ultra-lightweight Android launcher — minimal, fast, and distraction-free.\n\n" +
                 "FEATURES\n" +
                 "• Ultra-Lightweight & Fast\n" +
+                "• Liquid Glass UI Aesthetic\n" +
                 "• App Drawer with Search & Quick Index\n" +
-                "• Gesture Support (Swipe up/down)\n" +
-                "• Widget Support\n" +
-                "• Liquid Glass UI Consistency\n\n" +
+                "• Custom Widget Picker with Grouping\n" +
+                "• Freeform Home Toggle\n" +
+                "• Icon & Label Scale Control\n" +
+                "• Dynamic Theme Support\n" +
+                "• Gesture Support (Swipe up/down)\n\n" +
                 "LINKS & SUPPORT\n" +
                 "GitHub: https://github.com/RiProG-id/RiProG-Launcher-App\n" +
                 "Telegram Channel: https://t.me/RiOpSo\n" +
@@ -91,6 +127,103 @@ public class SettingsActivity extends Activity {
         root.addView(aboutContent);
 
         setContentView(rootContainer);
+    }
+
+    private void addThemeSetting(LinearLayout parent) {
+        LinearLayout item = new LinearLayout(this);
+        item.setOrientation(LinearLayout.VERTICAL);
+        item.setPadding(0, dpToPx(16), 0, dpToPx(16));
+
+        TextView titleView = new TextView(this);
+        titleView.setText("Theme Mode");
+        titleView.setTextSize(18);
+        titleView.setTextColor(getColor(R.color.foreground));
+        item.addView(titleView);
+
+        String[] modes = {"System", "Light", "Dark"};
+        String[] values = {"system", "light", "dark"};
+        String current = settingsManager.getThemeMode();
+
+        LinearLayout optionsLayout = new LinearLayout(this);
+        optionsLayout.setOrientation(LinearLayout.HORIZONTAL);
+        optionsLayout.setPadding(0, dpToPx(8), 0, 0);
+
+        for (int i = 0; i < modes.length; i++) {
+            final int index = i;
+            TextView option = new TextView(this);
+            option.setText(modes[i]);
+            option.setPadding(dpToPx(12), dpToPx(8), dpToPx(12), dpToPx(8));
+            option.setTextSize(14);
+
+            boolean isSelected = values[i].equals(current);
+            option.setTextColor(isSelected ? getColor(R.color.foreground) : getColor(R.color.foreground_dim));
+
+            if (isSelected) {
+                GradientDrawable gd = new GradientDrawable();
+                gd.setColor(getColor(R.color.search_background));
+                gd.setCornerRadius(dpToPx(8));
+                option.setBackground(gd);
+            }
+
+            option.setOnClickListener(v -> {
+                settingsManager.setThemeMode(values[index]);
+                applyThemeMode(values[index]);
+                recreate();
+            });
+
+            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1);
+            optionsLayout.addView(option, lp);
+            option.setGravity(Gravity.CENTER);
+        }
+        item.addView(optionsLayout);
+        parent.addView(item);
+    }
+
+    private void applyThemeMode(String mode) {
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
+            UiModeManager uiModeManager = (UiModeManager) getSystemService(Context.UI_MODE_SERVICE);
+            int nightMode = UiModeManager.MODE_NIGHT_AUTO;
+            if ("light".equals(mode)) nightMode = UiModeManager.MODE_NIGHT_NO;
+            else if ("dark".equals(mode)) nightMode = UiModeManager.MODE_NIGHT_YES;
+            uiModeManager.setApplicationNightMode(nightMode);
+        }
+    }
+
+    private void addScaleSetting(LinearLayout parent) {
+        LinearLayout item = new LinearLayout(this);
+        item.setOrientation(LinearLayout.VERTICAL);
+        item.setPadding(0, dpToPx(16), 0, dpToPx(16));
+
+        TextView titleView = new TextView(this);
+        titleView.setText("Icon Size & Label Scale");
+        titleView.setTextSize(18);
+        titleView.setTextColor(getColor(R.color.foreground));
+        item.addView(titleView);
+
+        SeekBar seekBar = new SeekBar(this);
+        seekBar.setMax(100);
+        float currentScale = settingsManager.getIconScale();
+        seekBar.setProgress((int) ((currentScale - 0.5f) / 1.0f * 100));
+
+        seekBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+            @Override
+            public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
+                float scale = 0.5f + (progress / 100.0f) * 1.0f;
+                settingsManager.setIconScale(scale);
+            }
+            @Override public void onStartTrackingTouch(SeekBar seekBar) {}
+            @Override public void onStopTrackingTouch(SeekBar seekBar) {}
+        });
+
+        item.addView(seekBar);
+
+        TextView description = new TextView(this);
+        description.setText("Scale icons and labels together. Affect both home screen and app drawer.");
+        description.setTextSize(12);
+        description.setTextColor(getColor(R.color.foreground_dim));
+        item.addView(description);
+
+        parent.addView(item);
     }
 
     private void addSettingItem(LinearLayout parent, String title, String summary, View.OnClickListener listener) {

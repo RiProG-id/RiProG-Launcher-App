@@ -1,7 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="background">#C0000000</color>
+    <color name="background">#80000000</color>
     <color name="foreground">#EEEEEE</color>
     <color name="foreground_dim">#BBBBBB</color>
     <color name="search_background">#15FFFFFF</color>
+    <color name="glass_stroke">#20FFFFFF</color>
 </resources>

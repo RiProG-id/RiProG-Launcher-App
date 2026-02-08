@@ -2,6 +2,7 @@ package com.riprog.launcher;
 
 import android.app.Activity;
 import android.app.AlertDialog;
+import android.app.UiModeManager;
 import android.appwidget.AppWidgetHost;
 import android.appwidget.AppWidgetHostView;
 import android.appwidget.AppWidgetManager;
@@ -11,6 +12,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.graphics.Color;
+import android.graphics.drawable.Drawable;
 import android.graphics.Typeface;
 import android.os.Bundle;
 import android.os.Handler;
@@ -22,14 +24,19 @@ import android.view.ViewGroup;
 import android.view.Window;
 import android.view.WindowManager;
 import android.view.inputmethod.InputMethodManager;
+import android.widget.ArrayAdapter;
 import android.widget.FrameLayout;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
+import android.widget.ScrollView;
 import android.widget.TextView;
 import android.widget.Toast;
 
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 public class MainActivity extends Activity {
 
@@ -52,6 +59,8 @@ public class MainActivity extends Activity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        settingsManager = new SettingsManager(this);
+        applyThemeMode(settingsManager.getThemeMode());
 
         Window w = getWindow();
         w.setFlags(WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS, WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS);
@@ -63,7 +72,6 @@ public class MainActivity extends Activity {
         }
 
         model = new LauncherModel(this);
-        settingsManager = new SettingsManager(this);
 
         mainLayout = new MainLayout(this);
         homeView = new HomeView(this);
@@ -134,20 +142,36 @@ public class MainActivity extends Activity {
     }
 
     private View createAppView(HomeItem item) {
-        FrameLayout container = new FrameLayout(this);
+        LinearLayout container = new LinearLayout(this);
+        container.setOrientation(LinearLayout.VERTICAL);
+        container.setGravity(Gravity.CENTER);
+
         ImageView iconView = new ImageView(this);
-        int size = getResources().getDimensionPixelSize(R.dimen.grid_icon_size);
-        FrameLayout.LayoutParams iconParams = new FrameLayout.LayoutParams(size, size);
-        iconParams.gravity = Gravity.CENTER;
+        int baseSize = getResources().getDimensionPixelSize(R.dimen.grid_icon_size);
+        float scale = settingsManager.getIconScale();
+        int size = (int) (baseSize * scale);
+
+        LinearLayout.LayoutParams iconParams = new LinearLayout.LayoutParams(size, size);
         iconView.setLayoutParams(iconParams);
+
+        TextView labelView = new TextView(this);
+        labelView.setTextColor(getColor(R.color.foreground));
+        labelView.setTextSize(10 * scale);
+        labelView.setGravity(Gravity.CENTER);
+        labelView.setMaxLines(1);
+        labelView.setEllipsize(android.text.TextUtils.TruncateAt.END);
 
         AppItem app = findApp(item.packageName);
         if (app != null) {
             model.loadIcon(app, iconView::setImageBitmap);
+            labelView.setText(app.label);
         } else {
             iconView.setImageResource(android.R.drawable.sym_def_app_icon);
+            labelView.setText("...");
         }
+
         container.addView(iconView);
+        container.addView(labelView);
         return container;
     }
 
@@ -248,10 +272,26 @@ public class MainActivity extends Activity {
     }
 
     private void showHomeContextMenu(float col, float row, int page) {
-        String[] options = {"🧩 Widgets", "🖼️ Wallpaper", "⚙️ Launcher Settings", "📐 Layout Options"};
+        String[] options = {"Widgets", "Wallpaper", "Launcher Settings", "Layout Options"};
+        int[] icons = {R.drawable.ic_widgets, R.drawable.ic_wallpaper, R.drawable.ic_settings, R.drawable.ic_layout};
+
+        ArrayAdapter<String> adapter = new ArrayAdapter<String>(this, android.R.layout.select_dialog_item, android.R.id.text1, options) {
+            @Override
+            public View getView(int position, View convertView, ViewGroup parent) {
+                View view = super.getView(position, convertView, parent);
+                TextView tv = view.findViewById(android.R.id.text1);
+                tv.setCompoundDrawablesWithIntrinsicBounds(icons[position], 0, 0, 0);
+                tv.setCompoundDrawablePadding(dpToPx(16));
+                tv.setTextColor(getColor(R.color.foreground));
+                Drawable d = tv.getCompoundDrawables()[0];
+                if (d != null) d.setTint(getColor(R.color.foreground));
+                return view;
+            }
+        };
+
         AlertDialog dialog = new AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert)
-            .setTitle("🏠 Home Menu")
-            .setItems(options, (d, which) -> {
+            .setTitle("Home Menu")
+            .setAdapter(adapter, (d, which) -> {
                 switch (which) {
                     case 0:
                         lastGridCol = col;
@@ -422,10 +462,125 @@ public class MainActivity extends Activity {
     }
 
     public void pickWidget() {
-        int appWidgetId = appWidgetHost.allocateAppWidgetId();
-        Intent pickIntent = new Intent(AppWidgetManager.ACTION_APPWIDGET_PICK);
-        pickIntent.putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, appWidgetId);
-        startActivityForResult(pickIntent, REQUEST_PICK_APPWIDGET);
+        List<AppWidgetProviderInfo> providers = appWidgetManager.getInstalledProviders();
+        Map<String, List<AppWidgetProviderInfo>> grouped = new HashMap<>();
+        for (AppWidgetProviderInfo info : providers) {
+            String pkg = info.provider.getPackageName();
+            if (!grouped.containsKey(pkg)) grouped.put(pkg, new ArrayList<>());
+            grouped.get(pkg).add(info);
+        }
+
+        ScrollView scrollView = new ScrollView(this);
+        LinearLayout root = new LinearLayout(this);
+        root.setOrientation(LinearLayout.VERTICAL);
+        root.setPadding(dpToPx(16), dpToPx(16), dpToPx(16), dpToPx(16));
+        scrollView.addView(root);
+
+        List<String> packages = new ArrayList<>(grouped.keySet());
+        Collections.sort(packages, (a, b) -> {
+            String labelA = getAppName(a);
+            String labelB = getAppName(b);
+            return labelA.compareToIgnoreCase(labelB);
+        });
+
+        AlertDialog dialog = new AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert)
+                .setTitle("🧩 Pick Widget")
+                .setView(scrollView)
+                .setNegativeButton("Cancel", null)
+                .create();
+
+        for (String pkg : packages) {
+            TextView header = new TextView(this);
+            header.setText(getAppName(pkg));
+            header.setTextSize(18);
+            header.setTypeface(null, Typeface.BOLD);
+            header.setTextColor(getColor(R.color.foreground));
+            header.setPadding(0, dpToPx(16), 0, dpToPx(8));
+            root.addView(header);
+
+            for (AppWidgetProviderInfo info : grouped.get(pkg)) {
+                LinearLayout item = new LinearLayout(this);
+                item.setOrientation(LinearLayout.HORIZONTAL);
+                item.setGravity(Gravity.CENTER_VERTICAL);
+                item.setPadding(dpToPx(8), dpToPx(8), dpToPx(8), dpToPx(8));
+                item.setClickable(true);
+                item.setBackgroundResource(android.R.drawable.list_selector_background);
+
+                // Visual preview shape (lightweight)
+                View preview = new View(this);
+                int spanX = Math.max(1, info.minWidth / (getResources().getDisplayMetrics().widthPixels / HomeView.GRID_COLUMNS));
+                int spanY = Math.max(1, info.minHeight / (getResources().getDisplayMetrics().heightPixels / HomeView.GRID_ROWS));
+
+                android.graphics.drawable.GradientDrawable shape = new android.graphics.drawable.GradientDrawable();
+                shape.setColor(getColor(R.color.search_background));
+                shape.setCornerRadius(dpToPx(4));
+                shape.setStroke(dpToPx(1), getColor(R.color.foreground_dim));
+                preview.setBackground(shape);
+
+                LinearLayout.LayoutParams previewParams = new LinearLayout.LayoutParams(dpToPx(40), dpToPx(30));
+                previewParams.rightMargin = dpToPx(12);
+                item.addView(preview, previewParams);
+
+                LinearLayout textLayout = new LinearLayout(this);
+                textLayout.setOrientation(LinearLayout.VERTICAL);
+
+                TextView label = new TextView(this);
+                label.setText(info.label);
+                label.setTextColor(getColor(R.color.foreground));
+                textLayout.addView(label);
+
+                TextView size = new TextView(this);
+                size.setText(spanX + "x" + spanY);
+                size.setTextSize(12);
+                size.setTextColor(getColor(R.color.foreground_dim));
+                textLayout.addView(size);
+
+                item.addView(textLayout);
+
+                item.setOnClickListener(v -> {
+                    dialog.dismiss();
+                    int appWidgetId = appWidgetHost.allocateAppWidgetId();
+                    boolean allowed = appWidgetManager.bindAppWidgetIdIfAllowed(appWidgetId, info.provider);
+                    if (allowed) {
+                        HomeItem homeItem = HomeItem.createWidget(appWidgetId, lastGridCol, lastGridRow, spanX, spanY, homeView.getCurrentPage());
+                        homeItems.add(homeItem);
+                        renderHomeItem(homeItem);
+                        saveHomeState();
+                    } else {
+                        Intent intent = new Intent(AppWidgetManager.ACTION_APPWIDGET_BIND);
+                        intent.putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, appWidgetId);
+                        intent.putExtra(AppWidgetManager.EXTRA_APPWIDGET_PROVIDER, info.provider);
+                        startActivityForResult(intent, REQUEST_PICK_APPWIDGET);
+                    }
+                });
+
+                root.addView(item);
+            }
+        }
+
+        dialog.show();
+        if (dialog.getWindow() != null) dialog.getWindow().setBackgroundDrawableResource(R.drawable.glass_bg);
+    }
+
+    private String getAppName(String packageName) {
+        try {
+            return getPackageManager().getApplicationLabel(getPackageManager().getApplicationInfo(packageName, 0)).toString();
+        } catch (Exception e) {
+            return packageName;
+        }
+    }
+
+    private void applyThemeMode(String mode) {
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
+            UiModeManager uiModeManager = (UiModeManager) getSystemService(Context.UI_MODE_SERVICE);
+            int nightMode = UiModeManager.MODE_NIGHT_AUTO;
+            if ("light".equals(mode)) nightMode = UiModeManager.MODE_NIGHT_NO;
+            else if ("dark".equals(mode)) nightMode = UiModeManager.MODE_NIGHT_YES;
+
+            if (uiModeManager.getNightMode() != nightMode) {
+                uiModeManager.setApplicationNightMode(nightMode);
+            }
+        }
     }
 
     private int dpToPx(int dp) {

@@ -4,34 +4,31 @@ Ultra-lightweight Android launcher — minimal, fast, and distraction-free.
 
 ---
 
-## 📸 Screenshots
-
-![Screenshot Placeholder](https://via.placeholder.com/360x640.png?text=RiProG+Launcher+Screenshot)
-
----
-
 ## 🚀 Features
 
-### Ultra-Lightweight
-Minimal APK size and low RAM usage.
+### Ultra-Lightweight & Fast
+Minimal APK size and low RAM usage, optimized for speed.
 
-### Fast & Responsive
-Optimized for speed with low CPU consumption.
+### Liquid Glass UI
+Consistent frosted glass aesthetic across app drawer, settings, and menus.
 
-### App Drawer with Search
-Quickly find and launch apps.
+### App Drawer with Search & Quick Index
+Quickly find and launch apps with an alphabetical scroll bar.
 
-### Gesture Support
-Swipe up/down to open app drawer.
+### Custom Widget Picker
+Grouped list by application with visual shape previews.
 
-### Widget Support
-Add widgets directly to home screen.
+### Freeform Home
+Optional toggle to disable grid constraints for free item placement.
+
+### Icon & Label Scaling
+Smooth real-time adjustment of icon and label sizes.
 
 ### Theme Support
-Dark / Light mode compatibility.
+Light, Dark, and Follow System modes that adapt dynamically.
 
-### Privacy Focused
-No unnecessary permissions or tracking.
+### Gesture Support
+Swipe up to open app drawer, swipe down to close.
 
 ---
 
@@ -40,7 +37,7 @@ No unnecessary permissions or tracking.
 - **Min SDK**: 23 (Android 6.0)
 - **Target SDK**: 34 (Android 14)
 - **Language**: Java 17
-- **Architecture**: Lightweight programmatic UI (No XML inflation)
+- **Architecture**: Programmatic UI (No XML inflation overhead)
 
 ---
 
@@ -67,18 +64,11 @@ If you want to support and help my work, you can donate through:
 - **PayPal**: [paypal.me/RiProG](https://paypal.me/RiProG)
 - **Sociabuzz**: [sociabuzz.com/riprog/tribe](https://sociabuzz.com/riprog/tribe)
 
-### Crypto
-- **USDT (EVM)**: `0x4720e865f87c8d64348fF84f8485e22cBbfe6A25`
-
-Thank you for your support — it means a lot!
-
 ---
 
-## 🎁 Free Donation (1x per day)
+## 🎁 Free Donation
 
-You can support me for FREE by skipping ads through the links below:
+Support me for FREE by skipping ads:
 
 - **Safelinku**: [https://sfl.gl/NTX6](https://sfl.gl/NTX6)
 - **Arahlink**: [https://arahlink.id/WAUR](https://arahlink.id/WAUR)
-
-Thank you for your support!

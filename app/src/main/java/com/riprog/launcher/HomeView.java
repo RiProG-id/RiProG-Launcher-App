@@ -72,6 +72,27 @@ public class HomeView extends FrameLayout {
         // Add initial pages
         addPage();
         addPage();
+
+        addDrawerHint();
+    }
+
+    private void addDrawerHint() {
+        TextView hint = new TextView(getContext());
+        hint.setText("Swipe up to open app drawer");
+        hint.setTextSize(12);
+        hint.setTextColor(Color.GRAY & 0x80FFFFFF);
+        hint.setAlpha(0);
+        LayoutParams lp = new LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT);
+        lp.gravity = Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL;
+        lp.bottomMargin = dpToPx(120);
+        addView(hint, lp);
+
+        // Show occasionally (30% chance on startup)
+        if (Math.random() < 0.3) {
+            hint.animate().alpha(1f).setDuration(1000).setStartDelay(2000).withEndAction(() -> {
+                hint.animate().alpha(0f).setDuration(1000).setStartDelay(4000).start();
+            }).start();
+        }
     }
 
     public void addPage() {
@@ -247,14 +268,22 @@ public class HomeView extends FrameLayout {
 
     public void refreshLayout() {
         post(() -> {
+            boolean freeform = settingsManager.isFreeformHome();
             for (FrameLayout page : pages) {
                 for (int i = 0; i < page.getChildCount(); i++) {
                     View v = page.getChildAt(i);
                     HomeItem item = (HomeItem) v.getTag();
                     if (item != null) {
+                        if (!freeform) {
+                            item.col = Math.max(0, Math.min(GRID_COLUMNS - item.spanX, Math.round(item.col)));
+                            item.row = Math.max(0, Math.min(GRID_ROWS - item.spanY, Math.round(item.row)));
+                        }
                         updateViewPosition(item, v);
                     }
                 }
+            }
+            if (!freeform && getContext() instanceof MainActivity) {
+                ((MainActivity) getContext()).saveHomeState();
             }
         });
     }

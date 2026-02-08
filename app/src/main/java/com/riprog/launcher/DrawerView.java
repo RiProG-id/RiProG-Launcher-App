@@ -38,11 +38,13 @@ public class DrawerView extends LinearLayout {
     }
     private List<AppItem> filteredApps = new ArrayList<>();
     private LauncherModel model;
+    private final SettingsManager settingsManager;
     private final EditText searchBar;
     private final LinearLayout indexBar;
 
     public DrawerView(Context context) {
         super(context);
+        settingsManager = new SettingsManager(context);
         setOrientation(VERTICAL);
         setBackgroundResource(R.drawable.glass_bg);
         setPadding(0, dpToPx(48), 0, 0);
@@ -192,18 +194,20 @@ public class DrawerView extends LinearLayout {
         @Override public long getItemId(int position) { return position; }
         @Override public View getView(int position, View convertView, ViewGroup parent) {
             ViewHolder holder;
+            float scale = settingsManager.getIconScale();
             if (convertView == null) {
                 LinearLayout itemLayout = new LinearLayout(getContext());
                 itemLayout.setOrientation(LinearLayout.VERTICAL);
                 itemLayout.setGravity(Gravity.CENTER);
 
                 ImageView icon = new ImageView(getContext());
-                int size = getResources().getDimensionPixelSize(R.dimen.grid_icon_size);
+                int baseSize = getResources().getDimensionPixelSize(R.dimen.grid_icon_size);
+                int size = (int) (baseSize * scale);
                 itemLayout.addView(icon, new LinearLayout.LayoutParams(size, size));
 
                 TextView label = new TextView(getContext());
                 label.setTextColor(getContext().getColor(R.color.foreground_dim));
-                label.setTextSize(10);
+                label.setTextSize(10 * scale);
                 label.setGravity(Gravity.CENTER);
                 label.setMaxLines(1);
                 label.setEllipsize(TextUtils.TruncateAt.END);
