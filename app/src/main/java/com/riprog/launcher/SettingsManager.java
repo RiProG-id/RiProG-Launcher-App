@@ -86,7 +86,7 @@ public class SettingsManager {
                 item.widgetId = obj.getInt("widgetId");
                 items.add(item);
             }
-        } catch (JSONException ignored) {}
+        } catch (Exception ignored) {}
         return items;
     }
 }

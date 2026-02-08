@@ -5,6 +5,7 @@ plugins {
 android {
     compileSdkVersion 34
 
+
     defaultConfig {
         applicationId "com.riprog.launcher"
         minSdkVersion 23
