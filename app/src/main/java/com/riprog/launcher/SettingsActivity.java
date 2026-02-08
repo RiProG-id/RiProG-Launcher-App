@@ -44,16 +44,6 @@ public class SettingsActivity extends Activity {
                 .show();
         });
 
-        addSettingItem(root, "Add Widget", "Choose a widget for home screen", v -> {
-            setResult(Activity.RESULT_OK, getIntent().putExtra("action", "pick_widget"));
-            finish();
-        });
-
-        addSettingItem(root, "Remove Widget", "Remove current home screen widget", v -> {
-            setResult(Activity.RESULT_OK, getIntent().putExtra("action", "remove_widget"));
-            finish();
-        });
-
         View divider = new View(this);
         divider.setBackgroundColor(getColor(R.color.foreground_dim));
         LinearLayout.LayoutParams dividerParams = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 1);
@@ -68,7 +58,7 @@ public class SettingsActivity extends Activity {
         root.addView(aboutTitle);
 
         TextView aboutContent = new TextView(this);
-        aboutContent.setText("RiProG Launcher\n\nUltra-lightweight Android launcher — minimal, fast, and distraction-free.\n\n" +
+        aboutContent.setText("RiProG Launcher v2.1.0\n\nUltra-lightweight Android launcher — minimal, fast, and distraction-free.\n\n" +
                 "TECHNICAL DETAILS\n" +
                 "Min SDK: 23 (Android 6.0)\n" +
                 "Target SDK: 34 (Android 14)\n" +

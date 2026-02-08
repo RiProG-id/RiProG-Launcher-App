@@ -11,14 +11,23 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.graphics.Color;
+import android.graphics.Typeface;
 import android.os.Bundle;
 import android.view.GestureDetector;
+import android.view.Gravity;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.Window;
 import android.view.WindowManager;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.FrameLayout;
+import android.widget.ImageView;
+import android.widget.LinearLayout;
+import android.widget.TextView;
+import android.widget.Toast;
+
+import java.util.ArrayList;
+import java.util.List;
 
 public class MainActivity extends Activity {
 
@@ -34,6 +43,9 @@ public class MainActivity extends Activity {
     private HomeView homeView;
     private DrawerView drawerView;
     private AppInstallReceiver appInstallReceiver;
+    private List<HomeItem> homeItems = new ArrayList<>();
+    private List<AppItem> allApps = new ArrayList<>();
+    private float lastLongPressX, lastLongPressY;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -44,11 +56,14 @@ public class MainActivity extends Activity {
         w.setStatusBarColor(Color.TRANSPARENT);
         w.setNavigationBarColor(Color.TRANSPARENT);
 
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
+            w.setDecorFitsSystemWindows(false);
+        }
+
         model = new LauncherModel(this);
         settingsManager = new SettingsManager(this);
 
         mainLayout = new MainLayout(this);
-        applyDynamicColors();
         homeView = new HomeView(this);
         drawerView = new DrawerView(this);
         drawerView.setColumns(settingsManager.getColumns());
@@ -63,40 +78,237 @@ public class MainActivity extends Activity {
         appWidgetHost = new AppWidgetHost(this, APPWIDGET_HOST_ID);
         appWidgetHost.startListening();
 
-        restoreWidget();
+        applyDynamicColors();
         loadApps();
         registerAppInstallReceiver();
+
+        homeView.post(this::restoreHomeState);
     }
 
-    private void showSystemInfo() {
-        new AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert)
-            .setTitle("System Info")
-            .setMessage("RiProG Launcher\nUltra-lightweight & Minimal\n\nAndroid Version: " + android.os.Build.VERSION.RELEASE)
-            .setPositiveButton("OK", null)
-            .show();
+    public void saveHomeState() {
+        settingsManager.saveHomeItems(homeItems);
     }
 
-    private void removeWidget() {
-        int appWidgetId = settingsManager.getWidgetId();
-        if (appWidgetId != -1) {
-            appWidgetHost.deleteAppWidgetId(appWidgetId);
-            settingsManager.setWidgetId(-1);
-            homeView.setWidget(null);
-        }
-    }
-
-    private void restoreWidget() {
-        int appWidgetId = settingsManager.getWidgetId();
-        if (appWidgetId != -1) {
-            AppWidgetProviderInfo appWidgetInfo = appWidgetManager.getAppWidgetInfo(appWidgetId);
-            if (appWidgetInfo != null) {
-                AppWidgetHostView hostView = appWidgetHost.createView(this, appWidgetId, appWidgetInfo);
-                hostView.setAppWidget(appWidgetId, appWidgetInfo);
-                homeView.setWidget(hostView);
-            } else {
-                settingsManager.setWidgetId(-1);
+    private void restoreHomeState() {
+        homeItems = settingsManager.getHomeItems();
+        if (homeItems.isEmpty()) {
+            setupDefaultHome();
+        } else {
+            for (HomeItem item : homeItems) {
+                renderHomeItem(item);
             }
         }
+    }
+
+    private void setupDefaultHome() {
+        HomeItem clockItem = HomeItem.createClock(0, 0, 0);
+        // Center it roughly
+        clockItem.x = (homeView.getWidth() - dpToPx(200)) / 2;
+        clockItem.y = (homeView.getHeight() - dpToPx(100)) / 3;
+        homeItems.add(clockItem);
+        renderHomeItem(clockItem);
+        saveHomeState();
+    }
+
+    private void renderHomeItem(HomeItem item) {
+        View view = null;
+        switch (item.type) {
+            case APP:
+                view = createAppView(item);
+                break;
+            case WIDGET:
+                view = createWidgetView(item);
+                break;
+            case CLOCK:
+                view = createClockView(item);
+                break;
+        }
+        if (view != null) {
+            homeView.addItemView(item, view);
+        }
+    }
+
+    private View createAppView(HomeItem item) {
+        ImageView iconView = new ImageView(this);
+        int size = dpToPx(56);
+        iconView.setLayoutParams(new FrameLayout.LayoutParams(size, size));
+
+        AppItem app = findApp(item.packageName);
+        if (app != null) {
+            model.loadIcon(app, iconView::setImageBitmap);
+            iconView.setOnClickListener(v -> {
+                Intent intent = getPackageManager().getLaunchIntentForPackage(item.packageName);
+                if (intent != null) startActivity(intent);
+            });
+            iconView.setOnLongClickListener(v -> {
+                showAppOptions(item, iconView);
+                return true;
+            });
+        } else {
+            iconView.setImageResource(android.R.drawable.sym_def_app_icon);
+        }
+        return iconView;
+    }
+
+    private View createWidgetView(HomeItem item) {
+        AppWidgetProviderInfo info = appWidgetManager.getAppWidgetInfo(item.widgetId);
+        if (info == null) return null;
+        AppWidgetHostView hostView = appWidgetHost.createView(this, item.widgetId, info);
+        hostView.setAppWidget(item.widgetId, info);
+        hostView.setOnLongClickListener(v -> {
+            showWidgetOptions(item, hostView);
+            return true;
+        });
+        return hostView;
+    }
+
+    private void showWidgetOptions(HomeItem item, View hostView) {
+        String[] options = {"Resize", "Remove"};
+        new AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert)
+            .setItems(options, (dialog, which) -> {
+                if (which == 0) showResizeDialog(item, hostView);
+                else removeHomeItem(item, hostView);
+            }).show();
+    }
+
+    private void showResizeDialog(HomeItem item, View hostView) {
+        String[] sizes = {"Small", "Medium", "Large", "Full Width"};
+        new AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert)
+            .setTitle("Resize Widget")
+            .setItems(sizes, (dialog, which) -> {
+                switch (which) {
+                    case 0: item.width = 150; item.height = 100; break;
+                    case 1: item.width = 250; item.height = 150; break;
+                    case 2: item.width = 350; item.height = 250; break;
+                    case 3: item.width = pxToDp(homeView.getWidth()) - 40; item.height = 150; break;
+                }
+                updateViewSize(item, hostView);
+                saveHomeState();
+            }).show();
+    }
+
+    private void updateViewSize(HomeItem item, View view) {
+        FrameLayout.LayoutParams lp = (FrameLayout.LayoutParams) view.getLayoutParams();
+        lp.width = dpToPx(item.width);
+        lp.height = dpToPx(item.height);
+        view.setLayoutParams(lp);
+    }
+
+    private void removeHomeItem(HomeItem item, View view) {
+        homeItems.remove(item);
+        if (view.getParent() instanceof ViewGroup) {
+            ((ViewGroup) view.getParent()).removeView(view);
+        }
+        saveHomeState();
+    }
+
+    private int pxToDp(int px) {
+        return (int) (px / getResources().getDisplayMetrics().density);
+    }
+
+    private void showAppOptions(HomeItem item, View view) {
+        String[] options = {"Remove"};
+        new AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert)
+            .setItems(options, (dialog, which) -> {
+                if (which == 0) removeHomeItem(item, view);
+            }).show();
+    }
+
+    private View createClockView(HomeItem item) {
+        LinearLayout clockRoot = new LinearLayout(this);
+        clockRoot.setOrientation(LinearLayout.VERTICAL);
+        clockRoot.setGravity(Gravity.CENTER);
+
+        TextView tvTime = new TextView(this);
+        tvTime.setTextSize(64);
+        tvTime.setTextColor(getColor(R.color.foreground));
+        tvTime.setTypeface(Typeface.create("sans-serif-thin", Typeface.NORMAL));
+
+        TextView tvDate = new TextView(this);
+        tvDate.setTextSize(18);
+        tvDate.setTextColor(getColor(R.color.foreground_dim));
+        tvDate.setGravity(Gravity.CENTER);
+
+        clockRoot.addView(tvTime);
+        clockRoot.addView(tvDate);
+
+        Runnable updateTask = new Runnable() {
+            @Override
+            public void run() {
+                java.util.Calendar cal = java.util.Calendar.getInstance();
+                tvTime.setText(android.text.format.DateFormat.getTimeFormat(MainActivity.this).format(cal.getTime()));
+                tvDate.setText(android.text.format.DateFormat.getMediumDateFormat(MainActivity.this).format(cal.getTime()));
+                tvTime.postDelayed(this, 10000);
+            }
+        };
+        tvTime.post(updateTask);
+        return clockRoot;
+    }
+
+    private AppItem findApp(String packageName) {
+        if (allApps == null) return null;
+        for (AppItem app : allApps) {
+            if (app.packageName.equals(packageName)) return app;
+        }
+        return null;
+    }
+
+    private void showContextMenu(float x, float y, int page) {
+        String[] options = {"Add App", "Widgets", "Wallpaper", "Launcher Settings", "Layout Options"};
+        new AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert)
+            .setTitle("Home Menu")
+            .setItems(options, (dialog, which) -> {
+                switch (which) {
+                    case 0: pickAppForHome((int)x, (int)y, page); break;
+                    case 1: pickWidget(); break;
+                    case 2: openWallpaperPicker(); break;
+                    case 3: openSettings(); break;
+                    case 4: showLayoutOptions(); break;
+                }
+            }).show();
+    }
+
+    private void pickAppForHome(int x, int y, int page) {
+        if (allApps.isEmpty()) {
+            Toast.makeText(this, "Apps not loaded yet", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        String[] labels = new String[allApps.size()];
+        for (int i = 0; i < allApps.size(); i++) labels[i] = allApps.get(i).label;
+
+        new AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert)
+            .setTitle("Pick App")
+            .setItems(labels, (dialog, which) -> {
+                AppItem selected = allApps.get(which);
+                HomeItem item = HomeItem.createApp(selected.packageName, selected.className, x, y, page);
+                homeItems.add(item);
+                renderHomeItem(item);
+                saveHomeState();
+            }).show();
+    }
+
+    private void openWallpaperPicker() {
+        Intent intent = new Intent(Intent.ACTION_SET_WALLPAPER);
+        startActivity(Intent.createChooser(intent, "Select Wallpaper"));
+    }
+
+    private void openSettings() {
+        Intent intent = new Intent(this, SettingsActivity.class);
+        startActivityForResult(intent, 100);
+    }
+
+    private void showLayoutOptions() {
+        String[] options = {"Add Page", "Remove Last Page"};
+        new AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert)
+            .setTitle("Layout Options")
+            .setItems(options, (dialog, which) -> {
+                if (which == 0) {
+                    homeView.addPage();
+                    Toast.makeText(this, "Page added", Toast.LENGTH_SHORT).show();
+                } else {
+                    Toast.makeText(this, "Remove page not implemented yet", Toast.LENGTH_SHORT).show();
+                }
+            }).show();
     }
 
     private void applyDynamicColors() {
@@ -113,11 +325,9 @@ public class MainActivity extends Activity {
         if (model == null) return;
         model.loadApps(apps -> {
             if (apps == null) return;
+            this.allApps = apps;
             if (drawerView != null) {
                 drawerView.setApps(apps, model);
-            }
-            if (homeView != null) {
-                homeView.setFavorites(apps.subList(0, Math.min(apps.size(), 8)), model);
             }
         });
     }
@@ -148,65 +358,30 @@ public class MainActivity extends Activity {
     }
 
     @Override
-    public void onTrimMemory(int level) {
-        super.onTrimMemory(level);
-        if (model != null) {
-            model.onTrimMemory(level);
-        }
-    }
-
-    @Override
     protected void onDestroy() {
         super.onDestroy();
-        if (appInstallReceiver != null) {
-            try {
-                unregisterReceiver(appInstallReceiver);
-            } catch (Exception ignored) {}
-        }
-        if (model != null) {
-            model.shutdown();
-        }
+        if (appInstallReceiver != null) unregisterReceiver(appInstallReceiver);
+        if (model != null) model.shutdown();
     }
 
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
-        if (requestCode == 100 && resultCode == RESULT_OK && data != null) {
-            String action = data.getStringExtra("action");
-            if ("pick_widget".equals(action)) {
-                pickWidget();
-            } else if ("remove_widget".equals(action)) {
-                removeWidget();
-            }
-            if (drawerView != null) {
-                drawerView.setColumns(settingsManager.getColumns());
-            }
-        }
         if (resultCode == RESULT_OK && data != null) {
             if (requestCode == REQUEST_PICK_APPWIDGET) {
                 configureWidget(data);
             } else if (requestCode == REQUEST_CREATE_APPWIDGET) {
                 createWidget(data);
             }
-        } else if (resultCode == RESULT_CANCELED && data != null) {
-            int appWidgetId = data.getIntExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, -1);
-            if (appWidgetId != -1) {
-                appWidgetHost.deleteAppWidgetId(appWidgetId);
-            }
         }
     }
 
     private void configureWidget(Intent data) {
-        Bundle extras = data.getExtras();
-        if (extras == null) return;
-        int appWidgetId = extras.getInt(AppWidgetManager.EXTRA_APPWIDGET_ID, -1);
-        if (appWidgetId == -1) return;
-        AppWidgetProviderInfo appWidgetInfo = appWidgetManager.getAppWidgetInfo(appWidgetId);
-        if (appWidgetInfo == null) return;
-
-        if (appWidgetInfo.configure != null) {
+        int appWidgetId = data.getIntExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, -1);
+        AppWidgetProviderInfo info = appWidgetManager.getAppWidgetInfo(appWidgetId);
+        if (info.configure != null) {
             Intent intent = new Intent(AppWidgetManager.ACTION_APPWIDGET_CONFIGURE);
-            intent.setComponent(appWidgetInfo.configure);
+            intent.setComponent(info.configure);
             intent.putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, appWidgetId);
             startActivityForResult(intent, REQUEST_CREATE_APPWIDGET);
         } else {
@@ -215,16 +390,11 @@ public class MainActivity extends Activity {
     }
 
     private void createWidget(Intent data) {
-        Bundle extras = data.getExtras();
-        if (extras == null) return;
-        int appWidgetId = extras.getInt(AppWidgetManager.EXTRA_APPWIDGET_ID, -1);
-        if (appWidgetId == -1) return;
-        settingsManager.setWidgetId(appWidgetId);
-        AppWidgetProviderInfo appWidgetInfo = appWidgetManager.getAppWidgetInfo(appWidgetId);
-        if (appWidgetInfo == null) return;
-        AppWidgetHostView hostView = appWidgetHost.createView(this, appWidgetId, appWidgetInfo);
-        hostView.setAppWidget(appWidgetId, appWidgetInfo);
-        homeView.setWidget(hostView);
+        int appWidgetId = data.getIntExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, -1);
+        HomeItem item = HomeItem.createWidget(appWidgetId, (int)lastLongPressX, (int)lastLongPressY, 200, 100, homeView.getCurrentPage());
+        homeItems.add(item);
+        renderHomeItem(item);
+        saveHomeState();
     }
 
     public void pickWidget() {
@@ -232,6 +402,11 @@ public class MainActivity extends Activity {
         Intent pickIntent = new Intent(AppWidgetManager.ACTION_APPWIDGET_PICK);
         pickIntent.putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, appWidgetId);
         startActivityForResult(pickIntent, REQUEST_PICK_APPWIDGET);
+    }
+
+    private int dpToPx(int dp) {
+        return (int) android.util.TypedValue.applyDimension(
+                android.util.TypedValue.COMPLEX_UNIT_DIP, dp, getResources().getDisplayMetrics());
     }
 
     private class AppInstallReceiver extends BroadcastReceiver {
@@ -253,17 +428,10 @@ public class MainActivity extends Activity {
                 public boolean onFling(MotionEvent e1, MotionEvent e2, float velocityX, float velocityY) {
                     if (e1 == null || e2 == null) return false;
                     float diffY = e2.getY() - e1.getY();
-                    if (Math.abs(diffY) > 100 && Math.abs(velocityY) > 100) {
-                        if (diffY < 0 && !isDrawerOpen) {
-                            openDrawer();
-                            return true;
-                        } else if (diffY > 0 && isDrawerOpen) {
-                            closeDrawer();
-                            return true;
-                        } else if (diffY > 0 && !isDrawerOpen) {
-                            openDrawer();
-                            return true;
-                        }
+                    if (Math.abs(diffY) > 100 && velocityY < -100) {
+                        if (!isDrawerOpen) { openDrawer(); return true; }
+                    } else if (Math.abs(diffY) > 100 && velocityY > 100) {
+                        if (isDrawerOpen) { closeDrawer(); return true; }
                     }
                     return false;
                 }
@@ -271,45 +439,23 @@ public class MainActivity extends Activity {
                 @Override
                 public void onLongPress(MotionEvent e) {
                     if (!isDrawerOpen) {
-                        Intent intent = new Intent(MainActivity.this, SettingsActivity.class);
-                        MainActivity.this.startActivityForResult(intent, 100);
+                        lastLongPressX = e.getX();
+                        lastLongPressY = e.getY();
+                        MainActivity.this.showContextMenu(e.getX(), e.getY(), homeView.getCurrentPage());
                     }
                 }
             });
         }
 
-        private float startY;
         @Override
         public boolean onInterceptTouchEvent(MotionEvent ev) {
-            if (gestureDetector.onTouchEvent(ev)) return true;
-
-            switch (ev.getAction()) {
-                case MotionEvent.ACTION_DOWN:
-                    startY = ev.getY();
-                    break;
-                case MotionEvent.ACTION_MOVE:
-                    float diffY = startY - ev.getY();
-                    if (Math.abs(diffY) > 50 && !isDrawerOpen) {
-                        return true; // Intercept for drawer opening
-                    }
-                    break;
-            }
-            return super.onInterceptTouchEvent(ev);
+            gestureDetector.onTouchEvent(ev);
+            return false;
         }
 
         @Override
         public boolean onTouchEvent(MotionEvent event) {
-            gestureDetector.onTouchEvent(event);
-            switch (event.getAction()) {
-                case MotionEvent.ACTION_MOVE:
-                    float diffY = startY - event.getY();
-                    if (diffY > 100 && !isDrawerOpen) {
-                        openDrawer();
-                        return true;
-                    }
-                    break;
-            }
-            return true;
+            return gestureDetector.onTouchEvent(event);
         }
 
         public void openDrawer() {

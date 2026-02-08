@@ -22,7 +22,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-public class DrawerView extends FrameLayout {
+public class DrawerView extends LinearLayout {
     private final GridView gridView;
     private final AppAdapter adapter;
     private List<AppItem> allApps = new ArrayList<>();
@@ -30,15 +30,13 @@ public class DrawerView extends FrameLayout {
     private LauncherModel model;
     private final EditText searchBar;
     private final LinearLayout indexBar;
+    private final LinearLayout suggestionBar;
 
     public DrawerView(Context context) {
         super(context);
+        setOrientation(VERTICAL);
         setBackgroundResource(R.color.background);
         setPadding(0, dpToPx(48), 0, 0);
-
-        LinearLayout layout = new LinearLayout(context);
-        layout.setOrientation(LinearLayout.VERTICAL);
-        addView(layout);
 
         searchBar = new EditText(context);
         searchBar.setHint("Search...");
@@ -55,10 +53,16 @@ public class DrawerView extends FrameLayout {
             }
             @Override public void afterTextChanged(Editable s) {}
         });
-        layout.addView(searchBar);
+        addView(searchBar);
+
+        suggestionBar = new LinearLayout(context);
+        suggestionBar.setOrientation(HORIZONTAL);
+        suggestionBar.setGravity(Gravity.CENTER);
+        suggestionBar.setPadding(0, dpToPx(8), 0, dpToPx(8));
+        addView(suggestionBar);
 
         FrameLayout contentFrame = new FrameLayout(context);
-        layout.addView(contentFrame, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1));
+        addView(contentFrame, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1));
 
         gridView = new GridView(context);
         gridView.setNumColumns(4);
@@ -89,7 +93,27 @@ public class DrawerView extends FrameLayout {
         this.allApps = apps;
         this.model = model;
         sortAppsByUsage();
+        updateSuggestions();
         filter(searchBar.getText().toString());
+    }
+
+    private void updateSuggestions() {
+        suggestionBar.removeAllViews();
+        int count = Math.min(allApps.size(), 5);
+        for (int i = 0; i < count; i++) {
+            AppItem item = allApps.get(i);
+            ImageView iv = new ImageView(getContext());
+            int size = dpToPx(40);
+            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(size, size);
+            lp.setMargins(dpToPx(8), 0, dpToPx(8), 0);
+            iv.setLayoutParams(lp);
+            model.loadIcon(item, iv::setImageBitmap);
+            iv.setOnClickListener(v -> {
+                Intent intent = getContext().getPackageManager().getLaunchIntentForPackage(item.packageName);
+                if (intent != null) getContext().startActivity(intent);
+            });
+            suggestionBar.addView(iv);
+        }
     }
 
     private void sortAppsByUsage() {
@@ -139,10 +163,7 @@ public class DrawerView extends FrameLayout {
 
     public void onOpen() {
         searchBar.setText("");
-        searchBar.requestFocus();
-        InputMethodManager imm = (InputMethodManager)
-                getContext().getSystemService(Context.INPUT_METHOD_SERVICE);
-        imm.showSoftInput(searchBar, InputMethodManager.SHOW_IMPLICIT);
+        searchBar.clearFocus();
     }
 
     private int dpToPx(int dp) {
