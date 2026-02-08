@@ -201,6 +201,7 @@ public class DrawerView extends LinearLayout {
                 itemLayout.setGravity(Gravity.CENTER);
 
                 ImageView icon = new ImageView(getContext());
+                icon.setScaleType(ImageView.ScaleType.FIT_CENTER);
                 int baseSize = getResources().getDimensionPixelSize(R.dimen.grid_icon_size);
                 int size = (int) (baseSize * scale);
                 itemLayout.addView(icon, new LinearLayout.LayoutParams(size, size));

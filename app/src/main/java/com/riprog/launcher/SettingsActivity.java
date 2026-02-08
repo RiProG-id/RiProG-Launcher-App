@@ -4,6 +4,7 @@ import android.app.Activity;
 import android.app.AlertDialog;
 import android.app.UiModeManager;
 import android.content.Context;
+import android.graphics.Color;
 import android.graphics.drawable.GradientDrawable;
 import android.os.Bundle;
 import android.text.method.LinkMovementMethod;
@@ -11,6 +12,8 @@ import android.text.util.Linkify;
 import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.Window;
+import android.view.WindowManager;
 import android.widget.FrameLayout;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
@@ -29,8 +32,29 @@ public class SettingsActivity extends Activity {
         settingsManager = new SettingsManager(this);
         applyThemeMode(settingsManager.getThemeMode());
 
+        Window w = getWindow();
+        w.setFlags(WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS, WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS);
+        w.setStatusBarColor(Color.TRANSPARENT);
+        w.setNavigationBarColor(Color.TRANSPARENT);
+
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
+            w.setDecorFitsSystemWindows(false);
+        }
+
         FrameLayout rootContainer = new FrameLayout(this);
         rootContainer.setPadding(dpToPx(16), dpToPx(48), dpToPx(16), dpToPx(32));
+
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.KITKAT_WATCH) {
+            rootContainer.setOnApplyWindowInsetsListener((v, insets) -> {
+                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
+                    android.graphics.Insets systemInsets = insets.getInsets(android.view.WindowInsets.Type.systemBars());
+                    v.setPadding(dpToPx(16), systemInsets.top + dpToPx(16), dpToPx(16), systemInsets.bottom + dpToPx(16));
+                } else {
+                    v.setPadding(dpToPx(16), insets.getSystemWindowInsetTop() + dpToPx(16), dpToPx(16), insets.getSystemWindowInsetBottom() + dpToPx(16));
+                }
+                return insets;
+            });
+        }
 
         ScrollView scrollView = new ScrollView(this);
         scrollView.setBackgroundResource(R.drawable.glass_bg);
