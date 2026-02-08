@@ -25,7 +25,16 @@ import java.util.List;
 public class DrawerView extends LinearLayout {
     private final GridView gridView;
     private final AppAdapter adapter;
+    private OnAppLongClickListener longClickListener;
     private List<AppItem> allApps = new ArrayList<>();
+
+    public interface OnAppLongClickListener {
+        void onAppLongClick(AppItem app);
+    }
+
+    public void setOnAppLongClickListener(OnAppLongClickListener listener) {
+        this.longClickListener = listener;
+    }
     private List<AppItem> filteredApps = new ArrayList<>();
     private LauncherModel model;
     private final EditText searchBar;
@@ -34,7 +43,7 @@ public class DrawerView extends LinearLayout {
     public DrawerView(Context context) {
         super(context);
         setOrientation(VERTICAL);
-        setBackgroundResource(R.color.background);
+        setBackgroundResource(R.drawable.glass_bg);
         setPadding(0, dpToPx(48), 0, 0);
 
         searchBar = new EditText(context);
@@ -118,6 +127,11 @@ public class DrawerView extends LinearLayout {
         gridView.setNumColumns(columns);
     }
 
+    public boolean isAtTop() {
+        if (gridView.getChildCount() == 0) return true;
+        return gridView.getFirstVisiblePosition() == 0 && gridView.getChildAt(0).getTop() >= gridView.getPaddingTop();
+    }
+
     public void setAccentColor(int color) {
         if (searchBar != null) searchBar.setHintTextColor(color & 0x80FFFFFF);
     }
@@ -154,7 +168,7 @@ public class DrawerView extends LinearLayout {
                 itemLayout.setGravity(Gravity.CENTER);
 
                 ImageView icon = new ImageView(getContext());
-                int size = dpToPx(48);
+                int size = getResources().getDimensionPixelSize(R.dimen.grid_icon_size);
                 itemLayout.addView(icon, new LinearLayout.LayoutParams(size, size));
 
                 TextView label = new TextView(getContext());
@@ -185,6 +199,14 @@ public class DrawerView extends LinearLayout {
                     }
                 });
             }
+
+            convertView.setOnLongClickListener(v -> {
+                if (longClickListener != null) {
+                    longClickListener.onAppLongClick(item);
+                    return true;
+                }
+                return false;
+            });
 
             return convertView;
         }
