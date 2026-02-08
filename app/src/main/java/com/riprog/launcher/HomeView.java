@@ -1,5 +1,6 @@
 package com.riprog.launcher;
 
+import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
 import android.graphics.Color;
@@ -22,11 +23,30 @@ public class HomeView extends FrameLayout {
     private final TextView dateView;
     private final GridLayout favoritesGrid;
     private final FrameLayout widgetContainer;
+    private final ImageView settingsIcon;
     private final Runnable clockRunnable = this::updateClock;
 
     public HomeView(Context context) {
         super(context);
         setBackgroundResource(R.color.background);
+
+        settingsIcon = new ImageView(context);
+        settingsIcon.setImageResource(android.R.drawable.ic_menu_preferences);
+        settingsIcon.setAlpha(0.5f);
+        int iconSize = dpToPx(24);
+        FrameLayout.LayoutParams settingsParams = new FrameLayout.LayoutParams(iconSize, iconSize);
+        settingsParams.gravity = Gravity.TOP | Gravity.END;
+        settingsParams.setMargins(0, dpToPx(48), dpToPx(24), 0);
+        settingsIcon.setLayoutParams(settingsParams);
+        settingsIcon.setOnClickListener(v -> {
+            Intent intent = new Intent(context, SettingsActivity.class);
+            if (context instanceof Activity) {
+                ((Activity) context).startActivityForResult(intent, 100);
+            } else {
+                context.startActivity(intent);
+            }
+        });
+        addView(settingsIcon);
 
         LinearLayout root = new LinearLayout(context);
         root.setOrientation(LinearLayout.VERTICAL);
@@ -96,8 +116,12 @@ public class HomeView extends FrameLayout {
                 model.loadIcon(item, iconView::setImageBitmap);
             }
             iconView.setOnClickListener(v -> {
-                Intent intent = getContext().getPackageManager().getLaunchIntentForPackage(item.packageName);
-                if (intent != null) getContext().startActivity(intent);
+                v.animate().scaleX(0.9f).scaleY(0.9f).setDuration(100).withEndAction(() -> {
+                    v.animate().scaleX(1.0f).scaleY(1.0f).setDuration(100).start();
+                    new SettingsManager(getContext()).incrementUsage(item.packageName);
+                    Intent intent = getContext().getPackageManager().getLaunchIntentForPackage(item.packageName);
+                    if (intent != null) getContext().startActivity(intent);
+                }).start();
             });
             favoritesGrid.addView(iconView);
         }
@@ -108,6 +132,10 @@ public class HomeView extends FrameLayout {
         if (widget != null) {
             widgetContainer.addView(widget);
         }
+    }
+
+    public void setAccentColor(int color) {
+        if (clockView != null) clockView.setTextColor(color);
     }
 
     private int dpToPx(int dp) {

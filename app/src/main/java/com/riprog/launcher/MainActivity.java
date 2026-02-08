@@ -48,6 +48,7 @@ public class MainActivity extends Activity {
         settingsManager = new SettingsManager(this);
 
         mainLayout = new MainLayout(this);
+        applyDynamicColors();
         homeView = new HomeView(this);
         drawerView = new DrawerView(this);
         drawerView.setColumns(settingsManager.getColumns());
@@ -67,42 +68,10 @@ public class MainActivity extends Activity {
         registerAppInstallReceiver();
     }
 
-    private void showSettings() {
-        String[] options = {
-            "Grid: 4 Columns",
-            "Grid: 5 Columns",
-            "Grid: 6 Columns",
-            "Add Widget",
-            "Remove Widget",
-            "System Info"
-        };
-        AlertDialog.Builder builder = new AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert);
-        builder.setTitle("RiProG Launcher Settings")
-               .setItems(options, (dialog, which) -> {
-                   switch (which) {
-                       case 0: case 1: case 2:
-                           int columns = which + 4;
-                           settingsManager.setColumns(columns);
-                           if (drawerView != null) drawerView.setColumns(columns);
-                           break;
-                       case 3:
-                           pickWidget();
-                           break;
-                       case 4:
-                           removeWidget();
-                           break;
-                       case 5:
-                           showSystemInfo();
-                           break;
-                   }
-               })
-               .show();
-    }
-
     private void showSystemInfo() {
         new AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert)
             .setTitle("System Info")
-            .setMessage("RiProG Launcher v2.0.1\nUltra-lightweight & Minimal\n\nAndroid Version: " + android.os.Build.VERSION.RELEASE)
+            .setMessage("RiProG Launcher\nUltra-lightweight & Minimal\n\nAndroid Version: " + android.os.Build.VERSION.RELEASE)
             .setPositiveButton("OK", null)
             .show();
     }
@@ -127,6 +96,16 @@ public class MainActivity extends Activity {
             } else {
                 settingsManager.setWidgetId(-1);
             }
+        }
+    }
+
+    private void applyDynamicColors() {
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
+            try {
+                int accentColor = getResources().getColor(android.R.color.system_accent1_400, getTheme());
+                if (homeView != null) homeView.setAccentColor(accentColor);
+                if (drawerView != null) drawerView.setAccentColor(accentColor);
+            } catch (Exception ignored) {}
         }
     }
 
@@ -192,6 +171,17 @@ public class MainActivity extends Activity {
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode == 100 && resultCode == RESULT_OK && data != null) {
+            String action = data.getStringExtra("action");
+            if ("pick_widget".equals(action)) {
+                pickWidget();
+            } else if ("remove_widget".equals(action)) {
+                removeWidget();
+            }
+            if (drawerView != null) {
+                drawerView.setColumns(settingsManager.getColumns());
+            }
+        }
         if (resultCode == RESULT_OK && data != null) {
             if (requestCode == REQUEST_PICK_APPWIDGET) {
                 configureWidget(data);
@@ -281,20 +271,45 @@ public class MainActivity extends Activity {
                 @Override
                 public void onLongPress(MotionEvent e) {
                     if (!isDrawerOpen) {
-                        showSettings();
+                        Intent intent = new Intent(MainActivity.this, SettingsActivity.class);
+                        MainActivity.this.startActivityForResult(intent, 100);
                     }
                 }
             });
         }
 
+        private float startY;
         @Override
         public boolean onInterceptTouchEvent(MotionEvent ev) {
-            return gestureDetector.onTouchEvent(ev);
+            if (gestureDetector.onTouchEvent(ev)) return true;
+
+            switch (ev.getAction()) {
+                case MotionEvent.ACTION_DOWN:
+                    startY = ev.getY();
+                    break;
+                case MotionEvent.ACTION_MOVE:
+                    float diffY = startY - ev.getY();
+                    if (Math.abs(diffY) > 50 && !isDrawerOpen) {
+                        return true; // Intercept for drawer opening
+                    }
+                    break;
+            }
+            return super.onInterceptTouchEvent(ev);
         }
 
         @Override
         public boolean onTouchEvent(MotionEvent event) {
-            return gestureDetector.onTouchEvent(event);
+            gestureDetector.onTouchEvent(event);
+            switch (event.getAction()) {
+                case MotionEvent.ACTION_MOVE:
+                    float diffY = startY - event.getY();
+                    if (diffY > 100 && !isDrawerOpen) {
+                        openDrawer();
+                        return true;
+                    }
+                    break;
+            }
+            return true;
         }
 
         public void openDrawer() {

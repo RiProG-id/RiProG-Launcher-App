@@ -19,6 +19,7 @@ import android.widget.LinearLayout;
 import android.widget.TextView;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 public class DrawerView extends FrameLayout {
@@ -28,6 +29,7 @@ public class DrawerView extends FrameLayout {
     private List<AppItem> filteredApps = new ArrayList<>();
     private LauncherModel model;
     private final EditText searchBar;
+    private final LinearLayout indexBar;
 
     public DrawerView(Context context) {
         super(context);
@@ -55,17 +57,29 @@ public class DrawerView extends FrameLayout {
         });
         layout.addView(searchBar);
 
+        FrameLayout contentFrame = new FrameLayout(context);
+        layout.addView(contentFrame, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1));
+
         gridView = new GridView(context);
         gridView.setNumColumns(4);
         gridView.setVerticalSpacing(dpToPx(16));
-        gridView.setPadding(dpToPx(8), dpToPx(16), dpToPx(8), dpToPx(16));
-        layout.addView(gridView);
+        gridView.setPadding(dpToPx(8), dpToPx(16), dpToPx(32), dpToPx(16));
+        contentFrame.addView(gridView);
+
+        indexBar = new LinearLayout(context);
+        indexBar.setOrientation(LinearLayout.VERTICAL);
+        indexBar.setGravity(Gravity.CENTER);
+        FrameLayout.LayoutParams indexParams = new FrameLayout.LayoutParams(dpToPx(30), ViewGroup.LayoutParams.MATCH_PARENT);
+        indexParams.gravity = Gravity.END;
+        contentFrame.addView(indexBar, indexParams);
+        setupIndexBar();
 
         adapter = new AppAdapter();
         gridView.setAdapter(adapter);
 
         gridView.setOnItemClickListener((parent, view, position, id) -> {
             AppItem item = filteredApps.get(position);
+            new SettingsManager(getContext()).incrementUsage(item.packageName);
             Intent intent = getContext().getPackageManager().getLaunchIntentForPackage(item.packageName);
             if (intent != null) getContext().startActivity(intent);
         });
@@ -74,11 +88,48 @@ public class DrawerView extends FrameLayout {
     public void setApps(List<AppItem> apps, LauncherModel model) {
         this.allApps = apps;
         this.model = model;
+        sortAppsByUsage();
         filter(searchBar.getText().toString());
+    }
+
+    private void sortAppsByUsage() {
+        SettingsManager sm = new SettingsManager(getContext());
+        Collections.sort(allApps, (a, b) -> {
+            int usageA = sm.getUsage(a.packageName);
+            int usageB = sm.getUsage(b.packageName);
+            if (usageA != usageB) return Integer.compare(usageB, usageA);
+            return a.label.compareToIgnoreCase(b.label);
+        });
+    }
+
+    private void setupIndexBar() {
+        String[] alphabet = "#ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
+        for (String letter : alphabet) {
+            if (letter.isEmpty()) continue;
+            TextView tv = new TextView(getContext());
+            tv.setText(letter);
+            tv.setTextSize(10);
+            tv.setGravity(Gravity.CENTER);
+            tv.setTextColor(getContext().getColor(R.color.foreground_dim));
+            tv.setPadding(0, dpToPx(2), 0, dpToPx(2));
+            tv.setOnClickListener(v -> {
+                for (int i = 0; i < filteredApps.size(); i++) {
+                    if (filteredApps.get(i).label.toUpperCase().startsWith(letter)) {
+                        gridView.setSelection(i);
+                        break;
+                    }
+                }
+            });
+            indexBar.addView(tv);
+        }
     }
 
     public void setColumns(int columns) {
         gridView.setNumColumns(columns);
+    }
+
+    public void setAccentColor(int color) {
+        if (searchBar != null) searchBar.setHintTextColor(color & 0x80FFFFFF);
     }
 
     public void filter(String query) {
