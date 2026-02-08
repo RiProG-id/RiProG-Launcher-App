@@ -44,17 +44,15 @@ public class SettingsActivity extends Activity {
         FrameLayout rootContainer = new FrameLayout(this);
         rootContainer.setPadding(dpToPx(16), dpToPx(48), dpToPx(16), dpToPx(32));
 
-        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.KITKAT_WATCH) {
-            rootContainer.setOnApplyWindowInsetsListener((v, insets) -> {
-                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
-                    android.graphics.Insets systemInsets = insets.getInsets(android.view.WindowInsets.Type.systemBars());
-                    v.setPadding(dpToPx(16), systemInsets.top + dpToPx(16), dpToPx(16), systemInsets.bottom + dpToPx(16));
-                } else {
-                    v.setPadding(dpToPx(16), insets.getSystemWindowInsetTop() + dpToPx(16), dpToPx(16), insets.getSystemWindowInsetBottom() + dpToPx(16));
-                }
-                return insets;
-            });
-        }
+        rootContainer.setOnApplyWindowInsetsListener((v, insets) -> {
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
+                android.graphics.Insets systemInsets = insets.getInsets(android.view.WindowInsets.Type.systemBars());
+                v.setPadding(dpToPx(16), systemInsets.top + dpToPx(16), dpToPx(16), systemInsets.bottom + dpToPx(16));
+            } else {
+                v.setPadding(dpToPx(16), insets.getSystemWindowInsetTop() + dpToPx(16), dpToPx(16), insets.getSystemWindowInsetBottom() + dpToPx(16));
+            }
+            return insets;
+        });
 
         ScrollView scrollView = new ScrollView(this);
         scrollView.setBackgroundResource(R.drawable.glass_bg);
@@ -79,7 +77,7 @@ public class SettingsActivity extends Activity {
         titleLayout.addView(titleIcon, iconParams);
 
         TextView title = new TextView(this);
-        title.setText("Settings");
+        title.setText(R.string.title_settings);
         title.setTextSize(32);
         title.setTextColor(getColor(R.color.foreground));
         titleLayout.addView(title);
@@ -109,36 +107,14 @@ public class SettingsActivity extends Activity {
         aboutTitleLayout.addView(aboutIcon, aboutIconParams);
 
         TextView aboutTitle = new TextView(this);
-        aboutTitle.setText("About");
+        aboutTitle.setText(R.string.title_about);
         aboutTitle.setTextSize(24);
         aboutTitle.setTextColor(getColor(R.color.foreground));
         aboutTitleLayout.addView(aboutTitle);
         root.addView(aboutTitleLayout);
 
         TextView aboutContent = new TextView(this);
-        aboutContent.setText("RiProG Launcher v2.1.0\n\n" +
-                "Ultra-lightweight Android launcher — minimal, fast, and distraction-free.\n\n" +
-                "FEATURES\n" +
-                "• Ultra-Lightweight & Fast\n" +
-                "• Liquid Glass UI Aesthetic\n" +
-                "• App Drawer with Search & Quick Index\n" +
-                "• Custom Widget Picker with Grouping\n" +
-                "• Freeform Home Toggle\n" +
-                "• Icon & Label Scale Control\n" +
-                "• Dynamic Theme Support\n" +
-                "• Gesture Support (Swipe up/down)\n\n" +
-                "LINKS & SUPPORT\n" +
-                "GitHub: https://github.com/RiProG-id/RiProG-Launcher-App\n" +
-                "Telegram Channel: https://t.me/RiOpSo\n" +
-                "Telegram Group: https://t.me/RiOpSoDisc\n\n" +
-                "DONATE\n" +
-                "PayPal: https://paypal.me/RiProG\n" +
-                "Sociabuzz: https://sociabuzz.com/riprog/tribe\n" +
-                "Dana / GoPay / ShopeePay: 0831-4095-0951\n" +
-                "Bank Jago Syariah: 503442488516\n\n" +
-                "FREE DONATION\n" +
-                "Safelinku: https://sfl.gl/NTX6\n" +
-                "Arahlink: https://arahlink.id/WAUR");
+        aboutContent.setText(R.string.about_content);
         aboutContent.setTextColor(getColor(R.color.foreground_dim));
         aboutContent.setTextSize(14);
         aboutContent.setPadding(0, 0, 0, dpToPx(32));
@@ -155,12 +131,12 @@ public class SettingsActivity extends Activity {
         item.setPadding(0, dpToPx(16), 0, dpToPx(16));
 
         TextView titleView = new TextView(this);
-        titleView.setText("Theme Mode");
+        titleView.setText(R.string.setting_theme_mode);
         titleView.setTextSize(18);
         titleView.setTextColor(getColor(R.color.foreground));
         item.addView(titleView);
 
-        String[] modes = {"System", "Light", "Dark"};
+        String[] modes = {getString(R.string.theme_system), getString(R.string.theme_light), getString(R.string.theme_dark)};
         String[] values = {"system", "light", "dark"};
         String current = settingsManager.getThemeMode();
 
@@ -221,13 +197,13 @@ public class SettingsActivity extends Activity {
         item.addView(textLayout, textParams);
 
         TextView titleView = new TextView(this);
-        titleView.setText("Freeform Home");
+        titleView.setText(R.string.setting_freeform);
         titleView.setTextSize(18);
         titleView.setTextColor(getColor(R.color.foreground));
         textLayout.addView(titleView);
 
         TextView summaryView = new TextView(this);
-        summaryView.setText("Allow free placement of items without grid alignment. Disable to auto organize layout.");
+        summaryView.setText(R.string.setting_freeform_summary);
         summaryView.setTextSize(14);
         summaryView.setTextColor(getColor(R.color.foreground_dim));
         textLayout.addView(summaryView);
@@ -251,7 +227,7 @@ public class SettingsActivity extends Activity {
         item.setPadding(0, dpToPx(16), 0, dpToPx(16));
 
         TextView titleView = new TextView(this);
-        titleView.setText("Icon Size & Label Scale");
+        titleView.setText(R.string.setting_scale);
         titleView.setTextSize(18);
         titleView.setTextColor(getColor(R.color.foreground));
         item.addView(titleView);
@@ -274,7 +250,7 @@ public class SettingsActivity extends Activity {
         item.addView(seekBar);
 
         TextView description = new TextView(this);
-        description.setText("Scale icons and labels together. Affect both home screen and app drawer.");
+        description.setText(R.string.setting_scale_summary);
         description.setTextSize(12);
         description.setTextColor(getColor(R.color.foreground_dim));
         item.addView(description);

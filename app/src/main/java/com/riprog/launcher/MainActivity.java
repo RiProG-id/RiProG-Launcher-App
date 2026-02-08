@@ -185,7 +185,7 @@ public class MainActivity extends Activity {
     }
 
     private void showWidgetOptions(HomeItem item, View hostView) {
-        String[] options = {"Resize", "Remove"};
+        String[] options = {getString(R.string.action_resize), getString(R.string.action_remove)};
         AlertDialog dialog = new AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert)
             .setItems(options, (d, which) -> {
                 if (which == 0) showResizeDialog(item, hostView);
@@ -198,7 +198,7 @@ public class MainActivity extends Activity {
     private void showResizeDialog(HomeItem item, View hostView) {
         String[] sizes = {"1x1", "2x1", "2x2", "4x2", "4x1"};
         AlertDialog dialog = new AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert)
-            .setTitle("Resize Widget")
+            .setTitle(R.string.title_resize_widget)
             .setItems(sizes, (d, which) -> {
                 switch (which) {
                     case 0: item.spanX = 1; item.spanY = 1; break;
@@ -235,7 +235,7 @@ public class MainActivity extends Activity {
             // Remove from home screen as requested by dragging to uninstall zone
             removeHomeItem(item, view);
         } catch (Exception e) {
-            Toast.makeText(this, "Uninstall failed: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, getString(R.string.uninstall_failed, e.getMessage()), Toast.LENGTH_SHORT).show();
         }
     }
 
@@ -247,7 +247,7 @@ public class MainActivity extends Activity {
             intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
             startActivity(intent);
         } catch (Exception e) {
-            Toast.makeText(this, "Could not open app info", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, getString(R.string.app_info_failed), Toast.LENGTH_SHORT).show();
         }
     }
 
@@ -291,7 +291,12 @@ public class MainActivity extends Activity {
     }
 
     private void showHomeContextMenu(float col, float row, int page) {
-        String[] options = {"Widgets", "Wallpaper", "Launcher Settings", "Layout Options"};
+        String[] options = {
+                getString(R.string.menu_widgets),
+                getString(R.string.menu_wallpaper),
+                getString(R.string.menu_settings),
+                getString(R.string.menu_layout)
+        };
         int[] icons = {R.drawable.ic_widgets, R.drawable.ic_wallpaper, R.drawable.ic_settings, R.drawable.ic_layout};
 
         ArrayAdapter<String> adapter = new ArrayAdapter<String>(this, android.R.layout.select_dialog_item, android.R.id.text1, options) {
@@ -309,7 +314,7 @@ public class MainActivity extends Activity {
         };
 
         AlertDialog dialog = new AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert)
-            .setTitle("Home Menu")
+            .setTitle(R.string.title_home_menu)
             .setAdapter(adapter, (d, which) -> {
                 switch (which) {
                     case 0:
@@ -328,14 +333,14 @@ public class MainActivity extends Activity {
 
     private void pickAppForHome(int col, int row, int page) {
         if (allApps.isEmpty()) {
-            Toast.makeText(this, "Apps not loaded yet", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, getString(R.string.apps_not_loaded), Toast.LENGTH_SHORT).show();
             return;
         }
         String[] labels = new String[allApps.size()];
         for (int i = 0; i < allApps.size(); i++) labels[i] = allApps.get(i).label;
 
         AlertDialog dialog = new AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert)
-            .setTitle("Pick App")
+            .setTitle(R.string.title_pick_app)
             .setItems(labels, (d, which) -> {
                 AppItem selected = allApps.get(which);
                 HomeItem item = HomeItem.createApp(selected.packageName, selected.className, col, row, page);
@@ -356,9 +361,9 @@ public class MainActivity extends Activity {
                 // Fallback to gallery/internal chooser
                 Intent pickIntent = new Intent(Intent.ACTION_GET_CONTENT);
                 pickIntent.setType("image/*");
-                startActivity(Intent.createChooser(pickIntent, "Select Wallpaper"));
+                startActivity(Intent.createChooser(pickIntent, getString(R.string.title_select_wallpaper)));
             } catch (Exception e2) {
-                Toast.makeText(this, "Wallpaper picker not available", Toast.LENGTH_SHORT).show();
+                Toast.makeText(this, getString(R.string.wallpaper_picker_failed), Toast.LENGTH_SHORT).show();
             }
         }
     }
@@ -369,15 +374,15 @@ public class MainActivity extends Activity {
     }
 
     private void showLayoutOptions() {
-        String[] options = {"Add Page", "Remove Last Page"};
+        String[] options = {getString(R.string.layout_add_page), getString(R.string.layout_remove_page)};
         AlertDialog dialog = new AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert)
-            .setTitle("Layout Options")
+            .setTitle(R.string.menu_layout)
             .setItems(options, (d, which) -> {
                 if (which == 0) {
                     homeView.addPage();
-                    Toast.makeText(this, "Page added", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(this, getString(R.string.page_added), Toast.LENGTH_SHORT).show();
                 } else {
-                    Toast.makeText(this, "Remove page not implemented yet", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(this, getString(R.string.remove_page_not_implemented), Toast.LENGTH_SHORT).show();
                 }
             }).create();
         dialog.show();
@@ -503,9 +508,9 @@ public class MainActivity extends Activity {
         });
 
         AlertDialog dialog = new AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert)
-                .setTitle("🧩 Pick Widget")
+                .setTitle(R.string.title_pick_widget)
                 .setView(scrollView)
-                .setNegativeButton("Cancel", null)
+                .setNegativeButton(R.string.action_cancel, null)
                 .create();
 
         for (String pkg : packages) {
@@ -556,7 +561,7 @@ public class MainActivity extends Activity {
                 textLayout.addView(label);
 
                 TextView size = new TextView(this);
-                size.setText(spanX + "x" + spanY);
+                size.setText(getString(R.string.widget_size_format, spanX, spanY));
                 size.setTextSize(12);
                 size.setTextColor(getColor(R.color.foreground_dim));
                 textLayout.addView(size);
@@ -673,6 +678,11 @@ public class MainActivity extends Activity {
             setupDragOverlay();
         }
 
+        @Override
+        public boolean performClick() {
+            return super.performClick();
+        }
+
         private void setupDragOverlay() {
             dragOverlay = new LinearLayout(getContext());
             dragOverlay.setOrientation(LinearLayout.HORIZONTAL);
@@ -681,19 +691,19 @@ public class MainActivity extends Activity {
             dragOverlay.setVisibility(View.GONE);
 
             tvRemove = new TextView(getContext());
-            tvRemove.setText("REMOVE");
+            tvRemove.setText(R.string.drag_remove);
             tvRemove.setTextColor(Color.WHITE);
             tvRemove.setPadding(dpToPx(24), dpToPx(16), dpToPx(24), dpToPx(16));
             dragOverlay.addView(tvRemove);
 
             tvAppInfo = new TextView(getContext());
-            tvAppInfo.setText("APP INFO");
+            tvAppInfo.setText(R.string.drag_app_info);
             tvAppInfo.setTextColor(Color.WHITE);
             tvAppInfo.setPadding(dpToPx(24), dpToPx(16), dpToPx(24), dpToPx(16));
             dragOverlay.addView(tvAppInfo);
 
             tvUninstall = new TextView(getContext());
-            tvUninstall.setText("UNINSTALL");
+            tvUninstall.setText(R.string.drag_uninstall);
             tvUninstall.setTextColor(Color.WHITE);
             tvUninstall.setPadding(dpToPx(24), dpToPx(16), dpToPx(24), dpToPx(16));
             dragOverlay.addView(tvUninstall);
@@ -871,6 +881,7 @@ public class MainActivity extends Activity {
                         float dist = (float) Math.sqrt(finalDx * finalDx + finalDy * finalDy);
                         if (duration >= 80 && duration < 150 && dist < touchSlop) {
                             if (touchedView != null) handleItemClick(touchedView);
+                            else performClick();
                         }
                     }
                     return true;

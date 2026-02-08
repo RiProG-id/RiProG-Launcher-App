@@ -17,6 +17,7 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -160,9 +161,9 @@ public class LauncherModel {
     public static List<AppItem> filterApps(List<AppItem> apps, String query) {
         if (query == null || query.isEmpty()) return new ArrayList<>(apps);
         List<AppItem> filtered = new ArrayList<>();
-        String lowerQuery = query.toLowerCase();
+        String lowerQuery = query.toLowerCase(Locale.getDefault());
         for (AppItem item : apps) {
-            if (item.label.toLowerCase().contains(lowerQuery)) {
+            if (item.label.toLowerCase(Locale.getDefault()).contains(lowerQuery)) {
                 filtered.add(item);
             }
         }

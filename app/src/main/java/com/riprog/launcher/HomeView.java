@@ -78,7 +78,7 @@ public class HomeView extends FrameLayout {
 
     private void addDrawerHint() {
         TextView hint = new TextView(getContext());
-        hint.setText("Swipe up to open app drawer");
+        hint.setText(getContext().getString(R.string.drawer_hint));
         hint.setTextSize(12);
         hint.setTextColor(Color.GRAY & 0x80FFFFFF);
         hint.setAlpha(0);
