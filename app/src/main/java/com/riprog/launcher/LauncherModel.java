@@ -15,7 +15,9 @@ import android.util.LruCache;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -29,6 +31,7 @@ public class LauncherModel {
     private final ExecutorService executor = Executors.newSingleThreadExecutor();
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
     private final LruCache<String, Bitmap> iconCache;
+    private final Map<String, List<OnIconLoadedListener>> pendingListeners = new HashMap<>();
 
     public LauncherModel(Context context) {
         this.context = context.getApplicationContext();
@@ -50,6 +53,10 @@ public class LauncherModel {
         } else if (level >= android.content.ComponentCallbacks2.TRIM_MEMORY_BACKGROUND) {
             iconCache.trimToSize(iconCache.size() / 2);
         }
+    }
+
+    public void shutdown() {
+        executor.shutdown();
     }
 
     public void loadApps(OnAppsLoadedListener listener) {
@@ -79,23 +86,49 @@ public class LauncherModel {
     }
 
     public void loadIcon(AppItem item, OnIconLoadedListener listener) {
-        Bitmap cached = iconCache.get(item.packageName);
-        if (cached != null) {
-            item.icon = cached;
-            listener.onIconLoaded(cached);
-            return;
+        synchronized (pendingListeners) {
+            Bitmap cached = iconCache.get(item.packageName);
+            if (cached != null) {
+                item.icon = cached;
+                listener.onIconLoaded(cached);
+                return;
+            }
+
+            List<OnIconLoadedListener> listeners = pendingListeners.get(item.packageName);
+            if (listeners != null) {
+                listeners.add(listener);
+                return;
+            }
+
+            listeners = new ArrayList<>();
+            listeners.add(listener);
+            pendingListeners.put(item.packageName, listeners);
         }
 
         executor.execute(() -> {
+            Bitmap bitmap = null;
             try {
                 Drawable drawable = pm.getApplicationIcon(item.packageName);
-                Bitmap bitmap = drawableToBitmap(drawable);
-                iconCache.put(item.packageName, bitmap);
+                bitmap = drawableToBitmap(drawable);
+                if (bitmap != null) {
+                    iconCache.put(item.packageName, bitmap);
+                }
                 item.icon = bitmap;
-                mainHandler.post(() -> listener.onIconLoaded(bitmap));
-            } catch (PackageManager.NameNotFoundException e) {
-                mainHandler.post(() -> listener.onIconLoaded(null));
+            } catch (PackageManager.NameNotFoundException ignored) {
             }
+
+            final Bitmap finalBitmap = bitmap;
+            mainHandler.post(() -> {
+                List<OnIconLoadedListener> listeners;
+                synchronized (pendingListeners) {
+                    listeners = pendingListeners.remove(item.packageName);
+                }
+                if (listeners != null) {
+                    for (OnIconLoadedListener l : listeners) {
+                        l.onIconLoaded(finalBitmap);
+                    }
+                }
+            });
         });
     }
 
