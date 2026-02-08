@@ -239,6 +239,18 @@ public class MainActivity extends Activity {
         }
     }
 
+    private void showAppInfo(HomeItem item) {
+        if (item == null || item.packageName == null || item.packageName.isEmpty()) return;
+        try {
+            Intent intent = new Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS);
+            intent.setData(android.net.Uri.parse("package:" + item.packageName));
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            startActivity(intent);
+        } catch (Exception e) {
+            Toast.makeText(this, "Could not open app info", Toast.LENGTH_SHORT).show();
+        }
+    }
+
     private View createClockView(HomeItem item) {
         LinearLayout clockRoot = new LinearLayout(this);
         clockRoot.setOrientation(LinearLayout.VERTICAL);
@@ -620,7 +632,10 @@ public class MainActivity extends Activity {
         private boolean longPressTriggered = false;
         private boolean isDragging = false;
         private LinearLayout dragOverlay;
-        private TextView tvRemove, tvUninstall;
+        private TextView tvRemove, tvUninstall, tvAppInfo;
+        private float origCol, origRow;
+        private int origPage;
+        private boolean isExternalDrag = false;
 
         private final Runnable longPressRunnable = new Runnable() {
             @Override
@@ -628,9 +643,17 @@ public class MainActivity extends Activity {
                 longPressTriggered = true;
                 if (touchedView != null) {
                     isDragging = true;
+                    isExternalDrag = false;
+                    HomeItem item = (HomeItem) touchedView.getTag();
+                    if (item != null) {
+                        origCol = item.col;
+                        origRow = item.row;
+                        origPage = item.page;
+                    }
                     if (dragOverlay != null) {
-                        HomeItem item = (HomeItem) touchedView.getTag();
-                        tvUninstall.setVisibility(item != null && item.type == HomeItem.Type.APP ? View.VISIBLE : View.GONE);
+                        boolean isApp = item != null && item.type == HomeItem.Type.APP;
+                        tvUninstall.setVisibility(isApp ? View.VISIBLE : View.GONE);
+                        tvAppInfo.setVisibility(isApp ? View.VISIBLE : View.GONE);
                         dragOverlay.setVisibility(View.VISIBLE);
                     }
                     homeView.startDragging(touchedView, startX, startY);
@@ -660,13 +683,19 @@ public class MainActivity extends Activity {
             tvRemove = new TextView(getContext());
             tvRemove.setText("REMOVE");
             tvRemove.setTextColor(Color.WHITE);
-            tvRemove.setPadding(dpToPx(32), dpToPx(16), dpToPx(32), dpToPx(16));
+            tvRemove.setPadding(dpToPx(24), dpToPx(16), dpToPx(24), dpToPx(16));
             dragOverlay.addView(tvRemove);
+
+            tvAppInfo = new TextView(getContext());
+            tvAppInfo.setText("APP INFO");
+            tvAppInfo.setTextColor(Color.WHITE);
+            tvAppInfo.setPadding(dpToPx(24), dpToPx(16), dpToPx(24), dpToPx(16));
+            dragOverlay.addView(tvAppInfo);
 
             tvUninstall = new TextView(getContext());
             tvUninstall.setText("UNINSTALL");
             tvUninstall.setTextColor(Color.WHITE);
-            tvUninstall.setPadding(dpToPx(32), dpToPx(16), dpToPx(32), dpToPx(16));
+            tvUninstall.setPadding(dpToPx(24), dpToPx(16), dpToPx(24), dpToPx(16));
             dragOverlay.addView(tvUninstall);
 
             addView(dragOverlay, new FrameLayout.LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT, Gravity.TOP));
@@ -800,21 +829,33 @@ public class MainActivity extends Activity {
                             int overlayWidth = dragOverlay.getWidth();
                             dragOverlay.setVisibility(View.GONE);
                             tvRemove.setBackgroundColor(Color.TRANSPARENT);
+                            tvAppInfo.setBackgroundColor(Color.TRANSPARENT);
                             tvUninstall.setBackgroundColor(Color.TRANSPARENT);
 
-                            // Hitbox: Top of the screen including a bit of extra margin (touchSlop)
                             if (event.getY() < overlayHeight + touchSlop * 2) {
                                 HomeItem item = (HomeItem) touchedView.getTag();
                                 if (item != null) {
-                                    boolean canUninstall = tvUninstall.getVisibility() == View.VISIBLE;
-                                    if (!canUninstall || event.getX() < overlayWidth / 2f) {
+                                    boolean isApp = tvUninstall.getVisibility() == View.VISIBLE;
+                                    if (!isApp) {
                                         removeHomeItem(item, touchedView);
                                     } else {
-                                        uninstallApp(item, touchedView);
+                                        float x = event.getX();
+                                        if (x < overlayWidth / 3f) {
+                                            removeHomeItem(item, touchedView);
+                                        } else if (x < overlayWidth * 2f / 3f) {
+                                            showAppInfo(item);
+                                            revertPosition(item, touchedView);
+                                        } else {
+                                            uninstallApp(item, touchedView);
+                                        }
                                     }
                                 }
                                 homeView.cancelDragging();
                             } else {
+                                // Dropped on home, check if valid placement
+                                // For now, we assume any drop on home is valid,
+                                // but we should check if it's over the drawer or something?
+                                // Actually, homeView.endDragging handles snap.
                                 homeView.endDragging();
                             }
                         } else {
@@ -884,9 +925,12 @@ public class MainActivity extends Activity {
 
         public void startExternalDrag(View v) {
             isDragging = true;
+            isExternalDrag = true;
             if (dragOverlay != null) {
                 HomeItem item = (HomeItem) v.getTag();
-                tvUninstall.setVisibility(item != null && item.type == HomeItem.Type.APP ? View.VISIBLE : View.GONE);
+                boolean isApp = item != null && item.type == HomeItem.Type.APP;
+                tvUninstall.setVisibility(isApp ? View.VISIBLE : View.GONE);
+                tvAppInfo.setVisibility(isApp ? View.VISIBLE : View.GONE);
                 dragOverlay.setVisibility(View.VISIBLE);
             }
             touchedView = v;
@@ -903,19 +947,37 @@ public class MainActivity extends Activity {
 
             int overlayHeight = dragOverlay.getHeight();
             int overlayWidth = dragOverlay.getWidth();
-            boolean canUninstall = tvUninstall.getVisibility() == View.VISIBLE;
+            boolean isApp = tvUninstall.getVisibility() == View.VISIBLE;
+
+            tvRemove.setBackgroundColor(Color.TRANSPARENT);
+            tvAppInfo.setBackgroundColor(Color.TRANSPARENT);
+            tvUninstall.setBackgroundColor(Color.TRANSPARENT);
 
             if (y < overlayHeight + touchSlop * 2) {
-                if (!canUninstall || x < overlayWidth / 2f) {
+                if (!isApp) {
                     tvRemove.setBackgroundColor(0x40FFFFFF);
-                    tvUninstall.setBackgroundColor(Color.TRANSPARENT);
                 } else {
-                    tvRemove.setBackgroundColor(Color.TRANSPARENT);
-                    tvUninstall.setBackgroundColor(0x40FF0000);
+                    if (x < overlayWidth / 3f) {
+                        tvRemove.setBackgroundColor(0x40FFFFFF);
+                    } else if (x < overlayWidth * 2f / 3f) {
+                        tvAppInfo.setBackgroundColor(0x40FFFFFF);
+                    } else {
+                        tvUninstall.setBackgroundColor(0x40FF0000);
+                    }
                 }
+            }
+        }
+
+        private void revertPosition(HomeItem item, View v) {
+            if (isExternalDrag) {
+                removeHomeItem(item, v);
             } else {
-                tvRemove.setBackgroundColor(Color.TRANSPARENT);
-                tvUninstall.setBackgroundColor(Color.TRANSPARENT);
+                item.col = origCol;
+                item.row = origRow;
+                item.page = origPage;
+                homeView.addItemView(item, v);
+                homeView.updateViewPosition(item, v);
+                saveHomeState();
             }
         }
 
