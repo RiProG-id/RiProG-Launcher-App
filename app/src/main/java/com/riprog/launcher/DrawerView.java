@@ -65,7 +65,12 @@ public class DrawerView extends LinearLayout {
         searchBar.setHintTextColor(context.getColor(R.color.foreground_dim));
         searchBar.setTextColor(context.getColor(R.color.foreground));
         searchBar.setBackgroundColor(context.getColor(R.color.search_background));
-        searchBar.setPadding(dpToPx(20), dpToPx(12), dpToPx(20), dpToPx(12));
+        searchBar.setPadding(dpToPx(16), dpToPx(12), dpToPx(16), dpToPx(12));
+        searchBar.setCompoundDrawablesWithIntrinsicBounds(R.drawable.ic_search, 0, 0, 0);
+        searchBar.setCompoundDrawablePadding(dpToPx(12));
+        if (searchBar.getCompoundDrawables()[0] != null) {
+            searchBar.getCompoundDrawables()[0].setTint(context.getColor(R.color.foreground_dim));
+        }
         searchBar.setSingleLine(true);
         searchBar.setGravity(Gravity.CENTER_VERTICAL);
         searchBar.addTextChangedListener(new TextWatcher() {

@@ -36,5 +36,5 @@
     <string name="setting_freeform_summary">Allow free placement of items without grid alignment. Disable to auto organize layout.</string>
     <string name="setting_scale">Icon Size &amp; Label Scale</string>
     <string name="setting_scale_summary">Scale icons and labels together. Affect both home screen and app drawer.</string>
-    <string name="search_hint">🔍 Search apps&#8230;</string>
+    <string name="search_hint">Search apps&#8230;</string>
 </resources>
