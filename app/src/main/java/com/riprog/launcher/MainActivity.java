@@ -69,6 +69,15 @@ public class MainActivity extends Activity {
         homeView = new HomeView(this);
         drawerView = new DrawerView(this);
         drawerView.setColumns(settingsManager.getColumns());
+        drawerView.setOnAppLongClickListener(app -> {
+            mainLayout.closeDrawer();
+            HomeItem item = HomeItem.createApp(app.packageName, app.className, 0, 0, homeView.getCurrentPage());
+            homeItems.add(item);
+            View view = createAppView(item);
+            homeView.addItemView(item, view);
+            saveHomeState();
+            mainLayout.startExternalDrag(view);
+        });
 
         mainLayout.addView(homeView);
         mainLayout.addView(drawerView);
@@ -103,10 +112,6 @@ public class MainActivity extends Activity {
     }
 
     private void setupDefaultHome() {
-        // Clock centered horizontally at the top
-        HomeItem clockItem = HomeItem.createClock(0, 0, 4, 2, 0);
-        homeItems.add(clockItem);
-        renderHomeItem(clockItem);
         saveHomeState();
     }
 
@@ -130,7 +135,7 @@ public class MainActivity extends Activity {
 
     private View createAppView(HomeItem item) {
         ImageView iconView = new ImageView(this);
-        int size = dpToPx(56);
+        int size = getResources().getDimensionPixelSize(R.dimen.grid_icon_size);
         iconView.setLayoutParams(new FrameLayout.LayoutParams(size, size));
 
         AppItem app = findApp(item.packageName);
@@ -152,18 +157,20 @@ public class MainActivity extends Activity {
 
     private void showWidgetOptions(HomeItem item, View hostView) {
         String[] options = {"Resize", "Remove"};
-        new AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert)
-            .setItems(options, (dialog, which) -> {
+        AlertDialog dialog = new AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert)
+            .setItems(options, (d, which) -> {
                 if (which == 0) showResizeDialog(item, hostView);
                 else removeHomeItem(item, hostView);
-            }).show();
+            }).create();
+        dialog.show();
+        if (dialog.getWindow() != null) dialog.getWindow().setBackgroundDrawableResource(R.drawable.glass_bg);
     }
 
     private void showResizeDialog(HomeItem item, View hostView) {
         String[] sizes = {"1x1", "2x1", "2x2", "4x2", "4x1"};
-        new AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert)
+        AlertDialog dialog = new AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert)
             .setTitle("Resize Widget")
-            .setItems(sizes, (dialog, which) -> {
+            .setItems(sizes, (d, which) -> {
                 switch (which) {
                     case 0: item.spanX = 1; item.spanY = 1; break;
                     case 1: item.spanX = 2; item.spanY = 1; break;
@@ -173,15 +180,28 @@ public class MainActivity extends Activity {
                 }
                 homeView.updateViewPosition(item, hostView);
                 saveHomeState();
-            }).show();
+            }).create();
+        dialog.show();
+        if (dialog.getWindow() != null) dialog.getWindow().setBackgroundDrawableResource(R.drawable.glass_bg);
     }
 
     private void removeHomeItem(HomeItem item, View view) {
         homeItems.remove(item);
-        if (view.getParent() instanceof ViewGroup) {
+        if (view != null && view.getParent() instanceof ViewGroup) {
             ((ViewGroup) view.getParent()).removeView(view);
         }
         saveHomeState();
+    }
+
+    private void uninstallApp(HomeItem item, View view) {
+        if (item == null || item.type != HomeItem.Type.APP) {
+            removeHomeItem(item, view);
+            return;
+        }
+        Intent intent = new Intent(Intent.ACTION_DELETE);
+        intent.setData(android.net.Uri.parse("package:" + item.packageName));
+        startActivity(intent);
+        removeHomeItem(item, view);
     }
 
     private View createClockView(HomeItem item) {
@@ -224,22 +244,23 @@ public class MainActivity extends Activity {
     }
 
     private void showHomeContextMenu(int col, int row, int page) {
-        String[] options = {"Add App", "Widgets", "Wallpaper", "Launcher Settings", "Layout Options"};
-        new AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert)
+        String[] options = {"Widgets", "Wallpaper", "Launcher Settings", "Layout Options"};
+        AlertDialog dialog = new AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert)
             .setTitle("Home Menu")
-            .setItems(options, (dialog, which) -> {
+            .setItems(options, (d, which) -> {
                 switch (which) {
-                    case 0: pickAppForHome(col, row, page); break;
-                    case 1:
+                    case 0:
                         lastGridCol = col;
                         lastGridRow = row;
                         pickWidget();
                         break;
-                    case 2: openWallpaperPicker(); break;
-                    case 3: openSettings(); break;
-                    case 4: showLayoutOptions(); break;
+                    case 1: openWallpaperPicker(); break;
+                    case 2: openSettings(); break;
+                    case 3: showLayoutOptions(); break;
                 }
-            }).show();
+            }).create();
+        dialog.show();
+        if (dialog.getWindow() != null) dialog.getWindow().setBackgroundDrawableResource(R.drawable.glass_bg);
     }
 
     private void pickAppForHome(int col, int row, int page) {
@@ -273,16 +294,18 @@ public class MainActivity extends Activity {
 
     private void showLayoutOptions() {
         String[] options = {"Add Page", "Remove Last Page"};
-        new AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert)
+        AlertDialog dialog = new AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert)
             .setTitle("Layout Options")
-            .setItems(options, (dialog, which) -> {
+            .setItems(options, (d, which) -> {
                 if (which == 0) {
                     homeView.addPage();
                     Toast.makeText(this, "Page added", Toast.LENGTH_SHORT).show();
                 } else {
                     Toast.makeText(this, "Remove page not implemented yet", Toast.LENGTH_SHORT).show();
                 }
-            }).show();
+            }).create();
+        dialog.show();
+        if (dialog.getWindow() != null) dialog.getWindow().setBackgroundDrawableResource(R.drawable.glass_bg);
     }
 
     private void applyDynamicColors() {
@@ -401,6 +424,7 @@ public class MainActivity extends Activity {
         private View touchedView = null;
         private boolean longPressTriggered = false;
         private boolean isDragging = false;
+        private LinearLayout dragOverlay;
 
         private final Runnable longPressRunnable = new Runnable() {
             @Override
@@ -408,6 +432,7 @@ public class MainActivity extends Activity {
                 longPressTriggered = true;
                 if (touchedView != null) {
                     isDragging = true;
+                    if (dragOverlay != null) dragOverlay.setVisibility(View.VISIBLE);
                     homeView.startDragging(touchedView, startX, startY);
                 } else {
                     int cellWidth = getWidth() / HomeView.GRID_COLUMNS;
@@ -421,13 +446,49 @@ public class MainActivity extends Activity {
 
         public MainLayout(Context context) {
             super(context);
-            setBackgroundResource(R.color.background);
             touchSlop = ViewConfiguration.get(context).getScaledTouchSlop();
+            setupDragOverlay();
+        }
+
+        private void setupDragOverlay() {
+            dragOverlay = new LinearLayout(getContext());
+            dragOverlay.setOrientation(LinearLayout.HORIZONTAL);
+            dragOverlay.setBackgroundResource(R.drawable.glass_bg);
+            dragOverlay.setGravity(Gravity.CENTER);
+            dragOverlay.setVisibility(View.GONE);
+
+            TextView tvRemove = new TextView(getContext());
+            tvRemove.setText("REMOVE");
+            tvRemove.setTextColor(Color.WHITE);
+            tvRemove.setPadding(dpToPx(32), dpToPx(16), dpToPx(32), dpToPx(16));
+            dragOverlay.addView(tvRemove);
+
+            TextView tvUninstall = new TextView(getContext());
+            tvUninstall.setText("UNINSTALL");
+            tvUninstall.setTextColor(Color.WHITE);
+            tvUninstall.setPadding(dpToPx(32), dpToPx(16), dpToPx(32), dpToPx(16));
+            dragOverlay.addView(tvUninstall);
+
+            addView(dragOverlay, new FrameLayout.LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT, Gravity.TOP));
         }
 
         @Override
         public boolean onInterceptTouchEvent(MotionEvent ev) {
-            if (isDrawerOpen) return false;
+            if (isDrawerOpen) {
+                switch (ev.getAction()) {
+                    case MotionEvent.ACTION_DOWN:
+                        startX = ev.getX();
+                        startY = ev.getY();
+                        break;
+                    case MotionEvent.ACTION_MOVE:
+                        float dy = ev.getY() - startY;
+                        if (dy > touchSlop * 2 && dy > Math.abs(ev.getX() - startX) && drawerView.isAtTop()) {
+                            return true;
+                        }
+                        break;
+                }
+                return false;
+            }
 
             switch (ev.getAction()) {
                 case MotionEvent.ACTION_DOWN:
@@ -445,10 +506,15 @@ public class MainActivity extends Activity {
                 case MotionEvent.ACTION_MOVE:
                     float dx = ev.getX() - startX;
                     float dy = ev.getY() - startY;
+                    // Explicitly intercept upward swipe for drawer
+                    if (dy < -touchSlop && Math.abs(dy) > Math.abs(dx)) {
+                        longPressHandler.removeCallbacks(longPressRunnable);
+                        return true;
+                    }
                     if (Math.abs(dx) > touchSlop || Math.abs(dy) > touchSlop) {
                         longPressHandler.removeCallbacks(longPressRunnable);
                         if (!longPressTriggered) {
-                            return true; // Intercept for swipe
+                            return true; // Intercept for other swipes
                         }
                     }
                     return isDragging;
@@ -518,7 +584,22 @@ public class MainActivity extends Activity {
                 case MotionEvent.ACTION_CANCEL:
                     longPressHandler.removeCallbacks(longPressRunnable);
                     if (isDragging) {
-                        homeView.endDragging();
+                        if (dragOverlay != null) {
+                            dragOverlay.setVisibility(View.GONE);
+                            if (event.getY() < dragOverlay.getHeight() + touchSlop) {
+                                HomeItem item = (HomeItem) touchedView.getTag();
+                                if (event.getX() < dragOverlay.getWidth() / 2f) {
+                                    removeHomeItem(item, touchedView);
+                                } else {
+                                    uninstallApp(item, touchedView);
+                                }
+                                homeView.cancelDragging();
+                            } else {
+                                homeView.endDragging();
+                            }
+                        } else {
+                            homeView.endDragging();
+                        }
                         isDragging = false;
                         return true;
                     }
@@ -567,19 +648,41 @@ public class MainActivity extends Activity {
 
         public void openDrawer() {
             isDrawerOpen = true;
-            homeView.animate().alpha(0).setDuration(200).withEndAction(() -> homeView.setVisibility(View.GONE));
             drawerView.setVisibility(View.VISIBLE);
-            drawerView.setAlpha(0);
-            drawerView.animate().alpha(1).setDuration(200).start();
+            drawerView.setTranslationY(getHeight());
+            drawerView.animate()
+                .translationY(0)
+                .setDuration(300)
+                .setInterpolator(new android.view.animation.DecelerateInterpolator())
+                .start();
+            homeView.animate().alpha(0).setDuration(300).start();
             drawerView.onOpen();
+        }
+
+        public void startExternalDrag(View v) {
+            isDragging = true;
+            if (dragOverlay != null) dragOverlay.setVisibility(View.VISIBLE);
+            touchedView = v;
+
+            int iconSize = getResources().getDimensionPixelSize(R.dimen.grid_icon_size);
+            v.setX(startX - iconSize / 2f);
+            v.setY(startY - iconSize / 2f - dpToPx(48));
+
+            homeView.startDragging(v, startX, startY);
         }
 
         public void closeDrawer() {
             isDrawerOpen = false;
-            drawerView.animate().alpha(0).setDuration(200).withEndAction(() -> drawerView.setVisibility(View.GONE));
-            homeView.setVisibility(View.VISIBLE);
-            homeView.setAlpha(0);
-            homeView.animate().alpha(1).setDuration(200).start();
+            drawerView.animate()
+                .translationY(getHeight())
+                .setDuration(300)
+                .setInterpolator(new android.view.animation.AccelerateInterpolator())
+                .withEndAction(() -> {
+                    drawerView.setVisibility(View.GONE);
+                    homeView.setVisibility(View.VISIBLE);
+                })
+                .start();
+            homeView.animate().alpha(1).setDuration(300).start();
             InputMethodManager imm = (InputMethodManager)
                     getContext().getSystemService(Context.INPUT_METHOD_SERVICE);
             imm.hideSoftInputFromWindow(getWindowToken(), 0);

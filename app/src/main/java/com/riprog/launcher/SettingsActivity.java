@@ -20,7 +20,7 @@ public class SettingsActivity extends Activity {
         settingsManager = new SettingsManager(this);
 
         ScrollView scrollView = new ScrollView(this);
-        scrollView.setBackgroundResource(R.color.background);
+        scrollView.setBackgroundResource(R.drawable.glass_bg);
 
         LinearLayout root = new LinearLayout(this);
         root.setOrientation(LinearLayout.VERTICAL);
@@ -36,12 +36,14 @@ public class SettingsActivity extends Activity {
 
         addSettingItem(root, "Grid Columns", "Change number of columns in app drawer", v -> {
             String[] options = {"4 Columns", "5 Columns", "6 Columns"};
-            new AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert)
+            AlertDialog dialog = new AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert)
                 .setTitle("Select Columns")
-                .setItems(options, (dialog, which) -> {
+                .setItems(options, (d, which) -> {
                     settingsManager.setColumns(which + 4);
                 })
-                .show();
+                .create();
+            dialog.show();
+            if (dialog.getWindow() != null) dialog.getWindow().setBackgroundDrawableResource(R.drawable.glass_bg);
         });
 
         View divider = new View(this);

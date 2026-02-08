@@ -1,6 +1,7 @@
 package com.riprog.launcher;
 
 import android.app.Activity;
+import android.os.Handler;
 import android.content.Context;
 import android.content.Intent;
 import android.graphics.Color;
@@ -34,6 +35,23 @@ public class HomeView extends FrameLayout {
 
     private View draggingView = null;
     private float lastX, lastY;
+    private final Handler edgeScrollHandler = new Handler();
+    private boolean isEdgeScrolling = false;
+    private final Runnable edgeScrollRunnable = new Runnable() {
+        @Override
+        public void run() {
+            if (draggingView != null) {
+                if (lastX < getWidth() * 0.05f && currentPage > 0) {
+                    scrollToPage(currentPage - 1);
+                } else if (lastX > getWidth() * 0.95f && currentPage < pages.size() - 1) {
+                    scrollToPage(currentPage + 1);
+                }
+                edgeScrollHandler.postDelayed(this, 400);
+            } else {
+                isEdgeScrolling = false;
+            }
+        }
+    };
 
     public HomeView(Context context) {
         super(context);
@@ -64,7 +82,9 @@ public class HomeView extends FrameLayout {
     }
 
     public void addItemView(HomeItem item, View view) {
-        if (item.page >= pages.size()) return;
+        while (item.page >= pages.size()) {
+            addPage();
+        }
         if (view.getParent() instanceof ViewGroup) {
             ((ViewGroup) view.getParent()).removeView(view);
         }
@@ -106,6 +126,19 @@ public class HomeView extends FrameLayout {
             draggingView.setY(draggingView.getY() + dy);
             lastX = x;
             lastY = y;
+            checkEdgeScroll(x);
+        }
+    }
+
+    private void checkEdgeScroll(float x) {
+        if (x < getWidth() * 0.05f || x > getWidth() * 0.95f) {
+            if (!isEdgeScrolling) {
+                isEdgeScrolling = true;
+                edgeScrollHandler.postDelayed(edgeScrollRunnable, 300);
+            }
+        } else {
+            isEdgeScrolling = false;
+            edgeScrollHandler.removeCallbacks(edgeScrollRunnable);
         }
     }
 
@@ -117,7 +150,15 @@ public class HomeView extends FrameLayout {
                 snapToGrid(item, draggingView);
             }
             draggingView = null;
+            isEdgeScrolling = false;
+            edgeScrollHandler.removeCallbacks(edgeScrollRunnable);
         }
+    }
+
+    public void cancelDragging() {
+        draggingView = null;
+        isEdgeScrolling = false;
+        edgeScrollHandler.removeCallbacks(edgeScrollRunnable);
     }
 
     private void snapToGrid(HomeItem item, View v) {
