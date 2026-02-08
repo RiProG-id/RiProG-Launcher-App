@@ -31,7 +31,7 @@ public class DrawerView extends FrameLayout {
 
     public DrawerView(Context context) {
         super(context);
-        setBackgroundColor(Color.BLACK);
+        setBackgroundResource(R.color.background);
         setPadding(0, dpToPx(48), 0, 0);
 
         LinearLayout layout = new LinearLayout(context);
@@ -40,9 +40,9 @@ public class DrawerView extends FrameLayout {
 
         searchBar = new EditText(context);
         searchBar.setHint("Search...");
-        searchBar.setHintTextColor(0xFF444444);
-        searchBar.setTextColor(Color.WHITE);
-        searchBar.setBackgroundColor(0x22FFFFFF);
+        searchBar.setHintTextColor(context.getColor(R.color.foreground_dim));
+        searchBar.setTextColor(context.getColor(R.color.foreground));
+        searchBar.setBackgroundColor(context.getColor(R.color.search_background));
         searchBar.setPadding(dpToPx(20), dpToPx(12), dpToPx(20), dpToPx(12));
         searchBar.setSingleLine(true);
         searchBar.setGravity(Gravity.CENTER_VERTICAL);
@@ -120,7 +120,7 @@ public class DrawerView extends FrameLayout {
                 itemLayout.addView(icon, new LinearLayout.LayoutParams(size, size));
 
                 TextView label = new TextView(getContext());
-                label.setTextColor(Color.LTGRAY);
+                label.setTextColor(getContext().getColor(R.color.foreground_dim));
                 label.setTextSize(10);
                 label.setGravity(Gravity.CENTER);
                 label.setMaxLines(1);
@@ -138,8 +138,15 @@ public class DrawerView extends FrameLayout {
 
             AppItem item = filteredApps.get(position);
             holder.label.setText(item.label);
-            holder.icon.setImageBitmap(null); // Reset icon before loading
-            model.loadIcon(item, holder.icon::setImageBitmap);
+            holder.icon.setImageBitmap(null);
+            holder.icon.setTag(item.packageName);
+            if (model != null) {
+                model.loadIcon(item, bitmap -> {
+                    if (bitmap != null && item.packageName.equals(holder.icon.getTag())) {
+                        holder.icon.setImageBitmap(bitmap);
+                    }
+                });
+            }
 
             return convertView;
         }

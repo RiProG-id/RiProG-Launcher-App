@@ -25,7 +25,7 @@ public class HomeView extends FrameLayout {
 
     public HomeView(Context context) {
         super(context);
-        setBackgroundColor(Color.BLACK);
+        setBackgroundResource(R.color.background);
 
         LinearLayout root = new LinearLayout(context);
         root.setOrientation(LinearLayout.VERTICAL);
@@ -34,14 +34,14 @@ public class HomeView extends FrameLayout {
 
         clockView = new TextView(context);
         clockView.setTextSize(64);
-        clockView.setTextColor(Color.LTGRAY);
+        clockView.setTextColor(context.getColor(R.color.foreground));
         clockView.setGravity(Gravity.CENTER);
         clockView.setTypeface(Typeface.create("sans-serif-thin", Typeface.NORMAL));
         root.addView(clockView);
 
         dateView = new TextView(context);
         dateView.setTextSize(18);
-        dateView.setTextColor(Color.DKGRAY);
+        dateView.setTextColor(context.getColor(R.color.foreground_dim));
         dateView.setGravity(Gravity.CENTER);
         root.addView(dateView);
 
@@ -85,7 +85,9 @@ public class HomeView extends FrameLayout {
             iconView.getLayoutParams().width = size;
             iconView.getLayoutParams().height = size;
 
-            model.loadIcon(item, iconView::setImageBitmap);
+            if (model != null) {
+                model.loadIcon(item, iconView::setImageBitmap);
+            }
             iconView.setOnClickListener(v -> {
                 Intent intent = getContext().getPackageManager().getLaunchIntentForPackage(item.packageName);
                 if (intent != null) getContext().startActivity(intent);
