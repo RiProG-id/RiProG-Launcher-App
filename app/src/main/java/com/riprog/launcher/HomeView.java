@@ -11,6 +11,7 @@ import android.view.GestureDetector;
 import android.view.Gravity;
 import android.view.MotionEvent;
 import android.view.View;
+import android.view.ViewConfiguration;
 import android.view.ViewGroup;
 import android.widget.FrameLayout;
 import android.widget.ImageView;
@@ -22,20 +23,24 @@ import java.util.Calendar;
 import java.util.List;
 
 public class HomeView extends FrameLayout {
+    public static final int GRID_COLUMNS = 4;
+    public static final int GRID_ROWS = 6;
+
     private final LinearLayout pagesContainer;
     private final PageIndicator pageIndicator;
     private final List<FrameLayout> pages = new ArrayList<>();
     private int currentPage = 0;
-    private final GestureDetector gestureDetector;
     private int accentColor = Color.WHITE;
-    private boolean isChildDragging = false;
+
+    private View draggingView = null;
+    private float lastX, lastY;
 
     public HomeView(Context context) {
         super(context);
-        setBackgroundResource(R.color.background);
 
         pagesContainer = new LinearLayout(context);
         pagesContainer.setOrientation(LinearLayout.HORIZONTAL);
+        pagesContainer.setPadding(0, dpToPx(48), 0, 0);
         addView(pagesContainer, new LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT));
 
         pageIndicator = new PageIndicator(context);
@@ -43,22 +48,6 @@ public class HomeView extends FrameLayout {
         indicatorParams.gravity = Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL;
         indicatorParams.bottomMargin = dpToPx(80);
         addView(pageIndicator, indicatorParams);
-
-        gestureDetector = new GestureDetector(context, new GestureDetector.SimpleOnGestureListener() {
-            @Override
-            public boolean onFling(MotionEvent e1, MotionEvent e2, float velocityX, float velocityY) {
-                if (Math.abs(velocityX) > Math.abs(velocityY)) {
-                    if (velocityX < -500 && currentPage < pages.size() - 1) {
-                        scrollToPage(currentPage + 1);
-                        return true;
-                    } else if (velocityX > 500 && currentPage > 0) {
-                        scrollToPage(currentPage - 1);
-                        return true;
-                    }
-                }
-                return false;
-            }
-        });
 
         // Add initial pages
         addPage();
@@ -81,77 +70,81 @@ public class HomeView extends FrameLayout {
         }
         FrameLayout page = pages.get(item.page);
 
-        LayoutParams lp = new LayoutParams(
-                item.width > 0 ? dpToPx(item.width) : LayoutParams.WRAP_CONTENT,
-                item.height > 0 ? dpToPx(item.height) : LayoutParams.WRAP_CONTENT);
-        view.setLayoutParams(lp);
-        view.setX(item.x);
-        view.setY(item.y);
+        updateViewPosition(item, view);
         view.setTag(item);
-
-        makeDraggable(view);
         page.addView(view);
     }
 
-    public void makeDraggable(View view) {
-        view.setOnTouchListener(new OnTouchListener() {
-            private float lastX, lastY;
-            private boolean isDragging = false;
+    public void updateViewPosition(HomeItem item, View view) {
+        int cellWidth = getWidth() / GRID_COLUMNS;
+        int cellHeight = getHeight() / GRID_ROWS;
 
-            @Override
-            public boolean onTouch(View v, MotionEvent event) {
-                switch (event.getAction()) {
-                    case MotionEvent.ACTION_DOWN:
-                        lastX = event.getRawX();
-                        lastY = event.getRawY();
-                        return true;
-                    case MotionEvent.ACTION_MOVE:
-                        float deltaX = event.getRawX() - lastX;
-                        float deltaY = event.getRawY() - lastY;
-                        if (!isDragging && (Math.abs(deltaX) > 10 || Math.abs(deltaY) > 10)) {
-                            isDragging = true;
-                            isChildDragging = true;
-                            v.performHapticFeedback(android.view.HapticFeedbackConstants.LONG_PRESS);
-                            v.animate().scaleX(1.05f).scaleY(1.05f).alpha(0.8f).setDuration(100).start();
-                        }
-                        if (isDragging) {
-                            v.setX(v.getX() + deltaX);
-                            v.setY(v.getY() + deltaY);
-                            lastX = event.getRawX();
-                            lastY = event.getRawY();
-                        }
-                        return true;
-                    case MotionEvent.ACTION_UP:
-                    case MotionEvent.ACTION_CANCEL:
-                        if (isDragging) {
-                            isDragging = false;
-                            isChildDragging = false;
-                            v.animate().scaleX(1.0f).scaleY(1.0f).alpha(1.0f).setDuration(100).start();
-                            v.performHapticFeedback(android.view.HapticFeedbackConstants.VIRTUAL_KEY);
-                            HomeItem item = (HomeItem) v.getTag();
-                            if (item != null) {
-                                item.x = (int) v.getX();
-                                item.y = (int) v.getY();
-                                // State persistence will be called from MainActivity or via a callback
-                                if (getContext() instanceof MainActivity) {
-                                    ((MainActivity) getContext()).saveHomeState();
-                                }
-                            }
-                        } else if (event.getAction() == MotionEvent.ACTION_UP) {
-                            v.performClick();
-                        }
-                        return true;
-                }
-                return false;
+        if (cellWidth == 0 || cellHeight == 0) {
+            post(() -> updateViewPosition(item, view));
+            return;
+        }
+
+        LayoutParams lp = new LayoutParams(cellWidth * item.spanX, cellHeight * item.spanY);
+        view.setLayoutParams(lp);
+        view.setX(item.col * cellWidth);
+        view.setY(item.row * cellHeight);
+    }
+
+    public void startDragging(View v, float x, float y) {
+        draggingView = v;
+        lastX = x;
+        lastY = y;
+        v.animate().scaleX(1.1f).scaleY(1.1f).alpha(0.8f).setDuration(150).start();
+        v.performHapticFeedback(android.view.HapticFeedbackConstants.LONG_PRESS);
+    }
+
+    public void handleDrag(float x, float y) {
+        if (draggingView != null) {
+            float dx = x - lastX;
+            float dy = y - lastY;
+            draggingView.setX(draggingView.getX() + dx);
+            draggingView.setY(draggingView.getY() + dy);
+            lastX = x;
+            lastY = y;
+        }
+    }
+
+    public void endDragging() {
+        if (draggingView != null) {
+            draggingView.animate().scaleX(1.0f).scaleY(1.0f).alpha(1.0f).setDuration(150).start();
+            HomeItem item = (HomeItem) draggingView.getTag();
+            if (item != null) {
+                snapToGrid(item, draggingView);
             }
-        });
+            draggingView = null;
+        }
     }
 
-    public int getCurrentPage() {
-        return currentPage;
+    private void snapToGrid(HomeItem item, View v) {
+        int cellWidth = getWidth() / GRID_COLUMNS;
+        int cellHeight = getHeight() / GRID_ROWS;
+
+        item.col = Math.max(0, Math.min(GRID_COLUMNS - item.spanX, Math.round(v.getX() / cellWidth)));
+        item.row = Math.max(0, Math.min(GRID_ROWS - item.spanY, Math.round(v.getY() / cellHeight)));
+
+        v.animate()
+                .x(item.col * cellWidth)
+                .y(item.row * cellHeight)
+                .setDuration(200)
+                .start();
+
+        if (getContext() instanceof MainActivity) {
+            ((MainActivity) getContext()).saveHomeState();
+        }
     }
 
-    private void scrollToPage(int page) {
+    public void swipePages(float dx) {
+        // Simple page swipe animation based on delta
+        // For now just handle the final page change
+    }
+
+    public void scrollToPage(int page) {
+        if (page < 0 || page >= pages.size()) return;
         currentPage = page;
         int targetX = page * getWidth();
         pagesContainer.animate()
@@ -162,23 +155,12 @@ public class HomeView extends FrameLayout {
         pageIndicator.setCurrentPage(page);
     }
 
-    @Override
-    public boolean onInterceptTouchEvent(MotionEvent ev) {
-        if (isChildDragging) return false;
-        return gestureDetector.onTouchEvent(ev);
+    public int getCurrentPage() {
+        return currentPage;
     }
 
-    @Override
-    public boolean onTouchEvent(MotionEvent event) {
-        return gestureDetector.onTouchEvent(event);
-    }
-
-    public void setFavorites(List<AppItem> favorites, LauncherModel model) {
-        // No-op in v2.1.0 freeform mode
-    }
-
-    public void setWidget(View widget) {
-        // No-op in v2.1.0, handled by freeform layout
+    public int getPageCount() {
+        return pages.size();
     }
 
     public void setAccentColor(int color) {
