@@ -15,6 +15,8 @@ public class SettingsManager {
     private static final String KEY_USAGE_PREFIX = "usage_";
     private static final String KEY_HOME_ITEMS = "home_items";
     private static final String KEY_FREEFORM_HOME = "freeform_home";
+    private static final String KEY_ICON_SCALE = "icon_scale";
+    private static final String KEY_THEME_MODE = "theme_mode";
 
     private final SharedPreferences prefs;
 
@@ -44,6 +46,22 @@ public class SettingsManager {
 
     public void setFreeformHome(boolean freeform) {
         prefs.edit().putBoolean(KEY_FREEFORM_HOME, freeform).apply();
+    }
+
+    public float getIconScale() {
+        return prefs.getFloat(KEY_ICON_SCALE, 1.0f);
+    }
+
+    public void setIconScale(float scale) {
+        prefs.edit().putFloat(KEY_ICON_SCALE, scale).apply();
+    }
+
+    public String getThemeMode() {
+        return prefs.getString(KEY_THEME_MODE, "system");
+    }
+
+    public void setThemeMode(String mode) {
+        prefs.edit().putString(KEY_THEME_MODE, mode).apply();
     }
 
     public void incrementUsage(String packageName) {
