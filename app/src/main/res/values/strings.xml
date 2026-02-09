@@ -37,4 +37,9 @@
     <string name="setting_scale">Icon Size &amp; Label Scale</string>
     <string name="setting_scale_summary">Scale icons and labels together. Affect both home screen and app drawer.</string>
     <string name="search_hint">Search apps&#8230;</string>
+
+    <string name="prompt_default_launcher_title">Set Default Launcher</string>
+    <string name="prompt_default_launcher_message">RiProG Launcher works best when set as your default home application.</string>
+    <string name="action_set_default">Set Default</string>
+    <string name="action_later">Later</string>
 </resources>
