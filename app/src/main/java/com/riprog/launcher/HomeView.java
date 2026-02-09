@@ -71,7 +71,7 @@ public class HomeView extends FrameLayout {
         indicatorParams.bottomMargin = dpToPx(80);
         addView(pageIndicator, indicatorParams);
 
-        // Add initial pages
+
         addPage();
         addPage();
 
@@ -91,7 +91,7 @@ public class HomeView extends FrameLayout {
         lp.bottomMargin = dpToPx(120);
         addView(hint, lp);
 
-        // Show occasionally (30% chance on startup)
+
         if (Math.random() < 0.3) {
             hint.animate().alpha(1f).setDuration(1000).setStartDelay(2000).withEndAction(() -> {
                 hint.animate().alpha(0f).setDuration(1000).setStartDelay(4000).withEndAction(() -> {
@@ -137,9 +137,9 @@ public class HomeView extends FrameLayout {
         if (item.type == HomeItem.Type.WIDGET) {
             lp = new LayoutParams(cellWidth * item.spanX, cellHeight * item.spanY);
         } else {
-            // Apps and other items have standard size unless freeform allows scaling (not requested yet)
+
             int size = getResources().getDimensionPixelSize(R.dimen.grid_icon_size);
-            lp = new LayoutParams(size * 2, size * 2); // Container size
+            lp = new LayoutParams(size * 2, size * 2);
         }
         view.setLayoutParams(lp);
 
@@ -225,8 +225,8 @@ public class HomeView extends FrameLayout {
     }
 
     public void swipePages(float dx) {
-        // Simple page swipe animation based on delta
-        // For now just handle the final page change
+
+
     }
 
     public void scrollToPage(int page) {
