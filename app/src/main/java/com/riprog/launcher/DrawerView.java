@@ -195,6 +195,7 @@ public class DrawerView extends LinearLayout {
     public void onOpen() {
         searchBar.setText("");
         searchBar.clearFocus();
+        adapter.notifyDataSetChanged();
     }
 
     private int dpToPx(int dp) {
@@ -240,6 +241,14 @@ public class DrawerView extends LinearLayout {
                 convertView.setTag(holder);
             } else {
                 holder = (ViewHolder) convertView.getTag();
+                int baseSize = getResources().getDimensionPixelSize(R.dimen.grid_icon_size);
+                int size = (int) (baseSize * scale);
+                if (holder.icon.getLayoutParams().width != size) {
+                    holder.icon.getLayoutParams().width = size;
+                    holder.icon.getLayoutParams().height = size;
+                    holder.icon.requestLayout();
+                    holder.label.setTextSize(10 * scale);
+                }
             }
 
             AppItem item = filteredApps.get(position);

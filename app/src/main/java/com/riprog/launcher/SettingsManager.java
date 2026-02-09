@@ -17,6 +17,9 @@ public class SettingsManager {
     private static final String KEY_FREEFORM_HOME = "freeform_home";
     private static final String KEY_ICON_SCALE = "icon_scale";
     private static final String KEY_THEME_MODE = "theme_mode";
+    private static final String KEY_DRAWER_OPEN_COUNT = "drawer_open_count";
+    private static final String KEY_DEFAULT_PROMPT_TIMESTAMP = "default_prompt_ts";
+    private static final String KEY_DEFAULT_PROMPT_COUNT = "default_prompt_count";
 
     private final SharedPreferences prefs;
 
@@ -71,6 +74,30 @@ public class SettingsManager {
 
     public int getUsage(String packageName) {
         return prefs.getInt(KEY_USAGE_PREFIX + packageName, 0);
+    }
+
+    public int getDrawerOpenCount() {
+        return prefs.getInt(KEY_DRAWER_OPEN_COUNT, 0);
+    }
+
+    public void incrementDrawerOpenCount() {
+        prefs.edit().putInt(KEY_DRAWER_OPEN_COUNT, getDrawerOpenCount() + 1).apply();
+    }
+
+    public long getLastDefaultPromptTimestamp() {
+        return prefs.getLong(KEY_DEFAULT_PROMPT_TIMESTAMP, 0);
+    }
+
+    public void setLastDefaultPromptTimestamp(long ts) {
+        prefs.edit().putLong(KEY_DEFAULT_PROMPT_TIMESTAMP, ts).apply();
+    }
+
+    public int getDefaultPromptCount() {
+        return prefs.getInt(KEY_DEFAULT_PROMPT_COUNT, 0);
+    }
+
+    public void incrementDefaultPromptCount() {
+        prefs.edit().putInt(KEY_DEFAULT_PROMPT_COUNT, getDefaultPromptCount() + 1).apply();
     }
 
     public void saveHomeItems(List<HomeItem> items) {

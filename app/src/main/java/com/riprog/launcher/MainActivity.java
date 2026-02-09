@@ -101,7 +101,82 @@ public class MainActivity extends Activity {
         loadApps();
         registerAppInstallReceiver();
 
-        homeView.post(this::restoreHomeState);
+        homeView.post(() -> {
+            restoreHomeState();
+            showDefaultLauncherPrompt();
+        });
+    }
+
+    private boolean isDefaultLauncher() {
+        Intent intent = new Intent(Intent.ACTION_MAIN);
+        intent.addCategory(Intent.CATEGORY_HOME);
+        android.content.pm.ResolveInfo resolveInfo = getPackageManager().resolveActivity(intent, android.content.pm.PackageManager.MATCH_DEFAULT_ONLY);
+        if (resolveInfo == null || resolveInfo.activityInfo == null) return false;
+        return getPackageName().equals(resolveInfo.activityInfo.packageName);
+    }
+
+    private void showDefaultLauncherPrompt() {
+        if (isDefaultLauncher()) return;
+
+        long lastShown = settingsManager.getLastDefaultPromptTimestamp();
+        int count = settingsManager.getDefaultPromptCount();
+
+        // Show every 24 hours, max 5 times
+        if (System.currentTimeMillis() - lastShown < 24 * 60 * 60 * 1000) return;
+        if (count >= 5) return;
+
+        LinearLayout prompt = new LinearLayout(this);
+        prompt.setOrientation(LinearLayout.VERTICAL);
+        prompt.setBackgroundResource(R.drawable.glass_bg);
+        prompt.setPadding(dpToPx(24), dpToPx(24), dpToPx(24), dpToPx(24));
+        prompt.setGravity(Gravity.CENTER);
+        prompt.setElevation(dpToPx(8));
+
+        TextView title = new TextView(this);
+        title.setText(R.string.prompt_default_launcher_title);
+        title.setTextSize(18);
+        title.setTypeface(null, Typeface.BOLD);
+        title.setTextColor(getColor(R.color.foreground));
+        prompt.addView(title);
+
+        TextView message = new TextView(this);
+        message.setText(R.string.prompt_default_launcher_message);
+        message.setPadding(0, dpToPx(8), 0, dpToPx(16));
+        message.setGravity(Gravity.CENTER);
+        message.setTextColor(getColor(R.color.foreground_dim));
+        prompt.addView(message);
+
+        LinearLayout buttons = new LinearLayout(this);
+        buttons.setOrientation(LinearLayout.HORIZONTAL);
+        buttons.setGravity(Gravity.END);
+
+        TextView btnLater = new TextView(this);
+        btnLater.setText(R.string.action_later);
+        btnLater.setPadding(dpToPx(16), dpToPx(8), dpToPx(16), dpToPx(8));
+        btnLater.setTextColor(getColor(R.color.foreground));
+        btnLater.setOnClickListener(v -> mainLayout.removeView(prompt));
+        buttons.addView(btnLater);
+
+        TextView btnSet = new TextView(this);
+        btnSet.setText(R.string.action_set_default);
+        btnSet.setPadding(dpToPx(16), dpToPx(8), dpToPx(16), dpToPx(8));
+        btnSet.setTextColor(getColor(android.R.color.holo_blue_dark));
+        btnSet.setTypeface(null, Typeface.BOLD);
+        btnSet.setOnClickListener(v -> {
+            mainLayout.removeView(prompt);
+            Intent intent = new Intent(android.provider.Settings.ACTION_HOME_SETTINGS);
+            startActivity(intent);
+        });
+        buttons.addView(btnSet);
+
+        prompt.addView(buttons);
+
+        FrameLayout.LayoutParams lp = new FrameLayout.LayoutParams(
+                dpToPx(300), ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.CENTER);
+        mainLayout.addView(prompt, lp);
+
+        settingsManager.setLastDefaultPromptTimestamp(System.currentTimeMillis());
+        settingsManager.incrementDefaultPromptCount();
     }
 
     public void saveHomeState() {
@@ -220,6 +295,9 @@ public class MainActivity extends Activity {
             ((ViewGroup) view.getParent()).removeView(view);
         }
         saveHomeState();
+        if (homeView != null) {
+            homeView.refreshIcons(model, allApps);
+        }
     }
 
     private void showAppInfo(HomeItem item) {
@@ -437,6 +515,11 @@ public class MainActivity extends Activity {
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode == 100) {
+            loadApps();
+            if (homeView != null) homeView.refreshLayout();
+            return;
+        }
         if (resultCode == RESULT_OK && data != null) {
             if (requestCode == REQUEST_PICK_APPWIDGET) {
                 configureWidget(data);
@@ -671,6 +754,7 @@ public class MainActivity extends Activity {
             dragOverlay.setBackgroundResource(R.drawable.glass_bg);
             dragOverlay.setGravity(Gravity.CENTER);
             dragOverlay.setVisibility(View.GONE);
+            dragOverlay.setElevation(dpToPx(8));
 
             ivRemove = new ImageView(getContext());
             ivRemove.setImageResource(R.drawable.ic_remove);
@@ -684,7 +768,9 @@ public class MainActivity extends Activity {
             ivAppInfo.setContentDescription(getContext().getString(R.string.drag_app_info));
             dragOverlay.addView(ivAppInfo);
 
-            addView(dragOverlay, new FrameLayout.LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT, Gravity.TOP));
+            FrameLayout.LayoutParams lp = new FrameLayout.LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT, Gravity.TOP | Gravity.CENTER_HORIZONTAL);
+            lp.topMargin = dpToPx(48);
+            addView(dragOverlay, lp);
         }
 
         @Override
@@ -813,11 +899,13 @@ public class MainActivity extends Activity {
                         if (dragOverlay != null) {
                             int overlayHeight = dragOverlay.getHeight();
                             int overlayWidth = dragOverlay.getWidth();
+                            float left = (getWidth() - overlayWidth) / 2f;
                             dragOverlay.setVisibility(View.GONE);
                             ivRemove.setBackgroundColor(Color.TRANSPARENT);
                             ivAppInfo.setBackgroundColor(Color.TRANSPARENT);
 
-                            if (event.getY() < overlayHeight + touchSlop * 2) {
+                            if (event.getY() < dragOverlay.getBottom() + touchSlop * 2 &&
+                                event.getX() >= left && event.getX() <= left + overlayWidth) {
                                 HomeItem item = (HomeItem) touchedView.getTag();
                                 if (item != null) {
                                     boolean isApp = ivAppInfo.getVisibility() == View.VISIBLE;
@@ -825,7 +913,7 @@ public class MainActivity extends Activity {
                                         removeHomeItem(item, touchedView);
                                     } else {
                                         float x = event.getX();
-                                        if (x < overlayWidth / 2f) {
+                                        if (x < left + overlayWidth / 2f) {
                                             removeHomeItem(item, touchedView);
                                         } else {
                                             showAppInfo(item);
@@ -894,6 +982,7 @@ public class MainActivity extends Activity {
         public void openDrawer() {
             if (isDrawerOpen) return;
             isDrawerOpen = true;
+            settingsManager.incrementDrawerOpenCount();
             drawerView.setVisibility(View.VISIBLE);
             drawerView.setAlpha(0f);
             drawerView.setTranslationY(getHeight() / 4f);
@@ -930,16 +1019,17 @@ public class MainActivity extends Activity {
 
             int overlayHeight = dragOverlay.getHeight();
             int overlayWidth = dragOverlay.getWidth();
+            float left = (getWidth() - overlayWidth) / 2f;
             boolean isApp = ivAppInfo.getVisibility() == View.VISIBLE;
 
             ivRemove.setBackgroundColor(Color.TRANSPARENT);
             ivAppInfo.setBackgroundColor(Color.TRANSPARENT);
 
-            if (y < overlayHeight + touchSlop * 2) {
+            if (y < dragOverlay.getBottom() + touchSlop * 2 && x >= left && x <= left + overlayWidth) {
                 if (!isApp) {
                     ivRemove.setBackgroundColor(0x40FFFFFF);
                 } else {
-                    if (x < overlayWidth / 2f) {
+                    if (x < left + overlayWidth / 2f) {
                         ivRemove.setBackgroundColor(0x40FFFFFF);
                     } else {
                         ivAppInfo.setBackgroundColor(0x40FFFFFF);

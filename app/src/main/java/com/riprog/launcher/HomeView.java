@@ -33,6 +33,8 @@ public class HomeView extends FrameLayout {
     private final SettingsManager settingsManager;
     private int currentPage = 0;
     private int accentColor = Color.WHITE;
+    private LauncherModel model;
+    private List<AppItem> allApps;
 
     private View draggingView = null;
     private float lastX, lastY;
@@ -77,6 +79,8 @@ public class HomeView extends FrameLayout {
     }
 
     private void addDrawerHint() {
+        if (settingsManager.getDrawerOpenCount() >= 5) return;
+
         TextView hint = new TextView(getContext());
         hint.setText(getContext().getString(R.string.drawer_hint));
         hint.setTextSize(12);
@@ -90,7 +94,9 @@ public class HomeView extends FrameLayout {
         // Show occasionally (30% chance on startup)
         if (Math.random() < 0.3) {
             hint.animate().alpha(1f).setDuration(1000).setStartDelay(2000).withEndAction(() -> {
-                hint.animate().alpha(0f).setDuration(1000).setStartDelay(4000).start();
+                hint.animate().alpha(0f).setDuration(1000).setStartDelay(4000).withEndAction(() -> {
+                    removeView(hint);
+                }).start();
             }).start();
         }
     }
@@ -183,6 +189,9 @@ public class HomeView extends FrameLayout {
             draggingView = null;
             isEdgeScrolling = false;
             edgeScrollHandler.removeCallbacks(edgeScrollRunnable);
+            if (model != null && allApps != null) {
+                refreshIcons(model, allApps);
+            }
         }
     }
 
@@ -228,6 +237,11 @@ public class HomeView extends FrameLayout {
                 .translationX(-targetX)
                 .setDuration(300)
                 .setInterpolator(new android.view.animation.DecelerateInterpolator())
+                .withEndAction(() -> {
+                    if (model != null && allApps != null) {
+                        refreshIcons(model, allApps);
+                    }
+                })
                 .start();
         pageIndicator.setCurrentPage(page);
     }
@@ -241,6 +255,12 @@ public class HomeView extends FrameLayout {
     }
 
     public void refreshIcons(LauncherModel model, List<AppItem> allApps) {
+        this.model = model;
+        this.allApps = allApps;
+        float scale = settingsManager.getIconScale();
+        int baseSize = getResources().getDimensionPixelSize(R.dimen.grid_icon_size);
+        int size = (int) (baseSize * scale);
+
         for (FrameLayout page : pages) {
             for (int i = 0; i < page.getChildCount(); i++) {
                 View view = page.getChildAt(i);
@@ -250,6 +270,18 @@ public class HomeView extends FrameLayout {
                         ViewGroup container = (ViewGroup) view;
                         ImageView iv = findImageView(container);
                         TextView tv = findTextView(container);
+
+                        if (iv != null) {
+                            ViewGroup.LayoutParams lp = iv.getLayoutParams();
+                            if (lp.width != size) {
+                                lp.width = size;
+                                lp.height = size;
+                                iv.setLayoutParams(lp);
+                            }
+                        }
+                        if (tv != null) {
+                            tv.setTextSize(10 * scale);
+                        }
 
                         AppItem app = null;
                         for (AppItem a : allApps) {
