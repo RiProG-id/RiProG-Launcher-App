@@ -1,73 +1,61 @@
 # RiProG Launcher
 
-Ultra-lightweight Android launcher — minimal, fast, and distraction-free.
+RiProG Launcher is an ultra-lightweight, high-performance Android launcher designed for simplicity, speed, and a distraction-free user experience.
 
 ---
 
-## 🚀 Features
+## 🚀 Key Features
 
-### Ultra-Lightweight & Fast
-Minimal APK size and low RAM usage, optimized for speed.
+### Exceptional Performance
+- **Minimal Footprint**: Optimized APK size and extremely low RAM utilization.
+- **Fast Execution**: Engineered for rapid app launching and smooth navigation.
 
-### Liquid Glass UI
-Consistent frosted glass aesthetic across app drawer, settings, and menus.
+### Liquid Glass Design
+- **Consistent Aesthetic**: Features a sophisticated frosted glass UI across the app drawer, settings, and menus.
+- **Visual Harmony**: Transparent and translucent elements that adapt to your wallpaper.
 
-### App Drawer with Search & Quick Index
-Quickly find and launch apps with an alphabetical scroll bar.
+### Advanced App Drawer
+- **Intelligent Search**: Quickly locate applications with a built-in search bar.
+- **Quick Index**: Alphabetical scroll bar for efficient navigation through large app lists.
 
-### Custom Widget Picker
-Grouped list by application with visual shape previews.
+### Customization & Flexibility
+- **Widget Support**: Grouped widget selection with visual shape previews for easy identification.
+- **Freeform Home**: Optional mode to bypass grid constraints for precise item placement.
+- **Dynamic Scaling**: Real-time adjustment of icon and label sizes to suit your preferences.
 
-### Freeform Home
-Optional toggle to disable grid constraints for free item placement.
-
-### Icon & Label Scaling
-Smooth real-time adjustment of icon and label sizes.
-
-### Theme Support
-Light, Dark, and Follow System modes that adapt dynamically.
-
-### Gesture Support
-Swipe up to open app drawer, swipe down to close.
+### Intelligent Theming
+- **Adaptive Modes**: Support for Light, Dark, and System-following themes that transition seamlessly.
 
 ---
 
-## 🛠 Technical Details
+## 🛠 Technical Specifications
 
-- **Min SDK**: 23 (Android 6.0)
-- **Target SDK**: 34 (Android 14)
-- **Language**: Java 17
-- **Architecture**: Programmatic UI (No XML inflation overhead)
-
----
-
-## 🔗 Links
-
-- **GitHub**: [RiProG-id/RiProG-Launcher-App](https://github.com/RiProG-id/RiProG-Launcher-App)
-- **Telegram Channel**: [@RiOpSo](https://t.me/RiOpSo)
-- **Telegram Group**: [@RiOpSoDisc](https://t.me/RiOpSoDisc)
+- **Minimum SDK**: API 23 (Android 6.0)
+- **Target SDK**: API 35 (Android 15)
+- **Implementation**: Fully programmatic UI to eliminate XML inflation overhead and maximize performance.
+- **Memory Management**: Active cache management and background task optimization.
 
 ---
 
-## 💖 Donate / Support
+## 🔗 Project Links
 
-If you want to support and help my work, you can donate through:
+- **GitHub Repository**: [RiProG-id/RiProG-Launcher-App](https://github.com/RiProG-id/RiProG-Launcher-App)
+- **Telegram Official Channel**: [@RiOpSo](https://t.me/RiOpSo)
+- **Telegram Discussion Group**: [@RiOpSoDisc](https://t.me/RiOpSoDisc)
 
-### E-Wallet
-- **Dana / GoPay / ShopeePay**: `0831-4095-0951`
+---
 
-### Bank
+## 💖 Support the Developer
+
+If you find RiProG Launcher useful, please consider supporting its ongoing development:
+
+### Financial Contributions
+- **E-Wallet (Dana / GoPay / ShopeePay)**: `0831-4095-0951`
 - **Bank Jago Syariah**: `503442488516`
-
-### Online Support
 - **PayPal**: [paypal.me/RiProG](https://paypal.me/RiProG)
-- **Sociabuzz**: [sociabuzz.com/riprog/tribe](https://sociabuzz.com/riprog/tribe)
+- **Sociabuzz Tribe**: [sociabuzz.com/riprog/tribe](https://sociabuzz.com/riprog/tribe)
 
----
-
-## 🎁 Free Donation
-
-Support me for FREE by skipping ads:
-
+### Free Support
+You can also support the project at no cost by visiting these links:
 - **Safelinku**: [https://sfl.gl/NTX6](https://sfl.gl/NTX6)
 - **Arahlink**: [https://arahlink.id/WAUR](https://arahlink.id/WAUR)

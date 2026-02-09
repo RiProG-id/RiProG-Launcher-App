@@ -121,6 +121,7 @@ public class MainActivity extends Activity {
         long lastShown = settingsManager.getLastDefaultPromptTimestamp();
         int count = settingsManager.getDefaultPromptCount();
 
+
         // Show every 24 hours, max 5 times
         if (System.currentTimeMillis() - lastShown < 24 * 60 * 60 * 1000) return;
         if (count >= 5) return;
@@ -252,11 +253,16 @@ public class MainActivity extends Activity {
     }
 
     private View createWidgetView(HomeItem item) {
+        if (appWidgetManager == null || item == null) return null;
         AppWidgetProviderInfo info = appWidgetManager.getAppWidgetInfo(item.widgetId);
         if (info == null) return null;
-        AppWidgetHostView hostView = appWidgetHost.createView(this, item.widgetId, info);
-        hostView.setAppWidget(item.widgetId, info);
-        return hostView;
+        try {
+            AppWidgetHostView hostView = appWidgetHost.createView(this, item.widgetId, info);
+            hostView.setAppWidget(item.widgetId, info);
+            return hostView;
+        } catch (Exception e) {
+            return null;
+        }
     }
 
     private void showWidgetOptions(HomeItem item, View hostView) {
@@ -419,7 +425,7 @@ public class MainActivity extends Activity {
             startActivity(intent);
         } catch (Exception e) {
             try {
-                // Fallback to gallery/internal chooser
+
                 Intent pickIntent = new Intent(Intent.ACTION_GET_CONTENT);
                 pickIntent.setType("image/*");
                 startActivity(Intent.createChooser(pickIntent, getString(R.string.title_select_wallpaper)));
@@ -488,6 +494,14 @@ public class MainActivity extends Activity {
     }
 
     @Override
+    public void onTrimMemory(int level) {
+        super.onTrimMemory(level);
+        if (model != null) {
+            model.onTrimMemory(level);
+        }
+    }
+
+    @Override
     protected void onResume() {
         super.onResume();
         if (homeView != null) homeView.refreshLayout();
@@ -552,7 +566,9 @@ public class MainActivity extends Activity {
     }
 
     public void pickWidget() {
+        if (appWidgetManager == null) return;
         List<AppWidgetProviderInfo> providers = appWidgetManager.getInstalledProviders();
+        if (providers == null) return;
         Map<String, List<AppWidgetProviderInfo>> grouped = new HashMap<>();
         for (AppWidgetProviderInfo info : providers) {
             String pkg = info.provider.getPackageName();
@@ -596,7 +612,7 @@ public class MainActivity extends Activity {
                 item.setClickable(true);
                 item.setBackgroundResource(android.R.drawable.list_selector_background);
 
-                // Visual preview
+
                 ImageView preview = new ImageView(this);
                 int spanX = Math.max(1, info.minWidth / (getResources().getDisplayMetrics().widthPixels / HomeView.GRID_COLUMNS));
                 int spanY = Math.max(1, info.minHeight / (getResources().getDisplayMetrics().heightPixels / HomeView.GRID_ROWS));
@@ -784,7 +800,7 @@ public class MainActivity extends Activity {
                     case MotionEvent.ACTION_MOVE:
                         float dy = ev.getY() - startY;
                         float dx = ev.getX() - startX;
-                        // Swipe down to close (more sensitive if at top)
+
                         if (dy > touchSlop && dy > Math.abs(dx)) {
                             if (drawerView.isAtTop() || dy > touchSlop * 4) {
                                 return true;
@@ -811,7 +827,7 @@ public class MainActivity extends Activity {
                 case MotionEvent.ACTION_MOVE:
                     float dx = ev.getX() - startX;
                     float dy = ev.getY() - startY;
-                    // Explicitly intercept upward swipe for drawer
+
                     if (dy < -touchSlop && Math.abs(dy) > Math.abs(dx)) {
                         longPressHandler.removeCallbacks(longPressRunnable);
                         return true;
@@ -828,7 +844,7 @@ public class MainActivity extends Activity {
                 case MotionEvent.ACTION_CANCEL:
                     if (isDragging) return true;
                     long duration = System.currentTimeMillis() - downTime;
-                    if (duration < 80) { // Accidental touch/debounce
+                            if (duration < 80) { // Accidental touch/debounce
                         longPressHandler.removeCallbacks(longPressRunnable);
                         return false;
                     }
@@ -840,7 +856,7 @@ public class MainActivity extends Activity {
         @Override
         public boolean onTouchEvent(MotionEvent event) {
             if (isDrawerOpen) {
-                // Handle swipe down to close drawer
+
                 if (event.getAction() == MotionEvent.ACTION_DOWN) {
                     startX = event.getX();
                     startY = event.getY();
@@ -859,8 +875,8 @@ public class MainActivity extends Activity {
 
             switch (event.getAction()) {
                 case MotionEvent.ACTION_DOWN:
-                    // Should not happen as we return false in intercept,
-                    // unless no child handles it.
+
+
                     return true;
 
                 case MotionEvent.ACTION_MOVE:
@@ -923,10 +939,10 @@ public class MainActivity extends Activity {
                                 }
                                 homeView.cancelDragging();
                             } else {
-                                // Dropped on home, check if valid placement
-                                // For now, we assume any drop on home is valid,
-                                // but we should check if it's over the drawer or something?
-                                // Actually, homeView.endDragging handles snap.
+
+
+
+
                                 homeView.endDragging();
                             }
                         } else {

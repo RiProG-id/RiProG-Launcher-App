@@ -39,7 +39,7 @@ public class LauncherModel {
         this.pm = context.getPackageManager();
 
         final int maxMemory = (int) (Runtime.getRuntime().maxMemory() / 1024);
-        final int cacheSize = maxMemory / 8;
+        final int cacheSize = Math.min(24 * 1024, maxMemory / 10);
         iconCache = new LruCache<String, Bitmap>(cacheSize) {
             @Override
             protected int sizeOf(String key, Bitmap bitmap) {
@@ -136,7 +136,7 @@ public class LauncherModel {
     private Bitmap drawableToBitmap(Drawable drawable) {
         if (drawable == null) return null;
 
-        // Use a consistent size for all icons (192x192 for high quality)
+
         int size = 192;
 
         try {
@@ -146,7 +146,7 @@ public class LauncherModel {
             drawable.draw(canvas);
             return bitmap;
         } catch (OutOfMemoryError e) {
-            // Fallback for low-memory situations
+
             if (drawable instanceof BitmapDrawable) {
                 return ((BitmapDrawable) drawable).getBitmap();
             }

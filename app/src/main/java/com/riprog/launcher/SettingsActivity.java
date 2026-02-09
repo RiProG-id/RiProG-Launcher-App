@@ -212,9 +212,9 @@ public class SettingsActivity extends Activity {
         toggle.setChecked(settingsManager.isFreeformHome());
         toggle.setOnCheckedChangeListener((v, isChecked) -> {
             settingsManager.setFreeformHome(isChecked);
-            // We need to refresh HomeView when we go back.
-            // recreate() helps update this Activity's UI if needed,
-            // but HomeView will refresh in its onResume.
+
+
+
         });
         item.addView(toggle);
 

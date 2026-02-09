@@ -128,19 +128,31 @@ public class SettingsManager {
             JSONArray array = new JSONArray(json);
             for (int i = 0; i < array.length(); i++) {
                 JSONObject obj = array.getJSONObject(i);
+                if (!obj.has("type")) continue;
                 HomeItem item = new HomeItem();
-                item.type = HomeItem.Type.valueOf(obj.getString("type"));
-                item.packageName = obj.optString("packageName", null);
-                item.className = obj.optString("className", null);
-                // Fallback to x/y if col/row missing (for migration)
-                item.col = (float) obj.optDouble("col", obj.optDouble("x", 0) / 100.0);
-                item.row = (float) obj.optDouble("row", obj.optDouble("y", 0) / 100.0);
+                try {
+                    item.type = HomeItem.Type.valueOf(obj.getString("type"));
+                } catch (Exception e) {
+                    continue;
+                }
+                item.packageName = obj.optString("packageName", "");
+                item.className = obj.optString("className", "");
+                if (obj.has("col")) {
+                    item.col = (float) obj.optDouble("col", 0.0);
+                } else {
+                    item.col = (float) (obj.optDouble("x", 0.0) / 100.0);
+                }
+                if (obj.has("row")) {
+                    item.row = (float) obj.optDouble("row", 0.0);
+                } else {
+                    item.row = (float) (obj.optDouble("y", 0.0) / 100.0);
+                }
                 item.spanX = obj.optInt("spanX", obj.optInt("width", 100) / 100);
                 item.spanY = obj.optInt("spanY", obj.optInt("height", 100) / 100);
                 if (item.spanX <= 0) item.spanX = 1;
                 if (item.spanY <= 0) item.spanY = 1;
-                item.page = obj.getInt("page");
-                item.widgetId = obj.getInt("widgetId");
+                item.page = obj.optInt("page", 0);
+                item.widgetId = obj.optInt("widgetId", -1);
                 items.add(item);
             }
         } catch (Exception ignored) {}
