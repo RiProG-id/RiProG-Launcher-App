@@ -305,6 +305,7 @@ public class MainActivity extends Activity {
         }
         saveHomeState();
         if (homeView != null) {
+            homeView.cleanupEmptyPages();
             homeView.refreshIcons(model, allApps);
         }
     }
@@ -364,10 +365,9 @@ public class MainActivity extends Activity {
         String[] options = {
                 getString(R.string.menu_widgets),
                 getString(R.string.menu_wallpaper),
-                getString(R.string.menu_settings),
-                getString(R.string.menu_layout)
+                getString(R.string.menu_settings)
         };
-        int[] icons = {R.drawable.ic_widgets, R.drawable.ic_wallpaper, R.drawable.ic_settings, R.drawable.ic_layout};
+        int[] icons = {R.drawable.ic_widgets, R.drawable.ic_wallpaper, R.drawable.ic_settings};
 
         ArrayAdapter<String> adapter = new ArrayAdapter<String>(this, android.R.layout.select_dialog_item, android.R.id.text1, options) {
             @Override
@@ -394,7 +394,6 @@ public class MainActivity extends Activity {
                         break;
                     case 1: openWallpaperPicker(); break;
                     case 2: openSettings(); break;
-                    case 3: showLayoutOptions(); break;
                 }
             }).create();
         dialog.show();
@@ -441,22 +440,6 @@ public class MainActivity extends Activity {
     private void openSettings() {
         Intent intent = new Intent(this, SettingsActivity.class);
         startActivityForResult(intent, 100);
-    }
-
-    private void showLayoutOptions() {
-        String[] options = {getString(R.string.layout_add_page), getString(R.string.layout_remove_page)};
-        AlertDialog dialog = new AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert)
-            .setTitle(R.string.menu_layout)
-            .setItems(options, (d, which) -> {
-                if (which == 0) {
-                    homeView.addPage();
-                    Toast.makeText(this, getString(R.string.page_added), Toast.LENGTH_SHORT).show();
-                } else {
-                    Toast.makeText(this, getString(R.string.remove_page_not_implemented), Toast.LENGTH_SHORT).show();
-                }
-            }).create();
-        dialog.show();
-        if (dialog.getWindow() != null) dialog.getWindow().setBackgroundDrawableResource(R.drawable.glass_bg);
     }
 
     private void applyDynamicColors() {
