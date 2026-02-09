@@ -21,7 +21,9 @@ import android.widget.TextView;
 
 import java.util.ArrayList;
 import java.util.Calendar;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 public class HomeView extends FrameLayout {
     public static final int GRID_COLUMNS = 4;
@@ -160,6 +162,7 @@ public class HomeView extends FrameLayout {
     }
 
     public void addItemView(HomeItem item, View view) {
+        if (item == null || view == null) return;
         while (item.page >= pages.size()) {
             addPage();
         }
@@ -364,6 +367,13 @@ public class HomeView extends FrameLayout {
         int baseSize = getResources().getDimensionPixelSize(R.dimen.grid_icon_size);
         int size = (int) (baseSize * scale);
 
+        Map<String, AppItem> appMap = new HashMap<>();
+        if (allApps != null) {
+            for (AppItem a : allApps) {
+                appMap.put(a.packageName, a);
+            }
+        }
+
         for (FrameLayout page : pages) {
             for (int i = 0; i < page.getChildCount(); i++) {
                 View view = page.getChildAt(i);
@@ -387,13 +397,7 @@ public class HomeView extends FrameLayout {
                             tv.setVisibility(settingsManager.isHideLabels() ? View.GONE : View.VISIBLE);
                         }
 
-                        AppItem app = null;
-                        for (AppItem a : allApps) {
-                            if (a.packageName.equals(item.packageName)) {
-                                app = a;
-                                break;
-                            }
-                        }
+                        AppItem app = appMap.get(item.packageName);
 
                         if (iv != null && app != null) {
                             final AppItem finalApp = app;

@@ -212,6 +212,7 @@ public class DrawerView extends LinearLayout {
     private static class ViewHolder {
         ImageView icon;
         TextView label;
+        float lastScale;
     }
 
     private class AppAdapter extends BaseAdapter {
@@ -244,16 +245,21 @@ public class DrawerView extends LinearLayout {
                 holder = new ViewHolder();
                 holder.icon = icon;
                 holder.label = label;
+                holder.lastScale = scale;
                 convertView.setTag(holder);
             } else {
                 holder = (ViewHolder) convertView.getTag();
-                int baseSize = getResources().getDimensionPixelSize(R.dimen.grid_icon_size);
-                int size = (int) (baseSize * scale);
-                if (holder.icon.getLayoutParams().width != size) {
-                    holder.icon.getLayoutParams().width = size;
-                    holder.icon.getLayoutParams().height = size;
-                    holder.icon.requestLayout();
+                if (holder.lastScale != scale) {
+                    int baseSize = getResources().getDimensionPixelSize(R.dimen.grid_icon_size);
+                    int size = (int) (baseSize * scale);
+                    ViewGroup.LayoutParams lp = holder.icon.getLayoutParams();
+                    if (lp.width != size) {
+                        lp.width = size;
+                        lp.height = size;
+                        holder.icon.setLayoutParams(lp);
+                    }
                     holder.label.setTextSize(10 * scale);
+                    holder.lastScale = scale;
                 }
             }
 

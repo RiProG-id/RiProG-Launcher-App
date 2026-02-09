@@ -121,8 +121,6 @@ public class MainActivity extends Activity {
         long lastShown = settingsManager.getLastDefaultPromptTimestamp();
         int count = settingsManager.getDefaultPromptCount();
 
-
-        // Show every 24 hours, max 5 times
         if (System.currentTimeMillis() - lastShown < 24 * 60 * 60 * 1000) return;
         if (count >= 5) return;
 
@@ -200,6 +198,7 @@ public class MainActivity extends Activity {
     }
 
     private void renderHomeItem(HomeItem item) {
+        if (item == null) return;
         View view = null;
         switch (item.type) {
             case APP:
@@ -839,7 +838,7 @@ public class MainActivity extends Activity {
                     if (Math.abs(dx) > touchSlop || Math.abs(dy) > touchSlop) {
                         longPressHandler.removeCallbacks(longPressRunnable);
                         if (!longPressTriggered) {
-                            return true; // Intercept for other swipes
+                            return true;
                         }
                     }
                     return isDragging;
@@ -848,7 +847,7 @@ public class MainActivity extends Activity {
                 case MotionEvent.ACTION_CANCEL:
                     if (isDragging) return true;
                     long duration = System.currentTimeMillis() - downTime;
-                            if (duration < 80) { // Accidental touch/debounce
+                    if (duration < 80) {
                         longPressHandler.removeCallbacks(longPressRunnable);
                         return false;
                     }
