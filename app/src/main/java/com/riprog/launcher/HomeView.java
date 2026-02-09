@@ -291,6 +291,7 @@ public class HomeView extends FrameLayout {
                         }
                         if (tv != null) {
                             tv.setTextSize(10 * scale);
+                            tv.setVisibility(settingsManager.isHideLabels() ? View.GONE : View.VISIBLE);
                         }
 
                         AppItem app = null;
