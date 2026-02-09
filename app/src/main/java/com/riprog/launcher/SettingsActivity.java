@@ -4,8 +4,10 @@ import android.app.Activity;
 import android.app.AlertDialog;
 import android.app.UiModeManager;
 import android.content.Context;
+import android.content.res.ColorStateList;
 import android.graphics.Color;
 import android.graphics.drawable.GradientDrawable;
+import android.graphics.drawable.RippleDrawable;
 import android.os.Bundle;
 import android.text.method.LinkMovementMethod;
 import android.text.util.Linkify;
@@ -186,14 +188,27 @@ public class SettingsActivity extends Activity {
         }
     }
 
+    private void applySettingItemStyle(LinearLayout item) {
+        item.setClickable(true);
+        item.setFocusable(true);
+
+        float radius = dpToPx(12);
+        GradientDrawable mask = new GradientDrawable();
+        mask.setColor(Color.BLACK);
+        mask.setCornerRadius(radius);
+
+        item.setBackground(new RippleDrawable(
+                ColorStateList.valueOf(getColor(R.color.search_background)),
+                null,
+                mask
+        ));
+    }
+
     private void addFreeformSetting(LinearLayout parent) {
         LinearLayout item = new LinearLayout(this);
         item.setOrientation(LinearLayout.HORIZONTAL);
         item.setGravity(Gravity.CENTER_VERTICAL);
-        item.setPadding(0, dpToPx(16), 0, dpToPx(16));
-        item.setClickable(true);
-        item.setFocusable(true);
-        item.setBackgroundResource(android.R.drawable.list_selector_background);
+        applySettingItemStyle(item);
 
         LinearLayout textLayout = new LinearLayout(this);
         textLayout.setOrientation(LinearLayout.VERTICAL);
@@ -230,10 +245,7 @@ public class SettingsActivity extends Activity {
         LinearLayout item = new LinearLayout(this);
         item.setOrientation(LinearLayout.HORIZONTAL);
         item.setGravity(Gravity.CENTER_VERTICAL);
-        item.setPadding(0, dpToPx(16), 0, dpToPx(16));
-        item.setClickable(true);
-        item.setFocusable(true);
-        item.setBackgroundResource(android.R.drawable.list_selector_background);
+        applySettingItemStyle(item);
 
         LinearLayout textLayout = new LinearLayout(this);
         textLayout.setOrientation(LinearLayout.VERTICAL);
