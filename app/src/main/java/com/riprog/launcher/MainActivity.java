@@ -249,6 +249,9 @@ public class MainActivity extends Activity {
 
         container.addView(iconView);
         container.addView(labelView);
+        if (settingsManager.isHideLabels()) {
+            labelView.setVisibility(View.GONE);
+        }
         return container;
     }
 
@@ -501,7 +504,10 @@ public class MainActivity extends Activity {
     @Override
     protected void onResume() {
         super.onResume();
-        if (homeView != null) homeView.refreshLayout();
+        if (homeView != null) {
+            homeView.refreshLayout();
+            homeView.refreshIcons(model, allApps);
+        }
     }
 
     @Override

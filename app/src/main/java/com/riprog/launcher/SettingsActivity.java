@@ -84,6 +84,7 @@ public class SettingsActivity extends Activity {
         root.addView(titleLayout);
 
         addFreeformSetting(root);
+        addHideLabelsSetting(root);
 
         addThemeSetting(root);
         addScaleSetting(root);
@@ -190,6 +191,9 @@ public class SettingsActivity extends Activity {
         item.setOrientation(LinearLayout.HORIZONTAL);
         item.setGravity(Gravity.CENTER_VERTICAL);
         item.setPadding(0, dpToPx(16), 0, dpToPx(16));
+        item.setClickable(true);
+        item.setFocusable(true);
+        item.setBackgroundResource(android.R.drawable.list_selector_background);
 
         LinearLayout textLayout = new LinearLayout(this);
         textLayout.setOrientation(LinearLayout.VERTICAL);
@@ -210,13 +214,54 @@ public class SettingsActivity extends Activity {
 
         Switch toggle = new Switch(this);
         toggle.setChecked(settingsManager.isFreeformHome());
-        toggle.setOnCheckedChangeListener((v, isChecked) -> {
-            settingsManager.setFreeformHome(isChecked);
-
-
-
-        });
+        toggle.setClickable(false);
         item.addView(toggle);
+
+        item.setOnClickListener(v -> {
+            boolean newState = !toggle.isChecked();
+            toggle.setChecked(newState);
+            settingsManager.setFreeformHome(newState);
+        });
+
+        parent.addView(item);
+    }
+
+    private void addHideLabelsSetting(LinearLayout parent) {
+        LinearLayout item = new LinearLayout(this);
+        item.setOrientation(LinearLayout.HORIZONTAL);
+        item.setGravity(Gravity.CENTER_VERTICAL);
+        item.setPadding(0, dpToPx(16), 0, dpToPx(16));
+        item.setClickable(true);
+        item.setFocusable(true);
+        item.setBackgroundResource(android.R.drawable.list_selector_background);
+
+        LinearLayout textLayout = new LinearLayout(this);
+        textLayout.setOrientation(LinearLayout.VERTICAL);
+        LinearLayout.LayoutParams textParams = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1);
+        item.addView(textLayout, textParams);
+
+        TextView titleView = new TextView(this);
+        titleView.setText(R.string.setting_hide_labels);
+        titleView.setTextSize(18);
+        titleView.setTextColor(getColor(R.color.foreground));
+        textLayout.addView(titleView);
+
+        TextView summaryView = new TextView(this);
+        summaryView.setText(R.string.setting_hide_labels_summary);
+        summaryView.setTextSize(14);
+        summaryView.setTextColor(getColor(R.color.foreground_dim));
+        textLayout.addView(summaryView);
+
+        Switch toggle = new Switch(this);
+        toggle.setChecked(settingsManager.isHideLabels());
+        toggle.setClickable(false);
+        item.addView(toggle);
+
+        item.setOnClickListener(v -> {
+            boolean newState = !toggle.isChecked();
+            toggle.setChecked(newState);
+            settingsManager.setHideLabels(newState);
+        });
 
         parent.addView(item);
     }

@@ -17,6 +17,7 @@ public class SettingsManager {
     private static final String KEY_FREEFORM_HOME = "freeform_home";
     private static final String KEY_ICON_SCALE = "icon_scale";
     private static final String KEY_THEME_MODE = "theme_mode";
+    private static final String KEY_HIDE_LABELS = "hide_labels";
     private static final String KEY_DRAWER_OPEN_COUNT = "drawer_open_count";
     private static final String KEY_DEFAULT_PROMPT_TIMESTAMP = "default_prompt_ts";
     private static final String KEY_DEFAULT_PROMPT_COUNT = "default_prompt_count";
@@ -57,6 +58,14 @@ public class SettingsManager {
 
     public void setIconScale(float scale) {
         prefs.edit().putFloat(KEY_ICON_SCALE, scale).apply();
+    }
+
+    public boolean isHideLabels() {
+        return prefs.getBoolean(KEY_HIDE_LABELS, false);
+    }
+
+    public void setHideLabels(boolean hide) {
+        prefs.edit().putBoolean(KEY_HIDE_LABELS, hide).apply();
     }
 
     public String getThemeMode() {
