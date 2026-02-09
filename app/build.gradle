@@ -10,8 +10,17 @@ android {
         applicationId "com.riprog.launcher"
         minSdkVersion 23
         targetSdkVersion 35
-        versionCode 221
-        versionName "2.2.1"
+        versionCode 230
+        versionName "2.3.0"
+    }
+
+    signingConfigs {
+        release {
+            storeFile file('release.keystore')
+            storePassword RELEASE_STORE_PASSWORD
+            keyAlias RELEASE_KEY_ALIAS
+            keyPassword RELEASE_KEY_PASSWORD
+        }
     }
 
     buildTypes {
@@ -19,6 +28,7 @@ android {
             minifyEnabled true
             shrinkResources true
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+            signingConfig signingConfigs.release
         }
         debug {
             minifyEnabled false

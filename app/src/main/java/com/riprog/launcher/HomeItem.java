@@ -13,6 +13,12 @@ public class HomeItem {
     public int page;
     public int widgetId = -1;
 
+    // Advanced Freeform Transformations
+    public float rotation = 0f;
+    public float scale = 1.0f;
+    public float tiltX = 0f;
+    public float tiltY = 0f;
+
     public HomeItem() {}
 
     public static HomeItem createApp(String packageName, String className, float col, float row, int page) {

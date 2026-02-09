@@ -145,6 +145,12 @@ public class HomeView extends FrameLayout {
 
         view.setX(item.col * cellWidth);
         view.setY(item.row * cellHeight);
+
+        view.setRotation(item.rotation);
+        view.setScaleX(item.scale);
+        view.setScaleY(item.scale);
+        view.setRotationX(item.tiltX);
+        view.setRotationY(item.tiltY);
     }
 
     public void startDragging(View v, float x, float y) {
@@ -208,6 +214,10 @@ public class HomeView extends FrameLayout {
         if (settingsManager.isFreeformHome()) {
             item.col = v.getX() / (float) cellWidth;
             item.row = v.getY() / (float) cellHeight;
+            item.rotation = v.getRotation();
+            item.scale = v.getScaleX();
+            item.tiltX = v.getRotationX();
+            item.tiltY = v.getRotationY();
         } else {
             item.col = Math.max(0, Math.min(GRID_COLUMNS - item.spanX, Math.round(v.getX() / (float) cellWidth)));
             item.row = Math.max(0, Math.min(GRID_ROWS - item.spanY, Math.round(v.getY() / (float) cellHeight)));
