@@ -1,13 +1,11 @@
 package com.riprog.launcher;
 
 import android.content.ComponentName;
-import android.graphics.Bitmap;
 
 public class AppItem {
     public final String label;
     public final String packageName;
     public final String className;
-    public Bitmap icon;
 
     public AppItem(String label, String packageName, String className) {
         this.label = label;

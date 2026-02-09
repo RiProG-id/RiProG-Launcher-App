@@ -71,7 +71,7 @@ public class MainActivity extends Activity {
             w.setDecorFitsSystemWindows(false);
         }
 
-        model = new LauncherModel(this);
+        model = ((LauncherApplication) getApplication()).getModel();
 
         mainLayout = new MainLayout(this);
         homeView = new HomeView(this);
@@ -496,9 +496,6 @@ public class MainActivity extends Activity {
     @Override
     public void onTrimMemory(int level) {
         super.onTrimMemory(level);
-        if (model != null) {
-            model.onTrimMemory(level);
-        }
     }
 
     @Override
@@ -523,7 +520,6 @@ public class MainActivity extends Activity {
     protected void onDestroy() {
         super.onDestroy();
         if (appInstallReceiver != null) unregisterReceiver(appInstallReceiver);
-        if (model != null) model.shutdown();
     }
 
     @Override
@@ -724,6 +720,10 @@ public class MainActivity extends Activity {
         private int origPage;
         private boolean isExternalDrag = false;
 
+        private float lastDist, lastAngle;
+        private float baseScale, baseRotation, baseTiltX, baseTiltY;
+        private float startX3, startY3;
+
         private final Runnable longPressRunnable = new Runnable() {
             @Override
             public void run() {
@@ -789,6 +789,21 @@ public class MainActivity extends Activity {
             addView(dragOverlay, lp);
         }
 
+        private float spacing(MotionEvent event) {
+            if (event.getPointerCount() < 2) return 0;
+            float x = event.getX(0) - event.getX(1);
+            float y = event.getY(0) - event.getY(1);
+            return (float) Math.sqrt(x * x + y * y);
+        }
+
+        private float angle(MotionEvent event) {
+            if (event.getPointerCount() < 2) return 0;
+            double delta_x = (event.getX(0) - event.getX(1));
+            double delta_y = (event.getY(0) - event.getY(1));
+            double radians = Math.atan2(delta_y, delta_x);
+            return (float) Math.toDegrees(radians);
+        }
+
         @Override
         public boolean onInterceptTouchEvent(MotionEvent ev) {
             if (isDrawerOpen) {
@@ -811,7 +826,7 @@ public class MainActivity extends Activity {
                 return false;
             }
 
-            switch (ev.getAction()) {
+            switch (ev.getAction() & MotionEvent.ACTION_MASK) {
                 case MotionEvent.ACTION_DOWN:
                     startX = ev.getX();
                     startY = ev.getY();
@@ -873,10 +888,24 @@ public class MainActivity extends Activity {
                 return true;
             }
 
-            switch (event.getAction()) {
+            switch (event.getAction() & MotionEvent.ACTION_MASK) {
                 case MotionEvent.ACTION_DOWN:
+                    return true;
 
-
+                case MotionEvent.ACTION_POINTER_DOWN:
+                    if (isDragging && settingsManager.isFreeformHome()) {
+                        if (event.getPointerCount() == 2) {
+                            lastDist = spacing(event);
+                            lastAngle = angle(event);
+                            baseScale = touchedView.getScaleX();
+                            baseRotation = touchedView.getRotation();
+                        } else if (event.getPointerCount() == 3) {
+                            startX3 = event.getX(2);
+                            startY3 = event.getY(2);
+                            baseTiltX = touchedView.getRotationX();
+                            baseTiltY = touchedView.getRotationY();
+                        }
+                    }
                     return true;
 
                 case MotionEvent.ACTION_MOVE:
@@ -884,8 +913,26 @@ public class MainActivity extends Activity {
                     float dy = event.getY() - startY;
 
                     if (isDragging) {
-                        homeView.handleDrag(event.getX(), event.getY());
-                        updateDragHighlight(event.getX(), event.getY());
+                        if (settingsManager.isFreeformHome() && event.getPointerCount() > 1) {
+                            if (event.getPointerCount() == 2) {
+                                float newDist = spacing(event);
+                                if (newDist > 10f) {
+                                    float scaleFactor = newDist / lastDist;
+                                    touchedView.setScaleX(baseScale * scaleFactor);
+                                    touchedView.setScaleY(baseScale * scaleFactor);
+                                }
+                                float newAngle = angle(event);
+                                touchedView.setRotation(baseRotation + (newAngle - lastAngle));
+                            } else if (event.getPointerCount() == 3) {
+                                float mdx = event.getX(2) - startX3;
+                                float mdy = event.getY(2) - startY3;
+                                touchedView.setRotationX(baseTiltX + mdy / 5f);
+                                touchedView.setRotationY(baseTiltY - mdx / 5f);
+                            }
+                        } else {
+                            homeView.handleDrag(event.getX(), event.getY());
+                            updateDragHighlight(event.getX(), event.getY());
+                        }
                         return true;
                     }
 
@@ -1062,6 +1109,11 @@ public class MainActivity extends Activity {
                 item.row = origRow;
                 item.page = origPage;
                 homeView.addItemView(item, v);
+                v.setRotation(item.rotation);
+                v.setScaleX(item.scale);
+                v.setScaleY(item.scale);
+                v.setRotationX(item.tiltX);
+                v.setRotationY(item.tiltY);
                 homeView.updateViewPosition(item, v);
                 saveHomeState();
             }
@@ -1078,6 +1130,8 @@ public class MainActivity extends Activity {
                 .withEndAction(() -> {
                     drawerView.setVisibility(View.GONE);
                     homeView.setVisibility(View.VISIBLE);
+                    drawerView.onClose();
+                    System.gc();
                 })
                 .start();
             homeView.setVisibility(View.VISIBLE);

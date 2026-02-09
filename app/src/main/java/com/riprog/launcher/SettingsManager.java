@@ -114,6 +114,10 @@ public class SettingsManager {
                 obj.put("spanY", item.spanY);
                 obj.put("page", item.page);
                 obj.put("widgetId", item.widgetId);
+                obj.put("rotation", (double) item.rotation);
+                obj.put("scale", (double) item.scale);
+                obj.put("tiltX", (double) item.tiltX);
+                obj.put("tiltY", (double) item.tiltY);
                 array.put(obj);
             } catch (JSONException ignored) {}
         }
@@ -153,6 +157,10 @@ public class SettingsManager {
                 if (item.spanY <= 0) item.spanY = 1;
                 item.page = obj.optInt("page", 0);
                 item.widgetId = obj.optInt("widgetId", -1);
+                item.rotation = (float) obj.optDouble("rotation", 0.0);
+                item.scale = (float) obj.optDouble("scale", 1.0);
+                item.tiltX = (float) obj.optDouble("tiltX", 0.0);
+                item.tiltY = (float) obj.optDouble("tiltY", 0.0);
                 items.add(item);
             }
         } catch (Exception ignored) {}

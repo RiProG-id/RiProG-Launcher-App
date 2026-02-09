@@ -198,6 +198,12 @@ public class DrawerView extends LinearLayout {
         adapter.notifyDataSetChanged();
     }
 
+    public void onClose() {
+        searchBar.setText("");
+        filteredApps.clear();
+        adapter.notifyDataSetChanged();
+    }
+
     private int dpToPx(int dp) {
         return (int) android.util.TypedValue.applyDimension(
                 android.util.TypedValue.COMPLEX_UNIT_DIP, dp, getResources().getDisplayMetrics());

@@ -49,10 +49,14 @@ public class LauncherModel {
     }
 
     public void onTrimMemory(int level) {
+        if (level >= android.content.ComponentCallbacks2.TRIM_MEMORY_UI_HIDDEN) {
+            iconCache.trimToSize(iconCache.size() / 2);
+        }
         if (level >= android.content.ComponentCallbacks2.TRIM_MEMORY_MODERATE) {
             iconCache.evictAll();
+            System.gc();
         } else if (level >= android.content.ComponentCallbacks2.TRIM_MEMORY_BACKGROUND) {
-            iconCache.trimToSize(iconCache.size() / 2);
+            iconCache.trimToSize(0);
         }
     }
 
@@ -90,7 +94,6 @@ public class LauncherModel {
         synchronized (pendingListeners) {
             Bitmap cached = iconCache.get(item.packageName);
             if (cached != null) {
-                item.icon = cached;
                 listener.onIconLoaded(cached);
                 return;
             }
@@ -114,7 +117,6 @@ public class LauncherModel {
                 if (bitmap != null) {
                     iconCache.put(item.packageName, bitmap);
                 }
-                item.icon = bitmap;
             } catch (PackageManager.NameNotFoundException ignored) {
             }
 
