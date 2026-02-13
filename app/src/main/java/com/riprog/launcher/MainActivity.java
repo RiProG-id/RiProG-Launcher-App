@@ -198,7 +198,7 @@ public class MainActivity extends Activity {
     }
 
     private void renderHomeItem(HomeItem item) {
-        if (item == null) return;
+        if (item == null || item.type == null) return;
         View view = null;
         switch (item.type) {
             case APP:
@@ -211,12 +211,13 @@ public class MainActivity extends Activity {
                 view = createClockView(item);
                 break;
         }
-        if (view != null) {
+        if (view != null && homeView != null) {
             homeView.addItemView(item, view);
         }
     }
 
     private View createAppView(HomeItem item) {
+        if (item == null) return null;
         LinearLayout container = new LinearLayout(this);
         container.setOrientation(LinearLayout.VERTICAL);
         container.setGravity(Gravity.CENTER);
@@ -255,12 +256,14 @@ public class MainActivity extends Activity {
     }
 
     private View createWidgetView(HomeItem item) {
-        if (appWidgetManager == null || item == null) return null;
+        if (appWidgetManager == null || item == null || appWidgetHost == null) return null;
         AppWidgetProviderInfo info = appWidgetManager.getAppWidgetInfo(item.widgetId);
         if (info == null) return null;
         try {
             AppWidgetHostView hostView = appWidgetHost.createView(this, item.widgetId, info);
-            hostView.setAppWidget(item.widgetId, info);
+            if (hostView != null) {
+                hostView.setAppWidget(item.widgetId, info);
+            }
             return hostView;
         } catch (Exception e) {
             return null;
@@ -426,7 +429,6 @@ public class MainActivity extends Activity {
             startActivity(intent);
         } catch (Exception e) {
             try {
-
                 Intent pickIntent = new Intent(Intent.ACTION_GET_CONTENT);
                 pickIntent.setType("image/*");
                 startActivity(Intent.createChooser(pickIntent, getString(R.string.title_select_wallpaper)));
@@ -437,8 +439,12 @@ public class MainActivity extends Activity {
     }
 
     private void openSettings() {
-        Intent intent = new Intent(this, SettingsActivity.class);
-        startActivityForResult(intent, 100);
+        try {
+            Intent intent = new Intent(this, SettingsActivity.class);
+            startActivityForResult(intent, 100);
+        } catch (Exception e) {
+            Toast.makeText(this, "Settings could not be opened", Toast.LENGTH_SHORT).show();
+        }
     }
 
     private void applyDynamicColors() {
@@ -481,6 +487,28 @@ public class MainActivity extends Activity {
     @Override
     public void onTrimMemory(int level) {
         super.onTrimMemory(level);
+        if (model != null) {
+            model.onTrimMemory(level);
+        }
+    }
+
+    @Override
+    protected void onNewIntent(Intent intent) {
+        super.onNewIntent(intent);
+        setIntent(intent);
+        if (mainLayout != null) {
+            mainLayout.closeDrawer();
+        }
+        if (homeView != null) {
+            homeView.scrollToPage(0);
+        }
+    }
+
+    @Override
+    public void onBackPressed() {
+        if (mainLayout != null && mainLayout.isDrawerOpen) {
+            mainLayout.closeDrawer();
+        }
     }
 
     @Override
@@ -507,7 +535,14 @@ public class MainActivity extends Activity {
     @Override
     protected void onDestroy() {
         super.onDestroy();
-        if (appInstallReceiver != null) unregisterReceiver(appInstallReceiver);
+        if (appInstallReceiver != null) {
+            unregisterReceiver(appInstallReceiver);
+        }
+        model = null;
+        mainLayout = null;
+        homeView = null;
+        drawerView = null;
+        appInstallReceiver = null;
     }
 
     @Override
@@ -1020,11 +1055,21 @@ public class MainActivity extends Activity {
         }
 
         private void handleItemClick(View v) {
+            if (v == null) return;
             HomeItem item = (HomeItem) v.getTag();
-            if (item == null) return;
+            if (item == null || item.type == null) return;
             if (item.type == HomeItem.Type.APP) {
-                Intent intent = getPackageManager().getLaunchIntentForPackage(item.packageName);
-                if (intent != null) startActivity(intent);
+                if (item.packageName == null) return;
+                try {
+                    Intent intent = getPackageManager().getLaunchIntentForPackage(item.packageName);
+                    if (intent != null) {
+                        startActivity(intent);
+                    } else {
+                        Toast.makeText(MainActivity.this, R.string.app_info_failed, Toast.LENGTH_SHORT).show();
+                    }
+                } catch (Exception e) {
+                    Toast.makeText(MainActivity.this, R.string.app_info_failed, Toast.LENGTH_SHORT).show();
+                }
             } else if (item.type == HomeItem.Type.WIDGET) {
                 showWidgetOptions(item, v);
             }
