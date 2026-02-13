@@ -54,6 +54,7 @@ public class MainActivity extends Activity {
     private HomeView homeView;
     private DrawerView drawerView;
     private View currentFolderOverlay = null;
+    private TransformOverlay currentTransformOverlay = null;
     private AppInstallReceiver appInstallReceiver;
     private List<HomeItem> homeItems = new ArrayList<>();
     private List<AppItem> allApps = new ArrayList<>();
@@ -93,6 +94,20 @@ public class MainActivity extends Activity {
         mainLayout.addView(homeView);
         mainLayout.addView(drawerView);
         drawerView.setVisibility(View.GONE);
+
+        mainLayout.setOnApplyWindowInsetsListener((v, insets) -> {
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
+                android.graphics.Insets bars = insets.getInsets(android.view.WindowInsets.Type.systemBars());
+                drawerView.setSystemInsets(bars.left, bars.top, bars.right, bars.bottom);
+                homeView.setPadding(bars.left, bars.top, bars.right, bars.bottom);
+            } else {
+                drawerView.setSystemInsets(insets.getSystemWindowInsetLeft(), insets.getSystemWindowInsetTop(),
+                        insets.getSystemWindowInsetRight(), insets.getSystemWindowInsetBottom());
+                homeView.setPadding(insets.getSystemWindowInsetLeft(), insets.getSystemWindowInsetTop(),
+                        insets.getSystemWindowInsetRight(), insets.getSystemWindowInsetBottom());
+            }
+            return insets;
+        });
 
         setContentView(mainLayout);
 
@@ -851,12 +866,39 @@ public class MainActivity extends Activity {
 
     @Override
     public void onBackPressed() {
+        if (currentTransformOverlay != null) {
+            closeTransformOverlay();
+            return;
+        }
         if (currentFolderOverlay != null) {
             closeFolder();
             return;
         }
         if (mainLayout != null && mainLayout.isDrawerOpen) {
             mainLayout.closeDrawer();
+        }
+    }
+
+    private void showTransformOverlay(View targetView) {
+        if (currentTransformOverlay != null) return;
+        currentTransformOverlay = new TransformOverlay(this, targetView, new TransformOverlay.OnSaveListener() {
+            @Override public void onSave() {
+                saveHomeState();
+                closeTransformOverlay();
+            }
+            @Override public void onCancel() {
+                closeTransformOverlay();
+            }
+        });
+        mainLayout.addView(currentTransformOverlay, new FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+    }
+
+    private void closeTransformOverlay() {
+        if (currentTransformOverlay != null) {
+            mainLayout.removeView(currentTransformOverlay);
+            currentTransformOverlay = null;
+            if (homeView != null) homeView.refreshIcons(model, allApps);
         }
     }
 
@@ -1124,6 +1166,10 @@ public class MainActivity extends Activity {
                 if (touchedView != null) {
                     Object tag = touchedView.getTag();
                     if (tag instanceof HomeItem) {
+                        if (settingsManager.isFreeformHome()) {
+                            showTransformOverlay(touchedView);
+                            return;
+                        }
                         isDragging = true;
                         isExternalDrag = false;
                         HomeItem item = (HomeItem) tag;
@@ -1212,6 +1258,7 @@ public class MainActivity extends Activity {
 
         @Override
         public boolean onInterceptTouchEvent(MotionEvent ev) {
+            if (currentTransformOverlay != null) return false;
             if (isDrawerOpen) {
                 switch (ev.getAction()) {
                     case MotionEvent.ACTION_DOWN:
@@ -1275,6 +1322,7 @@ public class MainActivity extends Activity {
 
         @Override
         public boolean onTouchEvent(MotionEvent event) {
+            if (currentTransformOverlay != null) return true;
             if (isDrawerOpen) {
 
                 if (event.getAction() == MotionEvent.ACTION_DOWN) {
@@ -1318,26 +1366,8 @@ public class MainActivity extends Activity {
                     float dy = event.getY() - startY;
 
                     if (isDragging) {
-                        if (settingsManager.isFreeformHome() && event.getPointerCount() > 1) {
-                            if (event.getPointerCount() == 2) {
-                                float newDist = spacing(event);
-                                if (newDist > 10f) {
-                                    float scaleFactor = newDist / lastDist;
-                                    touchedView.setScaleX(baseScale * scaleFactor);
-                                    touchedView.setScaleY(baseScale * scaleFactor);
-                                }
-                                float newAngle = angle(event);
-                                touchedView.setRotation(baseRotation + (newAngle - lastAngle));
-                            } else if (event.getPointerCount() == 3) {
-                                float mdx = event.getX(2) - startX3;
-                                float mdy = event.getY(2) - startY3;
-                                touchedView.setRotationX(baseTiltX + mdy / 5f);
-                                touchedView.setRotationY(baseTiltY - mdx / 5f);
-                            }
-                        } else {
-                            homeView.handleDrag(event.getX(), event.getY());
-                            updateDragHighlight(event.getX(), event.getY());
-                        }
+                        homeView.handleDrag(event.getX(), event.getY());
+                        updateDragHighlight(event.getX(), event.getY());
                         return true;
                     }
 

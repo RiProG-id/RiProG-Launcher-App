@@ -53,12 +53,13 @@ public class DrawerView extends LinearLayout {
         }
     }
 
+    private int insetTop, insetBottom, insetLeft, insetRight;
+
     public DrawerView(Context context) {
         super(context);
         settingsManager = new SettingsManager(context);
         setOrientation(VERTICAL);
         setBackground(ThemeUtils.getGlassDrawable(context, settingsManager));
-        setPadding(0, dpToPx(48), 0, 0);
 
         searchBar = new EditText(context);
         searchBar.setHint(R.string.search_hint);
@@ -80,7 +81,12 @@ public class DrawerView extends LinearLayout {
             }
             @Override public void afterTextChanged(Editable s) {}
         });
-        addView(searchBar);
+
+        LinearLayout.LayoutParams searchParams = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        int searchMargin = dpToPx(16);
+        searchParams.setMargins(searchMargin, searchMargin, searchMargin, searchMargin);
+        addView(searchBar, searchParams);
 
         FrameLayout contentFrame = new FrameLayout(context);
         addView(contentFrame, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1));
@@ -192,8 +198,24 @@ public class DrawerView extends LinearLayout {
         adapter.notifyDataSetChanged();
     }
 
+    public void setSystemInsets(int left, int top, int right, int bottom) {
+        this.insetLeft = left;
+        this.insetTop = top;
+        this.insetRight = right;
+        this.insetBottom = bottom;
+        updatePadding();
+    }
+
+    private void updatePadding() {
+        setPadding(insetLeft, insetTop, insetRight, 0);
+        if (gridView != null) {
+            gridView.setPadding(dpToPx(8), dpToPx(16), dpToPx(32), insetBottom + dpToPx(16));
+        }
+    }
+
     public void onOpen() {
         setBackground(ThemeUtils.getGlassDrawable(getContext(), settingsManager));
+        updatePadding();
         searchBar.setText("");
         searchBar.clearFocus();
         adapter.notifyDataSetChanged();

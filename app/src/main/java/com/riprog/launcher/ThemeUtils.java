@@ -18,9 +18,8 @@ public class ThemeUtils {
         int backgroundColor = context.getColor(R.color.background);
 
         if (!isLiquidGlass) {
-            // Make it 90% opaque (0xE6 alpha) if disabled
-            int alpha = 0xE6;
-            backgroundColor = Color.argb(alpha, Color.red(backgroundColor), Color.green(backgroundColor), Color.blue(backgroundColor));
+            backgroundColor = (context.getResources().getConfiguration().uiMode & android.content.res.Configuration.UI_MODE_NIGHT_MASK)
+                    == android.content.res.Configuration.UI_MODE_NIGHT_YES ? Color.BLACK : Color.WHITE;
         }
 
         gd.setColor(backgroundColor);
