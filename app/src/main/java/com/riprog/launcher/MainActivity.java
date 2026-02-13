@@ -53,6 +53,7 @@ public class MainActivity extends Activity {
     private MainLayout mainLayout;
     private HomeView homeView;
     private DrawerView drawerView;
+    private View currentFolderOverlay = null;
     private AppInstallReceiver appInstallReceiver;
     private List<HomeItem> homeItems = new ArrayList<>();
     private List<AppItem> allApps = new ArrayList<>();
@@ -273,7 +274,7 @@ public class MainActivity extends Activity {
 
         previewContainer.setLayoutParams(new LinearLayout.LayoutParams(size, size));
         previewContainer.setBackground(ThemeUtils.getGlassDrawable(this, settingsManager));
-        int padding = dpToPx(4);
+        int padding = dpToPx(6);
         previewContainer.setPadding(padding, padding, padding, padding);
 
         GridLayout grid = new GridLayout(this);
@@ -304,7 +305,7 @@ public class MainActivity extends Activity {
         if (folder.folderItems == null) return;
         int count = Math.min(folder.folderItems.size(), 4);
         int baseSize = getResources().getDimensionPixelSize(R.dimen.grid_icon_size);
-        int iconSize = (baseSize / 2) - dpToPx(4);
+        int iconSize = (baseSize / 2) - dpToPx(2);
         for (int i = 0; i < count; i++) {
             HomeItem sub = folder.folderItems.get(i);
             ImageView iv = new ImageView(this);
@@ -323,46 +324,103 @@ public class MainActivity extends Activity {
     }
 
     private void openFolder(HomeItem folderItem, View folderView) {
+        if (currentFolderOverlay != null) closeFolder();
+
+        FrameLayout container = new FrameLayout(this);
+        container.setBackgroundColor(0x33000000);
+        container.setOnClickListener(v -> closeFolder());
+
+        container.setOnTouchListener(new View.OnTouchListener() {
+            float startY;
+            @Override
+            public boolean onTouch(View v, MotionEvent event) {
+                switch (event.getAction()) {
+                    case MotionEvent.ACTION_DOWN:
+                        startY = event.getY();
+                        break;
+                    case MotionEvent.ACTION_UP:
+                        if (event.getY() - startY > dpToPx(100)) {
+                            closeFolder();
+                            return true;
+                        }
+                        break;
+                }
+                return false;
+            }
+        });
+
         LinearLayout overlay = new LinearLayout(this);
         overlay.setOrientation(LinearLayout.VERTICAL);
         overlay.setBackground(ThemeUtils.getGlassDrawable(this, settingsManager));
-        overlay.setPadding(dpToPx(16), dpToPx(16), dpToPx(16), dpToPx(16));
+        overlay.setPadding(dpToPx(24), dpToPx(24), dpToPx(24), dpToPx(24));
         overlay.setElevation(dpToPx(16));
         overlay.setGravity(Gravity.CENTER_HORIZONTAL);
+        overlay.setOnClickListener(v -> {});
+
+        TextView titleText = new TextView(this);
+        String name = folderItem.folderName == null || folderItem.folderName.isEmpty() ? "Folder" : folderItem.folderName;
+        titleText.setText(name);
+        titleText.setTextColor(getColor(R.color.foreground));
+        titleText.setTextSize(20);
+        titleText.setTypeface(null, android.graphics.Typeface.BOLD);
+        titleText.setGravity(Gravity.CENTER);
+        titleText.setPadding(0, 0, 0, dpToPx(16));
+        overlay.addView(titleText);
 
         EditText titleEdit = new EditText(this);
         titleEdit.setText(folderItem.folderName);
-        titleEdit.setHint("Folder Name");
         titleEdit.setTextColor(getColor(R.color.foreground));
         titleEdit.setBackground(null);
         titleEdit.setGravity(Gravity.CENTER);
         titleEdit.setImeOptions(android.view.inputmethod.EditorInfo.IME_ACTION_DONE);
         titleEdit.setSingleLine(true);
+        titleEdit.setVisibility(View.GONE);
         titleEdit.addTextChangedListener(new android.text.TextWatcher() {
             @Override public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
             @Override public void onTextChanged(CharSequence s, int start, int before, int count) {
                 folderItem.folderName = s.toString();
-                TextView tv = findTextView((ViewGroup) folderView);
-                if (tv != null) tv.setText(s.toString());
                 saveHomeState();
             }
             @Override public void afterTextChanged(android.text.Editable s) {}
         });
         overlay.addView(titleEdit);
 
+        titleText.setOnClickListener(v -> {
+            titleText.setVisibility(View.GONE);
+            titleEdit.setVisibility(View.VISIBLE);
+            titleEdit.requestFocus();
+            InputMethodManager imm = (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
+            imm.showSoftInput(titleEdit, InputMethodManager.SHOW_IMPLICIT);
+        });
+
+        titleEdit.setOnEditorActionListener((v, actionId, event) -> {
+            if (actionId == android.view.inputmethod.EditorInfo.IME_ACTION_DONE) {
+                String newName = titleEdit.getText().toString();
+                folderItem.folderName = newName;
+                titleText.setText(newName.isEmpty() ? "Folder" : newName);
+                titleEdit.setVisibility(View.GONE);
+                titleText.setVisibility(View.VISIBLE);
+                InputMethodManager imm = (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
+                imm.hideSoftInputFromWindow(v.getWindowToken(), 0);
+                saveHomeState();
+                if (homeView != null) homeView.refreshIcons(model, allApps);
+                return true;
+            }
+            return false;
+        });
+
         GridLayout grid = new GridLayout(this);
         grid.setColumnCount(4);
-        grid.setPadding(0, dpToPx(16), 0, 0);
 
         for (HomeItem sub : folderItem.folderItems) {
             View subView = createAppView(sub);
             subView.setTag(sub);
             subView.setOnClickListener(v -> {
                 handleAppLaunch(sub.packageName);
-                mainLayout.removeView(overlay);
+                closeFolder();
             });
             subView.setOnLongClickListener(v -> {
-                mainLayout.removeView(overlay);
+                closeFolder();
                 removeFromFolder(folderItem, sub);
                 homeItems.add(sub);
                 sub.page = homeView.getCurrentPage();
@@ -377,11 +435,10 @@ public class MainActivity extends Activity {
         FrameLayout.LayoutParams lp = new FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.CENTER);
         lp.setMargins(dpToPx(24), 0, dpToPx(24), 0);
-        mainLayout.addView(overlay, lp);
+        container.addView(overlay, lp);
 
-        overlay.setOnClickListener(v -> mainLayout.removeView(overlay));
-        titleEdit.setOnClickListener(v -> {});
-        grid.setOnClickListener(v -> {});
+        mainLayout.addView(container, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+        currentFolderOverlay = container;
     }
 
     private void handleAppLaunch(String packageName) {
@@ -773,8 +830,22 @@ public class MainActivity extends Activity {
 
     @Override
     public void onBackPressed() {
+        if (currentFolderOverlay != null) {
+            closeFolder();
+            return;
+        }
         if (mainLayout != null && mainLayout.isDrawerOpen) {
             mainLayout.closeDrawer();
+        }
+    }
+
+    private void closeFolder() {
+        if (currentFolderOverlay != null) {
+            mainLayout.removeView(currentFolderOverlay);
+            currentFolderOverlay = null;
+            InputMethodManager imm = (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
+            imm.hideSoftInputFromWindow(mainLayout.getWindowToken(), 0);
+            if (homeView != null) homeView.refreshIcons(model, allApps);
         }
     }
 
@@ -1304,7 +1375,7 @@ public class MainActivity extends Activity {
                         float finalDx = event.getX() - startX;
                         float finalDy = event.getY() - startY;
                         float dist = (float) Math.sqrt(finalDx * finalDx + finalDy * finalDy);
-                        if (duration >= 80 && duration < 150 && dist < touchSlop) {
+                        if (duration >= 50 && duration < 300 && dist < touchSlop) {
                             if (touchedView != null) handleItemClick(touchedView);
                             else performClick();
                         }
