@@ -324,8 +324,8 @@ public class MainActivity extends Activity {
 
         int count = folder.folderItems.size();
         int columns = 2;
-        if (settingsManager.isFreeformHome() && folder.scale > 1.2f) {
-            int maxPossibleColumns = (int) (2 * folder.scale);
+        if (settingsManager.isFreeformHome() && folder.scaleX > 1.2f) {
+            int maxPossibleColumns = (int) (2 * folder.scaleX);
             int neededColumns = (int) Math.ceil(Math.sqrt(count));
             columns = Math.min(maxPossibleColumns, Math.max(2, neededColumns));
             if (columns > 4) columns = 4;
@@ -494,7 +494,8 @@ public class MainActivity extends Activity {
         folder.folderItems.add(target);
         folder.folderItems.add(dragged);
         folder.rotation = target.rotation;
-        folder.scale = target.scale;
+        folder.scaleX = target.scaleX;
+        folder.scaleY = target.scaleY;
         folder.tiltX = target.tiltX;
         folder.tiltY = target.tiltY;
         homeItems.add(folder);
@@ -527,7 +528,8 @@ public class MainActivity extends Activity {
             lastItem.row = folder.row;
             lastItem.page = folder.page;
             lastItem.rotation = folder.rotation;
-            lastItem.scale = folder.scale;
+            lastItem.scaleX = folder.scaleX;
+            lastItem.scaleY = folder.scaleY;
             lastItem.tiltX = folder.tiltX;
             lastItem.tiltY = folder.tiltY;
             homeItems.add(lastItem);
@@ -888,6 +890,13 @@ public class MainActivity extends Activity {
             @Override public void onCancel() {
                 closeTransformOverlay();
             }
+            @Override public void onRemove() {
+                removeHomeItem((HomeItem) targetView.getTag(), targetView);
+                closeTransformOverlay();
+            }
+            @Override public void onAppInfo() {
+                showAppInfo((HomeItem) targetView.getTag());
+            }
         });
         mainLayout.addView(currentTransformOverlay, new FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
@@ -1218,12 +1227,14 @@ public class MainActivity extends Activity {
             ivRemove = new ImageView(getContext());
             ivRemove.setImageResource(R.drawable.ic_remove);
             ivRemove.setPadding(dpToPx(24), dpToPx(16), dpToPx(24), dpToPx(16));
+            ivRemove.setColorFilter(getContext().getColor(R.color.foreground));
             ivRemove.setContentDescription(getContext().getString(R.string.drag_remove));
             dragOverlay.addView(ivRemove);
 
             ivAppInfo = new ImageView(getContext());
             ivAppInfo.setImageResource(R.drawable.ic_info);
             ivAppInfo.setPadding(dpToPx(24), dpToPx(16), dpToPx(24), dpToPx(16));
+            ivAppInfo.setColorFilter(getContext().getColor(R.color.foreground));
             ivAppInfo.setContentDescription(getContext().getString(R.string.drag_app_info));
             dragOverlay.addView(ivAppInfo);
 
@@ -1558,8 +1569,8 @@ public class MainActivity extends Activity {
                 item.page = origPage;
                 homeView.addItemView(item, v);
                 v.setRotation(item.rotation);
-                v.setScaleX(item.scale);
-                v.setScaleY(item.scale);
+                v.setScaleX(item.scaleX);
+                v.setScaleY(item.scaleY);
                 v.setRotationX(item.tiltX);
                 v.setRotationY(item.tiltY);
                 homeView.updateViewPosition(item, v);

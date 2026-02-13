@@ -20,7 +20,8 @@ public class HomeItem {
 
     // Advanced Freeform Transformations
     public float rotation = 0f;
-    public float scale = 1.0f;
+    public float scaleX = 1.0f;
+    public float scaleY = 1.0f;
     public float tiltX = 0f;
     public float tiltY = 0f;
 

@@ -14,9 +14,9 @@ import android.view.inputmethod.InputMethodManager;
 import android.widget.BaseAdapter;
 import android.widget.EditText;
 import android.widget.FrameLayout;
-import android.widget.GridView;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
+import android.widget.ListView;
 import android.widget.TextView;
 
 import java.util.ArrayList;
@@ -25,8 +25,8 @@ import java.util.List;
 import java.util.Locale;
 
 public class DrawerView extends LinearLayout {
-    private final GridView gridView;
-    private final AppAdapter adapter;
+    private final ListView listView;
+    private final AppRowAdapter adapter;
     private OnAppLongClickListener longClickListener;
     private List<AppItem> allApps = new ArrayList<>();
 
@@ -54,12 +54,22 @@ public class DrawerView extends LinearLayout {
     }
 
     private int insetTop, insetBottom, insetLeft, insetRight;
+    private int numColumns = 4;
 
     public DrawerView(Context context) {
         super(context);
         settingsManager = new SettingsManager(context);
         setOrientation(VERTICAL);
         setBackground(ThemeUtils.getGlassDrawable(context, settingsManager));
+
+        FrameLayout contentFrame = new FrameLayout(context);
+        addView(contentFrame, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1));
+
+        listView = new ListView(context);
+        listView.setDivider(null);
+        listView.setSelector(android.R.color.transparent);
+        listView.setVerticalScrollBarEnabled(false);
+        contentFrame.addView(listView, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
 
         LinearLayout searchContainer = new LinearLayout(context);
         searchContainer.setOrientation(HORIZONTAL);
@@ -91,21 +101,18 @@ public class DrawerView extends LinearLayout {
 
         searchContainer.addView(searchBar, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
 
+        LinearLayout headerContainer = new LinearLayout(context);
+        headerContainer.setOrientation(VERTICAL);
         LinearLayout.LayoutParams searchContainerParams = new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
         int searchMargin = dpToPx(16);
         searchContainerParams.setMargins(searchMargin, searchMargin, searchMargin, searchMargin);
-        addView(searchContainer, searchContainerParams);
+        headerContainer.addView(searchContainer, searchContainerParams);
 
-        FrameLayout contentFrame = new FrameLayout(context);
-        addView(contentFrame, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1));
+        listView.addHeaderView(headerContainer, null, false);
 
-        gridView = new GridView(context);
-        gridView.setNumColumns(4);
-        gridView.setVerticalSpacing(dpToPx(16));
-        gridView.setPadding(dpToPx(8), dpToPx(16), dpToPx(32), dpToPx(16));
-        gridView.setVerticalScrollBarEnabled(false);
-        contentFrame.addView(gridView);
+        adapter = new AppRowAdapter();
+        listView.setAdapter(adapter);
 
         indexBar = new IndexBar(context);
         indexBar.setOrientation(LinearLayout.VERTICAL);
@@ -135,23 +142,6 @@ public class DrawerView extends LinearLayout {
         indexParams.gravity = Gravity.END;
         contentFrame.addView(indexBar, indexParams);
         setupIndexBar();
-
-        adapter = new AppAdapter();
-        gridView.setAdapter(adapter);
-
-        gridView.setOnItemClickListener((parent, view, position, id) -> {
-            AppItem item = filteredApps.get(position);
-            Intent intent = getContext().getPackageManager().getLaunchIntentForPackage(item.packageName);
-            if (intent != null) getContext().startActivity(intent);
-        });
-        gridView.setOnItemLongClickListener((parent, view, position, id) -> {
-            if (longClickListener != null) {
-                AppItem item = filteredApps.get(position);
-                longClickListener.onAppLongClick(item);
-                return true;
-            }
-            return false;
-        });
     }
 
     public void setApps(List<AppItem> apps, LauncherModel model) {
@@ -183,19 +173,21 @@ public class DrawerView extends LinearLayout {
     private void scrollToLetter(String letter) {
         for (int i = 0; i < filteredApps.size(); i++) {
             if (filteredApps.get(i).label.toUpperCase(Locale.getDefault()).startsWith(letter)) {
-                gridView.setSelection(i);
+                int row = i / numColumns;
+                listView.setSelection(row + listView.getHeaderViewsCount());
                 break;
             }
         }
     }
 
     public void setColumns(int columns) {
-        gridView.setNumColumns(columns);
+        this.numColumns = columns;
+        adapter.notifyDataSetChanged();
     }
 
     public boolean isAtTop() {
-        if (gridView.getChildCount() == 0) return true;
-        return gridView.getFirstVisiblePosition() == 0 && gridView.getChildAt(0).getTop() >= gridView.getPaddingTop();
+        if (listView.getChildCount() == 0) return true;
+        return listView.getFirstVisiblePosition() == 0 && listView.getChildAt(0).getTop() >= 0;
     }
 
     public void setAccentColor(int color) {
@@ -217,9 +209,8 @@ public class DrawerView extends LinearLayout {
 
     private void updatePadding() {
         setPadding(insetLeft, insetTop + dpToPx(8), insetRight, 0);
-        if (gridView != null) {
-            gridView.setPadding(dpToPx(8), dpToPx(16), dpToPx(32), insetBottom + dpToPx(16));
-        }
+        listView.setPadding(dpToPx(8), dpToPx(16), dpToPx(32), insetBottom + dpToPx(16));
+        listView.setClipToPadding(false);
     }
 
     public void onOpen() {
@@ -227,6 +218,7 @@ public class DrawerView extends LinearLayout {
         updatePadding();
         searchBar.setText("");
         searchBar.clearFocus();
+        listView.setSelection(0);
         adapter.notifyDataSetChanged();
     }
 
@@ -241,73 +233,75 @@ public class DrawerView extends LinearLayout {
                 android.util.TypedValue.COMPLEX_UNIT_DIP, dp, getResources().getDisplayMetrics());
     }
 
-    private static class ViewHolder {
-        ImageView icon;
-        TextView label;
-        float lastScale;
-    }
-
-    private class AppAdapter extends BaseAdapter {
-        @Override public int getCount() { return filteredApps.size(); }
-        @Override public Object getItem(int position) { return filteredApps.get(position); }
+    private class AppRowAdapter extends BaseAdapter {
+        @Override public int getCount() { return (int) Math.ceil((double) filteredApps.size() / numColumns); }
+        @Override public Object getItem(int position) { return null; }
         @Override public long getItemId(int position) { return position; }
         @Override public View getView(int position, View convertView, ViewGroup parent) {
-            ViewHolder holder;
-            float scale = settingsManager.getIconScale();
-            if (convertView == null) {
-                LinearLayout itemLayout = new LinearLayout(getContext());
-                itemLayout.setOrientation(LinearLayout.VERTICAL);
-                itemLayout.setGravity(Gravity.CENTER);
-
-                ImageView icon = new ImageView(getContext());
-                icon.setScaleType(ImageView.ScaleType.FIT_CENTER);
-                int baseSize = getResources().getDimensionPixelSize(R.dimen.grid_icon_size);
-                int size = (int) (baseSize * scale);
-                itemLayout.addView(icon, new LinearLayout.LayoutParams(size, size));
-
-                TextView label = new TextView(getContext());
-                label.setTextColor(getContext().getColor(R.color.foreground));
-                label.setTextSize(10 * scale);
-                label.setGravity(Gravity.CENTER);
-                label.setMaxLines(1);
-                label.setEllipsize(TextUtils.TruncateAt.END);
-                itemLayout.addView(label);
-
-                convertView = itemLayout;
-                holder = new ViewHolder();
-                holder.icon = icon;
-                holder.label = label;
-                holder.lastScale = scale;
-                convertView.setTag(holder);
+            LinearLayout rowLayout;
+            if (convertView instanceof LinearLayout) {
+                rowLayout = (LinearLayout) convertView;
             } else {
-                holder = (ViewHolder) convertView.getTag();
-                if (holder.lastScale != scale) {
-                    int baseSize = getResources().getDimensionPixelSize(R.dimen.grid_icon_size);
-                    int size = (int) (baseSize * scale);
-                    ViewGroup.LayoutParams lp = holder.icon.getLayoutParams();
-                    if (lp.width != size) {
-                        lp.width = size;
-                        lp.height = size;
-                        holder.icon.setLayoutParams(lp);
+                rowLayout = new LinearLayout(getContext());
+                rowLayout.setOrientation(HORIZONTAL);
+                rowLayout.setPadding(0, dpToPx(8), 0, dpToPx(8));
+            }
+
+            rowLayout.removeAllViews();
+            int start = position * numColumns;
+            float scale = settingsManager.getIconScale();
+            int baseSize = getResources().getDimensionPixelSize(R.dimen.grid_icon_size);
+            int size = (int) (baseSize * scale);
+
+            for (int i = 0; i < numColumns; i++) {
+                int index = start + i;
+                FrameLayout itemFrame = new FrameLayout(getContext());
+                LinearLayout.LayoutParams frameLp = new LinearLayout.LayoutParams(0, LayoutParams.WRAP_CONTENT, 1);
+                rowLayout.addView(itemFrame, frameLp);
+
+                if (index < filteredApps.size()) {
+                    AppItem item = filteredApps.get(index);
+                    LinearLayout itemLayout = new LinearLayout(getContext());
+                    itemLayout.setOrientation(VERTICAL);
+                    itemLayout.setGravity(Gravity.CENTER);
+
+                    ImageView icon = new ImageView(getContext());
+                    icon.setScaleType(ImageView.ScaleType.FIT_CENTER);
+                    itemLayout.addView(icon, new LinearLayout.LayoutParams(size, size));
+
+                    TextView label = new TextView(getContext());
+                    label.setTextColor(getContext().getColor(R.color.foreground));
+                    label.setTextSize(10 * scale);
+                    label.setGravity(Gravity.CENTER);
+                    label.setMaxLines(1);
+                    label.setEllipsize(TextUtils.TruncateAt.END);
+                    label.setText(item.label);
+                    itemLayout.addView(label);
+
+                    itemFrame.addView(itemLayout);
+
+                    itemFrame.setOnClickListener(v -> {
+                        Intent intent = getContext().getPackageManager().getLaunchIntentForPackage(item.packageName);
+                        if (intent != null) getContext().startActivity(intent);
+                    });
+                    itemFrame.setOnLongClickListener(v -> {
+                        if (longClickListener != null) {
+                            longClickListener.onAppLongClick(item);
+                            return true;
+                        }
+                        return false;
+                    });
+
+                    if (model != null) {
+                        model.loadIcon(item, bitmap -> {
+                            if (bitmap != null) {
+                                icon.setImageBitmap(bitmap);
+                            }
+                        });
                     }
-                    holder.label.setTextSize(10 * scale);
-                    holder.lastScale = scale;
                 }
             }
-
-            AppItem item = filteredApps.get(position);
-            holder.label.setText(item.label);
-            holder.icon.setImageBitmap(null);
-            holder.icon.setTag(item.packageName);
-            if (model != null) {
-                model.loadIcon(item, bitmap -> {
-                    if (bitmap != null && item.packageName.equals(holder.icon.getTag())) {
-                        holder.icon.setImageBitmap(bitmap);
-                    }
-                });
-            }
-
-            return convertView;
+            return rowLayout;
         }
     }
 }

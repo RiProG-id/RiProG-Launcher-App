@@ -140,7 +140,8 @@ public class SettingsManager {
             obj.put("page", item.page);
             obj.put("widgetId", item.widgetId);
             obj.put("rotation", (double) item.rotation);
-            obj.put("scale", (double) item.scale);
+            obj.put("scaleX", (double) item.scaleX);
+            obj.put("scaleY", (double) item.scaleY);
             obj.put("tiltX", (double) item.tiltX);
             obj.put("tiltY", (double) item.tiltY);
             obj.put("folderName", item.folderName);
@@ -199,7 +200,14 @@ public class SettingsManager {
         item.page = obj.optInt("page", 0);
         item.widgetId = obj.optInt("widgetId", -1);
         item.rotation = (float) obj.optDouble("rotation", 0.0);
-        item.scale = (float) obj.optDouble("scale", 1.0);
+        if (obj.has("scaleX")) {
+            item.scaleX = (float) obj.optDouble("scaleX", 1.0);
+            item.scaleY = (float) obj.optDouble("scaleY", 1.0);
+        } else {
+            float s = (float) obj.optDouble("scale", 1.0);
+            item.scaleX = s;
+            item.scaleY = s;
+        }
         item.tiltX = (float) obj.optDouble("tiltX", 0.0);
         item.tiltY = (float) obj.optDouble("tiltY", 0.0);
         item.folderName = obj.optString("folderName", null);
