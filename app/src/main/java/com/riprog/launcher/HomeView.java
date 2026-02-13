@@ -327,6 +327,9 @@ public class HomeView extends FrameLayout {
     }
 
     public void cancelDragging() {
+        if (draggingView != null) {
+            draggingView.animate().scaleX(1.0f).scaleY(1.0f).alpha(1.0f).setDuration(150).start();
+        }
         draggingView = null;
         isEdgeScrolling = false;
         edgeScrollHandler.removeCallbacks(edgeScrollRunnable);

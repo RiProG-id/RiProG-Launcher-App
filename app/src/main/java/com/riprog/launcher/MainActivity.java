@@ -273,7 +273,7 @@ public class MainActivity extends Activity {
         int size = (int) (baseSize * scale);
 
         previewContainer.setLayoutParams(new LinearLayout.LayoutParams(size, size));
-        previewContainer.setBackground(ThemeUtils.getGlassDrawable(this, settingsManager));
+        previewContainer.setBackground(ThemeUtils.getGlassDrawable(this, settingsManager, 12));
         int padding = dpToPx(6);
         previewContainer.setPadding(padding, padding, padding, padding);
 
@@ -303,14 +303,35 @@ public class MainActivity extends Activity {
     public void refreshFolderPreview(HomeItem folder, GridLayout grid) {
         grid.removeAllViews();
         if (folder.folderItems == null) return;
-        int count = Math.min(folder.folderItems.size(), 4);
+
         int baseSize = getResources().getDimensionPixelSize(R.dimen.grid_icon_size);
-        int iconSize = (baseSize / 2) - dpToPx(2);
-        for (int i = 0; i < count; i++) {
+        float globalScale = settingsManager.getIconScale();
+        int scaledBaseSize = (int) (baseSize * globalScale);
+
+        int count = folder.folderItems.size();
+        int columns = 2;
+        if (settingsManager.isFreeformHome() && folder.scale > 1.2f) {
+            int maxPossibleColumns = (int) (2 * folder.scale);
+            int neededColumns = (int) Math.ceil(Math.sqrt(count));
+            columns = Math.min(maxPossibleColumns, Math.max(2, neededColumns));
+            if (columns > 4) columns = 4;
+        }
+
+        grid.setColumnCount(columns);
+        grid.setRowCount(columns);
+
+        int maxIcons = columns * columns;
+        int iconsToShow = Math.min(count, maxIcons);
+
+        int padding = dpToPx(6);
+        int available = scaledBaseSize - 2 * padding;
+        int iconSize = available / columns;
+
+        for (int i = 0; i < iconsToShow; i++) {
             HomeItem sub = folder.folderItems.get(i);
             ImageView iv = new ImageView(this);
             GridLayout.LayoutParams lp = new GridLayout.LayoutParams(
-                    GridLayout.spec(i / 2), GridLayout.spec(i % 2));
+                    GridLayout.spec(i / columns), GridLayout.spec(i % columns));
             lp.width = iconSize;
             lp.height = iconSize;
             iv.setLayoutParams(lp);
@@ -351,7 +372,7 @@ public class MainActivity extends Activity {
 
         LinearLayout overlay = new LinearLayout(this);
         overlay.setOrientation(LinearLayout.VERTICAL);
-        overlay.setBackground(ThemeUtils.getGlassDrawable(this, settingsManager));
+        overlay.setBackground(ThemeUtils.getGlassDrawable(this, settingsManager, 12));
         overlay.setPadding(dpToPx(24), dpToPx(24), dpToPx(24), dpToPx(24));
         overlay.setElevation(dpToPx(16));
         overlay.setGravity(Gravity.CENTER_HORIZONTAL);
@@ -1163,6 +1184,17 @@ public class MainActivity extends Activity {
             addView(dragOverlay, lp);
         }
 
+        private void resetDragState() {
+            isDragging = false;
+            longPressHandler.removeCallbacks(longPressRunnable);
+            if (dragOverlay != null) {
+                dragOverlay.setVisibility(View.GONE);
+                ivRemove.setBackgroundColor(Color.TRANSPARENT);
+                ivAppInfo.setBackgroundColor(Color.TRANSPARENT);
+            }
+            if (homeView != null) homeView.cancelDragging();
+        }
+
         private float spacing(MotionEvent event) {
             if (event.getPointerCount() < 2) return 0;
             float x = event.getX(0) - event.getX(1);
@@ -1207,9 +1239,8 @@ public class MainActivity extends Activity {
                     downTime = System.currentTimeMillis();
                     isGestureCanceled = false;
                     longPressTriggered = false;
-                    isDragging = false;
+                    resetDragState();
                     touchedView = findTouchedHomeItem(startX, startY);
-                    longPressHandler.removeCallbacks(longPressRunnable);
                     longPressHandler.postDelayed(longPressRunnable, 400);
                     return false;
 
@@ -1331,15 +1362,11 @@ public class MainActivity extends Activity {
 
                 case MotionEvent.ACTION_UP:
                 case MotionEvent.ACTION_CANCEL:
-                    longPressHandler.removeCallbacks(longPressRunnable);
                     if (isDragging) {
                         if (dragOverlay != null) {
                             int overlayHeight = dragOverlay.getHeight();
                             int overlayWidth = dragOverlay.getWidth();
                             float left = (getWidth() - overlayWidth) / 2f;
-                            dragOverlay.setVisibility(View.GONE);
-                            ivRemove.setBackgroundColor(Color.TRANSPARENT);
-                            ivAppInfo.setBackgroundColor(Color.TRANSPARENT);
 
                             if (touchedView != null &&
                                 event.getY() < dragOverlay.getBottom() + touchSlop * 2 &&
@@ -1360,16 +1387,18 @@ public class MainActivity extends Activity {
                                         }
                                     }
                                 }
-                                if (homeView != null) homeView.cancelDragging();
+                                resetDragState();
                             } else {
                                 if (homeView != null) homeView.endDragging();
+                                resetDragState();
                             }
                         } else {
                             if (homeView != null) homeView.endDragging();
+                            resetDragState();
                         }
-                        isDragging = false;
                         return true;
                     }
+                    resetDragState();
                     if (!isGestureCanceled && !longPressTriggered) {
                         long duration = System.currentTimeMillis() - downTime;
                         float finalDx = event.getX() - startX;
