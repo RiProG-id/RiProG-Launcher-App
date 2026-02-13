@@ -1,4 +1,4 @@
-# RiProG Launcher v2.3.1
+# RiProG Launcher v3.0.0
 
 RiProG Launcher is an ultra-lightweight, high-performance Android launcher designed for simplicity, speed, and a distraction-free user experience.
 
@@ -6,8 +6,12 @@ RiProG Launcher is an ultra-lightweight, high-performance Android launcher desig
 
 ## 🚀 Key Features
 
+### Modern Technology Stack
+- **Full Kotlin Migration**: Completely rewritten in Kotlin for improved stability and performance.
+- **Jetpack Compose UI**: Entirely built using modern declarative UI, ensuring smooth animations and a responsive interface.
+
 ### Exceptional Performance
-- **Minimal Footprint**: Optimized APK size and extremely low RAM utilization.
+- **Minimal Footprint**: Optimized APK size (~1.2MB) and extremely low RAM utilization.
 - **Fast Execution**: Engineered for rapid app launching and smooth navigation.
 
 ### Liquid Glass Design
@@ -19,7 +23,7 @@ RiProG Launcher is an ultra-lightweight, high-performance Android launcher desig
 - **Quick Index**: Alphabetical scroll bar for efficient navigation through large app lists.
 
 ### Customization & Flexibility
-- **Widget Support**: Grouped widget selection with visual shape previews for easy identification.
+- **Widget Support**: Support for home screen widgets with customizable sizes.
 - **Freeform Home**: Optional mode to bypass grid constraints for precise item placement.
 - **Dynamic Scaling**: Real-time adjustment of icon and label sizes to suit your preferences.
 
@@ -32,8 +36,8 @@ RiProG Launcher is an ultra-lightweight, high-performance Android launcher desig
 
 - **Minimum SDK**: API 23 (Android 6.0)
 - **Target SDK**: API 35 (Android 15)
-- **Implementation**: Fully programmatic UI to eliminate XML inflation overhead and maximize performance.
-- **Memory Management**: Active cache management and background task optimization.
+- **Implementation**: 100% Kotlin + Jetpack Compose for a modern, programmatic UI.
+- **Memory Management**: Active cache management and background task optimization with Coroutines.
 
 ---
 
