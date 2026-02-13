@@ -18,6 +18,7 @@ public class SettingsManager {
     private static final String KEY_ICON_SCALE = "icon_scale";
     private static final String KEY_THEME_MODE = "theme_mode";
     private static final String KEY_HIDE_LABELS = "hide_labels";
+    private static final String KEY_LIQUID_GLASS = "liquid_glass";
     private static final String KEY_DRAWER_OPEN_COUNT = "drawer_open_count";
     private static final String KEY_DEFAULT_PROMPT_TIMESTAMP = "default_prompt_ts";
     private static final String KEY_DEFAULT_PROMPT_COUNT = "default_prompt_count";
@@ -66,6 +67,14 @@ public class SettingsManager {
 
     public void setHideLabels(boolean hide) {
         prefs.edit().putBoolean(KEY_HIDE_LABELS, hide).apply();
+    }
+
+    public boolean isLiquidGlass() {
+        return prefs.getBoolean(KEY_LIQUID_GLASS, true);
+    }
+
+    public void setLiquidGlass(boolean enabled) {
+        prefs.edit().putBoolean(KEY_LIQUID_GLASS, enabled).apply();
     }
 
     public String getThemeMode() {

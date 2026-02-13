@@ -128,7 +128,7 @@ public class MainActivity extends Activity {
 
         LinearLayout prompt = new LinearLayout(this);
         prompt.setOrientation(LinearLayout.VERTICAL);
-        prompt.setBackgroundResource(R.drawable.glass_bg);
+        prompt.setBackground(ThemeUtils.getGlassDrawable(this, settingsManager));
         prompt.setPadding(dpToPx(24), dpToPx(24), dpToPx(24), dpToPx(24));
         prompt.setGravity(Gravity.CENTER);
         prompt.setElevation(dpToPx(8));
@@ -272,7 +272,7 @@ public class MainActivity extends Activity {
         int size = (int) (baseSize * scale);
 
         previewContainer.setLayoutParams(new LinearLayout.LayoutParams(size, size));
-        previewContainer.setBackgroundResource(R.drawable.glass_bg);
+        previewContainer.setBackground(ThemeUtils.getGlassDrawable(this, settingsManager));
         int padding = dpToPx(4);
         previewContainer.setPadding(padding, padding, padding, padding);
 
@@ -325,7 +325,7 @@ public class MainActivity extends Activity {
     private void openFolder(HomeItem folderItem, View folderView) {
         LinearLayout overlay = new LinearLayout(this);
         overlay.setOrientation(LinearLayout.VERTICAL);
-        overlay.setBackgroundResource(R.drawable.glass_bg);
+        overlay.setBackground(ThemeUtils.getGlassDrawable(this, settingsManager));
         overlay.setPadding(dpToPx(16), dpToPx(16), dpToPx(16), dpToPx(16));
         overlay.setElevation(dpToPx(16));
         overlay.setGravity(Gravity.CENTER_HORIZONTAL);
@@ -526,7 +526,7 @@ public class MainActivity extends Activity {
                 else removeHomeItem(item, hostView);
             }).create();
         dialog.show();
-        if (dialog.getWindow() != null) dialog.getWindow().setBackgroundDrawableResource(R.drawable.glass_bg);
+        if (dialog.getWindow() != null) dialog.getWindow().setBackgroundDrawable(ThemeUtils.getGlassDrawable(this, settingsManager));
     }
 
     private void showResizeDialog(HomeItem item, View hostView) {
@@ -545,7 +545,7 @@ public class MainActivity extends Activity {
                 saveHomeState();
             }).create();
         dialog.show();
-        if (dialog.getWindow() != null) dialog.getWindow().setBackgroundDrawableResource(R.drawable.glass_bg);
+        if (dialog.getWindow() != null) dialog.getWindow().setBackgroundDrawable(ThemeUtils.getGlassDrawable(this, settingsManager));
     }
 
     private void removeHomeItem(HomeItem item, View view) {
@@ -666,7 +666,7 @@ public class MainActivity extends Activity {
                 }
             }).create();
         dialog.show();
-        if (dialog.getWindow() != null) dialog.getWindow().setBackgroundDrawableResource(R.drawable.glass_bg);
+        if (dialog.getWindow() != null) dialog.getWindow().setBackgroundDrawable(ThemeUtils.getGlassDrawable(this, settingsManager));
     }
 
     private void pickAppForHome(int col, int row, int page) {
@@ -687,7 +687,7 @@ public class MainActivity extends Activity {
                 saveHomeState();
             }).create();
         dialog.show();
-        if (dialog.getWindow() != null) dialog.getWindow().setBackgroundDrawableResource(R.drawable.glass_bg);
+        if (dialog.getWindow() != null) dialog.getWindow().setBackgroundDrawable(ThemeUtils.getGlassDrawable(this, settingsManager));
     }
 
     private void openWallpaperPicker() {
@@ -958,7 +958,7 @@ public class MainActivity extends Activity {
         }
 
         dialog.show();
-        if (dialog.getWindow() != null) dialog.getWindow().setBackgroundDrawableResource(R.drawable.glass_bg);
+        if (dialog.getWindow() != null) dialog.getWindow().setBackgroundDrawable(ThemeUtils.getGlassDrawable(this, settingsManager));
     }
 
     private String getAppName(String packageName) {
@@ -1070,7 +1070,7 @@ public class MainActivity extends Activity {
         private void setupDragOverlay() {
             dragOverlay = new LinearLayout(getContext());
             dragOverlay.setOrientation(LinearLayout.HORIZONTAL);
-            dragOverlay.setBackgroundResource(R.drawable.glass_bg);
+            dragOverlay.setBackground(ThemeUtils.getGlassDrawable(getContext(), settingsManager));
             dragOverlay.setGravity(Gravity.CENTER);
             dragOverlay.setVisibility(View.GONE);
             dragOverlay.setElevation(dpToPx(8));

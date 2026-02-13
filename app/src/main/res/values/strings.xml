@@ -32,12 +32,18 @@
     <string name="theme_system">System</string>
     <string name="theme_light">Light</string>
     <string name="theme_dark">Dark</string>
+    <string name="setting_liquid_glass">Liquid Glass Theme</string>
+    <string name="setting_liquid_glass_summary">Enable transparent glass-style visual effects for launcher interface.</string>
     <string name="setting_freeform">Freeform Home</string>
     <string name="setting_freeform_summary">Allow free placement of items without grid alignment. Disable to auto organize layout.</string>
     <string name="setting_hide_labels">Hide Home Labels</string>
     <string name="setting_hide_labels_summary">Hide application labels on the home screen for a cleaner look.</string>
     <string name="setting_scale">Icon Size &amp; Label Scale</string>
     <string name="setting_scale_summary">Scale icons and labels together. Affect both home screen and app drawer.</string>
+
+    <string name="category_home">Home Screen</string>
+    <string name="category_appearance">Appearance</string>
+    <string name="category_about">About</string>
     <string name="search_hint">Search apps&#8230;</string>
 
     <string name="prompt_default_launcher_title">Set Default Launcher</string>

@@ -57,7 +57,7 @@ public class DrawerView extends LinearLayout {
         super(context);
         settingsManager = new SettingsManager(context);
         setOrientation(VERTICAL);
-        setBackgroundResource(R.drawable.glass_bg);
+        setBackground(ThemeUtils.getGlassDrawable(context, settingsManager));
         setPadding(0, dpToPx(48), 0, 0);
 
         searchBar = new EditText(context);
@@ -193,6 +193,7 @@ public class DrawerView extends LinearLayout {
     }
 
     public void onOpen() {
+        setBackground(ThemeUtils.getGlassDrawable(getContext(), settingsManager));
         searchBar.setText("");
         searchBar.clearFocus();
         adapter.notifyDataSetChanged();
