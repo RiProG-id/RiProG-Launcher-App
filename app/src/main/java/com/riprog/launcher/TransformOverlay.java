@@ -22,7 +22,12 @@ public class TransformOverlay extends FrameLayout {
     private final float rotationHandleDist;
 
     private float lastTouchX, lastTouchY;
+    private float initialTouchX, initialTouchY;
+    private boolean hasPassedThreshold = false;
     private int activeHandle = -1;
+
+    private static final float MOVE_THRESHOLD_DP = 8f;
+    private static final float SMOOTHING_FACTOR = 0.2f;
 
     private static final int HANDLE_TOP_LEFT = 0;
     private static final int HANDLE_TOP = 1;
@@ -100,7 +105,7 @@ public class TransformOverlay extends FrameLayout {
         TextView btnRemove = new TextView(getContext());
         btnRemove.setText("REMOVE");
         btnRemove.setPadding(dpToPx(8), dpToPx(8), dpToPx(8), dpToPx(8));
-        btnRemove.setTextColor(Color.parseColor("#FF5252"));
+        btnRemove.setTextColor(getContext().getColor(R.color.foreground));
         btnRemove.setTextSize(11);
         btnRemove.setTypeface(null, android.graphics.Typeface.BOLD);
         btnRemove.setGravity(Gravity.CENTER);
@@ -122,7 +127,7 @@ public class TransformOverlay extends FrameLayout {
         TextView btnSave = new TextView(getContext());
         btnSave.setText("SAVE");
         btnSave.setPadding(dpToPx(8), dpToPx(8), dpToPx(8), dpToPx(8));
-        btnSave.setTextColor(Color.parseColor("#4CAF50"));
+        btnSave.setTextColor(getContext().getColor(R.color.foreground));
         btnSave.setTextSize(11);
         btnSave.setTypeface(null, android.graphics.Typeface.BOLD);
         btnSave.setGravity(Gravity.CENTER);
@@ -184,13 +189,14 @@ public class TransformOverlay extends FrameLayout {
         int[] myPos = new int[2];
         getLocationOnScreen(myPos);
 
-        float x = pos[0] - myPos[0];
-        float y = pos[1] - myPos[1];
         float w = targetView.getWidth();
         float h = targetView.getHeight();
         float sx = targetView.getScaleX();
         float sy = targetView.getScaleY();
         float r = targetView.getRotation();
+
+        float cx = pos[0] - myPos[0] + (w * sx / 2f);
+        float cy = pos[1] - myPos[1] + (h * sy / 2f);
 
         RectF bounds = getContentBounds();
         float left = (bounds.left - w / 2f) * sx;
@@ -199,37 +205,53 @@ public class TransformOverlay extends FrameLayout {
         float bottom = (bounds.bottom - h / 2f) * sy;
 
         canvas.save();
-        canvas.translate(x + (w / 2f), y + (h / 2f));
+        canvas.translate(cx, cy);
         canvas.rotate(r);
 
-        paint.setColor(getContext().getColor(R.color.foreground));
+        int foregroundColor = getContext().getColor(R.color.foreground);
+
+        // Bounding Box - Thin and subtle
+        paint.setColor(foregroundColor);
         paint.setStyle(Paint.Style.STROKE);
         paint.setStrokeWidth(dpToPx(1));
-        paint.setAlpha(80);
+        paint.setAlpha(60);
         canvas.drawRect(left, top, right, bottom, paint);
 
-        paint.setStyle(Paint.Style.FILL);
-        paint.setAlpha(200);
         float hs = handleSize / 2f;
 
-        // Corners
-        canvas.drawCircle(left, top, hs, paint);
-        canvas.drawCircle(right, top, hs, paint);
-        canvas.drawCircle(right, bottom, hs, paint);
-        canvas.drawCircle(left, bottom, hs, paint);
+        // Corners - Proportional scale (Primary handles)
+        drawHandle(canvas, left, top, hs, true, foregroundColor);
+        drawHandle(canvas, right, top, hs, true, foregroundColor);
+        drawHandle(canvas, right, bottom, hs, true, foregroundColor);
+        drawHandle(canvas, left, bottom, hs, true, foregroundColor);
 
-        // Sides
-        canvas.drawCircle((left + right) / 2f, top, hs, paint);
-        canvas.drawCircle(right, (top + bottom) / 2f, hs, paint);
-        canvas.drawCircle((left + right) / 2f, bottom, hs, paint);
-        canvas.drawCircle(left, (top + bottom) / 2f, hs, paint);
+        // Sides - Width/Height resize (Secondary handles)
+        drawHandle(canvas, (left + right) / 2f, top, hs * 0.75f, false, foregroundColor);
+        drawHandle(canvas, right, (top + bottom) / 2f, hs * 0.75f, false, foregroundColor);
+        drawHandle(canvas, (left + right) / 2f, bottom, hs * 0.75f, false, foregroundColor);
+        drawHandle(canvas, left, (top + bottom) / 2f, hs * 0.75f, false, foregroundColor);
 
-        paint.setColor(getContext().getColor(R.color.foreground));
-        paint.setAlpha(255);
+        // Rotation Handle
+        paint.setColor(foregroundColor);
+        paint.setAlpha(100);
         canvas.drawLine((left + right) / 2f, top, (left + right) / 2f, top - rotationHandleDist, paint);
-        canvas.drawCircle((left + right) / 2f, top - rotationHandleDist, hs * 1.2f, paint);
+        drawHandle(canvas, (left + right) / 2f, top - rotationHandleDist, hs * 1.1f, true, foregroundColor);
 
         canvas.restore();
+    }
+
+    private void drawHandle(Canvas canvas, float cx, float cy, float radius, boolean isPrimary, int foregroundColor) {
+        // Hollow center effect
+        paint.setStyle(Paint.Style.FILL);
+        paint.setColor(Color.WHITE);
+        paint.setAlpha(isPrimary ? 200 : 120);
+        canvas.drawCircle(cx, cy, radius, paint);
+
+        paint.setStyle(Paint.Style.STROKE);
+        paint.setColor(foregroundColor);
+        paint.setStrokeWidth(dpToPx(1));
+        paint.setAlpha(isPrimary ? 200 : 150);
+        canvas.drawCircle(cx, cy, radius, paint);
     }
 
     @Override
@@ -240,13 +262,25 @@ public class TransformOverlay extends FrameLayout {
         switch (event.getAction()) {
             case MotionEvent.ACTION_DOWN:
                 activeHandle = findHandle(x, y);
+                initialTouchX = x;
+                initialTouchY = y;
                 lastTouchX = x;
                 lastTouchY = y;
+                hasPassedThreshold = false;
                 return activeHandle != -1;
 
             case MotionEvent.ACTION_MOVE:
                 if (activeHandle != -1) {
-                    handleInteraction(x, y);
+                    if (!hasPassedThreshold) {
+                        float threshold = dpToPx((int) MOVE_THRESHOLD_DP);
+                        if (dist(x, y, initialTouchX, initialTouchY) > threshold) {
+                            hasPassedThreshold = true;
+                        }
+                    }
+
+                    if (hasPassedThreshold) {
+                        handleInteraction(x, y);
+                    }
                     lastTouchX = x;
                     lastTouchY = y;
                     invalidate();
@@ -256,6 +290,7 @@ public class TransformOverlay extends FrameLayout {
             case MotionEvent.ACTION_UP:
             case MotionEvent.ACTION_CANCEL:
                 activeHandle = -1;
+                hasPassedThreshold = false;
                 return true;
         }
         return true;
@@ -267,18 +302,19 @@ public class TransformOverlay extends FrameLayout {
         int[] myPos = new int[2];
         getLocationOnScreen(myPos);
 
-        float cx = pos[0] - myPos[0] + (targetView.getWidth() / 2f);
-        float cy = pos[1] - myPos[1] + (targetView.getHeight() / 2f);
+        float w = targetView.getWidth();
+        float h = targetView.getHeight();
+        float sx = targetView.getScaleX();
+        float sy = targetView.getScaleY();
+
+        float cx = pos[0] - myPos[0] + (w * sx / 2f);
+        float cy = pos[1] - myPos[1] + (h * sy / 2f);
 
         double angle = Math.toRadians(-targetView.getRotation());
         float rx = (float) (Math.cos(angle) * (tx - cx) - Math.sin(angle) * (ty - cy));
         float ry = (float) (Math.sin(angle) * (tx - cx) + Math.cos(angle) * (ty - cy));
 
         RectF bounds = getContentBounds();
-        float w = targetView.getWidth();
-        float h = targetView.getHeight();
-        float sx = targetView.getScaleX();
-        float sy = targetView.getScaleY();
 
         float left = (bounds.left - w / 2f) * sx;
         float top = (bounds.top - h / 2f) * sy;
@@ -309,44 +345,52 @@ public class TransformOverlay extends FrameLayout {
     }
 
     private void handleInteraction(float tx, float ty) {
+        int[] pos = new int[2];
+        targetView.getLocationOnScreen(pos);
+        int[] myPos = new int[2];
+        getLocationOnScreen(myPos);
+        float w = targetView.getWidth();
+        float h = targetView.getHeight();
+        float sx = targetView.getScaleX();
+        float sy = targetView.getScaleY();
+        float cx = pos[0] - myPos[0] + (w * sx / 2f);
+        float cy = pos[1] - myPos[1] + (h * sy / 2f);
+
         if (activeHandle == ACTION_MOVE) {
             targetView.setX(targetView.getX() + (tx - lastTouchX));
             targetView.setY(targetView.getY() + (ty - lastTouchY));
         } else if (activeHandle == HANDLE_ROTATE) {
-            int[] pos = new int[2];
-            targetView.getLocationOnScreen(pos);
-            int[] myPos = new int[2];
-            getLocationOnScreen(myPos);
-            float cx = pos[0] - myPos[0] + (targetView.getWidth() / 2f);
-            float cy = pos[1] - myPos[1] + (targetView.getHeight() / 2f);
             double angle = Math.toDegrees(Math.atan2(ty - cy, tx - cx)) + 90;
-            targetView.setRotation((float) angle);
-        } else {
-            int[] pos = new int[2];
-            targetView.getLocationOnScreen(pos);
-            int[] myPos = new int[2];
-            getLocationOnScreen(myPos);
-            float cx = pos[0] - myPos[0] + (targetView.getWidth() / 2f);
-            float cy = pos[1] - myPos[1] + (targetView.getHeight() / 2f);
 
-            double angle = Math.toRadians(-targetView.getRotation());
-            float rx = (float) (Math.cos(angle) * (tx - cx) - Math.sin(angle) * (ty - cy));
-            float ry = (float) (Math.sin(angle) * (tx - cx) + Math.cos(angle) * (ty - cy));
+            float targetR = (float) angle;
+            float currentR = targetView.getRotation();
+
+            while (targetR - currentR > 180) targetR -= 360;
+            while (targetR - currentR < -180) targetR += 360;
+
+            targetView.setRotation(currentR + (targetR - currentR) * SMOOTHING_FACTOR);
+        } else {
+            double rotAngle = Math.toRadians(-targetView.getRotation());
+            float rx = (float) (Math.cos(rotAngle) * (tx - cx) - Math.sin(rotAngle) * (ty - cy));
+            float ry = (float) (Math.sin(rotAngle) * (tx - cx) + Math.cos(rotAngle) * (ty - cy));
 
             RectF bounds = getContentBounds();
             float halfContentW = bounds.width() / 2f;
             float halfContentH = bounds.height() / 2f;
 
+            float newScaleX = sx;
+            float newScaleY = sy;
+
             switch (activeHandle) {
                 case HANDLE_TOP:
                 case HANDLE_BOTTOM:
                     if (halfContentH > 0)
-                        targetView.setScaleY(Math.max(0.2f, Math.min(5.0f, Math.abs(ry) / halfContentH)));
+                        newScaleY = Math.max(0.2f, Math.min(5.0f, Math.abs(ry) / halfContentH));
                     break;
                 case HANDLE_LEFT:
                 case HANDLE_RIGHT:
                     if (halfContentW > 0)
-                        targetView.setScaleX(Math.max(0.2f, Math.min(5.0f, Math.abs(rx) / halfContentW)));
+                        newScaleX = Math.max(0.2f, Math.min(5.0f, Math.abs(rx) / halfContentW));
                     break;
                 case HANDLE_TOP_LEFT:
                 case HANDLE_TOP_RIGHT:
@@ -356,11 +400,17 @@ public class TransformOverlay extends FrameLayout {
                     float currDist = dist(tx, ty, cx, cy);
                     if (lastDist > 0) {
                         float factor = currDist / lastDist;
-                        targetView.setScaleX(Math.max(0.2f, Math.min(5.0f, targetView.getScaleX() * factor)));
-                        targetView.setScaleY(Math.max(0.2f, Math.min(5.0f, targetView.getScaleY() * factor)));
+                        newScaleX = Math.max(0.2f, Math.min(5.0f, sx * factor));
+                        newScaleY = Math.max(0.2f, Math.min(5.0f, sy * factor));
                     }
                     break;
             }
+
+            newScaleX = Math.round(newScaleX * 20f) / 20.0f;
+            newScaleY = Math.round(newScaleY * 20f) / 20.0f;
+
+            targetView.setScaleX(newScaleX);
+            targetView.setScaleY(newScaleY);
         }
     }
 
