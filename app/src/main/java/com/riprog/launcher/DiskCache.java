@@ -91,7 +91,14 @@ public class DiskCache {
         for (File f : files) currentSize += f.length();
 
         if (currentSize > MAX_CACHE_SIZE / 2) {
-            Arrays.sort(files, Comparator.comparingLong(File::lastModified));
+            Arrays.sort(files, new Comparator<File>() {
+                @Override
+                public int compare(File f1, File f2) {
+                    long m1 = f1.lastModified();
+                    long m2 = f2.lastModified();
+                    return Long.compare(m1, m2);
+                }
+            });
             for (File f : files) {
                 if (currentSize <= MAX_CACHE_SIZE / 4) break;
                 currentSize -= f.length();
