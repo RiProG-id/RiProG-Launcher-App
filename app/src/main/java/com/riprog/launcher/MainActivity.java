@@ -25,7 +25,9 @@ import android.view.Window;
 import android.view.WindowManager;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.ArrayAdapter;
+import android.widget.EditText;
 import android.widget.FrameLayout;
+import android.widget.GridLayout;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
@@ -204,6 +206,9 @@ public class MainActivity extends Activity {
             case APP:
                 view = createAppView(item);
                 break;
+            case FOLDER:
+                view = createFolderView(item);
+                break;
             case WIDGET:
                 view = createWidgetView(item);
                 break;
@@ -253,6 +258,249 @@ public class MainActivity extends Activity {
             labelView.setVisibility(View.GONE);
         }
         return container;
+    }
+
+    private View createFolderView(HomeItem item) {
+        if (item == null) return null;
+        LinearLayout container = new LinearLayout(this);
+        container.setOrientation(LinearLayout.VERTICAL);
+        container.setGravity(Gravity.CENTER);
+
+        FrameLayout previewContainer = new FrameLayout(this);
+        int baseSize = getResources().getDimensionPixelSize(R.dimen.grid_icon_size);
+        float scale = settingsManager.getIconScale();
+        int size = (int) (baseSize * scale);
+
+        previewContainer.setLayoutParams(new LinearLayout.LayoutParams(size, size));
+        previewContainer.setBackgroundResource(R.drawable.glass_bg);
+        int padding = dpToPx(4);
+        previewContainer.setPadding(padding, padding, padding, padding);
+
+        GridLayout grid = new GridLayout(this);
+        grid.setColumnCount(2);
+        grid.setRowCount(2);
+        previewContainer.addView(grid, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+
+        refreshFolderPreview(item, grid);
+
+        TextView labelView = new TextView(this);
+        labelView.setTextColor(getColor(R.color.foreground));
+        labelView.setTextSize(10 * scale);
+        labelView.setGravity(Gravity.CENTER);
+        labelView.setMaxLines(1);
+        labelView.setEllipsize(android.text.TextUtils.TruncateAt.END);
+        labelView.setText(item.folderName == null || item.folderName.isEmpty() ? "" : item.folderName);
+
+        container.addView(previewContainer);
+        container.addView(labelView);
+        if (settingsManager.isHideLabels()) {
+            labelView.setVisibility(View.GONE);
+        }
+        return container;
+    }
+
+    public void refreshFolderPreview(HomeItem folder, GridLayout grid) {
+        grid.removeAllViews();
+        if (folder.folderItems == null) return;
+        int count = Math.min(folder.folderItems.size(), 4);
+        int baseSize = getResources().getDimensionPixelSize(R.dimen.grid_icon_size);
+        int iconSize = (baseSize / 2) - dpToPx(4);
+        for (int i = 0; i < count; i++) {
+            HomeItem sub = folder.folderItems.get(i);
+            ImageView iv = new ImageView(this);
+            GridLayout.LayoutParams lp = new GridLayout.LayoutParams(
+                    GridLayout.spec(i / 2), GridLayout.spec(i % 2));
+            lp.width = iconSize;
+            lp.height = iconSize;
+            iv.setLayoutParams(lp);
+            iv.setScaleType(ImageView.ScaleType.FIT_CENTER);
+            AppItem app = findApp(sub.packageName);
+            if (app != null) {
+                model.loadIcon(app, iv::setImageBitmap);
+            }
+            grid.addView(iv);
+        }
+    }
+
+    private void openFolder(HomeItem folderItem, View folderView) {
+        LinearLayout overlay = new LinearLayout(this);
+        overlay.setOrientation(LinearLayout.VERTICAL);
+        overlay.setBackgroundResource(R.drawable.glass_bg);
+        overlay.setPadding(dpToPx(16), dpToPx(16), dpToPx(16), dpToPx(16));
+        overlay.setElevation(dpToPx(16));
+        overlay.setGravity(Gravity.CENTER_HORIZONTAL);
+
+        EditText titleEdit = new EditText(this);
+        titleEdit.setText(folderItem.folderName);
+        titleEdit.setHint("Folder Name");
+        titleEdit.setTextColor(getColor(R.color.foreground));
+        titleEdit.setBackground(null);
+        titleEdit.setGravity(Gravity.CENTER);
+        titleEdit.setImeOptions(android.view.inputmethod.EditorInfo.IME_ACTION_DONE);
+        titleEdit.setSingleLine(true);
+        titleEdit.addTextChangedListener(new android.text.TextWatcher() {
+            @Override public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
+            @Override public void onTextChanged(CharSequence s, int start, int before, int count) {
+                folderItem.folderName = s.toString();
+                TextView tv = findTextView((ViewGroup) folderView);
+                if (tv != null) tv.setText(s.toString());
+                saveHomeState();
+            }
+            @Override public void afterTextChanged(android.text.Editable s) {}
+        });
+        overlay.addView(titleEdit);
+
+        GridLayout grid = new GridLayout(this);
+        grid.setColumnCount(4);
+        grid.setPadding(0, dpToPx(16), 0, 0);
+
+        for (HomeItem sub : folderItem.folderItems) {
+            View subView = createAppView(sub);
+            subView.setTag(sub);
+            subView.setOnClickListener(v -> {
+                handleAppLaunch(sub.packageName);
+                mainLayout.removeView(overlay);
+            });
+            subView.setOnLongClickListener(v -> {
+                mainLayout.removeView(overlay);
+                removeFromFolder(folderItem, sub);
+                homeItems.add(sub);
+                sub.page = homeView.getCurrentPage();
+                homeView.addItemView(sub, subView);
+                mainLayout.startExternalDrag(subView);
+                return true;
+            });
+            grid.addView(subView);
+        }
+        overlay.addView(grid);
+
+        FrameLayout.LayoutParams lp = new FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.CENTER);
+        lp.setMargins(dpToPx(24), 0, dpToPx(24), 0);
+        mainLayout.addView(overlay, lp);
+
+        overlay.setOnClickListener(v -> mainLayout.removeView(overlay));
+        titleEdit.setOnClickListener(v -> {});
+        grid.setOnClickListener(v -> {});
+    }
+
+    private void handleAppLaunch(String packageName) {
+        if (packageName == null) return;
+        try {
+            Intent intent = getPackageManager().getLaunchIntentForPackage(packageName);
+            if (intent != null) {
+                startActivity(intent);
+            }
+        } catch (Exception ignored) {}
+    }
+
+    public void mergeToFolder(HomeItem target, HomeItem dragged) {
+        homeItems.remove(dragged);
+        homeItems.remove(target);
+
+        HomeItem folder = HomeItem.createFolder("", target.col, target.row, target.page);
+        folder.folderItems.add(target);
+        folder.folderItems.add(dragged);
+        folder.rotation = target.rotation;
+        folder.scale = target.scale;
+        folder.tiltX = target.tiltX;
+        folder.tiltY = target.tiltY;
+        homeItems.add(folder);
+
+        if (homeView != null) {
+            homeView.removeItemsByPackage(target.packageName);
+            homeView.removeItemsByPackage(dragged.packageName);
+            renderHomeItem(folder);
+        }
+        saveHomeState();
+    }
+
+    public void addToFolder(HomeItem folder, HomeItem dragged) {
+        homeItems.remove(dragged);
+        folder.folderItems.add(dragged);
+
+        if (homeView != null) {
+            homeView.removeItemsByPackage(dragged.packageName);
+            refreshFolderIconsOnHome(folder);
+        }
+        saveHomeState();
+    }
+
+    private void removeFromFolder(HomeItem folder, HomeItem item) {
+        folder.folderItems.remove(item);
+        if (folder.folderItems.size() == 1) {
+            HomeItem lastItem = folder.folderItems.get(0);
+            homeItems.remove(folder);
+            lastItem.col = folder.col;
+            lastItem.row = folder.row;
+            lastItem.page = folder.page;
+            lastItem.rotation = folder.rotation;
+            lastItem.scale = folder.scale;
+            lastItem.tiltX = folder.tiltX;
+            lastItem.tiltY = folder.tiltY;
+            homeItems.add(lastItem);
+
+            if (homeView != null) {
+                removeFolderView(folder);
+                renderHomeItem(lastItem);
+            }
+        } else {
+            refreshFolderIconsOnHome(folder);
+        }
+        saveHomeState();
+    }
+
+    private void removeFolderView(HomeItem folder) {
+        ViewGroup pagesContainer = (ViewGroup) homeView.getChildAt(0);
+        for (int i = 0; i < pagesContainer.getChildCount(); i++) {
+            ViewGroup page = (ViewGroup) pagesContainer.getChildAt(i);
+            for (int j = 0; j < page.getChildCount(); j++) {
+                View v = page.getChildAt(j);
+                if (v.getTag() == folder) {
+                    page.removeView(v);
+                    return;
+                }
+            }
+        }
+    }
+
+    private void refreshFolderIconsOnHome(HomeItem folder) {
+        ViewGroup pagesContainer = (ViewGroup) homeView.getChildAt(0);
+        for (int i = 0; i < pagesContainer.getChildCount(); i++) {
+            ViewGroup page = (ViewGroup) pagesContainer.getChildAt(i);
+            for (int j = 0; j < page.getChildCount(); j++) {
+                View v = page.getChildAt(j);
+                if (v.getTag() == folder) {
+                    GridLayout grid = findGridLayout((ViewGroup) v);
+                    if (grid != null) refreshFolderPreview(folder, grid);
+                    return;
+                }
+            }
+        }
+    }
+
+    private GridLayout findGridLayout(ViewGroup container) {
+        for (int i = 0; i < container.getChildCount(); i++) {
+            View child = container.getChildAt(i);
+            if (child instanceof GridLayout) return (GridLayout) child;
+            if (child instanceof ViewGroup) {
+                GridLayout g = findGridLayout((ViewGroup) child);
+                if (g != null) return g;
+            }
+        }
+        return null;
+    }
+
+    private TextView findTextView(ViewGroup container) {
+        for (int i = 0; i < container.getChildCount(); i++) {
+            View child = container.getChildAt(i);
+            if (child instanceof TextView) return (TextView) child;
+            if (child instanceof ViewGroup) {
+                TextView tv = findTextView((ViewGroup) child);
+                if (tv != null) return tv;
+            }
+        }
+        return null;
     }
 
     private View createWidgetView(HomeItem item) {
@@ -1100,6 +1348,8 @@ public class MainActivity extends Activity {
                 } catch (Exception e) {
                     Toast.makeText(MainActivity.this, R.string.app_info_failed, Toast.LENGTH_SHORT).show();
                 }
+            } else if (item.type == HomeItem.Type.FOLDER) {
+                openFolder(item, v);
             } else if (item.type == HomeItem.Type.WIDGET) {
                 showWidgetOptions(item, v);
             }

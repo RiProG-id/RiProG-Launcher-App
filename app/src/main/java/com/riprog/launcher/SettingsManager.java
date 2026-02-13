@@ -112,25 +112,41 @@ public class SettingsManager {
     public void saveHomeItems(List<HomeItem> items) {
         JSONArray array = new JSONArray();
         for (HomeItem item : items) {
-            JSONObject obj = new JSONObject();
-            try {
-                obj.put("type", item.type.name());
-                obj.put("packageName", item.packageName);
-                obj.put("className", item.className);
-                obj.put("col", (double) item.col);
-                obj.put("row", (double) item.row);
-                obj.put("spanX", item.spanX);
-                obj.put("spanY", item.spanY);
-                obj.put("page", item.page);
-                obj.put("widgetId", item.widgetId);
-                obj.put("rotation", (double) item.rotation);
-                obj.put("scale", (double) item.scale);
-                obj.put("tiltX", (double) item.tiltX);
-                obj.put("tiltY", (double) item.tiltY);
-                array.put(obj);
-            } catch (JSONException ignored) {}
+            JSONObject obj = serializeItem(item);
+            if (obj != null) array.put(obj);
         }
         prefs.edit().putString(KEY_HOME_ITEMS, array.toString()).apply();
+    }
+
+    private JSONObject serializeItem(HomeItem item) {
+        JSONObject obj = new JSONObject();
+        try {
+            obj.put("type", item.type.name());
+            obj.put("packageName", item.packageName);
+            obj.put("className", item.className);
+            obj.put("col", (double) item.col);
+            obj.put("row", (double) item.row);
+            obj.put("spanX", item.spanX);
+            obj.put("spanY", item.spanY);
+            obj.put("page", item.page);
+            obj.put("widgetId", item.widgetId);
+            obj.put("rotation", (double) item.rotation);
+            obj.put("scale", (double) item.scale);
+            obj.put("tiltX", (double) item.tiltX);
+            obj.put("tiltY", (double) item.tiltY);
+            obj.put("folderName", item.folderName);
+            if (item.folderItems != null) {
+                JSONArray folderArray = new JSONArray();
+                for (HomeItem subItem : item.folderItems) {
+                    JSONObject subObj = serializeItem(subItem);
+                    if (subObj != null) folderArray.put(subObj);
+                }
+                obj.put("folderItems", folderArray);
+            }
+            return obj;
+        } catch (JSONException e) {
+            return null;
+        }
     }
 
     public List<HomeItem> getHomeItems() {
@@ -140,39 +156,54 @@ public class SettingsManager {
         try {
             JSONArray array = new JSONArray(json);
             for (int i = 0; i < array.length(); i++) {
-                JSONObject obj = array.getJSONObject(i);
-                if (!obj.has("type")) continue;
-                HomeItem item = new HomeItem();
-                try {
-                    item.type = HomeItem.Type.valueOf(obj.getString("type"));
-                } catch (Exception e) {
-                    continue;
-                }
-                item.packageName = obj.optString("packageName", "");
-                item.className = obj.optString("className", "");
-                if (obj.has("col")) {
-                    item.col = (float) obj.optDouble("col", 0.0);
-                } else {
-                    item.col = (float) (obj.optDouble("x", 0.0) / 100.0);
-                }
-                if (obj.has("row")) {
-                    item.row = (float) obj.optDouble("row", 0.0);
-                } else {
-                    item.row = (float) (obj.optDouble("y", 0.0) / 100.0);
-                }
-                item.spanX = obj.optInt("spanX", obj.optInt("width", 100) / 100);
-                item.spanY = obj.optInt("spanY", obj.optInt("height", 100) / 100);
-                if (item.spanX <= 0) item.spanX = 1;
-                if (item.spanY <= 0) item.spanY = 1;
-                item.page = obj.optInt("page", 0);
-                item.widgetId = obj.optInt("widgetId", -1);
-                item.rotation = (float) obj.optDouble("rotation", 0.0);
-                item.scale = (float) obj.optDouble("scale", 1.0);
-                item.tiltX = (float) obj.optDouble("tiltX", 0.0);
-                item.tiltY = (float) obj.optDouble("tiltY", 0.0);
-                items.add(item);
+                HomeItem item = deserializeItem(array.getJSONObject(i));
+                if (item != null) items.add(item);
             }
         } catch (Exception ignored) {}
         return items;
+    }
+
+    private HomeItem deserializeItem(JSONObject obj) {
+        if (!obj.has("type")) return null;
+        HomeItem item = new HomeItem();
+        try {
+            item.type = HomeItem.Type.valueOf(obj.getString("type"));
+        } catch (Exception e) {
+            return null;
+        }
+        item.packageName = obj.optString("packageName", "");
+        item.className = obj.optString("className", "");
+        if (obj.has("col")) {
+            item.col = (float) obj.optDouble("col", 0.0);
+        } else {
+            item.col = (float) (obj.optDouble("x", 0.0) / 100.0);
+        }
+        if (obj.has("row")) {
+            item.row = (float) obj.optDouble("row", 0.0);
+        } else {
+            item.row = (float) (obj.optDouble("y", 0.0) / 100.0);
+        }
+        item.spanX = obj.optInt("spanX", obj.optInt("width", 100) / 100);
+        item.spanY = obj.optInt("spanY", obj.optInt("height", 100) / 100);
+        if (item.spanX <= 0) item.spanX = 1;
+        if (item.spanY <= 0) item.spanY = 1;
+        item.page = obj.optInt("page", 0);
+        item.widgetId = obj.optInt("widgetId", -1);
+        item.rotation = (float) obj.optDouble("rotation", 0.0);
+        item.scale = (float) obj.optDouble("scale", 1.0);
+        item.tiltX = (float) obj.optDouble("tiltX", 0.0);
+        item.tiltY = (float) obj.optDouble("tiltY", 0.0);
+        item.folderName = obj.optString("folderName", null);
+        if (obj.has("folderItems")) {
+            item.folderItems = new ArrayList<>();
+            JSONArray folderArray = obj.optJSONArray("folderItems");
+            if (folderArray != null) {
+                for (int i = 0; i < folderArray.length(); i++) {
+                    HomeItem subItem = deserializeItem(folderArray.optJSONObject(i));
+                    if (subItem != null) item.folderItems.add(subItem);
+                }
+            }
+        }
+        return item;
     }
 }

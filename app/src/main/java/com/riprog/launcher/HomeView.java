@@ -332,9 +332,43 @@ public class HomeView extends FrameLayout {
         edgeScrollHandler.removeCallbacks(edgeScrollRunnable);
     }
 
+    private HomeItem findCollision(View draggedView) {
+        HomeItem draggedItem = (HomeItem) draggedView.getTag();
+        if (draggedItem == null) return null;
+
+        FrameLayout currentPageLayout = pages.get(currentPage);
+        float centerX = draggedView.getX() + draggedView.getWidth() / 2f;
+        float centerY = draggedView.getY() + draggedView.getHeight() / 2f;
+
+        for (int i = 0; i < currentPageLayout.getChildCount(); i++) {
+            View child = currentPageLayout.getChildAt(i);
+            if (child == draggedView) continue;
+
+            HomeItem targetItem = (HomeItem) child.getTag();
+            if (targetItem == null) continue;
+
+            if (centerX >= child.getX() && centerX <= child.getX() + child.getWidth() &&
+                    centerY >= child.getY() && centerY <= child.getY() + child.getHeight()) {
+                return targetItem;
+            }
+        }
+        return null;
+    }
+
     private void snapToGrid(HomeItem item, View v) {
         int cellWidth = getWidth() / GRID_COLUMNS;
         int cellHeight = getHeight() / GRID_ROWS;
+
+        HomeItem target = findCollision(v);
+        if (target != null && item.type == HomeItem.Type.APP) {
+            if (target.type == HomeItem.Type.APP || target.type == HomeItem.Type.FOLDER) {
+                if (getContext() instanceof MainActivity) {
+                    if (target.type == HomeItem.Type.APP) ((MainActivity) getContext()).mergeToFolder(target, item);
+                    else ((MainActivity) getContext()).addToFolder(target, item);
+                    return;
+                }
+            }
+        }
 
         if (settingsManager.isFreeformHome()) {
             item.col = v.getX() / (float) cellWidth;
@@ -411,8 +445,8 @@ public class HomeView extends FrameLayout {
             for (int i = 0; i < page.getChildCount(); i++) {
                 View view = page.getChildAt(i);
                 HomeItem item = (HomeItem) view.getTag();
-                if (item != null && item.type == HomeItem.Type.APP) {
-                    if (view instanceof ViewGroup) {
+                if (item != null) {
+                    if (item.type == HomeItem.Type.APP && view instanceof ViewGroup) {
                         ViewGroup container = (ViewGroup) view;
                         ImageView iv = findImageView(container);
                         TextView tv = findTextView(container);
@@ -441,10 +475,35 @@ public class HomeView extends FrameLayout {
                                 }
                             });
                         }
+                    } else if (item.type == HomeItem.Type.FOLDER && view instanceof ViewGroup) {
+                        ViewGroup container = (ViewGroup) view;
+                        TextView tv = findTextView(container);
+                        if (tv != null) {
+                            tv.setTextSize(10 * scale);
+                            tv.setVisibility(settingsManager.isHideLabels() ? View.GONE : View.VISIBLE);
+                            tv.setText(item.folderName == null || item.folderName.isEmpty() ? "" : item.folderName);
+                        }
+                        if (getContext() instanceof MainActivity) {
+                            android.widget.GridLayout grid = findGridLayout(container);
+                            if (grid != null) ((MainActivity) getContext()).refreshFolderPreview(item, grid);
+                        }
                     }
                 }
             }
         }
+    }
+
+    private android.widget.GridLayout findGridLayout(ViewGroup container) {
+        for (int i = 0; i < container.getChildCount(); i++) {
+            View child = container.getChildAt(i);
+            if (child instanceof android.widget.GridLayout) {
+                return (android.widget.GridLayout) child;
+            } else if (child instanceof ViewGroup) {
+                android.widget.GridLayout grid = findGridLayout((ViewGroup) child);
+                if (grid != null) return grid;
+            }
+        }
+        return null;
     }
 
     private ImageView findImageView(ViewGroup container) {
