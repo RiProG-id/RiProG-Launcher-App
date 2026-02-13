@@ -6,6 +6,7 @@ import android.app.UiModeManager;
 import android.content.Context;
 import android.content.res.ColorStateList;
 import android.graphics.Color;
+import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
 import android.graphics.drawable.RippleDrawable;
 import android.os.Bundle;
@@ -57,7 +58,7 @@ public class SettingsActivity extends Activity {
         });
 
         ScrollView scrollView = new ScrollView(this);
-        scrollView.setBackgroundResource(R.drawable.glass_bg);
+        scrollView.setBackground(ThemeUtils.getGlassDrawable(this, settingsManager));
         scrollView.setVerticalScrollBarEnabled(false);
         rootContainer.addView(scrollView);
 
@@ -69,7 +70,7 @@ public class SettingsActivity extends Activity {
         LinearLayout titleLayout = new LinearLayout(this);
         titleLayout.setOrientation(LinearLayout.HORIZONTAL);
         titleLayout.setGravity(Gravity.CENTER_VERTICAL);
-        titleLayout.setPadding(0, 0, 0, dpToPx(32));
+        titleLayout.setPadding(0, 0, 0, dpToPx(24));
 
         ImageView titleIcon = new ImageView(this);
         titleIcon.setImageResource(R.drawable.ic_settings);
@@ -81,46 +82,36 @@ public class SettingsActivity extends Activity {
         TextView title = new TextView(this);
         title.setText(R.string.title_settings);
         title.setTextSize(32);
+        title.setTypeface(null, Typeface.BOLD);
         title.setTextColor(getColor(R.color.foreground));
         titleLayout.addView(title);
         root.addView(titleLayout);
 
-        addFreeformSetting(root);
-        addHideLabelsSetting(root);
+        // Home Screen Group
+        addCategoryHeader(root, getString(R.string.category_home), R.drawable.ic_layout);
+        addToggleSetting(root, R.string.setting_freeform, R.string.setting_freeform_summary,
+                settingsManager.isFreeformHome(), settingsManager::setFreeformHome);
+        addToggleSetting(root, R.string.setting_hide_labels, R.string.setting_hide_labels_summary,
+                settingsManager.isHideLabels(), settingsManager::setHideLabels);
 
+        // Appearance Group
+        addCategoryHeader(root, getString(R.string.category_appearance), R.drawable.ic_wallpaper);
         addThemeSetting(root);
+        addToggleSetting(root, R.string.setting_liquid_glass, R.string.setting_liquid_glass_summary,
+                settingsManager.isLiquidGlass(), isChecked -> {
+                    settingsManager.setLiquidGlass(isChecked);
+                    recreate();
+                });
         addScaleSetting(root);
 
-        View divider = new View(this);
-        divider.setBackgroundColor(getColor(R.color.foreground_dim));
-        LinearLayout.LayoutParams dividerParams = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 1);
-        dividerParams.setMargins(0, dpToPx(24), 0, dpToPx(24));
-        root.addView(divider, dividerParams);
-
-        LinearLayout aboutTitleLayout = new LinearLayout(this);
-        aboutTitleLayout.setOrientation(LinearLayout.HORIZONTAL);
-        aboutTitleLayout.setGravity(Gravity.CENTER_VERTICAL);
-        aboutTitleLayout.setPadding(0, 0, 0, dpToPx(16));
-
-        ImageView aboutIcon = new ImageView(this);
-        aboutIcon.setImageResource(R.drawable.ic_about);
-        aboutIcon.setColorFilter(getColor(R.color.foreground));
-        LinearLayout.LayoutParams aboutIconParams = new LinearLayout.LayoutParams(dpToPx(24), dpToPx(24));
-        aboutIconParams.rightMargin = dpToPx(8);
-        aboutTitleLayout.addView(aboutIcon, aboutIconParams);
-
-        TextView aboutTitle = new TextView(this);
-        aboutTitle.setText(R.string.title_about);
-        aboutTitle.setTextSize(24);
-        aboutTitle.setTextColor(getColor(R.color.foreground));
-        aboutTitleLayout.addView(aboutTitle);
-        root.addView(aboutTitleLayout);
+        // About Group
+        addCategoryHeader(root, getString(R.string.category_about), R.drawable.ic_info);
 
         TextView aboutContent = new TextView(this);
         aboutContent.setText(R.string.about_content);
         aboutContent.setTextColor(getColor(R.color.foreground_dim));
         aboutContent.setTextSize(14);
-        aboutContent.setPadding(0, 0, 0, dpToPx(32));
+        aboutContent.setPadding(dpToPx(16), 0, dpToPx(16), dpToPx(32));
         Linkify.addLinks(aboutContent, Linkify.WEB_URLS);
         aboutContent.setMovementMethod(LinkMovementMethod.getInstance());
         root.addView(aboutContent);
@@ -128,10 +119,80 @@ public class SettingsActivity extends Activity {
         setContentView(rootContainer);
     }
 
+    private void addCategoryHeader(LinearLayout parent, String title, int iconRes) {
+        LinearLayout layout = new LinearLayout(this);
+        layout.setOrientation(LinearLayout.HORIZONTAL);
+        layout.setGravity(Gravity.CENTER_VERTICAL);
+        layout.setPadding(dpToPx(8), dpToPx(32), 0, dpToPx(16));
+
+        if (iconRes != 0) {
+            ImageView icon = new ImageView(this);
+            icon.setImageResource(iconRes);
+            icon.setColorFilter(getColor(R.color.foreground));
+            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(dpToPx(24), dpToPx(24));
+            lp.rightMargin = dpToPx(12);
+            layout.addView(icon, lp);
+        }
+
+        TextView tv = new TextView(this);
+        tv.setText(title);
+        tv.setTextSize(20);
+        tv.setTypeface(null, Typeface.BOLD);
+        tv.setTextColor(getColor(R.color.foreground));
+        layout.addView(tv);
+
+        parent.addView(layout);
+    }
+
+    private void addToggleSetting(LinearLayout parent, int titleRes, int summaryRes, boolean isChecked, OnToggleChangeListener listener) {
+        LinearLayout item = new LinearLayout(this);
+        item.setOrientation(LinearLayout.HORIZONTAL);
+        item.setGravity(Gravity.CENTER_VERTICAL);
+        item.setPadding(dpToPx(16), dpToPx(16), dpToPx(16), dpToPx(16));
+        applySettingItemStyle(item);
+
+        LinearLayout textLayout = new LinearLayout(this);
+        textLayout.setOrientation(LinearLayout.VERTICAL);
+        LinearLayout.LayoutParams textParams = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1);
+        item.addView(textLayout, textParams);
+
+        TextView titleView = new TextView(this);
+        titleView.setText(titleRes);
+        titleView.setTextSize(18);
+        titleView.setTextColor(getColor(R.color.foreground));
+        textLayout.addView(titleView);
+
+        TextView summaryView = new TextView(this);
+        summaryView.setText(summaryRes);
+        summaryView.setTextSize(14);
+        summaryView.setTextColor(getColor(R.color.foreground_dim));
+        textLayout.addView(summaryView);
+
+        Switch toggle = new Switch(this);
+        toggle.setChecked(isChecked);
+        toggle.setClickable(false);
+        item.addView(toggle);
+
+        item.setOnClickListener(v -> {
+            boolean newState = !toggle.isChecked();
+            toggle.setChecked(newState);
+            listener.onToggleChanged(newState);
+        });
+
+        LinearLayout.LayoutParams itemLp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        itemLp.bottomMargin = dpToPx(8);
+        parent.addView(item, itemLp);
+    }
+
+    private interface OnToggleChangeListener {
+        void onToggleChanged(boolean isChecked);
+    }
+
     private void addThemeSetting(LinearLayout parent) {
         LinearLayout item = new LinearLayout(this);
         item.setOrientation(LinearLayout.VERTICAL);
-        item.setPadding(0, dpToPx(16), 0, dpToPx(16));
+        item.setPadding(dpToPx(16), dpToPx(16), dpToPx(16), dpToPx(16));
+        applySettingItemStyle(item);
 
         TextView titleView = new TextView(this);
         titleView.setText(R.string.setting_theme_mode);
@@ -175,7 +236,10 @@ public class SettingsActivity extends Activity {
             option.setGravity(Gravity.CENTER);
         }
         item.addView(optionsLayout);
-        parent.addView(item);
+
+        LinearLayout.LayoutParams itemLp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        itemLp.bottomMargin = dpToPx(8);
+        parent.addView(item, itemLp);
     }
 
     private void applyThemeMode(String mode) {
@@ -204,84 +268,11 @@ public class SettingsActivity extends Activity {
         ));
     }
 
-    private void addFreeformSetting(LinearLayout parent) {
-        LinearLayout item = new LinearLayout(this);
-        item.setOrientation(LinearLayout.HORIZONTAL);
-        item.setGravity(Gravity.CENTER_VERTICAL);
-        applySettingItemStyle(item);
-
-        LinearLayout textLayout = new LinearLayout(this);
-        textLayout.setOrientation(LinearLayout.VERTICAL);
-        LinearLayout.LayoutParams textParams = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1);
-        item.addView(textLayout, textParams);
-
-        TextView titleView = new TextView(this);
-        titleView.setText(R.string.setting_freeform);
-        titleView.setTextSize(18);
-        titleView.setTextColor(getColor(R.color.foreground));
-        textLayout.addView(titleView);
-
-        TextView summaryView = new TextView(this);
-        summaryView.setText(R.string.setting_freeform_summary);
-        summaryView.setTextSize(14);
-        summaryView.setTextColor(getColor(R.color.foreground_dim));
-        textLayout.addView(summaryView);
-
-        Switch toggle = new Switch(this);
-        toggle.setChecked(settingsManager.isFreeformHome());
-        toggle.setClickable(false);
-        item.addView(toggle);
-
-        item.setOnClickListener(v -> {
-            boolean newState = !toggle.isChecked();
-            toggle.setChecked(newState);
-            settingsManager.setFreeformHome(newState);
-        });
-
-        parent.addView(item);
-    }
-
-    private void addHideLabelsSetting(LinearLayout parent) {
-        LinearLayout item = new LinearLayout(this);
-        item.setOrientation(LinearLayout.HORIZONTAL);
-        item.setGravity(Gravity.CENTER_VERTICAL);
-        applySettingItemStyle(item);
-
-        LinearLayout textLayout = new LinearLayout(this);
-        textLayout.setOrientation(LinearLayout.VERTICAL);
-        LinearLayout.LayoutParams textParams = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1);
-        item.addView(textLayout, textParams);
-
-        TextView titleView = new TextView(this);
-        titleView.setText(R.string.setting_hide_labels);
-        titleView.setTextSize(18);
-        titleView.setTextColor(getColor(R.color.foreground));
-        textLayout.addView(titleView);
-
-        TextView summaryView = new TextView(this);
-        summaryView.setText(R.string.setting_hide_labels_summary);
-        summaryView.setTextSize(14);
-        summaryView.setTextColor(getColor(R.color.foreground_dim));
-        textLayout.addView(summaryView);
-
-        Switch toggle = new Switch(this);
-        toggle.setChecked(settingsManager.isHideLabels());
-        toggle.setClickable(false);
-        item.addView(toggle);
-
-        item.setOnClickListener(v -> {
-            boolean newState = !toggle.isChecked();
-            toggle.setChecked(newState);
-            settingsManager.setHideLabels(newState);
-        });
-
-        parent.addView(item);
-    }
-
     private void addScaleSetting(LinearLayout parent) {
         LinearLayout item = new LinearLayout(this);
         item.setOrientation(LinearLayout.VERTICAL);
-        item.setPadding(0, dpToPx(16), 0, dpToPx(16));
+        item.setPadding(dpToPx(16), dpToPx(16), dpToPx(16), dpToPx(16));
+        applySettingItemStyle(item);
 
         TextView titleView = new TextView(this);
         titleView.setText(R.string.setting_scale);
@@ -312,31 +303,11 @@ public class SettingsActivity extends Activity {
         description.setTextColor(getColor(R.color.foreground_dim));
         item.addView(description);
 
-        parent.addView(item);
+        LinearLayout.LayoutParams itemLp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        itemLp.bottomMargin = dpToPx(8);
+        parent.addView(item, itemLp);
     }
 
-    private void addSettingItem(LinearLayout parent, String title, String summary, View.OnClickListener listener) {
-        LinearLayout item = new LinearLayout(this);
-        item.setOrientation(LinearLayout.VERTICAL);
-        item.setPadding(0, dpToPx(16), 0, dpToPx(16));
-        item.setClickable(true);
-        item.setFocusable(true);
-        item.setOnClickListener(listener);
-
-        TextView titleView = new TextView(this);
-        titleView.setText(title);
-        titleView.setTextSize(18);
-        titleView.setTextColor(getColor(R.color.foreground));
-        item.addView(titleView);
-
-        TextView summaryView = new TextView(this);
-        summaryView.setText(summary);
-        summaryView.setTextSize(14);
-        summaryView.setTextColor(getColor(R.color.foreground_dim));
-        item.addView(summaryView);
-
-        parent.addView(item);
-    }
 
     private int dpToPx(int dp) {
         return (int) android.util.TypedValue.applyDimension(
