@@ -312,6 +312,25 @@ public class MainActivity extends Activity {
         }
     }
 
+    private void removePackageItems(String packageName) {
+        if (packageName == null) return;
+        boolean changed = false;
+        for (int i = homeItems.size() - 1; i >= 0; i--) {
+            HomeItem item = homeItems.get(i);
+            if (item.type == HomeItem.Type.APP && packageName.equals(item.packageName)) {
+                homeItems.remove(i);
+                changed = true;
+            }
+        }
+        if (changed) {
+            if (homeView != null) {
+                homeView.removeItemsByPackage(packageName);
+                homeView.refreshIcons(model, allApps);
+            }
+            saveHomeState();
+        }
+    }
+
     private void showAppInfo(HomeItem item) {
         if (item == null || item.packageName == null || item.packageName.isEmpty()) return;
         try {
@@ -723,6 +742,17 @@ public class MainActivity extends Activity {
     private class AppInstallReceiver extends BroadcastReceiver {
         @Override
         public void onReceive(Context context, Intent intent) {
+            String action = intent.getAction();
+            if (Intent.ACTION_PACKAGE_REMOVED.equals(action)) {
+                android.net.Uri data = intent.getData();
+                if (data != null) {
+                    String packageName = data.getSchemeSpecificPart();
+                    boolean isReplacing = intent.getBooleanExtra(Intent.EXTRA_REPLACING, false);
+                    if (!isReplacing) {
+                        removePackageItems(packageName);
+                    }
+                }
+            }
             loadApps();
         }
     }
@@ -752,20 +782,22 @@ public class MainActivity extends Activity {
             public void run() {
                 longPressTriggered = true;
                 if (touchedView != null) {
-                    isDragging = true;
-                    isExternalDrag = false;
-                    HomeItem item = (HomeItem) touchedView.getTag();
-                    if (item != null) {
+                    Object tag = touchedView.getTag();
+                    if (tag instanceof HomeItem) {
+                        isDragging = true;
+                        isExternalDrag = false;
+                        HomeItem item = (HomeItem) tag;
                         origCol = item.col;
                         origRow = item.row;
                         origPage = item.page;
+
+                        if (dragOverlay != null) {
+                            boolean isApp = item.type == HomeItem.Type.APP;
+                            if (ivAppInfo != null) ivAppInfo.setVisibility(isApp ? View.VISIBLE : View.GONE);
+                            dragOverlay.setVisibility(View.VISIBLE);
+                        }
+                        if (homeView != null) homeView.startDragging(touchedView, startX, startY);
                     }
-                    if (dragOverlay != null) {
-                        boolean isApp = item != null && item.type == HomeItem.Type.APP;
-                        ivAppInfo.setVisibility(isApp ? View.VISIBLE : View.GONE);
-                        dragOverlay.setVisibility(View.VISIBLE);
-                    }
-                    homeView.startDragging(touchedView, startX, startY);
                 } else {
                     int cellWidth = getWidth() / HomeView.GRID_COLUMNS;
                     int cellHeight = getHeight() / HomeView.GRID_ROWS;
@@ -990,11 +1022,13 @@ public class MainActivity extends Activity {
                             ivRemove.setBackgroundColor(Color.TRANSPARENT);
                             ivAppInfo.setBackgroundColor(Color.TRANSPARENT);
 
-                            if (event.getY() < dragOverlay.getBottom() + touchSlop * 2 &&
+                            if (touchedView != null &&
+                                event.getY() < dragOverlay.getBottom() + touchSlop * 2 &&
                                 event.getX() >= left && event.getX() <= left + overlayWidth) {
-                                HomeItem item = (HomeItem) touchedView.getTag();
-                                if (item != null) {
-                                    boolean isApp = ivAppInfo.getVisibility() == View.VISIBLE;
+                                Object tag = touchedView.getTag();
+                                if (tag instanceof HomeItem) {
+                                    HomeItem item = (HomeItem) tag;
+                                    boolean isApp = ivAppInfo != null && ivAppInfo.getVisibility() == View.VISIBLE;
                                     if (!isApp) {
                                         removeHomeItem(item, touchedView);
                                     } else {
@@ -1007,16 +1041,12 @@ public class MainActivity extends Activity {
                                         }
                                     }
                                 }
-                                homeView.cancelDragging();
+                                if (homeView != null) homeView.cancelDragging();
                             } else {
-
-
-
-
-                                homeView.endDragging();
+                                if (homeView != null) homeView.endDragging();
                             }
                         } else {
-                            homeView.endDragging();
+                            if (homeView != null) homeView.endDragging();
                         }
                         isDragging = false;
                         return true;
@@ -1112,6 +1142,7 @@ public class MainActivity extends Activity {
 
         private void updateDragHighlight(float x, float y) {
             if (dragOverlay == null || dragOverlay.getVisibility() != View.VISIBLE) return;
+            if (ivRemove == null || ivAppInfo == null) return;
 
             int overlayHeight = dragOverlay.getHeight();
             int overlayWidth = dragOverlay.getWidth();
@@ -1135,6 +1166,7 @@ public class MainActivity extends Activity {
         }
 
         private void revertPosition(HomeItem item, View v) {
+            if (item == null || v == null) return;
             if (isExternalDrag) {
                 removeHomeItem(item, v);
             } else {

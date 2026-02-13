@@ -257,26 +257,39 @@ public class HomeView extends FrameLayout {
 
     public void cleanupEmptyPages() {
         if (pages.size() <= 1) return;
+
+        int oldCurrentPage = currentPage;
+        int pagesRemovedBefore = 0;
         boolean changed = false;
+
         for (int i = pages.size() - 1; i >= 0; i--) {
             if (pages.get(i).getChildCount() == 0) {
-                removePage(i);
-                changed = true;
+                if (pages.size() > 1) {
+                    removePage(i);
+                    changed = true;
+                    if (i < oldCurrentPage) {
+                        pagesRemovedBefore++;
+                    }
+                }
             }
         }
+
         if (changed) {
+            currentPage -= pagesRemovedBefore;
+            if (currentPage < 0) currentPage = 0;
+            if (currentPage >= pages.size()) currentPage = Math.max(0, pages.size() - 1);
 
             for (int i = 0; i < pages.size(); i++) {
                 FrameLayout p = pages.get(i);
                 for (int j = 0; j < p.getChildCount(); j++) {
                     View v = p.getChildAt(j);
-                    HomeItem item = (HomeItem) v.getTag();
-                    if (item != null) item.page = i;
+                    if (v != null && v.getTag() instanceof HomeItem) {
+                        HomeItem item = (HomeItem) v.getTag();
+                        item.page = i;
+                    }
                 }
             }
-            if (currentPage >= pages.size()) {
-                currentPage = pages.size() - 1;
-            }
+
             scrollToPage(currentPage);
             pageIndicator.setPageCount(pages.size());
             pageIndicator.setCurrentPage(currentPage);
@@ -291,6 +304,26 @@ public class HomeView extends FrameLayout {
         if (index < 0 || index >= pages.size()) return;
         FrameLayout page = pages.remove(index);
         pagesContainer.removeView(page);
+    }
+
+    public void removeItemsByPackage(String packageName) {
+        if (packageName == null) return;
+        boolean changed = false;
+        for (FrameLayout page : pages) {
+            for (int i = page.getChildCount() - 1; i >= 0; i--) {
+                View v = page.getChildAt(i);
+                if (v != null && v.getTag() instanceof HomeItem) {
+                    HomeItem item = (HomeItem) v.getTag();
+                    if (item.type == HomeItem.Type.APP && packageName.equals(item.packageName)) {
+                        page.removeView(v);
+                        changed = true;
+                    }
+                }
+            }
+        }
+        if (changed) {
+            cleanupEmptyPages();
+        }
     }
 
     public void cancelDragging() {
