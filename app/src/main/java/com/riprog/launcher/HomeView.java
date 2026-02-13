@@ -113,7 +113,6 @@ public class HomeView extends FrameLayout {
 
         pagesContainer = new LinearLayout(context);
         pagesContainer.setOrientation(LinearLayout.HORIZONTAL);
-        pagesContainer.setPadding(0, dpToPx(48), 0, 0);
         addView(pagesContainer, new LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT));
 
         pageIndicator = new PageIndicator(context);
