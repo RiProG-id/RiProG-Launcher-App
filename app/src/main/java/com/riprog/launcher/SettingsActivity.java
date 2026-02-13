@@ -30,13 +30,18 @@ public class SettingsActivity extends Activity {
     private SettingsManager settingsManager;
 
     @Override
+    protected void onResume() {
+        super.onResume();
+        ThemeUtils.updateStatusBarContrast(this);
+    }
+
+    @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         settingsManager = new SettingsManager(this);
         applyThemeMode(settingsManager.getThemeMode());
 
         Window w = getWindow();
-        w.setFlags(WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS, WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS);
         w.setStatusBarColor(Color.TRANSPARENT);
         w.setNavigationBarColor(Color.TRANSPARENT);
 

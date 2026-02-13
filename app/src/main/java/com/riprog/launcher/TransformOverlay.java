@@ -15,6 +15,7 @@ import android.widget.TextView;
 public class TransformOverlay extends FrameLayout {
     private final View targetView;
     private final HomeItem item;
+    private final SettingsManager settingsManager;
     private final Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final float handleSize;
     private final float rotationHandleDist;
@@ -41,9 +42,10 @@ public class TransformOverlay extends FrameLayout {
         void onCancel();
     }
 
-    public TransformOverlay(Context context, View targetView, OnSaveListener listener) {
+    public TransformOverlay(Context context, View targetView, SettingsManager settingsManager, OnSaveListener listener) {
         super(context);
         this.targetView = targetView;
+        this.settingsManager = settingsManager;
         this.item = (HomeItem) targetView.getTag();
         this.onSaveListener = listener;
         this.handleSize = dpToPx(12);
@@ -62,26 +64,37 @@ public class TransformOverlay extends FrameLayout {
         LinearLayout container = new LinearLayout(getContext());
         container.setOrientation(LinearLayout.HORIZONTAL);
         container.setGravity(Gravity.CENTER);
-        container.setPadding(dpToPx(16), dpToPx(8), dpToPx(16), dpToPx(8));
-        container.setBackground(ThemeUtils.getGlassDrawable(getContext(), new SettingsManager(getContext())));
+        container.setPadding(dpToPx(12), dpToPx(6), dpToPx(12), dpToPx(6));
+        container.setBackground(ThemeUtils.getGlassDrawable(getContext(), settingsManager, 12));
 
         TextView btnReset = new TextView(getContext());
         btnReset.setText("RESET");
-        btnReset.setPadding(dpToPx(16), dpToPx(8), dpToPx(16), dpToPx(8));
-        btnReset.setTextColor(Color.RED);
+        btnReset.setPadding(dpToPx(12), dpToPx(8), dpToPx(12), dpToPx(8));
+        btnReset.setTextColor(Color.parseColor("#FF5252"));
+        btnReset.setTextSize(14);
+        btnReset.setTypeface(null, android.graphics.Typeface.BOLD);
         btnReset.setOnClickListener(v -> reset());
         container.addView(btnReset);
 
+        View separator = new View(getContext());
+        LinearLayout.LayoutParams sepLp = new LinearLayout.LayoutParams(dpToPx(1), dpToPx(20));
+        sepLp.setMargins(dpToPx(8), 0, dpToPx(8), 0);
+        separator.setLayoutParams(sepLp);
+        separator.setBackgroundColor(0x20FFFFFF);
+        container.addView(separator);
+
         TextView btnSave = new TextView(getContext());
         btnSave.setText("SAVE");
-        btnSave.setPadding(dpToPx(16), dpToPx(8), dpToPx(16), dpToPx(8));
-        btnSave.setTextColor(Color.GREEN);
+        btnSave.setPadding(dpToPx(12), dpToPx(8), dpToPx(12), dpToPx(8));
+        btnSave.setTextColor(Color.parseColor("#4CAF50"));
+        btnSave.setTextSize(14);
+        btnSave.setTypeface(null, android.graphics.Typeface.BOLD);
         btnSave.setOnClickListener(v -> save());
         container.addView(btnSave);
 
         LayoutParams lp = new LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT);
         lp.gravity = Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL;
-        lp.bottomMargin = dpToPx(100);
+        lp.bottomMargin = dpToPx(48);
         addView(container, lp);
     }
 
@@ -139,19 +152,19 @@ public class TransformOverlay extends FrameLayout {
         paint.setStyle(Paint.Style.FILL);
         float hs = handleSize / s;
 
-        canvas.drawCircle(-w/2f, -h/2f, hs, paint);
-        canvas.drawCircle(w/2f, -h/2f, hs, paint);
-        canvas.drawCircle(w/2f, h/2f, hs, paint);
-        canvas.drawCircle(-w/2f, h/2f, hs, paint);
+        canvas.drawRect(-w/2f - hs, -h/2f - hs, -w/2f + hs, -h/2f + hs, paint);
+        canvas.drawRect(w/2f - hs, -h/2f - hs, w/2f + hs, -h/2f + hs, paint);
+        canvas.drawRect(w/2f - hs, h/2f - hs, w/2f + hs, h/2f + hs, paint);
+        canvas.drawRect(-w/2f - hs, h/2f - hs, -w/2f + hs, h/2f + hs, paint);
 
-        canvas.drawCircle(0, -h/2f, hs, paint);
-        canvas.drawCircle(w/2f, 0, hs, paint);
-        canvas.drawCircle(0, h/2f, hs, paint);
-        canvas.drawCircle(-w/2f, 0, hs, paint);
+        canvas.drawRect(-hs, -h/2f - hs, hs, -h/2f + hs, paint);
+        canvas.drawRect(w/2f - hs, -hs, w/2f + hs, hs, paint);
+        canvas.drawRect(-hs, h/2f - hs, hs, h/2f + hs, paint);
+        canvas.drawRect(-w/2f - hs, -hs, -w/2f + hs, hs, paint);
 
-        paint.setColor(Color.YELLOW);
+        paint.setColor(Color.CYAN);
         canvas.drawLine(0, -h/2f, 0, -h/2f - rotationHandleDist/s, paint);
-        canvas.drawCircle(0, -h/2f - rotationHandleDist/s, hs, paint);
+        canvas.drawCircle(0, -h/2f - rotationHandleDist/s, hs * 1.2f, paint);
 
         canvas.restore();
     }

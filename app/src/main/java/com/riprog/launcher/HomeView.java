@@ -134,7 +134,7 @@ public class HomeView extends FrameLayout {
         TextView hint = new TextView(getContext());
         hint.setText(getContext().getString(R.string.drawer_hint));
         hint.setTextSize(12);
-        hint.setTextColor(Color.GRAY & 0x80FFFFFF);
+        hint.setTextColor(getContext().getColor(R.color.foreground_dim));
         hint.setAlpha(0);
         LayoutParams lp = new LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT);
         lp.gravity = Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL;
@@ -609,7 +609,7 @@ public class HomeView extends FrameLayout {
                 if (i == current) {
                     shape.setColor(accentColor);
                 } else {
-                    shape.setColor(Color.GRAY & 0x80FFFFFF);
+                    shape.setColor(getContext().getColor(R.color.foreground_dim) & 0x80FFFFFF);
                 }
                 dot.setBackground(shape);
                 addView(dot);
