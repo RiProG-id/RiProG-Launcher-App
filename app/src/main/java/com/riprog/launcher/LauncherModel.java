@@ -12,6 +12,9 @@ import android.os.Handler;
 import android.os.Looper;
 import android.util.LruCache;
 
+import org.json.JSONArray;
+import org.json.JSONObject;
+
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
@@ -33,13 +36,15 @@ public class LauncherModel {
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
     private final LruCache<String, Bitmap> iconCache;
     private final Map<String, List<OnIconLoadedListener>> pendingListeners = new HashMap<>();
+    private final DiskCache diskCache;
 
     public LauncherModel(Context context) {
         this.context = context.getApplicationContext();
         this.pm = context.getPackageManager();
+        this.diskCache = new DiskCache(this.context);
 
         final int maxMemory = (int) (Runtime.getRuntime().maxMemory() / 1024);
-        final int cacheSize = Math.min(24 * 1024, maxMemory / 10);
+        final int cacheSize = Math.min(16 * 1024, maxMemory / 12);
         iconCache = new LruCache<String, Bitmap>(cacheSize) {
             @Override
             protected int sizeOf(String key, Bitmap bitmap) {
@@ -54,9 +59,11 @@ public class LauncherModel {
         }
         if (level >= android.content.ComponentCallbacks2.TRIM_MEMORY_MODERATE) {
             iconCache.evictAll();
+            diskCache.performCleanup();
             System.gc();
         } else if (level >= android.content.ComponentCallbacks2.TRIM_MEMORY_BACKGROUND) {
-            iconCache.trimToSize(0);
+            iconCache.evictAll();
+            System.gc();
         }
     }
 
@@ -65,7 +72,22 @@ public class LauncherModel {
     }
 
     public void loadApps(OnAppsLoadedListener listener) {
+        loadApps(listener, false);
+    }
+
+    public void loadApps(OnAppsLoadedListener listener, boolean forceRefresh) {
         executor.execute(() -> {
+            if (!forceRefresh) {
+                String cached = diskCache.loadData("app_list");
+                if (cached != null) {
+                    List<AppItem> apps = deserializeAppList(cached);
+                    if (!apps.isEmpty()) {
+                        mainHandler.post(() -> listener.onAppsLoaded(apps));
+                        return;
+                    }
+                }
+            }
+
             Intent mainIntent = new Intent(Intent.ACTION_MAIN, null);
             mainIntent.addCategory(Intent.CATEGORY_LAUNCHER);
             List<ResolveInfo> infos = pm.queryIntentActivities(mainIntent, 0);
@@ -85,9 +107,47 @@ public class LauncherModel {
             }
 
             Collections.sort(apps, (a, b) -> a.label.compareToIgnoreCase(b.label));
+            diskCache.saveData("app_list", serializeAppList(apps));
 
             mainHandler.post(() -> listener.onAppsLoaded(apps));
         });
+    }
+
+    private String serializeAppList(List<AppItem> apps) {
+        try {
+            JSONArray array = new JSONArray();
+            for (AppItem app : apps) {
+                JSONObject obj = new JSONObject();
+                obj.put("l", app.label);
+                obj.put("p", app.packageName);
+                obj.put("c", app.className);
+                array.put(obj);
+            }
+            return array.toString();
+        } catch (Exception e) {
+            return "[]";
+        }
+    }
+
+    private List<AppItem> deserializeAppList(String json) {
+        List<AppItem> apps = new ArrayList<>();
+        try {
+            JSONArray array = new JSONArray(json);
+            for (int i = 0; i < array.length(); i++) {
+                JSONObject obj = array.getJSONObject(i);
+                apps.add(new AppItem(obj.getString("l"), obj.getString("p"), obj.getString("c")));
+            }
+        } catch (Exception ignored) {}
+        return apps;
+    }
+
+    public void invalidateAppListCache() {
+        diskCache.invalidateData("app_list");
+    }
+
+    public void clearAppIconCache(String packageName) {
+        iconCache.remove(packageName);
+        diskCache.removeIcon(packageName);
     }
 
     public void loadIcon(AppItem item, OnIconLoadedListener listener) {
@@ -110,14 +170,21 @@ public class LauncherModel {
         }
 
         executor.execute(() -> {
-            Bitmap bitmap = null;
-            try {
-                Drawable drawable = pm.getApplicationIcon(item.packageName);
-                bitmap = drawableToBitmap(drawable);
-                if (bitmap != null) {
-                    iconCache.put(item.packageName, bitmap);
+            Bitmap bitmap = diskCache.loadIcon(item.packageName);
+
+            if (bitmap == null) {
+                try {
+                    Drawable drawable = pm.getApplicationIcon(item.packageName);
+                    bitmap = drawableToBitmap(drawable);
+                    if (bitmap != null) {
+                        diskCache.saveIcon(item.packageName, bitmap);
+                    }
+                } catch (PackageManager.NameNotFoundException ignored) {
                 }
-            } catch (PackageManager.NameNotFoundException ignored) {
+            }
+
+            if (bitmap != null) {
+                iconCache.put(item.packageName, bitmap);
             }
 
             final Bitmap finalBitmap = bitmap;
