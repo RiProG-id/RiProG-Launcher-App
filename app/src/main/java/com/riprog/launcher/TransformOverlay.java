@@ -4,6 +4,7 @@ import android.content.Context;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
+import android.graphics.RectF;
 import android.view.Gravity;
 import android.view.MotionEvent;
 import android.view.View;
@@ -63,13 +64,30 @@ public class TransformOverlay extends FrameLayout {
         setupButtons();
     }
 
-    private View createSeparator() {
-        View separator = new View(getContext());
-        LinearLayout.LayoutParams sepLp = new LinearLayout.LayoutParams(dpToPx(1), dpToPx(20));
-        sepLp.setMargins(dpToPx(4), 0, dpToPx(4), 0);
-        separator.setLayoutParams(sepLp);
-        separator.setBackgroundColor(0x20FFFFFF);
-        return separator;
+    private RectF getContentBounds() {
+        if (!(targetView instanceof ViewGroup)) {
+            return new RectF(0, 0, targetView.getWidth(), targetView.getHeight());
+        }
+        ViewGroup vg = (ViewGroup) targetView;
+        float minX = Float.MAX_VALUE, minY = Float.MAX_VALUE;
+        float maxX = Float.MIN_VALUE, maxY = Float.MIN_VALUE;
+        boolean hasVisibleChildren = false;
+
+        for (int i = 0; i < vg.getChildCount(); i++) {
+            View child = vg.getChildAt(i);
+            if (child.getVisibility() == View.VISIBLE) {
+                minX = Math.min(minX, child.getX());
+                minY = Math.min(minY, child.getY());
+                maxX = Math.max(maxX, child.getX() + child.getWidth());
+                maxY = Math.max(maxY, child.getY() + child.getHeight());
+                hasVisibleChildren = true;
+            }
+        }
+
+        if (!hasVisibleChildren) {
+            return new RectF(0, 0, targetView.getWidth(), targetView.getHeight());
+        }
+        return new RectF(minX, minY, maxX, maxY);
     }
 
     private void setupButtons() {
@@ -81,49 +99,53 @@ public class TransformOverlay extends FrameLayout {
 
         TextView btnRemove = new TextView(getContext());
         btnRemove.setText("REMOVE");
-        btnRemove.setPadding(dpToPx(12), dpToPx(8), dpToPx(12), dpToPx(8));
+        btnRemove.setPadding(dpToPx(8), dpToPx(8), dpToPx(8), dpToPx(8));
         btnRemove.setTextColor(Color.parseColor("#FF5252"));
-        btnRemove.setTextSize(12);
+        btnRemove.setTextSize(11);
         btnRemove.setTypeface(null, android.graphics.Typeface.BOLD);
+        btnRemove.setGravity(Gravity.CENTER);
         btnRemove.setOnClickListener(v -> { if (onSaveListener != null) onSaveListener.onRemove(); });
-        container.addView(btnRemove);
-
-        container.addView(createSeparator());
+        LinearLayout.LayoutParams lpRemove = new LinearLayout.LayoutParams(0, LayoutParams.WRAP_CONTENT, 1.0f);
+        container.addView(btnRemove, lpRemove);
 
         TextView btnReset = new TextView(getContext());
         btnReset.setText("RESET");
-        btnReset.setPadding(dpToPx(12), dpToPx(8), dpToPx(12), dpToPx(8));
-        btnReset.setTextColor(Color.WHITE);
-        btnReset.setTextSize(12);
+        btnReset.setPadding(dpToPx(8), dpToPx(8), dpToPx(8), dpToPx(8));
+        btnReset.setTextColor(getContext().getColor(R.color.foreground));
+        btnReset.setTextSize(11);
         btnReset.setTypeface(null, android.graphics.Typeface.BOLD);
+        btnReset.setGravity(Gravity.CENTER);
         btnReset.setOnClickListener(v -> reset());
-        container.addView(btnReset);
-
-        container.addView(createSeparator());
+        LinearLayout.LayoutParams lpReset = new LinearLayout.LayoutParams(0, LayoutParams.WRAP_CONTENT, 1.0f);
+        container.addView(btnReset, lpReset);
 
         TextView btnSave = new TextView(getContext());
         btnSave.setText("SAVE");
-        btnSave.setPadding(dpToPx(12), dpToPx(8), dpToPx(12), dpToPx(8));
+        btnSave.setPadding(dpToPx(8), dpToPx(8), dpToPx(8), dpToPx(8));
         btnSave.setTextColor(Color.parseColor("#4CAF50"));
-        btnSave.setTextSize(12);
+        btnSave.setTextSize(11);
         btnSave.setTypeface(null, android.graphics.Typeface.BOLD);
+        btnSave.setGravity(Gravity.CENTER);
         btnSave.setOnClickListener(v -> save());
-        container.addView(btnSave);
-
-        container.addView(createSeparator());
+        LinearLayout.LayoutParams lpSave = new LinearLayout.LayoutParams(0, LayoutParams.WRAP_CONTENT, 1.0f);
+        container.addView(btnSave, lpSave);
 
         TextView btnInfo = new TextView(getContext());
         btnInfo.setText("APP INFO");
-        btnInfo.setPadding(dpToPx(12), dpToPx(8), dpToPx(12), dpToPx(8));
-        btnInfo.setTextColor(Color.CYAN);
-        btnInfo.setTextSize(12);
+        btnInfo.setPadding(dpToPx(8), dpToPx(8), dpToPx(8), dpToPx(8));
+        btnInfo.setTextColor(getContext().getColor(R.color.foreground));
+        btnInfo.setTextSize(11);
         btnInfo.setTypeface(null, android.graphics.Typeface.BOLD);
+        btnInfo.setGravity(Gravity.CENTER);
         btnInfo.setOnClickListener(v -> { if (onSaveListener != null) onSaveListener.onAppInfo(); });
-        container.addView(btnInfo);
+        LinearLayout.LayoutParams lpInfo = new LinearLayout.LayoutParams(0, LayoutParams.WRAP_CONTENT, 1.0f);
+        container.addView(btnInfo, lpInfo);
 
-        LayoutParams lp = new LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT);
+        LayoutParams lp = new LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT);
         lp.gravity = Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL;
         lp.bottomMargin = dpToPx(48);
+        lp.leftMargin = dpToPx(24);
+        lp.rightMargin = dpToPx(24);
         addView(container, lp);
     }
 
@@ -170,33 +192,42 @@ public class TransformOverlay extends FrameLayout {
         float sy = targetView.getScaleY();
         float r = targetView.getRotation();
 
+        RectF bounds = getContentBounds();
+        float left = (bounds.left - w / 2f) * sx;
+        float top = (bounds.top - h / 2f) * sy;
+        float right = (bounds.right - w / 2f) * sx;
+        float bottom = (bounds.bottom - h / 2f) * sy;
+
         canvas.save();
-        canvas.translate(x + (w/2f), y + (h/2f));
+        canvas.translate(x + (w / 2f), y + (h / 2f));
         canvas.rotate(r);
 
-        paint.setColor(Color.WHITE);
+        paint.setColor(getContext().getColor(R.color.foreground));
         paint.setStyle(Paint.Style.STROKE);
-        paint.setStrokeWidth(dpToPx(2));
-        canvas.drawRect(-w*sx/2f, -h*sy/2f, w*sx/2f, h*sy/2f, paint);
+        paint.setStrokeWidth(dpToPx(1));
+        paint.setAlpha(80);
+        canvas.drawRect(left, top, right, bottom, paint);
 
         paint.setStyle(Paint.Style.FILL);
-        float hs = handleSize;
+        paint.setAlpha(200);
+        float hs = handleSize / 2f;
 
         // Corners
-        canvas.drawRect(-w*sx/2f - hs, -h*sy/2f - hs, -w*sx/2f + hs, -h*sy/2f + hs, paint);
-        canvas.drawRect(w*sx/2f - hs, -h*sy/2f - hs, w*sx/2f + hs, -h*sy/2f + hs, paint);
-        canvas.drawRect(w*sx/2f - hs, h*sy/2f - hs, w*sx/2f + hs, h*sy/2f + hs, paint);
-        canvas.drawRect(-w*sx/2f - hs, h*sy/2f - hs, -w*sx/2f + hs, h*sy/2f + hs, paint);
+        canvas.drawCircle(left, top, hs, paint);
+        canvas.drawCircle(right, top, hs, paint);
+        canvas.drawCircle(right, bottom, hs, paint);
+        canvas.drawCircle(left, bottom, hs, paint);
 
         // Sides
-        canvas.drawRect(-hs, -h*sy/2f - hs, hs, -h*sy/2f + hs, paint);
-        canvas.drawRect(w*sx/2f - hs, -hs, w*sx/2f + hs, hs, paint);
-        canvas.drawRect(-hs, h*sy/2f - hs, hs, h*sy/2f + hs, paint);
-        canvas.drawRect(-w*sx/2f - hs, -hs, -w*sx/2f + hs, hs, paint);
+        canvas.drawCircle((left + right) / 2f, top, hs, paint);
+        canvas.drawCircle(right, (top + bottom) / 2f, hs, paint);
+        canvas.drawCircle((left + right) / 2f, bottom, hs, paint);
+        canvas.drawCircle(left, (top + bottom) / 2f, hs, paint);
 
-        paint.setColor(Color.CYAN);
-        canvas.drawLine(0, -h*sy/2f, 0, -h*sy/2f - rotationHandleDist, paint);
-        canvas.drawCircle(0, -h*sy/2f - rotationHandleDist, hs * 1.2f, paint);
+        paint.setColor(getContext().getColor(R.color.foreground));
+        paint.setAlpha(255);
+        canvas.drawLine((left + right) / 2f, top, (left + right) / 2f, top - rotationHandleDist, paint);
+        canvas.drawCircle((left + right) / 2f, top - rotationHandleDist, hs * 1.2f, paint);
 
         canvas.restore();
     }
@@ -243,27 +274,36 @@ public class TransformOverlay extends FrameLayout {
         float rx = (float) (Math.cos(angle) * (tx - cx) - Math.sin(angle) * (ty - cy));
         float ry = (float) (Math.sin(angle) * (tx - cx) + Math.cos(angle) * (ty - cy));
 
-        float w = targetView.getWidth() * targetView.getScaleX();
-        float h = targetView.getHeight() * targetView.getScaleY();
-        float hs = handleSize * 2.5f; // Increased hit area for better touch detection
+        RectF bounds = getContentBounds();
+        float w = targetView.getWidth();
+        float h = targetView.getHeight();
+        float sx = targetView.getScaleX();
+        float sy = targetView.getScaleY();
 
-        // Rotation handle first (highest priority)
-        if (dist(rx, ry, 0, -h/2f - rotationHandleDist) < hs) return HANDLE_ROTATE;
+        float left = (bounds.left - w / 2f) * sx;
+        float top = (bounds.top - h / 2f) * sy;
+        float right = (bounds.right - w / 2f) * sx;
+        float bottom = (bounds.bottom - h / 2f) * sy;
 
-        // Corners next
-        if (dist(rx, ry, -w/2f, -h/2f) < hs) return HANDLE_TOP_LEFT;
-        if (dist(rx, ry, w/2f, -h/2f) < hs) return HANDLE_TOP_RIGHT;
-        if (dist(rx, ry, w/2f, h/2f) < hs) return HANDLE_BOTTOM_RIGHT;
-        if (dist(rx, ry, -w/2f, h/2f) < hs) return HANDLE_BOTTOM_LEFT;
+        float hs = dpToPx(24); // High precision touch area
+
+        // Rotation handle first
+        if (dist(rx, ry, (left + right) / 2f, top - rotationHandleDist) < hs) return HANDLE_ROTATE;
+
+        // Corners
+        if (dist(rx, ry, left, top) < hs) return HANDLE_TOP_LEFT;
+        if (dist(rx, ry, right, top) < hs) return HANDLE_TOP_RIGHT;
+        if (dist(rx, ry, right, bottom) < hs) return HANDLE_BOTTOM_RIGHT;
+        if (dist(rx, ry, left, bottom) < hs) return HANDLE_BOTTOM_LEFT;
 
         // Sides
-        if (dist(rx, ry, 0, -h/2f) < hs) return HANDLE_TOP;
-        if (dist(rx, ry, w/2f, 0) < hs) return HANDLE_RIGHT;
-        if (dist(rx, ry, 0, h/2f) < hs) return HANDLE_BOTTOM;
-        if (dist(rx, ry, -w/2f, 0) < hs) return HANDLE_LEFT;
+        if (dist(rx, ry, (left + right) / 2f, top) < hs) return HANDLE_TOP;
+        if (dist(rx, ry, right, (top + bottom) / 2f) < hs) return HANDLE_RIGHT;
+        if (dist(rx, ry, (left + right) / 2f, bottom) < hs) return HANDLE_BOTTOM;
+        if (dist(rx, ry, left, (top + bottom) / 2f) < hs) return HANDLE_LEFT;
 
         // Move action if inside the box
-        if (rx >= -w/2f && rx <= w/2f && ry >= -h/2f && ry <= h/2f) return ACTION_MOVE;
+        if (rx >= left && rx <= right && ry >= top && ry <= bottom) return ACTION_MOVE;
 
         return -1;
     }
@@ -293,17 +333,20 @@ public class TransformOverlay extends FrameLayout {
             float rx = (float) (Math.cos(angle) * (tx - cx) - Math.sin(angle) * (ty - cy));
             float ry = (float) (Math.sin(angle) * (tx - cx) + Math.cos(angle) * (ty - cy));
 
-            float w = targetView.getWidth();
-            float h = targetView.getHeight();
+            RectF bounds = getContentBounds();
+            float halfContentW = bounds.width() / 2f;
+            float halfContentH = bounds.height() / 2f;
 
             switch (activeHandle) {
                 case HANDLE_TOP:
                 case HANDLE_BOTTOM:
-                    targetView.setScaleY(Math.max(0.2f, Math.min(5.0f, Math.abs(ry) * 2f / h)));
+                    if (halfContentH > 0)
+                        targetView.setScaleY(Math.max(0.2f, Math.min(5.0f, Math.abs(ry) / halfContentH)));
                     break;
                 case HANDLE_LEFT:
                 case HANDLE_RIGHT:
-                    targetView.setScaleX(Math.max(0.2f, Math.min(5.0f, Math.abs(rx) * 2f / w)));
+                    if (halfContentW > 0)
+                        targetView.setScaleX(Math.max(0.2f, Math.min(5.0f, Math.abs(rx) / halfContentW)));
                     break;
                 case HANDLE_TOP_LEFT:
                 case HANDLE_TOP_RIGHT:
