@@ -61,18 +61,25 @@ public class DrawerView extends LinearLayout {
         setOrientation(VERTICAL);
         setBackground(ThemeUtils.getGlassDrawable(context, settingsManager));
 
+        LinearLayout searchContainer = new LinearLayout(context);
+        searchContainer.setOrientation(HORIZONTAL);
+        searchContainer.setGravity(Gravity.CENTER_VERTICAL);
+        searchContainer.setBackground(ThemeUtils.getGlassDrawable(context, settingsManager, 12));
+        searchContainer.setPadding(dpToPx(12), 0, dpToPx(12), 0);
+
         searchBar = new EditText(context);
         searchBar.setHint(R.string.search_hint);
         searchBar.setHintTextColor(context.getColor(R.color.foreground_dim));
         searchBar.setTextColor(context.getColor(R.color.foreground));
-        searchBar.setBackgroundColor(context.getColor(R.color.search_background));
-        searchBar.setPadding(dpToPx(16), dpToPx(12), dpToPx(16), dpToPx(12));
+        searchBar.setBackground(null);
+        searchBar.setPadding(dpToPx(8), dpToPx(12), dpToPx(8), dpToPx(12));
         searchBar.setCompoundDrawablesWithIntrinsicBounds(R.drawable.ic_search, 0, 0, 0);
         searchBar.setCompoundDrawablePadding(dpToPx(12));
         if (searchBar.getCompoundDrawables()[0] != null) {
             searchBar.getCompoundDrawables()[0].setTint(context.getColor(R.color.foreground_dim));
         }
         searchBar.setSingleLine(true);
+        searchBar.setImeOptions(android.view.inputmethod.EditorInfo.IME_ACTION_SEARCH);
         searchBar.setGravity(Gravity.CENTER_VERTICAL);
         searchBar.addTextChangedListener(new TextWatcher() {
             @Override public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
@@ -82,11 +89,13 @@ public class DrawerView extends LinearLayout {
             @Override public void afterTextChanged(Editable s) {}
         });
 
-        LinearLayout.LayoutParams searchParams = new LinearLayout.LayoutParams(
+        searchContainer.addView(searchBar, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
+
+        LinearLayout.LayoutParams searchContainerParams = new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
         int searchMargin = dpToPx(16);
-        searchParams.setMargins(searchMargin, searchMargin, searchMargin, searchMargin);
-        addView(searchBar, searchParams);
+        searchContainerParams.setMargins(searchMargin, searchMargin, searchMargin, searchMargin);
+        addView(searchContainer, searchContainerParams);
 
         FrameLayout contentFrame = new FrameLayout(context);
         addView(contentFrame, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1));
@@ -207,7 +216,7 @@ public class DrawerView extends LinearLayout {
     }
 
     private void updatePadding() {
-        setPadding(insetLeft, insetTop, insetRight, 0);
+        setPadding(insetLeft, insetTop + dpToPx(8), insetRight, 0);
         if (gridView != null) {
             gridView.setPadding(dpToPx(8), dpToPx(16), dpToPx(32), insetBottom + dpToPx(16));
         }
@@ -257,7 +266,7 @@ public class DrawerView extends LinearLayout {
                 itemLayout.addView(icon, new LinearLayout.LayoutParams(size, size));
 
                 TextView label = new TextView(getContext());
-                label.setTextColor(getContext().getColor(R.color.foreground_dim));
+                label.setTextColor(getContext().getColor(R.color.foreground));
                 label.setTextSize(10 * scale);
                 label.setGravity(Gravity.CENTER);
                 label.setMaxLines(1);

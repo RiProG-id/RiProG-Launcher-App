@@ -67,7 +67,6 @@ public class MainActivity extends Activity {
         applyThemeMode(settingsManager.getThemeMode());
 
         Window w = getWindow();
-        w.setFlags(WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS, WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS);
         w.setStatusBarColor(Color.TRANSPARENT);
         w.setNavigationBarColor(Color.TRANSPARENT);
 
@@ -144,7 +143,7 @@ public class MainActivity extends Activity {
 
         LinearLayout prompt = new LinearLayout(this);
         prompt.setOrientation(LinearLayout.VERTICAL);
-        prompt.setBackground(ThemeUtils.getGlassDrawable(this, settingsManager));
+        prompt.setBackground(ThemeUtils.getGlassDrawable(this, settingsManager, 12));
         prompt.setPadding(dpToPx(24), dpToPx(24), dpToPx(24), dpToPx(24));
         prompt.setGravity(Gravity.CENTER);
         prompt.setElevation(dpToPx(8));
@@ -881,7 +880,7 @@ public class MainActivity extends Activity {
 
     private void showTransformOverlay(View targetView) {
         if (currentTransformOverlay != null) return;
-        currentTransformOverlay = new TransformOverlay(this, targetView, new TransformOverlay.OnSaveListener() {
+        currentTransformOverlay = new TransformOverlay(this, targetView, settingsManager, new TransformOverlay.OnSaveListener() {
             @Override public void onSave() {
                 saveHomeState();
                 closeTransformOverlay();
@@ -915,11 +914,13 @@ public class MainActivity extends Activity {
     @Override
     protected void onResume() {
         super.onResume();
+        ThemeUtils.updateStatusBarContrast(this);
         if (homeView != null) {
             homeView.refreshLayout();
             homeView.refreshIcons(model, allApps);
         }
     }
+
 
     @Override
     protected void onStart() {
@@ -1181,6 +1182,7 @@ public class MainActivity extends Activity {
                             boolean isApp = item.type == HomeItem.Type.APP;
                             if (ivAppInfo != null) ivAppInfo.setVisibility(isApp ? View.VISIBLE : View.GONE);
                             dragOverlay.setVisibility(View.VISIBLE);
+                            dragOverlay.bringToFront();
                         }
                         if (homeView != null) homeView.startDragging(touchedView, startX, startY);
                     }
@@ -1208,7 +1210,7 @@ public class MainActivity extends Activity {
         private void setupDragOverlay() {
             dragOverlay = new LinearLayout(getContext());
             dragOverlay.setOrientation(LinearLayout.HORIZONTAL);
-            dragOverlay.setBackground(ThemeUtils.getGlassDrawable(getContext(), settingsManager));
+            dragOverlay.setBackground(ThemeUtils.getGlassDrawable(getContext(), settingsManager, 12));
             dragOverlay.setGravity(Gravity.CENTER);
             dragOverlay.setVisibility(View.GONE);
             dragOverlay.setElevation(dpToPx(8));
@@ -1510,6 +1512,7 @@ public class MainActivity extends Activity {
                 boolean isApp = item != null && item.type == HomeItem.Type.APP;
                 ivAppInfo.setVisibility(isApp ? View.VISIBLE : View.GONE);
                 dragOverlay.setVisibility(View.VISIBLE);
+                dragOverlay.bringToFront();
             }
             touchedView = v;
 
