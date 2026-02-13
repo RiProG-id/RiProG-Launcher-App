@@ -198,8 +198,8 @@ public class HomeView extends FrameLayout {
         view.setY(item.row * cellHeight);
 
         view.setRotation(item.rotation);
-        view.setScaleX(item.scale);
-        view.setScaleY(item.scale);
+        view.setScaleX(item.scaleX);
+        view.setScaleY(item.scaleY);
         view.setRotationX(item.tiltX);
         view.setRotationY(item.tiltY);
     }
@@ -376,14 +376,16 @@ public class HomeView extends FrameLayout {
             item.col = v.getX() / (float) cellWidth;
             item.row = v.getY() / (float) cellHeight;
             item.rotation = v.getRotation();
-            item.scale = v.getScaleX();
+            item.scaleX = v.getScaleX();
+            item.scaleY = v.getScaleY();
             item.tiltX = v.getRotationX();
             item.tiltY = v.getRotationY();
         } else {
             item.col = Math.max(0, Math.min(GRID_COLUMNS - item.spanX, Math.round(v.getX() / (float) cellWidth)));
             item.row = Math.max(0, Math.min(GRID_ROWS - item.spanY, Math.round(v.getY() / (float) cellHeight)));
             item.rotation = 0;
-            item.scale = 1.0f;
+            item.scaleX = 1.0f;
+            item.scaleY = 1.0f;
             item.tiltX = 0;
             item.tiltY = 0;
 
@@ -432,9 +434,8 @@ public class HomeView extends FrameLayout {
     public void refreshIcons(LauncherModel model, List<AppItem> allApps) {
         this.model = model;
         this.allApps = allApps;
-        float scale = settingsManager.getIconScale();
+        float globalScale = settingsManager.getIconScale();
         int baseSize = getResources().getDimensionPixelSize(R.dimen.grid_icon_size);
-        int size = (int) (baseSize * scale);
 
         Map<String, AppItem> appMap = new HashMap<>();
         if (allApps != null) {
@@ -455,6 +456,7 @@ public class HomeView extends FrameLayout {
 
                         if (iv != null) {
                             ViewGroup.LayoutParams lp = iv.getLayoutParams();
+                            int size = (int) (baseSize * globalScale);
                             if (lp.width != size) {
                                 lp.width = size;
                                 lp.height = size;
@@ -462,7 +464,7 @@ public class HomeView extends FrameLayout {
                             }
                         }
                         if (tv != null) {
-                            tv.setTextSize(10 * scale);
+                            tv.setTextSize(10 * globalScale);
                             tv.setVisibility(settingsManager.isHideLabels() ? View.GONE : View.VISIBLE);
                         }
 
@@ -481,7 +483,7 @@ public class HomeView extends FrameLayout {
                         ViewGroup container = (ViewGroup) view;
                         TextView tv = findTextView(container);
                         if (tv != null) {
-                            tv.setTextSize(10 * scale);
+                            tv.setTextSize(10 * globalScale);
                             tv.setVisibility(settingsManager.isHideLabels() ? View.GONE : View.VISIBLE);
                             tv.setText(item.folderName == null || item.folderName.isEmpty() ? "" : item.folderName);
                         }
@@ -546,7 +548,8 @@ public class HomeView extends FrameLayout {
                             item.col = Math.max(0, Math.min(GRID_COLUMNS - item.spanX, Math.round(item.col)));
                             item.row = Math.max(0, Math.min(GRID_ROWS - item.spanY, Math.round(item.row)));
                             item.rotation = 0;
-                            item.scale = 1.0f;
+                            item.scaleX = 1.0f;
+                            item.scaleY = 1.0f;
                             item.tiltX = 0;
                             item.tiltY = 0;
                         }
