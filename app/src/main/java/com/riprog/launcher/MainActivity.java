@@ -243,6 +243,7 @@ public class MainActivity extends Activity {
         container.setGravity(Gravity.CENTER);
 
         ImageView iconView = new ImageView(this);
+        iconView.setTag("item_icon");
         iconView.setScaleType(ImageView.ScaleType.FIT_CENTER);
         int baseSize = getResources().getDimensionPixelSize(R.dimen.grid_icon_size);
         float scale = settingsManager.getIconScale();
@@ -252,6 +253,7 @@ public class MainActivity extends Activity {
         iconView.setLayoutParams(iconParams);
 
         TextView labelView = new TextView(this);
+        labelView.setTag("item_label");
         labelView.setTextColor(getColor(R.color.foreground));
         labelView.setTextSize(10 * scale);
         labelView.setGravity(Gravity.CENTER);
@@ -292,6 +294,7 @@ public class MainActivity extends Activity {
         previewContainer.setPadding(padding, padding, padding, padding);
 
         GridLayout grid = new GridLayout(this);
+        grid.setTag("folder_grid");
         grid.setColumnCount(2);
         grid.setRowCount(2);
         previewContainer.addView(grid, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
@@ -837,6 +840,7 @@ public class MainActivity extends Activity {
         IntentFilter filter = new IntentFilter();
         filter.addAction(Intent.ACTION_PACKAGE_ADDED);
         filter.addAction(Intent.ACTION_PACKAGE_REMOVED);
+        filter.addAction(Intent.ACTION_PACKAGE_REPLACED);
         filter.addDataScheme("package");
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
             registerReceiver(appInstallReceiver, filter, Context.RECEIVER_NOT_EXPORTED);
@@ -850,6 +854,13 @@ public class MainActivity extends Activity {
         super.onTrimMemory(level);
         if (model != null) {
             model.onTrimMemory(level);
+        }
+        if (level >= TRIM_MEMORY_MODERATE) {
+            if (allApps != null) {
+                allApps.clear();
+                allApps = null;
+            }
+            System.gc();
         }
     }
 
@@ -935,12 +946,20 @@ public class MainActivity extends Activity {
     protected void onStart() {
         super.onStart();
         appWidgetHost.startListening();
+        if (allApps == null || allApps.isEmpty()) {
+            loadApps();
+        }
     }
 
     @Override
     protected void onStop() {
         super.onStop();
         appWidgetHost.stopListening();
+        if (allApps != null) {
+            allApps.clear();
+            allApps = null;
+        }
+        System.gc();
     }
 
     @Override
@@ -1135,14 +1154,21 @@ public class MainActivity extends Activity {
         @Override
         public void onReceive(Context context, Intent intent) {
             String action = intent.getAction();
+            android.net.Uri data = intent.getData();
+            if (data == null) return;
+            String packageName = data.getSchemeSpecificPart();
+
+            if (model != null) {
+                model.invalidateAppListCache();
+                if (Intent.ACTION_PACKAGE_REPLACED.equals(action)) {
+                    model.clearAppIconCache(packageName);
+                }
+            }
+
             if (Intent.ACTION_PACKAGE_REMOVED.equals(action)) {
-                android.net.Uri data = intent.getData();
-                if (data != null) {
-                    String packageName = data.getSchemeSpecificPart();
-                    boolean isReplacing = intent.getBooleanExtra(Intent.EXTRA_REPLACING, false);
-                    if (!isReplacing) {
-                        removePackageItems(packageName);
-                    }
+                boolean isReplacing = intent.getBooleanExtra(Intent.EXTRA_REPLACING, false);
+                if (!isReplacing) {
+                    removePackageItems(packageName);
                 }
             }
             loadApps();

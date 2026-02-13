@@ -234,57 +234,107 @@ public class DrawerView extends LinearLayout {
     }
 
     private class AppRowAdapter extends BaseAdapter {
+        private float lastScale = -1f;
+        private int lastSize = -1;
+
         @Override public int getCount() { return (int) Math.ceil((double) filteredApps.size() / numColumns); }
         @Override public Object getItem(int position) { return null; }
         @Override public long getItemId(int position) { return position; }
-        @Override public View getView(int position, View convertView, ViewGroup parent) {
-            LinearLayout rowLayout;
-            if (convertView instanceof LinearLayout) {
-                rowLayout = (LinearLayout) convertView;
-            } else {
-                rowLayout = new LinearLayout(getContext());
-                rowLayout.setOrientation(HORIZONTAL);
-                rowLayout.setPadding(0, dpToPx(8), 0, dpToPx(8));
+
+        private class ViewHolder {
+            final LinearLayout rowLayout;
+            final List<ItemViewHolder> itemHolders = new ArrayList<>();
+            int columns;
+
+            ViewHolder(LinearLayout rowLayout, int columns) {
+                this.rowLayout = rowLayout;
+                this.columns = columns;
+                rebuild();
             }
 
-            rowLayout.removeAllViews();
-            int start = position * numColumns;
-            float scale = settingsManager.getIconScale();
-            int baseSize = getResources().getDimensionPixelSize(R.dimen.grid_icon_size);
-            int size = (int) (baseSize * scale);
+            void rebuild() {
+                rowLayout.removeAllViews();
+                itemHolders.clear();
+                for (int i = 0; i < numColumns; i++) {
+                    ItemViewHolder ivh = new ItemViewHolder();
+                    rowLayout.addView(ivh.root, new LinearLayout.LayoutParams(0, LayoutParams.WRAP_CONTENT, 1));
+                    itemHolders.add(ivh);
+                }
+                this.columns = numColumns;
+            }
+        }
 
+        private class ItemViewHolder {
+            final FrameLayout root;
+            final LinearLayout container;
+            final ImageView icon;
+            final TextView label;
+
+            ItemViewHolder() {
+                root = new FrameLayout(getContext());
+                container = new LinearLayout(getContext());
+                container.setOrientation(VERTICAL);
+                container.setGravity(Gravity.CENTER);
+
+                icon = new ImageView(getContext());
+                icon.setScaleType(ImageView.ScaleType.FIT_CENTER);
+                container.addView(icon);
+
+                label = new TextView(getContext());
+                label.setTextColor(getContext().getColor(R.color.foreground));
+                label.setGravity(Gravity.CENTER);
+                label.setMaxLines(1);
+                label.setEllipsize(TextUtils.TruncateAt.END);
+                container.addView(label);
+
+                root.addView(container);
+            }
+        }
+
+        @Override public View getView(int position, View convertView, ViewGroup parent) {
+            ViewHolder holder;
+            if (convertView == null) {
+                LinearLayout rowLayout = new LinearLayout(getContext());
+                rowLayout.setOrientation(HORIZONTAL);
+                rowLayout.setPadding(0, dpToPx(8), 0, dpToPx(8));
+                holder = new ViewHolder(rowLayout, numColumns);
+                convertView = rowLayout;
+                convertView.setTag(holder);
+            } else {
+                holder = (ViewHolder) convertView.getTag();
+                if (holder.columns != numColumns) {
+                    holder.rebuild();
+                }
+            }
+
+            if (lastScale < 0) {
+                lastScale = settingsManager.getIconScale();
+                lastSize = (int) (getResources().getDimensionPixelSize(R.dimen.grid_icon_size) * lastScale);
+            }
+
+            int start = position * numColumns;
             for (int i = 0; i < numColumns; i++) {
+                ItemViewHolder ivh = holder.itemHolders.get(i);
                 int index = start + i;
-                FrameLayout itemFrame = new FrameLayout(getContext());
-                LinearLayout.LayoutParams frameLp = new LinearLayout.LayoutParams(0, LayoutParams.WRAP_CONTENT, 1);
-                rowLayout.addView(itemFrame, frameLp);
 
                 if (index < filteredApps.size()) {
                     AppItem item = filteredApps.get(index);
-                    LinearLayout itemLayout = new LinearLayout(getContext());
-                    itemLayout.setOrientation(VERTICAL);
-                    itemLayout.setGravity(Gravity.CENTER);
+                    ivh.root.setVisibility(VISIBLE);
+                    ivh.label.setText(item.label);
+                    ivh.label.setTextSize(10 * lastScale);
 
-                    ImageView icon = new ImageView(getContext());
-                    icon.setScaleType(ImageView.ScaleType.FIT_CENTER);
-                    itemLayout.addView(icon, new LinearLayout.LayoutParams(size, size));
+                    LinearLayout.LayoutParams lp = (LinearLayout.LayoutParams) ivh.icon.getLayoutParams();
+                    if (lp.width != lastSize) {
+                        lp.width = lastSize;
+                        lp.height = lastSize;
+                        ivh.icon.setLayoutParams(lp);
+                    }
 
-                    TextView label = new TextView(getContext());
-                    label.setTextColor(getContext().getColor(R.color.foreground));
-                    label.setTextSize(10 * scale);
-                    label.setGravity(Gravity.CENTER);
-                    label.setMaxLines(1);
-                    label.setEllipsize(TextUtils.TruncateAt.END);
-                    label.setText(item.label);
-                    itemLayout.addView(label);
-
-                    itemFrame.addView(itemLayout);
-
-                    itemFrame.setOnClickListener(v -> {
+                    ivh.root.setOnClickListener(v -> {
                         Intent intent = getContext().getPackageManager().getLaunchIntentForPackage(item.packageName);
                         if (intent != null) getContext().startActivity(intent);
                     });
-                    itemFrame.setOnLongClickListener(v -> {
+                    ivh.root.setOnLongClickListener(v -> {
                         if (longClickListener != null) {
                             longClickListener.onAppLongClick(item);
                             return true;
@@ -292,16 +342,27 @@ public class DrawerView extends LinearLayout {
                         return false;
                     });
 
+                    ivh.icon.setImageDrawable(null);
                     if (model != null) {
                         model.loadIcon(item, bitmap -> {
                             if (bitmap != null) {
-                                icon.setImageBitmap(bitmap);
+                                ivh.icon.setImageBitmap(bitmap);
                             }
                         });
                     }
+                } else {
+                    ivh.root.setVisibility(INVISIBLE);
+                    ivh.root.setOnClickListener(null);
+                    ivh.root.setOnLongClickListener(null);
                 }
             }
-            return rowLayout;
+            return convertView;
+        }
+
+        @Override
+        public void notifyDataSetChanged() {
+            lastScale = -1f;
+            super.notifyDataSetChanged();
         }
     }
 }

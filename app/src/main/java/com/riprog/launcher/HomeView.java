@@ -40,6 +40,7 @@ public class HomeView extends FrameLayout {
 
     private View draggingView = null;
     private float lastX, lastY;
+    private final Handler mainHandler = new Handler();
     private final Handler edgeScrollHandler = new Handler();
     private boolean isEdgeScrolling = false;
     private long edgeHoldStart = 0;
@@ -415,9 +416,7 @@ public class HomeView extends FrameLayout {
                 .setDuration(300)
                 .setInterpolator(new android.view.animation.DecelerateInterpolator())
                 .withEndAction(() -> {
-                    if (model != null && allApps != null) {
-                        refreshIcons(model, allApps);
-                    }
+                    refreshIconsDebounced();
                 })
                 .start();
         pageIndicator.setCurrentPage(page);
@@ -431,11 +430,28 @@ public class HomeView extends FrameLayout {
         return pages.size();
     }
 
+    private final Runnable refreshIconsRunnable = () -> {
+        if (model != null && allApps != null) {
+            refreshIconsInternal(model, allApps);
+        }
+    };
+
+    public void refreshIconsDebounced() {
+        mainHandler.removeCallbacks(refreshIconsRunnable);
+        mainHandler.postDelayed(refreshIconsRunnable, 100);
+    }
+
     public void refreshIcons(LauncherModel model, List<AppItem> allApps) {
         this.model = model;
         this.allApps = allApps;
+        refreshIconsDebounced();
+    }
+
+    private void refreshIconsInternal(LauncherModel model, List<AppItem> allApps) {
         float globalScale = settingsManager.getIconScale();
         int baseSize = getResources().getDimensionPixelSize(R.dimen.grid_icon_size);
+        int targetIconSize = (int) (baseSize * globalScale);
+        boolean hideLabels = settingsManager.isHideLabels();
 
         Map<String, AppItem> appMap = new HashMap<>();
         if (allApps != null) {
@@ -448,48 +464,48 @@ public class HomeView extends FrameLayout {
             for (int i = 0; i < page.getChildCount(); i++) {
                 View view = page.getChildAt(i);
                 HomeItem item = (HomeItem) view.getTag();
-                if (item != null) {
-                    if (item.type == HomeItem.Type.APP && view instanceof ViewGroup) {
-                        ViewGroup container = (ViewGroup) view;
-                        ImageView iv = findImageView(container);
-                        TextView tv = findTextView(container);
+                if (item == null || !(view instanceof ViewGroup)) continue;
 
-                        if (iv != null) {
-                            ViewGroup.LayoutParams lp = iv.getLayoutParams();
-                            int size = (int) (baseSize * globalScale);
-                            if (lp.width != size) {
-                                lp.width = size;
-                                lp.height = size;
-                                iv.setLayoutParams(lp);
+                ViewGroup container = (ViewGroup) view;
+                if (item.type == HomeItem.Type.APP) {
+                    ImageView iv = container.findViewWithTag("item_icon");
+                    TextView tv = container.findViewWithTag("item_label");
+
+                    if (iv != null) {
+                        ViewGroup.LayoutParams lp = iv.getLayoutParams();
+                        if (lp.width != targetIconSize) {
+                            lp.width = targetIconSize;
+                            lp.height = targetIconSize;
+                            iv.setLayoutParams(lp);
+                        }
+                    }
+                    if (tv != null) {
+                        tv.setTextSize(10 * globalScale);
+                        tv.setVisibility(hideLabels ? View.GONE : View.VISIBLE);
+                    }
+
+                    AppItem app = appMap.get(item.packageName);
+                    if (iv != null && app != null) {
+                        final AppItem finalApp = app;
+                        final TextView finalTv = tv;
+                        model.loadIcon(app, bitmap -> {
+                            if (bitmap != null) {
+                                iv.setImageBitmap(bitmap);
+                                if (finalTv != null) finalTv.setText(finalApp.label);
                             }
-                        }
-                        if (tv != null) {
-                            tv.setTextSize(10 * globalScale);
-                            tv.setVisibility(settingsManager.isHideLabels() ? View.GONE : View.VISIBLE);
-                        }
-
-                        AppItem app = appMap.get(item.packageName);
-
-                        if (iv != null && app != null) {
-                            final AppItem finalApp = app;
-                            model.loadIcon(app, bitmap -> {
-                                if (bitmap != null) {
-                                    iv.setImageBitmap(bitmap);
-                                    if (tv != null) tv.setText(finalApp.label);
-                                }
-                            });
-                        }
-                    } else if (item.type == HomeItem.Type.FOLDER && view instanceof ViewGroup) {
-                        ViewGroup container = (ViewGroup) view;
-                        TextView tv = findTextView(container);
-                        if (tv != null) {
-                            tv.setTextSize(10 * globalScale);
-                            tv.setVisibility(settingsManager.isHideLabels() ? View.GONE : View.VISIBLE);
-                            tv.setText(item.folderName == null || item.folderName.isEmpty() ? "" : item.folderName);
-                        }
-                        if (getContext() instanceof MainActivity) {
-                            android.widget.GridLayout grid = findGridLayout(container);
-                            if (grid != null) ((MainActivity) getContext()).refreshFolderPreview(item, grid);
+                        });
+                    }
+                } else if (item.type == HomeItem.Type.FOLDER) {
+                    TextView tv = container.findViewWithTag("item_label");
+                    if (tv != null) {
+                        tv.setTextSize(10 * globalScale);
+                        tv.setVisibility(hideLabels ? View.GONE : View.VISIBLE);
+                        tv.setText(item.folderName == null || item.folderName.isEmpty() ? "" : item.folderName);
+                    }
+                    if (getContext() instanceof MainActivity) {
+                        android.widget.GridLayout grid = container.findViewWithTag("folder_grid");
+                        if (grid != null) {
+                            ((MainActivity) getContext()).refreshFolderPreview(item, grid);
                         }
                     }
                 }
@@ -497,44 +513,6 @@ public class HomeView extends FrameLayout {
         }
     }
 
-    private android.widget.GridLayout findGridLayout(ViewGroup container) {
-        for (int i = 0; i < container.getChildCount(); i++) {
-            View child = container.getChildAt(i);
-            if (child instanceof android.widget.GridLayout) {
-                return (android.widget.GridLayout) child;
-            } else if (child instanceof ViewGroup) {
-                android.widget.GridLayout grid = findGridLayout((ViewGroup) child);
-                if (grid != null) return grid;
-            }
-        }
-        return null;
-    }
-
-    private ImageView findImageView(ViewGroup container) {
-        for (int i = 0; i < container.getChildCount(); i++) {
-            View child = container.getChildAt(i);
-            if (child instanceof ImageView) {
-                return (ImageView) child;
-            } else if (child instanceof ViewGroup) {
-                ImageView iv = findImageView((ViewGroup) child);
-                if (iv != null) return iv;
-            }
-        }
-        return null;
-    }
-
-    private TextView findTextView(ViewGroup container) {
-        for (int i = 0; i < container.getChildCount(); i++) {
-            View child = container.getChildAt(i);
-            if (child instanceof TextView) {
-                return (TextView) child;
-            } else if (child instanceof ViewGroup) {
-                TextView tv = findTextView((ViewGroup) child);
-                if (tv != null) return tv;
-            }
-        }
-        return null;
-    }
 
     public void refreshLayout() {
         post(() -> {
