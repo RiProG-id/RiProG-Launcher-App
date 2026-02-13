@@ -22,7 +22,12 @@ public class TransformOverlay extends FrameLayout {
     private final float rotationHandleDist;
 
     private float lastTouchX, lastTouchY;
+    private float initialTouchX, initialTouchY;
+    private boolean hasPassedThreshold = false;
     private int activeHandle = -1;
+
+    private static final float MOVE_THRESHOLD_DP = 8f;
+    private static final float SMOOTHING_FACTOR = 0.2f;
 
     private static final int HANDLE_TOP_LEFT = 0;
     private static final int HANDLE_TOP = 1;
@@ -202,34 +207,50 @@ public class TransformOverlay extends FrameLayout {
         canvas.translate(x + (w / 2f), y + (h / 2f));
         canvas.rotate(r);
 
-        paint.setColor(getContext().getColor(R.color.foreground));
+        int foregroundColor = getContext().getColor(R.color.foreground);
+
+        // Bounding Box - Thin and subtle
+        paint.setColor(foregroundColor);
         paint.setStyle(Paint.Style.STROKE);
         paint.setStrokeWidth(dpToPx(1));
-        paint.setAlpha(80);
+        paint.setAlpha(60);
         canvas.drawRect(left, top, right, bottom, paint);
 
-        paint.setStyle(Paint.Style.FILL);
-        paint.setAlpha(200);
         float hs = handleSize / 2f;
 
-        // Corners
-        canvas.drawCircle(left, top, hs, paint);
-        canvas.drawCircle(right, top, hs, paint);
-        canvas.drawCircle(right, bottom, hs, paint);
-        canvas.drawCircle(left, bottom, hs, paint);
+        // Corners - Proportional scale (Primary handles)
+        drawHandle(canvas, left, top, hs, true, foregroundColor);
+        drawHandle(canvas, right, top, hs, true, foregroundColor);
+        drawHandle(canvas, right, bottom, hs, true, foregroundColor);
+        drawHandle(canvas, left, bottom, hs, true, foregroundColor);
 
-        // Sides
-        canvas.drawCircle((left + right) / 2f, top, hs, paint);
-        canvas.drawCircle(right, (top + bottom) / 2f, hs, paint);
-        canvas.drawCircle((left + right) / 2f, bottom, hs, paint);
-        canvas.drawCircle(left, (top + bottom) / 2f, hs, paint);
+        // Sides - Width/Height resize (Secondary handles)
+        drawHandle(canvas, (left + right) / 2f, top, hs * 0.75f, false, foregroundColor);
+        drawHandle(canvas, right, (top + bottom) / 2f, hs * 0.75f, false, foregroundColor);
+        drawHandle(canvas, (left + right) / 2f, bottom, hs * 0.75f, false, foregroundColor);
+        drawHandle(canvas, left, (top + bottom) / 2f, hs * 0.75f, false, foregroundColor);
 
-        paint.setColor(getContext().getColor(R.color.foreground));
-        paint.setAlpha(255);
+        // Rotation Handle
+        paint.setColor(foregroundColor);
+        paint.setAlpha(100);
         canvas.drawLine((left + right) / 2f, top, (left + right) / 2f, top - rotationHandleDist, paint);
-        canvas.drawCircle((left + right) / 2f, top - rotationHandleDist, hs * 1.2f, paint);
+        drawHandle(canvas, (left + right) / 2f, top - rotationHandleDist, hs * 1.1f, true, foregroundColor);
 
         canvas.restore();
+    }
+
+    private void drawHandle(Canvas canvas, float cx, float cy, float radius, boolean isPrimary, int foregroundColor) {
+        // Hollow center effect
+        paint.setStyle(Paint.Style.FILL);
+        paint.setColor(Color.WHITE);
+        paint.setAlpha(isPrimary ? 200 : 120);
+        canvas.drawCircle(cx, cy, radius, paint);
+
+        paint.setStyle(Paint.Style.STROKE);
+        paint.setColor(foregroundColor);
+        paint.setStrokeWidth(dpToPx(1));
+        paint.setAlpha(isPrimary ? 200 : 150);
+        canvas.drawCircle(cx, cy, radius, paint);
     }
 
     @Override
@@ -240,13 +261,25 @@ public class TransformOverlay extends FrameLayout {
         switch (event.getAction()) {
             case MotionEvent.ACTION_DOWN:
                 activeHandle = findHandle(x, y);
+                initialTouchX = x;
+                initialTouchY = y;
                 lastTouchX = x;
                 lastTouchY = y;
+                hasPassedThreshold = false;
                 return activeHandle != -1;
 
             case MotionEvent.ACTION_MOVE:
                 if (activeHandle != -1) {
-                    handleInteraction(x, y);
+                    if (!hasPassedThreshold) {
+                        float threshold = dpToPx((int) MOVE_THRESHOLD_DP);
+                        if (dist(x, y, initialTouchX, initialTouchY) > threshold) {
+                            hasPassedThreshold = true;
+                        }
+                    }
+
+                    if (hasPassedThreshold) {
+                        handleInteraction(x, y);
+                    }
                     lastTouchX = x;
                     lastTouchY = y;
                     invalidate();
@@ -256,6 +289,7 @@ public class TransformOverlay extends FrameLayout {
             case MotionEvent.ACTION_UP:
             case MotionEvent.ACTION_CANCEL:
                 activeHandle = -1;
+                hasPassedThreshold = false;
                 return true;
         }
         return true;
@@ -320,7 +354,14 @@ public class TransformOverlay extends FrameLayout {
             float cx = pos[0] - myPos[0] + (targetView.getWidth() / 2f);
             float cy = pos[1] - myPos[1] + (targetView.getHeight() / 2f);
             double angle = Math.toDegrees(Math.atan2(ty - cy, tx - cx)) + 90;
-            targetView.setRotation((float) angle);
+
+            float targetR = (float) angle;
+            float currentR = targetView.getRotation();
+
+            while (targetR - currentR > 180) targetR -= 360;
+            while (targetR - currentR < -180) targetR += 360;
+
+            targetView.setRotation(currentR + (targetR - currentR) * SMOOTHING_FACTOR);
         } else {
             int[] pos = new int[2];
             targetView.getLocationOnScreen(pos);
@@ -337,30 +378,39 @@ public class TransformOverlay extends FrameLayout {
             float halfContentW = bounds.width() / 2f;
             float halfContentH = bounds.height() / 2f;
 
+            float newScaleX = targetView.getScaleX();
+            float newScaleY = targetView.getScaleY();
+
             switch (activeHandle) {
                 case HANDLE_TOP:
                 case HANDLE_BOTTOM:
                     if (halfContentH > 0)
-                        targetView.setScaleY(Math.max(0.2f, Math.min(5.0f, Math.abs(ry) / halfContentH)));
+                        newScaleY = Math.max(0.2f, Math.min(5.0f, Math.abs(ry) / halfContentH));
                     break;
                 case HANDLE_LEFT:
                 case HANDLE_RIGHT:
                     if (halfContentW > 0)
-                        targetView.setScaleX(Math.max(0.2f, Math.min(5.0f, Math.abs(rx) / halfContentW)));
+                        newScaleX = Math.max(0.2f, Math.min(5.0f, Math.abs(rx) / halfContentW));
                     break;
                 case HANDLE_TOP_LEFT:
                 case HANDLE_TOP_RIGHT:
                 case HANDLE_BOTTOM_LEFT:
                 case HANDLE_BOTTOM_RIGHT:
-                    float lastDist = dist(lastTouchX, lastTouchY, cx, cy);
-                    float currDist = dist(tx, ty, cx, cy);
-                    if (lastDist > 0) {
-                        float factor = currDist / lastDist;
-                        targetView.setScaleX(Math.max(0.2f, Math.min(5.0f, targetView.getScaleX() * factor)));
-                        targetView.setScaleY(Math.max(0.2f, Math.min(5.0f, targetView.getScaleY() * factor)));
+                    float contentDiag = (float) Math.sqrt(halfContentW * halfContentW + halfContentH * halfContentH);
+                    float touchDiag = (float) Math.sqrt(rx * rx + ry * ry);
+                    if (contentDiag > 0) {
+                        float scale = touchDiag / contentDiag;
+                        newScaleX = Math.max(0.2f, Math.min(5.0f, scale));
+                        newScaleY = Math.max(0.2f, Math.min(5.0f, scale));
                     }
                     break;
             }
+
+            newScaleX = Math.round(newScaleX * 20f) / 20.0f;
+            newScaleY = Math.round(newScaleY * 20f) / 20.0f;
+
+            targetView.setScaleX(newScaleX);
+            targetView.setScaleY(newScaleY);
         }
     }
 
