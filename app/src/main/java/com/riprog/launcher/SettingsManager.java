@@ -6,7 +6,9 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 public class SettingsManager {
     private static final String PREFS_NAME = "riprog_launcher_prefs";
@@ -127,15 +129,38 @@ public class SettingsManager {
         prefs.edit().putInt(KEY_DEFAULT_PROMPT_COUNT, getDefaultPromptCount() + 1).apply();
     }
 
-    public void saveHomeItems(List<HomeItem> items) {
+    public void saveHomeItems(List<HomeItem> items, int pageCount) {
         if (items == null) return;
 
-        JSONArray array = new JSONArray();
+        Map<Integer, List<HomeItem>> pagesMap = new HashMap<>();
         for (HomeItem item : items) {
-            JSONObject obj = serializeItem(item);
-            if (obj != null) array.put(obj);
+            if (!pagesMap.containsKey(item.page)) pagesMap.put(item.page, new ArrayList<>());
+            pagesMap.get(item.page).add(item);
         }
-        prefs.edit().putString(KEY_HOME_ITEMS, array.toString()).apply();
+
+        SharedPreferences.Editor editor = prefs.edit();
+
+        // Remove existing page data to ensure no ghost items from removed pages
+        int lastPageCount = prefs.getInt("page_count", 0);
+        for (int i = 0; i < lastPageCount; i++) {
+            editor.remove(KEY_HOME_ITEMS + "_page_" + i);
+        }
+
+        for (int i = 0; i < pageCount; i++) {
+            List<HomeItem> pageItems = pagesMap.get(i);
+            JSONArray array = new JSONArray();
+            if (pageItems != null) {
+                for (HomeItem item : pageItems) {
+                    JSONObject obj = serializeItem(item);
+                    if (obj != null) array.put(obj);
+                }
+            }
+            editor.putString(KEY_HOME_ITEMS + "_page_" + i, array.toString());
+        }
+
+        editor.putInt("page_count", pageCount);
+        editor.remove(KEY_HOME_ITEMS); // Clear old unified storage
+        editor.apply();
     }
 
     private JSONObject serializeItem(HomeItem item) {
@@ -172,16 +197,40 @@ public class SettingsManager {
 
     public List<HomeItem> getHomeItems() {
         List<HomeItem> items = new ArrayList<>();
-        String json = prefs.getString(KEY_HOME_ITEMS, null);
-        if (json == null) return items;
-        try {
-            JSONArray array = new JSONArray(json);
-            for (int i = 0; i < array.length(); i++) {
-                HomeItem item = deserializeItem(array.getJSONObject(i));
-                if (item != null) items.add(item);
+        int pageCount = prefs.getInt("page_count", 0);
+
+        if (pageCount == 0) {
+            // Migration logic for old unified storage
+            String json = prefs.getString(KEY_HOME_ITEMS, null);
+            if (json != null) {
+                try {
+                    JSONArray array = new JSONArray(json);
+                    for (int i = 0; i < array.length(); i++) {
+                        HomeItem item = deserializeItem(array.getJSONObject(i));
+                        if (item != null) items.add(item);
+                    }
+                } catch (Exception ignored) {}
             }
-        } catch (Exception ignored) {}
+            return items;
+        }
+
+        for (int i = 0; i < pageCount; i++) {
+            String json = prefs.getString(KEY_HOME_ITEMS + "_page_" + i, null);
+            if (json != null) {
+                try {
+                    JSONArray array = new JSONArray(json);
+                    for (int j = 0; j < array.length(); j++) {
+                        HomeItem item = deserializeItem(array.getJSONObject(j));
+                        if (item != null) items.add(item);
+                    }
+                } catch (Exception ignored) {}
+            }
+        }
         return items;
+    }
+
+    public int getPageCount() {
+        return prefs.getInt("page_count", 2); // Default to 2 if not set
     }
 
     private HomeItem deserializeItem(JSONObject obj) {
