@@ -118,6 +118,10 @@ public class HomeView extends FrameLayout {
         }
         pageIndicator.setPageCount(pages.size());
         pageIndicator.setCurrentPage(currentPage);
+
+        if (getContext() instanceof MainActivity) {
+            ((MainActivity) getContext()).saveHomeState();
+        }
     }
 
     public HomeView(Context context) {
@@ -312,16 +316,18 @@ public class HomeView extends FrameLayout {
     }
 
     public void cleanupEmptyPages() {
-        if (pages.size() <= 1) return;
+        if (pages.size() <= 1 || homeItems == null) return;
 
         int oldCurrentPage = currentPage;
         int pagesRemovedBefore = 0;
         boolean changed = false;
+        List<Integer> removedIndices = new ArrayList<>();
 
         for (int i = pages.size() - 1; i >= 0; i--) {
             if (pages.get(i).getChildCount() == 0) {
                 if (pages.size() > 1) {
                     removePage(i);
+                    removedIndices.add(0, i);
                     changed = true;
                     if (i < oldCurrentPage) {
                         pagesRemovedBefore++;
@@ -335,13 +341,24 @@ public class HomeView extends FrameLayout {
             if (currentPage < 0) currentPage = 0;
             if (currentPage >= pages.size()) currentPage = Math.max(0, pages.size() - 1);
 
+            // Update page index for all items in the master list
+            for (HomeItem item : homeItems) {
+                int newPage = item.page;
+                for (int removedIdx : removedIndices) {
+                    if (item.page > removedIdx) {
+                        newPage--;
+                    }
+                }
+                item.page = Math.max(0, Math.min(pages.size() - 1, newPage));
+            }
+
+            // Sync views with their new page indices just in case
             for (int i = 0; i < pages.size(); i++) {
                 FrameLayout p = pages.get(i);
                 for (int j = 0; j < p.getChildCount(); j++) {
                     View v = p.getChildAt(j);
                     if (v != null && v.getTag() instanceof HomeItem) {
-                        HomeItem item = (HomeItem) v.getTag();
-                        item.page = i;
+                        ((HomeItem) v.getTag()).page = i;
                     }
                 }
             }
@@ -370,7 +387,30 @@ public class HomeView extends FrameLayout {
                 View v = page.getChildAt(i);
                 if (v != null && v.getTag() instanceof HomeItem) {
                     HomeItem item = (HomeItem) v.getTag();
+                    boolean shouldRemove = false;
                     if (item.type == HomeItem.Type.APP && packageName.equals(item.packageName)) {
+                        shouldRemove = true;
+                    } else if (item.type == HomeItem.Type.WIDGET) {
+                        if (getContext() instanceof MainActivity) {
+                            android.appwidget.AppWidgetManager awm = android.appwidget.AppWidgetManager.getInstance(getContext());
+                            android.appwidget.AppWidgetProviderInfo info = awm.getAppWidgetInfo(item.widgetId);
+                            if (info != null && info.provider != null && packageName.equals(info.provider.getPackageName())) {
+                                shouldRemove = true;
+                            }
+                        }
+                    } else if (item.type == HomeItem.Type.FOLDER && item.folderItems != null) {
+                        // Folder itself might be removed if empty, but we also need to refresh its preview
+                        // The HomeItem.folderItems was already updated in MainActivity.removePackageItems
+                        // So we just check if it's now empty or needs refresh.
+                        if (item.folderItems.isEmpty()) {
+                            shouldRemove = true;
+                        } else {
+                            // If not empty, it might still have had some items removed.
+                            // Handled by refreshIcons call in MainActivity.
+                        }
+                    }
+
+                    if (shouldRemove) {
                         page.removeView(v);
                         changed = true;
                     }
@@ -396,8 +436,20 @@ public class HomeView extends FrameLayout {
         if (draggedItem == null) return null;
 
         FrameLayout currentPageLayout = pages.get(currentPage);
-        float centerX = draggedView.getX() + draggedView.getWidth() / 2f;
-        float centerY = draggedView.getY() + draggedView.getHeight() / 2f;
+
+        // Calculate draggedItem's current temporary grid position for overlap check
+        int availW = getWidth() - getPaddingLeft() - getPaddingRight();
+        int availH = getHeight() - getPaddingTop() - getPaddingBottom();
+        int cellWidth = availW / GRID_COLUMNS;
+        int cellHeight = availH / GRID_ROWS;
+        if (cellWidth <= 0 || cellHeight <= 0) return null;
+
+        float[] coords = getRelativeCoords(draggedView);
+        float xInHome = coords[0] - getPaddingLeft();
+        float yInHome = coords[1] - getPaddingTop();
+
+        float currentCol = xInHome / (float) cellWidth;
+        float currentRow = yInHome / (float) cellHeight;
 
         for (int i = 0; i < currentPageLayout.getChildCount(); i++) {
             View child = currentPageLayout.getChildAt(i);
@@ -406,8 +458,10 @@ public class HomeView extends FrameLayout {
             HomeItem targetItem = (HomeItem) child.getTag();
             if (targetItem == null) continue;
 
-            if (centerX >= child.getX() && centerX <= child.getX() + child.getWidth() &&
-                    centerY >= child.getY() && centerY <= child.getY() + child.getHeight()) {
+            if (currentCol < targetItem.col + targetItem.spanX &&
+                currentCol + draggedItem.spanX > targetItem.col &&
+                currentRow < targetItem.row + targetItem.spanY &&
+                currentRow + draggedItem.spanY > targetItem.row) {
                 return targetItem;
             }
         }
@@ -533,42 +587,75 @@ public class HomeView extends FrameLayout {
 
     private void shiftCollidingItemsRecursive(HomeItem movedItem, int depth) {
         if (homeItems == null || depth > 10) return;
-        if (settingsManager.isFreeformHome()) return; // Disable auto-shifting in freeform mode
+
+        boolean isFreeform = settingsManager.isFreeformHome();
 
         for (HomeItem other : homeItems) {
             if (other == movedItem || other.page != movedItem.page) continue;
 
             if (isOverlapping(movedItem, other)) {
-                // Shift 'other' away.
-                float targetRow = other.row;
-                float targetCol = other.col;
-                boolean movedToNextPage = false;
-
-                if (movedItem.row + movedItem.spanY <= GRID_ROWS - other.spanY) {
-                    targetRow = movedItem.row + movedItem.spanY;
-                } else if (movedItem.col + movedItem.spanX <= GRID_COLUMNS - other.spanX) {
-                    targetCol = movedItem.col + movedItem.spanX;
-                } else {
-                    // Move to next page
-                    other.page++;
-                    other.row = 0;
-                    other.col = 0;
-                    movedToNextPage = true;
+                // Exceptions: App -> App, App -> Folder (keep previous behavior: no repelling)
+                if (movedItem.type == HomeItem.Type.APP && (other.type == HomeItem.Type.APP || other.type == HomeItem.Type.FOLDER)) {
+                    continue;
                 }
 
-                if (!movedToNextPage) {
-                    other.row = (float) Math.ceil(targetRow);
-                    other.col = (float) Math.ceil(targetCol);
-                    if (isOverlapping(movedItem, other)) {
-                        if (other.row < GRID_ROWS - other.spanY) other.row++;
-                        else if (other.col < GRID_COLUMNS - other.spanX) other.col++;
-                        else {
-                            // Still no room, move to next page
-                            other.page++;
-                            other.row = 0;
-                            other.col = 0;
-                            movedToNextPage = true;
+                boolean movedToNextPage = false;
+                if (!isFreeform) {
+                    // Grid Shifting Logic
+                    float targetRow = other.row;
+                    float targetCol = other.col;
+
+                    if (movedItem.row + movedItem.spanY <= GRID_ROWS - other.spanY) {
+                        targetRow = movedItem.row + movedItem.spanY;
+                    } else if (movedItem.col + movedItem.spanX <= GRID_COLUMNS - other.spanX) {
+                        targetCol = movedItem.col + movedItem.spanX;
+                    } else {
+                        other.page++;
+                        other.row = 0;
+                        other.col = 0;
+                        movedToNextPage = true;
+                    }
+
+                    if (!movedToNextPage) {
+                        other.row = (float) Math.ceil(targetRow);
+                        other.col = (float) Math.ceil(targetCol);
+                        if (isOverlapping(movedItem, other)) {
+                            if (other.row < GRID_ROWS - other.spanY) other.row++;
+                            else if (other.col < GRID_COLUMNS - other.spanX) other.col++;
+                            else {
+                                other.page++;
+                                other.row = 0;
+                                other.col = 0;
+                                movedToNextPage = true;
+                            }
                         }
+                    }
+                } else {
+                    // Freeform Repelling Logic: Shift 'other' by minimum distance to resolve overlap
+                    float overlapX1 = movedItem.col + movedItem.spanX - other.col;
+                    float overlapX2 = other.col + other.spanX - movedItem.col;
+                    float overlapY1 = movedItem.row + movedItem.spanY - other.row;
+                    float overlapY2 = other.row + other.spanY - movedItem.row;
+
+                    float dx = Math.min(overlapX1, overlapX2);
+                    float dy = Math.min(overlapY1, overlapY2);
+
+                    if (dx < dy) {
+                        if (overlapX1 < overlapX2) other.col += dx;
+                        else other.col -= dx;
+                    } else {
+                        if (overlapY1 < overlapY2) other.row += dy;
+                        else other.row -= dy;
+                    }
+
+                    // Clamp to page bounds in freeform
+                    other.col = Math.max(0, Math.min(GRID_COLUMNS - other.spanX, other.col));
+                    other.row = Math.max(0, Math.min(GRID_ROWS - other.spanY, other.row));
+
+                    // If still overlapping after clamp, move along the other axis or slightly offset
+                    if (isOverlapping(movedItem, other)) {
+                        if (dx < dy) other.row += (overlapY1 < overlapY2 ? dy : -dy);
+                        else other.col += (overlapX1 < overlapX2 ? dx : -dx);
                     }
                 }
 

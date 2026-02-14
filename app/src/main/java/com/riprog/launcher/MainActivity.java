@@ -739,6 +739,26 @@ public class MainActivity extends Activity {
             if (item.type == HomeItem.Type.APP && packageName.equals(item.packageName)) {
                 homeItems.remove(i);
                 changed = true;
+            } else if (item.type == HomeItem.Type.FOLDER && item.folderItems != null) {
+                for (int j = item.folderItems.size() - 1; j >= 0; j--) {
+                    HomeItem subItem = item.folderItems.get(j);
+                    if (subItem.type == HomeItem.Type.APP && packageName.equals(subItem.packageName)) {
+                        item.folderItems.remove(j);
+                        changed = true;
+                    }
+                }
+                if (item.folderItems.isEmpty()) {
+                    homeItems.remove(i);
+                    changed = true;
+                }
+            } else if (item.type == HomeItem.Type.WIDGET) {
+                if (appWidgetManager != null) {
+                    AppWidgetProviderInfo info = appWidgetManager.getAppWidgetInfo(item.widgetId);
+                    if (info != null && info.provider != null && packageName.equals(info.provider.getPackageName())) {
+                        homeItems.remove(i);
+                        changed = true;
+                    }
+                }
             }
         }
         if (changed) {
