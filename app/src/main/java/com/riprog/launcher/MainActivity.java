@@ -508,9 +508,17 @@ public class MainActivity extends Activity {
 
         GridLayout grid = new GridLayout(this);
         grid.setColumnCount(4);
+        grid.setAlignmentMode(GridLayout.ALIGN_MARGINS);
+        grid.setUseDefaultMargins(true);
+
+        int folderPadding = dpToPx(8);
 
         for (HomeItem sub : folderItem.folderItems) {
             View subView = createAppView(sub, true);
+            GridLayout.LayoutParams glp = new GridLayout.LayoutParams();
+            glp.setMargins(folderPadding, folderPadding, folderPadding, folderPadding);
+            subView.setLayoutParams(glp);
+
             subView.setTag(sub);
             subView.setOnClickListener(v -> {
                 handleAppLaunch(sub.packageName);
@@ -1025,6 +1033,25 @@ public class MainActivity extends Activity {
             item.row = isFreeform ? row : Math.round(row);
         }
 
+        // Folder merging logic
+        float centerX = transformingView.getX() + transformingView.getWidth() / 2f;
+        float centerY = transformingView.getY() + transformingView.getHeight() / 2f;
+        View collisionView = findHomeItemAtRoot(centerX, centerY, transformingView);
+        if (collisionView != null && item.type == HomeItem.Type.APP) {
+            HomeItem target = (HomeItem) collisionView.getTag();
+            if (target != null) {
+                if (target.type == HomeItem.Type.APP) {
+                    mergeToFolder(target, item);
+                    transformingView = null;
+                    return;
+                } else if (target.type == HomeItem.Type.FOLDER) {
+                    addToFolder(target, item);
+                    transformingView = null;
+                    return;
+                }
+            }
+        }
+
         // Collision shifting to prevent overlapping
         if (homeView != null) homeView.shiftCollidingItems(item);
     }
@@ -1497,6 +1524,9 @@ public class MainActivity extends Activity {
                         HomeItem item = (HomeItem) tag;
                         if (settingsManager.isFreeformHome() || item.type == HomeItem.Type.WIDGET) {
                             showTransformOverlay(touchedView);
+                            if (currentTransformOverlay != null) {
+                                currentTransformOverlay.startDirectMove(startX, startY);
+                            }
                             return;
                         }
                         isDragging = true;
@@ -1616,6 +1646,10 @@ public class MainActivity extends Activity {
                 downTime = System.currentTimeMillis();
             }
             if (currentTransformOverlay != null) return false;
+            if (currentFolderOverlay != null) {
+                longPressHandler.removeCallbacks(longPressRunnable);
+                return false;
+            }
             if (isDrawerOpen) {
                 switch (ev.getAction()) {
                     case MotionEvent.ACTION_DOWN:
@@ -1679,7 +1713,9 @@ public class MainActivity extends Activity {
 
         @Override
         public boolean onTouchEvent(MotionEvent event) {
-            if (currentTransformOverlay != null) return true;
+            if (currentTransformOverlay != null) {
+                return currentTransformOverlay.onTouchEvent(event);
+            }
             if (isDrawerOpen) {
 
                 if (event.getAction() == MotionEvent.ACTION_DOWN) {
@@ -1806,8 +1842,8 @@ public class MainActivity extends Activity {
             ViewGroup pagesContainer = (ViewGroup) homeView.getChildAt(0);
             if (pagesContainer != null && page < pagesContainer.getChildCount()) {
                 ViewGroup pageLayout = (ViewGroup) pagesContainer.getChildAt(page);
-                float adjustedX = x - pagesContainer.getPaddingLeft();
-                float adjustedY = y - pagesContainer.getPaddingTop();
+                float adjustedX = x - homeView.getPaddingLeft();
+                float adjustedY = y - homeView.getPaddingTop();
                 for (int i = pageLayout.getChildCount() - 1; i >= 0; i--) {
                     View child = pageLayout.getChildAt(i);
                     if (adjustedX >= child.getX() && adjustedX <= child.getX() + child.getWidth() &&
@@ -1875,8 +1911,8 @@ public class MainActivity extends Activity {
             touchedView = v;
 
             int iconSize = getResources().getDimensionPixelSize(R.dimen.grid_icon_size);
-            v.setX(startX - iconSize / 2f);
-            v.setY(startY - iconSize / 2f - dpToPx(48));
+            v.setX(startX - iconSize);
+            v.setY(startY - iconSize - dpToPx(24));
 
             homeView.startDragging(v, startX, startY);
         }

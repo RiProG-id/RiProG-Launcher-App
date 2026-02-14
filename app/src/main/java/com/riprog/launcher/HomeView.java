@@ -131,7 +131,7 @@ public class HomeView extends FrameLayout {
         pageIndicator = new PageIndicator(context);
         LayoutParams indicatorParams = new LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT);
         indicatorParams.gravity = Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL;
-        indicatorParams.bottomMargin = dpToPx(80);
+        indicatorParams.bottomMargin = dpToPx(48);
         addView(pageIndicator, indicatorParams);
 
 
@@ -184,16 +184,19 @@ public class HomeView extends FrameLayout {
         }
         FrameLayout page = pages.get(item.page);
 
-        updateViewPosition(item, view);
         view.setTag(item);
         page.addView(view);
+        updateViewPosition(item, view);
     }
 
     public void updateViewPosition(HomeItem item, View view) {
-        int cellWidth = getWidth() / GRID_COLUMNS;
-        int cellHeight = getHeight() / GRID_ROWS;
+        int availW = getWidth() - getPaddingLeft() - getPaddingRight();
+        int availH = getHeight() - getPaddingTop() - getPaddingBottom();
 
-        if (cellWidth == 0 || cellHeight == 0) {
+        int cellWidth = availW / GRID_COLUMNS;
+        int cellHeight = availH / GRID_ROWS;
+
+        if (cellWidth <= 0 || cellHeight <= 0) {
             post(() -> updateViewPosition(item, view));
             return;
         }
@@ -207,8 +210,14 @@ public class HomeView extends FrameLayout {
         }
         view.setLayoutParams(lp);
 
-        view.setX(item.col * cellWidth);
-        view.setY(item.row * cellHeight);
+        // Center the icon within the grid area and respect padding
+        if (item.type == HomeItem.Type.APP || (item.type == HomeItem.Type.FOLDER && item.spanX <= 1.0f && item.spanY <= 1.0f)) {
+            view.setX(getPaddingLeft() + item.col * cellWidth + (cellWidth - lp.width) / 2f);
+            view.setY(getPaddingTop() + item.row * cellHeight + (cellHeight - lp.height) / 2f);
+        } else {
+            view.setX(getPaddingLeft() + item.col * cellWidth);
+            view.setY(getPaddingTop() + item.row * cellHeight);
+        }
 
         view.setRotation(item.rotation);
         view.setScaleX(item.scaleX);
@@ -217,10 +226,17 @@ public class HomeView extends FrameLayout {
         view.setRotationY(item.tiltY);
     }
 
+    private float dragOffsetX, dragOffsetY;
+
     public void startDragging(View v, float x, float y) {
         draggingView = v;
         lastX = x;
         lastY = y;
+
+        int[] vPos = new int[2];
+        v.getLocationOnScreen(vPos);
+        dragOffsetX = x - vPos[0];
+        dragOffsetY = y - vPos[1];
 
         // Reparent to MainLayout to prevent clipping and allow moving between pages
         if (getContext() instanceof MainActivity) {
@@ -255,10 +271,8 @@ public class HomeView extends FrameLayout {
 
     public void handleDrag(float x, float y) {
         if (draggingView != null) {
-            float dx = x - lastX;
-            float dy = y - lastY;
-            draggingView.setX(draggingView.getX() + dx);
-            draggingView.setY(draggingView.getY() + dy);
+            draggingView.setX(x - dragOffsetX);
+            draggingView.setY(y - dragOffsetY);
             lastX = x;
             lastY = y;
 
@@ -401,26 +415,25 @@ public class HomeView extends FrameLayout {
     }
 
     private float[] getRelativeCoords(View v) {
-        float xInHome = v.getX();
-        float yInHome = v.getY();
-        if (v.getParent() != this && (pages.isEmpty() || v.getParent() != pages.get(currentPage))) {
-            int[] homePos = new int[2];
-            this.getLocationOnScreen(homePos);
-            int[] vPos = new int[2];
-            v.getLocationOnScreen(vPos);
-            xInHome = vPos[0] - homePos[0];
-            yInHome = vPos[1] - homePos[1];
-        }
+        int[] homePos = new int[2];
+        this.getLocationOnScreen(homePos);
+        int[] vPos = new int[2];
+        v.getLocationOnScreen(vPos);
+        float xInHome = vPos[0] - homePos[0];
+        float yInHome = vPos[1] - homePos[1];
         return new float[]{xInHome, yInHome};
     }
 
     private void snapToGrid(HomeItem item, View v) {
-        int cellWidth = getWidth() / GRID_COLUMNS;
-        int cellHeight = getHeight() / GRID_ROWS;
+        int availW = getWidth() - getPaddingLeft() - getPaddingRight();
+        int availH = getHeight() - getPaddingTop() - getPaddingBottom();
+
+        int cellWidth = availW / GRID_COLUMNS;
+        int cellHeight = availH / GRID_ROWS;
 
         float[] coords = getRelativeCoords(v);
-        float xInHome = coords[0];
-        float yInHome = coords[1];
+        float xInHome = coords[0] - getPaddingLeft();
+        float yInHome = coords[1] - getPaddingTop();
 
         item.page = currentPage;
 
@@ -515,8 +528,13 @@ public class HomeView extends FrameLayout {
     }
 
     public void shiftCollidingItems(HomeItem movedItem) {
-        if (homeItems == null) return;
-        boolean isFreeform = settingsManager.isFreeformHome();
+        shiftCollidingItemsRecursive(movedItem, 0);
+    }
+
+    private void shiftCollidingItemsRecursive(HomeItem movedItem, int depth) {
+        if (homeItems == null || depth > 10) return;
+        if (settingsManager.isFreeformHome()) return; // Disable auto-shifting in freeform mode
+
         for (HomeItem other : homeItems) {
             if (other == movedItem || other.page != movedItem.page) continue;
 
@@ -539,23 +557,18 @@ public class HomeView extends FrameLayout {
                 }
 
                 if (!movedToNextPage) {
-                    if (!isFreeform) {
-                        other.row = (float) Math.ceil(targetRow);
-                        other.col = (float) Math.ceil(targetCol);
-                        if (isOverlapping(movedItem, other)) {
-                            if (other.row < GRID_ROWS - other.spanY) other.row++;
-                            else if (other.col < GRID_COLUMNS - other.spanX) other.col++;
-                            else {
-                                // Still no room, move to next page
-                                other.page++;
-                                other.row = 0;
-                                other.col = 0;
-                                movedToNextPage = true;
-                            }
+                    other.row = (float) Math.ceil(targetRow);
+                    other.col = (float) Math.ceil(targetCol);
+                    if (isOverlapping(movedItem, other)) {
+                        if (other.row < GRID_ROWS - other.spanY) other.row++;
+                        else if (other.col < GRID_COLUMNS - other.spanX) other.col++;
+                        else {
+                            // Still no room, move to next page
+                            other.page++;
+                            other.row = 0;
+                            other.col = 0;
+                            movedToNextPage = true;
                         }
-                    } else {
-                        other.row = targetRow;
-                        other.col = targetCol;
                     }
                 }
 
@@ -567,7 +580,7 @@ public class HomeView extends FrameLayout {
                         updateViewPosition(other, otherView);
                     }
                 }
-                shiftCollidingItems(other);
+                shiftCollidingItemsRecursive(other, depth + 1);
             }
         }
     }
