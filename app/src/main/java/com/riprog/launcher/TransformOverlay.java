@@ -39,6 +39,7 @@ public class TransformOverlay extends FrameLayout {
     private static final int HANDLE_LEFT = 7;
     private static final int HANDLE_ROTATE = 8;
     private static final int ACTION_MOVE = 9;
+    private static final int ACTION_OUTSIDE = 10;
 
     private final float initialRotation, initialScaleX, initialScaleY, initialX, initialY;
     private final OnSaveListener onSaveListener;
@@ -48,6 +49,8 @@ public class TransformOverlay extends FrameLayout {
         void onCancel();
         void onRemove();
         void onAppInfo();
+        void onCollision(View otherView);
+        View findItemAt(float x, float y, View exclude);
     }
 
     public TransformOverlay(Context context, View targetView, SettingsManager settingsManager, OnSaveListener listener) {
@@ -101,6 +104,7 @@ public class TransformOverlay extends FrameLayout {
         container.setGravity(Gravity.CENTER);
         container.setPadding(dpToPx(12), dpToPx(6), dpToPx(12), dpToPx(6));
         container.setBackground(ThemeUtils.getGlassDrawable(getContext(), settingsManager, 12));
+        container.setOnClickListener(v -> {});
 
         int adaptiveColor = ThemeUtils.getAdaptiveColor(getContext(), settingsManager, true);
 
@@ -257,6 +261,17 @@ public class TransformOverlay extends FrameLayout {
         switch (event.getAction()) {
             case MotionEvent.ACTION_DOWN:
                 activeHandle = findHandle(x, y);
+                if (activeHandle == ACTION_OUTSIDE) {
+                    if (onSaveListener != null) {
+                        View other = onSaveListener.findItemAt(x, y, targetView);
+                        if (other != null) {
+                            onSaveListener.onCollision(other);
+                            return true;
+                        }
+                        onSaveListener.onSave();
+                    }
+                    return false;
+                }
                 initialTouchX = x;
                 initialTouchY = y;
                 lastTouchX = x;
@@ -329,7 +344,7 @@ public class TransformOverlay extends FrameLayout {
         // Move action if inside the box
         if (rx >= left && rx <= right && ry >= top && ry <= bottom) return ACTION_MOVE;
 
-        return -1;
+        return ACTION_OUTSIDE;
     }
 
     private void handleInteraction(float tx, float ty) {
@@ -341,6 +356,13 @@ public class TransformOverlay extends FrameLayout {
         if (activeHandle == ACTION_MOVE) {
             targetView.setX(targetView.getX() + (tx - lastTouchX));
             targetView.setY(targetView.getY() + (ty - lastTouchY));
+
+            if (onSaveListener != null) {
+                View other = onSaveListener.findItemAt(cx, cy, targetView);
+                if (other != null) {
+                    onSaveListener.onCollision(other);
+                }
+            }
         } else if (activeHandle == HANDLE_ROTATE) {
             double angle = Math.toDegrees(Math.atan2(ty - cy, tx - cx)) + 90;
 
