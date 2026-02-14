@@ -977,6 +977,53 @@ public class MainActivity extends Activity {
             float row = yInParent / (float) cellHeight;
             item.row = isFreeform ? row : Math.round(row);
         }
+
+        // Collision shifting to prevent overlapping
+        shiftCollidingItems(item);
+    }
+
+    private void shiftCollidingItems(HomeItem movedItem) {
+        for (HomeItem other : homeItems) {
+            if (other == movedItem || other.page != movedItem.page) continue;
+
+            if (isOverlapping(movedItem, other)) {
+                // Shift 'other' away. Simple logic: move down or right.
+                if (movedItem.row + movedItem.spanY <= HomeView.GRID_ROWS - other.spanY) {
+                    other.row = movedItem.row + movedItem.spanY;
+                } else if (movedItem.col + movedItem.spanX <= HomeView.GRID_COLUMNS - other.spanX) {
+                    other.col = movedItem.col + movedItem.spanX;
+                } else {
+                    // No space? move to next page or just shift as much as possible
+                    other.row = Math.min(HomeView.GRID_ROWS - other.spanY, other.row + 1);
+                }
+
+                View otherView = findViewForItem(other);
+                if (otherView != null) {
+                    homeView.updateViewPosition(other, otherView);
+                }
+                // Recurse to handle chain reactions
+                shiftCollidingItems(other);
+            }
+        }
+    }
+
+    private boolean isOverlapping(HomeItem a, HomeItem b) {
+        return a.col < b.col + b.spanX &&
+               a.col + a.spanX > b.col &&
+               a.row < b.row + b.spanY &&
+               a.row + a.spanY > b.row;
+    }
+
+    private View findViewForItem(HomeItem item) {
+        for (int p = 0; p < homeView.getPageCount(); p++) {
+            ViewGroup pageLayout = (ViewGroup) ((ViewGroup) homeView.getChildAt(0)).getChildAt(p);
+            if (pageLayout == null) continue;
+            for (int i = 0; i < pageLayout.getChildCount(); i++) {
+                View v = pageLayout.getChildAt(i);
+                if (v.getTag() == item) return v;
+            }
+        }
+        return null;
     }
 
     private void showTransformOverlay(View targetView) {
@@ -1194,7 +1241,9 @@ public class MainActivity extends Activity {
 
         FrameLayout root = new FrameLayout(this);
         root.setBackground(ThemeUtils.getGlassDrawable(this, settingsManager, 0));
-        ThemeUtils.applyBlurIfSupported(root, settingsManager.isLiquidGlass());
+        if (dialog.getWindow() != null) {
+            ThemeUtils.applyWindowBlur(dialog.getWindow(), settingsManager.isLiquidGlass());
+        }
 
         LinearLayout container = new LinearLayout(this);
         container.setOrientation(LinearLayout.VERTICAL);

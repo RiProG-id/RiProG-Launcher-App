@@ -25,6 +25,7 @@ public class TransformOverlay extends FrameLayout {
     private float lastTouchX, lastTouchY;
     private float initialTouchX, initialTouchY;
     private float gestureInitialScaleX, gestureInitialScaleY;
+    private float gestureInitialX, gestureInitialY;
     private int gestureInitialWidth, gestureInitialHeight;
     private RectF gestureInitialBounds;
     private boolean hasPassedThreshold = false;
@@ -115,19 +116,6 @@ public class TransformOverlay extends FrameLayout {
     private void setupButtons() {
         int adaptiveColor = ThemeUtils.getAdaptiveColor(getContext(), settingsManager, true);
 
-        // Top-right close button
-        ImageView closeBtn = new ImageView(getContext());
-        closeBtn.setImageResource(R.drawable.ic_remove);
-        closeBtn.setColorFilter(adaptiveColor);
-        closeBtn.setPadding(dpToPx(12), dpToPx(12), dpToPx(12), dpToPx(12));
-        closeBtn.setOnClickListener(v -> save());
-
-        LayoutParams closeLp = new LayoutParams(dpToPx(48), dpToPx(48));
-        closeLp.gravity = Gravity.TOP | Gravity.END;
-        closeLp.topMargin = dpToPx(32);
-        closeLp.rightMargin = dpToPx(16);
-        addView(closeBtn, closeLp);
-
         LinearLayout container = new LinearLayout(getContext());
         container.setOrientation(LinearLayout.HORIZONTAL);
         container.setGravity(Gravity.CENTER);
@@ -168,16 +156,18 @@ public class TransformOverlay extends FrameLayout {
         LinearLayout.LayoutParams lpSave = new LinearLayout.LayoutParams(0, LayoutParams.WRAP_CONTENT, 1.0f);
         container.addView(btnSave, lpSave);
 
-        TextView btnInfo = new TextView(getContext());
-        btnInfo.setText("APP INFO");
-        btnInfo.setPadding(dpToPx(8), dpToPx(8), dpToPx(8), dpToPx(8));
-        btnInfo.setTextColor(adaptiveColor);
-        btnInfo.setTextSize(11);
-        btnInfo.setTypeface(null, android.graphics.Typeface.BOLD);
-        btnInfo.setGravity(Gravity.CENTER);
-        btnInfo.setOnClickListener(v -> { if (onSaveListener != null) onSaveListener.onAppInfo(); });
-        LinearLayout.LayoutParams lpInfo = new LinearLayout.LayoutParams(0, LayoutParams.WRAP_CONTENT, 1.0f);
-        container.addView(btnInfo, lpInfo);
+        if (item.type != HomeItem.Type.WIDGET) {
+            TextView btnInfo = new TextView(getContext());
+            btnInfo.setText("APP INFO");
+            btnInfo.setPadding(dpToPx(8), dpToPx(8), dpToPx(8), dpToPx(8));
+            btnInfo.setTextColor(adaptiveColor);
+            btnInfo.setTextSize(11);
+            btnInfo.setTypeface(null, android.graphics.Typeface.BOLD);
+            btnInfo.setGravity(Gravity.CENTER);
+            btnInfo.setOnClickListener(v -> { if (onSaveListener != null) onSaveListener.onAppInfo(); });
+            LinearLayout.LayoutParams lpInfo = new LinearLayout.LayoutParams(0, LayoutParams.WRAP_CONTENT, 1.0f);
+            container.addView(btnInfo, lpInfo);
+        }
 
         LayoutParams lp = new LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT);
         lp.gravity = Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL;
@@ -235,17 +225,21 @@ public class TransformOverlay extends FrameLayout {
 
         float hs = handleSize / 2f;
 
-        // Corners - Proportional scale (Primary handles)
-        drawHandle(canvas, left, top, hs, true, foregroundColor);
-        drawHandle(canvas, right, top, hs, true, foregroundColor);
-        drawHandle(canvas, right, bottom, hs, true, foregroundColor);
-        drawHandle(canvas, left, bottom, hs, true, foregroundColor);
+        // Corners - Proportional scale (Primary handles) - Only for Apps
+        if (item.type == HomeItem.Type.APP) {
+            drawHandle(canvas, left, top, hs, true, foregroundColor);
+            drawHandle(canvas, right, top, hs, true, foregroundColor);
+            drawHandle(canvas, right, bottom, hs, true, foregroundColor);
+            drawHandle(canvas, left, bottom, hs, true, foregroundColor);
+        }
 
-        // Sides - Width/Height resize (Secondary handles)
-        drawHandle(canvas, (left + right) / 2f, top, hs * 0.75f, false, foregroundColor);
-        drawHandle(canvas, right, (top + bottom) / 2f, hs * 0.75f, false, foregroundColor);
-        drawHandle(canvas, (left + right) / 2f, bottom, hs * 0.75f, false, foregroundColor);
-        drawHandle(canvas, left, (top + bottom) / 2f, hs * 0.75f, false, foregroundColor);
+        // Sides - Width/Height resize (Secondary handles) - Only for Widgets
+        if (item.type == HomeItem.Type.WIDGET) {
+            drawHandle(canvas, (left + right) / 2f, top, hs * 0.75f, false, foregroundColor);
+            drawHandle(canvas, right, (top + bottom) / 2f, hs * 0.75f, false, foregroundColor);
+            drawHandle(canvas, (left + right) / 2f, bottom, hs * 0.75f, false, foregroundColor);
+            drawHandle(canvas, left, (top + bottom) / 2f, hs * 0.75f, false, foregroundColor);
+        }
 
         // Rotation Handle - Only in freeform mode
         if (isFreeform) {
@@ -297,6 +291,8 @@ public class TransformOverlay extends FrameLayout {
                 lastTouchY = y;
                 gestureInitialScaleX = targetView.getScaleX();
                 gestureInitialScaleY = targetView.getScaleY();
+                gestureInitialX = targetView.getX();
+                gestureInitialY = targetView.getY();
                 gestureInitialWidth = targetView.getWidth();
                 gestureInitialHeight = targetView.getHeight();
                 gestureInitialBounds = getContentBounds();
@@ -362,22 +358,24 @@ public class TransformOverlay extends FrameLayout {
         // Rotation handle first
         if (isFreeform && dist(rx, ry, (left + right) / 2f, top - rotationHandleDist) < hs) return HANDLE_ROTATE;
 
-        // Corners
-        if (canResizeHorizontal && canResizeVertical) {
+        // Corners - Proportional scale - Only for Apps
+        if (item.type == HomeItem.Type.APP && canResizeHorizontal && canResizeVertical) {
             if (dist(rx, ry, left, top) < hs) return HANDLE_TOP_LEFT;
             if (dist(rx, ry, right, top) < hs) return HANDLE_TOP_RIGHT;
             if (dist(rx, ry, right, bottom) < hs) return HANDLE_BOTTOM_RIGHT;
             if (dist(rx, ry, left, bottom) < hs) return HANDLE_BOTTOM_LEFT;
         }
 
-        // Sides
-        if (canResizeVertical) {
-            if (dist(rx, ry, (left + right) / 2f, top) < hs) return HANDLE_TOP;
-            if (dist(rx, ry, (left + right) / 2f, bottom) < hs) return HANDLE_BOTTOM;
-        }
-        if (canResizeHorizontal) {
-            if (dist(rx, ry, right, (top + bottom) / 2f) < hs) return HANDLE_RIGHT;
-            if (dist(rx, ry, left, (top + bottom) / 2f) < hs) return HANDLE_LEFT;
+        // Sides - Width/Height resize - Only for Widgets
+        if (item.type == HomeItem.Type.WIDGET) {
+            if (canResizeVertical) {
+                if (dist(rx, ry, (left + right) / 2f, top) < hs) return HANDLE_TOP;
+                if (dist(rx, ry, (left + right) / 2f, bottom) < hs) return HANDLE_BOTTOM;
+            }
+            if (canResizeHorizontal) {
+                if (dist(rx, ry, right, (top + bottom) / 2f) < hs) return HANDLE_RIGHT;
+                if (dist(rx, ry, left, (top + bottom) / 2f) < hs) return HANDLE_LEFT;
+            }
         }
 
         // Move action if inside the box
@@ -390,12 +388,12 @@ public class TransformOverlay extends FrameLayout {
         boolean isFreeform = settingsManager.isFreeformHome();
         float sx = gestureInitialScaleX;
         float sy = gestureInitialScaleY;
-        float cx = targetView.getX() + targetView.getPivotX();
-        float cy = targetView.getY() + targetView.getPivotY();
+        float cx = gestureInitialX + targetView.getPivotX();
+        float cy = gestureInitialY + targetView.getPivotY();
 
         if (activeHandle == ACTION_MOVE) {
-            float newX = targetView.getX() + (tx - lastTouchX);
-            float newY = targetView.getY() + (ty - lastTouchY);
+            float newX = gestureInitialX + (tx - initialTouchX);
+            float newY = gestureInitialY + (ty - initialTouchY);
 
             // Screen clamping
             newX = Math.max(0, Math.min(newX, getWidth() - targetView.getWidth()));
@@ -450,10 +448,10 @@ public class TransformOverlay extends FrameLayout {
                 case HANDLE_BOTTOM_LEFT:
                 case HANDLE_BOTTOM_RIGHT:
                     if (canResizeHorizontal && canResizeVertical) {
-                        float lastDist = dist(lastTouchX, lastTouchY, cx, cy);
+                        float initialDist = dist(initialTouchX, initialTouchY, cx, cy);
                         float currDist = dist(tx, ty, cx, cy);
-                        if (lastDist > 0) {
-                            float factor = currDist / lastDist;
+                        if (initialDist > 0) {
+                            float factor = currDist / initialDist;
                             newScaleX = Math.max(0.2f, Math.min(5.0f, sx * factor));
                             newScaleY = Math.max(0.2f, Math.min(5.0f, sy * factor));
                         }
