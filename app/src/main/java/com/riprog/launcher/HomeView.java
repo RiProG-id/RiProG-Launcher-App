@@ -33,6 +33,7 @@ public class HomeView extends FrameLayout {
     private final PageIndicator pageIndicator;
     private final List<FrameLayout> pages = new ArrayList<>();
     private final SettingsManager settingsManager;
+    private List<HomeItem> homeItems;
     private int currentPage = 0;
     private int accentColor = Color.WHITE;
     private LauncherModel model;
@@ -44,27 +45,14 @@ public class HomeView extends FrameLayout {
     private final Handler edgeScrollHandler = new Handler();
     private boolean isEdgeScrolling = false;
     private long edgeHoldStart = 0;
+    private long lastPageCreateTime = 0;
+    private static final long PAGE_CREATE_DELAY = 1000;
+
     private final Runnable edgeScrollRunnable = new Runnable() {
         @Override
         public void run() {
-            if (draggingView != null) {
-                if (lastX < getWidth() * 0.05f) {
-                    if (currentPage > 0) {
-                        scrollToPage(currentPage - 1);
-                        edgeHoldStart = 0;
-                    } else {
-                        handleEdgePageCreation();
-                    }
-                } else if (lastX > getWidth() * 0.95f) {
-                    if (currentPage < pages.size() - 1) {
-                        scrollToPage(currentPage + 1);
-                        edgeHoldStart = 0;
-                    } else {
-                        handleEdgePageCreation();
-                    }
-                } else {
-                    edgeHoldStart = 0;
-                }
+            if (draggingView != null || (getContext() instanceof MainActivity && ((MainActivity) getContext()).isTransforming())) {
+                checkAndPerformEdgeAction(lastX);
                 edgeScrollHandler.postDelayed(this, 400);
             } else {
                 isEdgeScrolling = false;
@@ -73,17 +61,41 @@ public class HomeView extends FrameLayout {
         }
     };
 
-    private void handleEdgePageCreation() {
+    public void checkAndPerformEdgeAction(float x) {
+        lastX = x;
+        if (x < getWidth() * 0.05f) {
+            if (currentPage > 0) {
+                scrollToPage(currentPage - 1);
+                edgeHoldStart = 0;
+            } else {
+                handleEdgePageCreation(x);
+            }
+        } else if (x > getWidth() * 0.95f) {
+            if (currentPage < pages.size() - 1) {
+                scrollToPage(currentPage + 1);
+                edgeHoldStart = 0;
+            } else {
+                handleEdgePageCreation(x);
+            }
+        } else {
+            edgeHoldStart = 0;
+        }
+    }
+
+    private void handleEdgePageCreation(float x) {
+        if (System.currentTimeMillis() - lastPageCreateTime < PAGE_CREATE_DELAY) return;
+
         if (edgeHoldStart == 0) {
             edgeHoldStart = System.currentTimeMillis();
         } else if (System.currentTimeMillis() - edgeHoldStart > 1000) {
-            if (lastX < getWidth() * 0.05f && currentPage == 0) {
-
+            if (x < getWidth() * 0.05f && currentPage == 0) {
                 addPageAtIndex(0);
                 scrollToPage(0);
-            } else if (lastX > getWidth() * 0.95f && currentPage == pages.size() - 1) {
+                lastPageCreateTime = System.currentTimeMillis();
+            } else if (x > getWidth() * 0.95f && currentPage == pages.size() - 1) {
                 addPage();
                 scrollToPage(pages.size() - 1);
+                lastPageCreateTime = System.currentTimeMillis();
             }
             edgeHoldStart = 0;
         }
@@ -209,6 +221,34 @@ public class HomeView extends FrameLayout {
         draggingView = v;
         lastX = x;
         lastY = y;
+
+        // Reparent to MainLayout to prevent clipping and allow moving between pages
+        if (getContext() instanceof MainActivity) {
+            ViewGroup mainLayout = ((MainActivity) getContext()).findViewById(android.R.id.content);
+            // Actually, MainActivity has a private mainLayout field.
+            // But it's the root view of the activity if we set it in setContentView.
+            // Let's find the actual MainLayout if possible, or just use the decor view's content.
+            // In MainActivity: setContentView(mainLayout);
+            ViewGroup root = (ViewGroup) v.getRootView().findViewById(android.R.id.content);
+
+            float absX = v.getX();
+            float absY = v.getY();
+            android.view.ViewParent p = v.getParent();
+            while (p != null && p instanceof View && p != root) {
+                View pv = (View) p;
+                absX += pv.getX();
+                absY += pv.getY();
+                p = p.getParent();
+            }
+
+            if (v.getParent() instanceof ViewGroup) {
+                ((ViewGroup) v.getParent()).removeView(v);
+            }
+            root.addView(v);
+            v.setX(absX);
+            v.setY(absY);
+        }
+
         v.animate().scaleX(1.1f).scaleY(1.1f).alpha(0.8f).setDuration(150).start();
         v.performHapticFeedback(android.view.HapticFeedbackConstants.LONG_PRESS);
     }
@@ -221,11 +261,25 @@ public class HomeView extends FrameLayout {
             draggingView.setY(draggingView.getY() + dy);
             lastX = x;
             lastY = y;
+
+            HomeItem item = (HomeItem) draggingView.getTag();
+            if (item != null) {
+                float[] coords = getRelativeCoords(draggingView);
+                int cellWidth = getWidth() / GRID_COLUMNS;
+                int cellHeight = getHeight() / GRID_ROWS;
+                if (cellWidth > 0 && cellHeight > 0) {
+                    item.col = coords[0] / (float) cellWidth;
+                    item.row = coords[1] / (float) cellHeight;
+                    shiftCollidingItems(item);
+                }
+            }
+
             checkEdgeScroll(x);
         }
     }
 
-    private void checkEdgeScroll(float x) {
+    public void checkEdgeScroll(float x) {
+        lastX = x;
         if (x < getWidth() * 0.05f || x > getWidth() * 0.95f) {
             if (!isEdgeScrolling) {
                 isEdgeScrolling = true;
@@ -358,14 +412,38 @@ public class HomeView extends FrameLayout {
         return null;
     }
 
+    private float[] getRelativeCoords(View v) {
+        float xInHome = v.getX();
+        float yInHome = v.getY();
+        if (v.getParent() != this && (pages.isEmpty() || v.getParent() != pages.get(currentPage))) {
+            int[] homePos = new int[2];
+            this.getLocationOnScreen(homePos);
+            int[] vPos = new int[2];
+            v.getLocationOnScreen(vPos);
+            xInHome = vPos[0] - homePos[0];
+            yInHome = vPos[1] - homePos[1];
+        }
+        return new float[]{xInHome, yInHome};
+    }
+
     private void snapToGrid(HomeItem item, View v) {
         int cellWidth = getWidth() / GRID_COLUMNS;
         int cellHeight = getHeight() / GRID_ROWS;
+
+        float[] coords = getRelativeCoords(v);
+        float xInHome = coords[0];
+        float yInHome = coords[1];
+
+        item.page = currentPage;
 
         HomeItem target = findCollision(v);
         if (target != null && item.type == HomeItem.Type.APP) {
             if (target.type == HomeItem.Type.APP || target.type == HomeItem.Type.FOLDER) {
                 if (getContext() instanceof MainActivity) {
+                    // Remove view from root layout before merging
+                    if (v.getParent() instanceof ViewGroup) {
+                        ((ViewGroup) v.getParent()).removeView(v);
+                    }
                     if (target.type == HomeItem.Type.APP) ((MainActivity) getContext()).mergeToFolder(target, item);
                     else ((MainActivity) getContext()).addToFolder(target, item);
                     return;
@@ -374,28 +452,24 @@ public class HomeView extends FrameLayout {
         }
 
         if (settingsManager.isFreeformHome()) {
-            item.col = v.getX() / (float) cellWidth;
-            item.row = v.getY() / (float) cellHeight;
+            item.col = xInHome / (float) cellWidth;
+            item.row = yInHome / (float) cellHeight;
             item.rotation = v.getRotation();
             item.scaleX = v.getScaleX();
             item.scaleY = v.getScaleY();
             item.tiltX = v.getRotationX();
             item.tiltY = v.getRotationY();
         } else {
-            item.col = Math.max(0, Math.min(GRID_COLUMNS - (int) item.spanX, Math.round(v.getX() / (float) cellWidth)));
-            item.row = Math.max(0, Math.min(GRID_ROWS - (int) item.spanY, Math.round(v.getY() / (float) cellHeight)));
+            item.col = Math.max(0, Math.min(GRID_COLUMNS - (int) item.spanX, Math.round(xInHome / (float) cellWidth)));
+            item.row = Math.max(0, Math.min(GRID_ROWS - (int) item.spanY, Math.round(yInHome / (float) cellHeight)));
             item.rotation = 0;
             item.scaleX = 1.0f;
             item.scaleY = 1.0f;
             item.tiltX = 0;
             item.tiltY = 0;
-
-            v.animate()
-                    .x(item.col * cellWidth)
-                    .y(item.row * cellHeight)
-                    .setDuration(200)
-                    .start();
         }
+
+        addItemView(item, v);
 
         if (getContext() instanceof MainActivity) {
             ((MainActivity) getContext()).saveHomeState();
@@ -441,10 +515,76 @@ public class HomeView extends FrameLayout {
         mainHandler.postDelayed(refreshIconsRunnable, 100);
     }
 
+    public void setHomeItems(List<HomeItem> items) {
+        this.homeItems = items;
+    }
+
     public void refreshIcons(LauncherModel model, List<AppItem> allApps) {
         this.model = model;
         this.allApps = allApps;
         refreshIconsDebounced();
+    }
+
+    public void shiftCollidingItems(HomeItem movedItem) {
+        if (homeItems == null) return;
+        boolean isFreeform = settingsManager.isFreeformHome();
+        for (HomeItem other : homeItems) {
+            if (other == movedItem || other.page != movedItem.page) continue;
+
+            if (isOverlapping(movedItem, other)) {
+                // Shift 'other' away.
+                float targetRow = other.row;
+                float targetCol = other.col;
+
+                if (movedItem.row + movedItem.spanY <= GRID_ROWS - other.spanY) {
+                    targetRow = movedItem.row + movedItem.spanY;
+                } else if (movedItem.col + movedItem.spanX <= GRID_COLUMNS - other.spanX) {
+                    targetCol = movedItem.col + movedItem.spanX;
+                } else {
+                    targetRow = Math.min(GRID_ROWS - other.spanY, other.row + 1);
+                }
+
+                if (!isFreeform) {
+                    // For grid mode, ensure items stay on integer coordinates
+                    other.row = (float) Math.ceil(targetRow);
+                    other.col = (float) Math.ceil(targetCol);
+                    // Ensure they actually move if still overlapping due to rounding/clamping
+                    if (isOverlapping(movedItem, other)) {
+                        if (other.row < GRID_ROWS - other.spanY) other.row++;
+                        else if (other.col < GRID_COLUMNS - other.spanX) other.col++;
+                    }
+                } else {
+                    other.row = targetRow;
+                    other.col = targetCol;
+                }
+
+                View otherView = findViewForItem(other);
+                if (otherView != null) {
+                    updateViewPosition(other, otherView);
+                }
+                // Recurse to handle chain reactions
+                shiftCollidingItems(other);
+            }
+        }
+    }
+
+    private boolean isOverlapping(HomeItem a, HomeItem b) {
+        return a.col < b.col + b.spanX &&
+               a.col + a.spanX > b.col &&
+               a.row < b.row + b.spanY &&
+               a.row + a.spanY > b.row;
+    }
+
+    public View findViewForItem(HomeItem item) {
+        for (int p = 0; p < pages.size(); p++) {
+            ViewGroup pageLayout = pages.get(p);
+            if (pageLayout == null) continue;
+            for (int i = 0; i < pageLayout.getChildCount(); i++) {
+                View v = pageLayout.getChildAt(i);
+                if (v.getTag() == item) return v;
+            }
+        }
+        return null;
     }
 
     private void refreshIconsInternal(LauncherModel model, List<AppItem> allApps) {

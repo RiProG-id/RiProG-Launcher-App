@@ -128,6 +128,7 @@ public class MainActivity extends Activity {
 
         homeView.post(() -> {
             restoreHomeState();
+            homeView.setHomeItems(homeItems);
             showDefaultLauncherPrompt();
         });
     }
@@ -211,6 +212,10 @@ public class MainActivity extends Activity {
         }
     }
 
+    public boolean isTransforming() {
+        return currentTransformOverlay != null;
+    }
+
     private void restoreHomeState() {
         homeItems = settingsManager.getHomeItems();
         if (homeItems.isEmpty()) {
@@ -228,8 +233,16 @@ public class MainActivity extends Activity {
     }
 
     private void setOverlayBlur(boolean enabled) {
+        setOverlayBlur(enabled, false);
+    }
+
+    private void setOverlayBlur(boolean enabled, boolean isTransform) {
         if (!settingsManager.isLiquidGlass()) return;
-        ThemeUtils.applyBlurIfSupported(homeView, enabled);
+        if (!isTransform) {
+            ThemeUtils.applyBlurIfSupported(homeView, enabled);
+        } else {
+            ThemeUtils.applyBlurIfSupported(homeView, false);
+        }
         ThemeUtils.applyWindowBlur(getWindow(), enabled);
     }
 
@@ -524,11 +537,12 @@ public class MainActivity extends Activity {
         HomeItem folder = HomeItem.createFolder("", target.col, target.row, target.page);
         folder.folderItems.add(target);
         folder.folderItems.add(dragged);
-        folder.rotation = target.rotation;
-        folder.scaleX = target.scaleX;
-        folder.scaleY = target.scaleY;
-        folder.tiltX = target.tiltX;
-        folder.tiltY = target.tiltY;
+        // Reset transformations for new 1x1 folder
+        folder.rotation = 0;
+        folder.scaleX = 1.0f;
+        folder.scaleY = 1.0f;
+        folder.tiltX = 0;
+        folder.tiltY = 0;
         homeItems.add(folder);
 
         if (homeView != null) {
@@ -991,56 +1005,12 @@ public class MainActivity extends Activity {
         }
 
         // Collision shifting to prevent overlapping
-        shiftCollidingItems(item);
-    }
-
-    private void shiftCollidingItems(HomeItem movedItem) {
-        for (HomeItem other : homeItems) {
-            if (other == movedItem || other.page != movedItem.page) continue;
-
-            if (isOverlapping(movedItem, other)) {
-                // Shift 'other' away. Simple logic: move down or right.
-                if (movedItem.row + movedItem.spanY <= HomeView.GRID_ROWS - other.spanY) {
-                    other.row = movedItem.row + movedItem.spanY;
-                } else if (movedItem.col + movedItem.spanX <= HomeView.GRID_COLUMNS - other.spanX) {
-                    other.col = movedItem.col + movedItem.spanX;
-                } else {
-                    // No space? move to next page or just shift as much as possible
-                    other.row = Math.min(HomeView.GRID_ROWS - other.spanY, other.row + 1);
-                }
-
-                View otherView = findViewForItem(other);
-                if (otherView != null) {
-                    homeView.updateViewPosition(other, otherView);
-                }
-                // Recurse to handle chain reactions
-                shiftCollidingItems(other);
-            }
-        }
-    }
-
-    private boolean isOverlapping(HomeItem a, HomeItem b) {
-        return a.col < b.col + b.spanX &&
-               a.col + a.spanX > b.col &&
-               a.row < b.row + b.spanY &&
-               a.row + a.spanY > b.row;
-    }
-
-    private View findViewForItem(HomeItem item) {
-        for (int p = 0; p < homeView.getPageCount(); p++) {
-            ViewGroup pageLayout = (ViewGroup) ((ViewGroup) homeView.getChildAt(0)).getChildAt(p);
-            if (pageLayout == null) continue;
-            for (int i = 0; i < pageLayout.getChildCount(); i++) {
-                View v = pageLayout.getChildAt(i);
-                if (v.getTag() == item) return v;
-            }
-        }
-        return null;
+        if (homeView != null) homeView.shiftCollidingItems(item);
     }
 
     private void showTransformOverlay(View targetView) {
         if (currentTransformOverlay != null) return;
-        setOverlayBlur(true);
+        setOverlayBlur(true, true);
         transformingView = targetView;
         transformingViewOriginalParent = (ViewGroup) targetView.getParent();
         transformingViewOriginalIndex = transformingViewOriginalParent.indexOfChild(targetView);
@@ -1063,6 +1033,37 @@ public class MainActivity extends Activity {
         targetView.setY(y);
 
         currentTransformOverlay = new TransformOverlay(this, targetView, settingsManager, new TransformOverlay.OnSaveListener() {
+            @Override public void onMove(float x, float y) {
+                if (homeView != null) {
+                    homeView.checkEdgeScroll(x);
+
+                    HomeItem item = (HomeItem) targetView.getTag();
+                    if (item != null && transformingViewOriginalParent != null) {
+                        int cellWidth = transformingViewOriginalParent.getWidth() / HomeView.GRID_COLUMNS;
+                        int cellHeight = transformingViewOriginalParent.getHeight() / HomeView.GRID_ROWS;
+
+                        int[] pagePos = new int[2];
+                        transformingViewOriginalParent.getLocationOnScreen(pagePos);
+                        int[] rootPos = new int[2];
+                        mainLayout.getLocationOnScreen(rootPos);
+
+                        float xInParent = targetView.getX() - (pagePos[0] - rootPos[0]);
+                        float yInParent = targetView.getY() - (pagePos[1] - rootPos[1]);
+
+                        if (cellWidth > 0 && cellHeight > 0) {
+                            item.col = xInParent / (float) cellWidth;
+                            item.row = yInParent / (float) cellHeight;
+                            if (settingsManager.isFreeformHome()) {
+                                if (item.type == HomeItem.Type.WIDGET || item.type == HomeItem.Type.FOLDER) {
+                                    item.spanX = targetView.getWidth() / (float) cellWidth;
+                                    item.spanY = targetView.getHeight() / (float) cellHeight;
+                                }
+                            }
+                            homeView.shiftCollidingItems(item);
+                        }
+                    }
+                }
+            }
             @Override public void onSave() {
                 updateHomeItemFromTransform();
                 saveHomeState();
@@ -1130,7 +1131,7 @@ public class MainActivity extends Activity {
                 transformingViewOriginalParent.addView(transformingView, transformingViewOriginalIndex);
                 homeView.updateViewPosition((HomeItem) transformingView.getTag(), transformingView);
             }
-            setOverlayBlur(false);
+            setOverlayBlur(false, true);
             transformingView = null;
             transformingViewOriginalParent = null;
 
@@ -1867,6 +1868,7 @@ public class MainActivity extends Activity {
 
         private void updateDragHighlight(float x, float y) {
             if (dragOverlay == null || dragOverlay.getVisibility() != View.VISIBLE) return;
+            dragOverlay.bringToFront();
             if (ivRemove == null || ivAppInfo == null) return;
 
             int overlayHeight = dragOverlay.getHeight();
