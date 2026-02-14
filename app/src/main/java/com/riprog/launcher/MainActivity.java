@@ -221,6 +221,24 @@ public class MainActivity extends Activity {
         }
     }
 
+    public void moveItemToPage(HomeItem item, int toPage) {
+        if (!isStateRestored || item == null) return;
+        int fromPage = item.page;
+        if (fromPage == toPage) {
+            savePage(toPage);
+            return;
+        }
+        item.page = toPage;
+        savePage(fromPage);
+        savePage(toPage);
+    }
+
+    public void onPageCountChanged(int count) {
+        if (isStateRestored) {
+            settingsManager.savePageCount(count);
+        }
+    }
+
     public boolean isTransforming() {
         return currentTransformOverlay != null;
     }
@@ -566,10 +584,13 @@ public class MainActivity extends Activity {
     }
 
     public void mergeToFolder(HomeItem target, HomeItem dragged) {
+        int oldDraggedPage = dragged.page;
+        int targetPage = target.page;
+
         homeItems.remove(dragged);
         homeItems.remove(target);
 
-        HomeItem folder = HomeItem.createFolder("", target.col, target.row, target.page);
+        HomeItem folder = HomeItem.createFolder("", target.col, target.row, targetPage);
         folder.folderItems.add(target);
         folder.folderItems.add(dragged);
         // Reset transformations for new 1x1 folder
@@ -585,10 +606,16 @@ public class MainActivity extends Activity {
             homeView.removeItemsByPackage(dragged.packageName);
             renderHomeItem(folder);
         }
-        saveHomeState();
+        if (oldDraggedPage != targetPage) {
+            savePage(oldDraggedPage);
+        }
+        savePage(targetPage);
     }
 
     public void addToFolder(HomeItem folder, HomeItem dragged) {
+        int oldDraggedPage = dragged.page;
+        int targetPage = folder.page;
+
         homeItems.remove(dragged);
         folder.folderItems.add(dragged);
 
@@ -596,17 +623,21 @@ public class MainActivity extends Activity {
             homeView.removeItemsByPackage(dragged.packageName);
             refreshFolderIconsOnHome(folder);
         }
-        saveHomeState();
+        if (oldDraggedPage != targetPage) {
+            savePage(oldDraggedPage);
+        }
+        savePage(targetPage);
     }
 
     private void removeFromFolder(HomeItem folder, HomeItem item) {
+        int page = folder.page;
         folder.folderItems.remove(item);
         if (folder.folderItems.size() == 1) {
             HomeItem lastItem = folder.folderItems.get(0);
             homeItems.remove(folder);
             lastItem.col = folder.col;
             lastItem.row = folder.row;
-            lastItem.page = folder.page;
+            lastItem.page = page;
             lastItem.rotation = folder.rotation;
             lastItem.scaleX = folder.scaleX;
             lastItem.scaleY = folder.scaleY;
@@ -621,7 +652,7 @@ public class MainActivity extends Activity {
         } else {
             refreshFolderIconsOnHome(folder);
         }
-        saveHomeState();
+        savePage(page);
     }
 
     private void removeFolderView(HomeItem folder) {
@@ -729,11 +760,12 @@ public class MainActivity extends Activity {
     }
 
     private void removeHomeItem(HomeItem item, View view) {
+        int page = item.page;
         homeItems.remove(item);
         if (view != null && view.getParent() instanceof ViewGroup) {
             ((ViewGroup) view.getParent()).removeView(view);
         }
-        saveHomeState();
+        savePage(page);
         if (homeView != null) {
             homeView.cleanupEmptyPages();
             homeView.refreshIcons(model, allApps);
@@ -1123,7 +1155,8 @@ public class MainActivity extends Activity {
             }
             @Override public void onMoveStart(float x, float y) {
                 if (homeView != null) {
-                    homeView.initialDragX = x;
+                    HomeItem item = (HomeItem) targetView.getTag();
+                    homeView.setInitialDragState(x, item != null ? item.page : -1);
                 }
             }
             @Override public void onSave() {
