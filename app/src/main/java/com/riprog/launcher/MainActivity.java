@@ -209,7 +209,8 @@ public class MainActivity extends Activity {
 
     public void saveHomeState() {
         if (isStateRestored) {
-            settingsManager.saveHomeItems(homeItems);
+            int pageCount = homeView != null ? homeView.getPageCount() : 1;
+            settingsManager.saveHomeItems(homeItems, pageCount);
         }
     }
 
@@ -1260,7 +1261,10 @@ public class MainActivity extends Activity {
         super.onActivityResult(requestCode, resultCode, data);
         if (requestCode == 100) {
             loadApps();
-            if (homeView != null) homeView.refreshLayout();
+            if (homeView != null) {
+                homeView.refreshLayout();
+                homeView.refreshIcons(model, allApps);
+            }
             return;
         }
         if (resultCode == RESULT_OK && data != null) {
@@ -1549,6 +1553,7 @@ public class MainActivity extends Activity {
         private final Runnable longPressRunnable = new Runnable() {
             @Override
             public void run() {
+                if (isDragging || isTransforming() || isDrawerOpen || currentFolderOverlay != null) return;
                 longPressTriggered = true;
                 if (touchedView != null) {
                     Object tag = touchedView.getTag();

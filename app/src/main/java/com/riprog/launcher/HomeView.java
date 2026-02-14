@@ -113,8 +113,10 @@ public class HomeView extends FrameLayout {
         addView(pageIndicator, indicatorParams);
 
 
-        addPage();
-        addPage();
+        int savedPageCount = settingsManager.getPageCount();
+        for (int i = 0; i < savedPageCount; i++) {
+            addPage();
+        }
 
         addDrawerHint();
         post(this::cleanupEmptyPages);
@@ -154,6 +156,14 @@ public class HomeView extends FrameLayout {
 
     public void addItemView(HomeItem item, View view) {
         if (item == null || view == null) return;
+
+        // Ensure only one instance of the view for this item exists
+        View existing = findViewForItem(item);
+        if (existing != null && existing != view) {
+            ViewGroup parent = (ViewGroup) existing.getParent();
+            if (parent != null) parent.removeView(existing);
+        }
+
         while (item.page >= pages.size()) {
             addPage();
         }
@@ -315,7 +325,7 @@ public class HomeView extends FrameLayout {
         if (x < getWidth() * 0.05f || x > getWidth() * 0.95f) {
             if (!isEdgeScrolling) {
                 isEdgeScrolling = true;
-                edgeScrollHandler.postDelayed(edgeScrollRunnable, 300);
+                edgeScrollHandler.postDelayed(edgeScrollRunnable, 800);
             }
         } else {
             isEdgeScrolling = false;
@@ -341,6 +351,20 @@ public class HomeView extends FrameLayout {
         }
     }
 
+    public void cancelDragging() {
+        if (draggingView != null) {
+            draggingView.animate().scaleX(1.0f).scaleY(1.0f).alpha(1.0f).setDuration(150).start();
+            HomeItem item = (HomeItem) draggingView.getTag();
+            if (item != null) {
+                addItemView(item, draggingView);
+            }
+        }
+        draggingView = null;
+        isEdgeScrolling = false;
+        edgeScrollHandler.removeCallbacks(edgeScrollRunnable);
+        clearRepulsion();
+    }
+
     public void cleanupEmptyPages() {
         // Now only synchronizes indices, does not remove pages automatically
         for (int i = 0; i < pages.size(); i++) {
@@ -358,9 +382,32 @@ public class HomeView extends FrameLayout {
     }
 
     public void removePage(int index) {
-        if (index < 0 || index >= pages.size()) return;
+        if (index < 0 || index >= pages.size() || pages.size() <= 1) return;
+
+        // Remove items belonging to the deleted page from the master list
+        if (homeItems != null) {
+            for (int i = homeItems.size() - 1; i >= 0; i--) {
+                HomeItem item = homeItems.get(i);
+                if (item.page == index) {
+                    homeItems.remove(i);
+                } else if (item.page > index) {
+                    item.page--;
+                }
+            }
+        }
+
         FrameLayout page = pages.remove(index);
         pagesContainer.removeView(page);
+
+        if (currentPage >= pages.size()) {
+            currentPage = pages.size() - 1;
+        }
+
+        cleanupEmptyPages();
+        if (getContext() instanceof MainActivity) {
+            ((MainActivity) getContext()).saveHomeState();
+            scrollToPage(currentPage);
+        }
     }
 
     public void removeItemsByPackage(String packageName) {
@@ -383,14 +430,6 @@ public class HomeView extends FrameLayout {
         }
     }
 
-    public void cancelDragging() {
-        if (draggingView != null) {
-            draggingView.animate().scaleX(1.0f).scaleY(1.0f).alpha(1.0f).setDuration(150).start();
-        }
-        draggingView = null;
-        isEdgeScrolling = false;
-        edgeScrollHandler.removeCallbacks(edgeScrollRunnable);
-    }
 
     private HomeItem findCollision(View draggedView) {
         HomeItem draggedItem = (HomeItem) draggedView.getTag();
@@ -697,7 +736,7 @@ public class HomeView extends FrameLayout {
     }
 
     private void refreshIconsInternal(LauncherModel model, List<AppItem> allApps) {
-        float globalScale = settingsManager.getIconScale();
+        float globalScale = settingsManager.isFreeformHome() ? 1.0f : settingsManager.getIconScale();
         int baseSize = getResources().getDimensionPixelSize(R.dimen.grid_icon_size);
         int targetIconSize = (int) (baseSize * globalScale);
         boolean hideLabels = settingsManager.isHideLabels();
