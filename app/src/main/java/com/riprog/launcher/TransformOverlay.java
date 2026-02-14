@@ -156,7 +156,7 @@ public class TransformOverlay extends FrameLayout {
         LinearLayout.LayoutParams lpSave = new LinearLayout.LayoutParams(0, LayoutParams.WRAP_CONTENT, 1.0f);
         container.addView(btnSave, lpSave);
 
-        if (item.type != HomeItem.Type.WIDGET) {
+        if (item.type != HomeItem.Type.WIDGET && item.type != HomeItem.Type.FOLDER) {
             TextView btnInfo = new TextView(getContext());
             btnInfo.setText("APP INFO");
             btnInfo.setPadding(dpToPx(8), dpToPx(8), dpToPx(8), dpToPx(8));
@@ -233,8 +233,8 @@ public class TransformOverlay extends FrameLayout {
             drawHandle(canvas, left, bottom, hs, true, foregroundColor);
         }
 
-        // Sides - Width/Height resize (Secondary handles) - Only for Widgets
-        if (item.type == HomeItem.Type.WIDGET) {
+        // Sides - Width/Height resize (Secondary handles) - For Widgets and Folders
+        if (item.type == HomeItem.Type.WIDGET || item.type == HomeItem.Type.FOLDER) {
             drawHandle(canvas, (left + right) / 2f, top, hs * 0.75f, false, foregroundColor);
             drawHandle(canvas, right, (top + bottom) / 2f, hs * 0.75f, false, foregroundColor);
             drawHandle(canvas, (left + right) / 2f, bottom, hs * 0.75f, false, foregroundColor);
@@ -356,7 +356,7 @@ public class TransformOverlay extends FrameLayout {
         float hs = dpToPx(24); // High precision touch area
 
         // Rotation handle first
-        if (isFreeform && dist(rx, ry, (left + right) / 2f, top - rotationHandleDist) < hs) return HANDLE_ROTATE;
+        if ((isFreeform || item.type == HomeItem.Type.WIDGET || item.type == HomeItem.Type.FOLDER) && dist(rx, ry, (left + right) / 2f, top - rotationHandleDist) < hs) return HANDLE_ROTATE;
 
         // Corners - Proportional scale - Only for Apps
         if (item.type == HomeItem.Type.APP && canResizeHorizontal && canResizeVertical) {
@@ -366,8 +366,8 @@ public class TransformOverlay extends FrameLayout {
             if (dist(rx, ry, left, bottom) < hs) return HANDLE_BOTTOM_LEFT;
         }
 
-        // Sides - Width/Height resize - Only for Widgets
-        if (item.type == HomeItem.Type.WIDGET) {
+        // Sides - Width/Height resize - For Widgets and Folders
+        if (item.type == HomeItem.Type.WIDGET || item.type == HomeItem.Type.FOLDER) {
             if (canResizeVertical) {
                 if (dist(rx, ry, (left + right) / 2f, top) < hs) return HANDLE_TOP;
                 if (dist(rx, ry, (left + right) / 2f, bottom) < hs) return HANDLE_BOTTOM;
@@ -410,7 +410,7 @@ public class TransformOverlay extends FrameLayout {
 
             targetView.setX(newX);
             targetView.setY(newY);
-        } else if (activeHandle == HANDLE_ROTATE && isFreeform) {
+        } else if (activeHandle == HANDLE_ROTATE && (isFreeform || item.type == HomeItem.Type.FOLDER || item.type == HomeItem.Type.WIDGET)) {
             double angle = Math.toDegrees(Math.atan2(ty - cy, tx - cx)) + 90;
 
             float targetR = (float) angle;
@@ -475,15 +475,15 @@ public class TransformOverlay extends FrameLayout {
                     float targetH = newScaleY * (gestureInitialHeight / gestureInitialScaleY);
                     targetW = Math.max(cellWidth, Math.round(targetW / (float) cellWidth) * cellWidth);
                     targetH = Math.max(cellHeight, Math.round(targetH / (float) cellHeight) * cellHeight);
-                    newScaleX = targetW * gestureInitialScaleX / gestureInitialWidth;
-                    newScaleY = targetH * gestureInitialScaleY / gestureInitialHeight;
+                    newScaleX = targetW * gestureInitialScaleX / (float) gestureInitialWidth;
+                    newScaleY = targetH * gestureInitialScaleY / (float) gestureInitialHeight;
                 }
             } else {
-                newScaleX = Math.round(newScaleX * 20f) / 20.0f;
-                newScaleY = Math.round(newScaleY * 20f) / 20.0f;
+                newScaleX = Math.round(newScaleX * 100f) / 100.0f;
+                newScaleY = Math.round(newScaleY * 100f) / 100.0f;
             }
 
-            if (targetView instanceof android.appwidget.AppWidgetHostView) {
+            if (targetView instanceof android.appwidget.AppWidgetHostView || item.type == HomeItem.Type.FOLDER) {
                 ViewGroup.LayoutParams lp = targetView.getLayoutParams();
                 int oldW = lp.width;
                 int oldH = lp.height;
@@ -496,6 +496,12 @@ public class TransformOverlay extends FrameLayout {
 
                 targetView.setScaleX(1.0f);
                 targetView.setScaleY(1.0f);
+
+                if (targetView instanceof android.appwidget.AppWidgetHostView) {
+                    int dw = (int) (lp.width / getResources().getDisplayMetrics().density);
+                    int dh = (int) (lp.height / getResources().getDisplayMetrics().density);
+                    ((android.appwidget.AppWidgetHostView) targetView).updateAppWidgetSize(null, dw, dh, dw, dh);
+                }
             } else {
                 targetView.setScaleX(newScaleX);
                 targetView.setScaleY(newScaleY);

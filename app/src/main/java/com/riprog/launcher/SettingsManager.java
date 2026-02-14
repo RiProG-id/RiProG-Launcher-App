@@ -128,6 +128,14 @@ public class SettingsManager {
     }
 
     public void saveHomeItems(List<HomeItem> items) {
+        if (items == null) return;
+
+        // Defensive check: prevent accidental wiping of large home screens
+        String existing = prefs.getString(KEY_HOME_ITEMS, "[]");
+        if (items.isEmpty() && existing.length() > 100) {
+            return;
+        }
+
         JSONArray array = new JSONArray();
         for (HomeItem item : items) {
             JSONObject obj = serializeItem(item);

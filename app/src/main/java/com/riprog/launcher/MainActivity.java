@@ -66,6 +66,7 @@ public class MainActivity extends Activity {
     private List<HomeItem> homeItems = new ArrayList<>();
     private List<AppItem> allApps = new ArrayList<>();
     private float lastGridCol, lastGridRow;
+    private boolean isStateRestored = false;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -205,7 +206,9 @@ public class MainActivity extends Activity {
     }
 
     public void saveHomeState() {
-        settingsManager.saveHomeItems(homeItems);
+        if (isStateRestored) {
+            settingsManager.saveHomeItems(homeItems);
+        }
     }
 
     private void restoreHomeState() {
@@ -217,6 +220,7 @@ public class MainActivity extends Activity {
                 renderHomeItem(item);
             }
         }
+        isStateRestored = true;
     }
 
     private void setupDefaultHome() {
@@ -298,12 +302,15 @@ public class MainActivity extends Activity {
         container.setOrientation(LinearLayout.VERTICAL);
         container.setGravity(Gravity.CENTER);
 
-        FrameLayout previewContainer = new FrameLayout(this);
-        int baseSize = getResources().getDimensionPixelSize(R.dimen.grid_icon_size);
-        float scale = settingsManager.getIconScale();
-        int size = (int) (baseSize * scale);
+        int cellWidth = homeView.getWidth() / HomeView.GRID_COLUMNS;
+        int cellHeight = homeView.getHeight() / HomeView.GRID_ROWS;
 
-        previewContainer.setLayoutParams(new LinearLayout.LayoutParams(size, size));
+        FrameLayout previewContainer = new FrameLayout(this);
+        int sizeW = (int) (cellWidth * item.spanX);
+        int sizeH = (int) (cellHeight * item.spanY);
+        float scale = settingsManager.getIconScale();
+
+        previewContainer.setLayoutParams(new LinearLayout.LayoutParams(sizeW, sizeH));
         previewContainer.setBackground(ThemeUtils.getGlassDrawable(this, settingsManager, 12));
         int padding = dpToPx(6);
         previewContainer.setPadding(padding, padding, padding, padding);
@@ -336,36 +343,41 @@ public class MainActivity extends Activity {
         grid.removeAllViews();
         if (folder.folderItems == null) return;
 
-        int baseSize = getResources().getDimensionPixelSize(R.dimen.grid_icon_size);
-        float globalScale = settingsManager.getIconScale();
-        int scaledBaseSize = (int) (baseSize * globalScale);
-
         int count = folder.folderItems.size();
-        int columns = 2;
-        if (settingsManager.isFreeformHome() && folder.scaleX > 1.2f) {
-            int maxPossibleColumns = (int) (2 * folder.scaleX);
-            int neededColumns = (int) Math.ceil(Math.sqrt(count));
-            columns = Math.min(maxPossibleColumns, Math.max(2, neededColumns));
-            if (columns > 4) columns = 4;
-        }
+        if (count == 0) return;
 
-        grid.setColumnCount(columns);
-        grid.setRowCount(columns);
+        int cellWidth = homeView.getWidth() / HomeView.GRID_COLUMNS;
+        int cellHeight = homeView.getHeight() / HomeView.GRID_ROWS;
 
+        int folderW = (int) (cellWidth * folder.spanX);
+        int folderH = (int) (cellHeight * folder.spanY);
+
+        int padding = dpToPx(12);
+        int availableW = folderW - 2 * padding;
+        int availableH = folderH - 2 * padding;
+
+        // Dynamic columns based on size and count
+        int columns = (int) Math.max(2, Math.round(folder.spanX));
+        if (columns > 4) columns = 4;
+
+        // Adjust iconsToShow based on grid size
         int maxIcons = columns * columns;
         int iconsToShow = Math.min(count, maxIcons);
 
-        int padding = dpToPx(6);
-        int available = scaledBaseSize - 2 * padding;
-        int iconSize = available / columns;
+        grid.setColumnCount(columns);
+        grid.setRowCount((int) Math.ceil(iconsToShow / (double) columns));
+
+        int iconSize = Math.min(availableW / columns, availableH / columns);
+        int iconMargin = iconSize / 10;
+        iconSize -= 2 * iconMargin;
 
         for (int i = 0; i < iconsToShow; i++) {
             HomeItem sub = folder.folderItems.get(i);
             ImageView iv = new ImageView(this);
-            GridLayout.LayoutParams lp = new GridLayout.LayoutParams(
-                    GridLayout.spec(i / columns), GridLayout.spec(i % columns));
+            GridLayout.LayoutParams lp = new GridLayout.LayoutParams();
             lp.width = iconSize;
             lp.height = iconSize;
+            lp.setMargins(iconMargin, iconMargin, iconMargin, iconMargin);
             iv.setLayoutParams(lp);
             iv.setScaleType(ImageView.ScaleType.FIT_CENTER);
             AppItem app = findApp(sub.packageName);
@@ -1253,13 +1265,26 @@ public class MainActivity extends Activity {
         int adaptiveColor = ThemeUtils.getAdaptiveColor(this, settingsManager, true);
         int secondaryColor = (adaptiveColor & 0x00FFFFFF) | 0x80000000;
 
+        LinearLayout titleLayout = new LinearLayout(this);
+        titleLayout.setOrientation(LinearLayout.HORIZONTAL);
+        titleLayout.setGravity(Gravity.CENTER_VERTICAL);
+        titleLayout.setPadding(0, 0, 0, dpToPx(32));
+
+        ImageView titleIcon = new ImageView(this);
+        titleIcon.setImageResource(R.drawable.ic_widgets);
+        titleIcon.setColorFilter(adaptiveColor);
+        LinearLayout.LayoutParams iconParams = new LinearLayout.LayoutParams(dpToPx(32), dpToPx(32));
+        iconParams.rightMargin = dpToPx(16);
+        titleLayout.addView(titleIcon, iconParams);
+
         TextView title = new TextView(this);
         title.setText(R.string.title_pick_widget);
         title.setTextSize(32);
         title.setTypeface(Typeface.create("sans-serif-light", Typeface.NORMAL));
         title.setTextColor(adaptiveColor);
-        title.setPadding(0, 0, 0, dpToPx(32));
-        container.addView(title);
+        titleLayout.addView(title);
+
+        container.addView(titleLayout);
 
         ScrollView scrollView = new ScrollView(this);
         scrollView.setVerticalScrollBarEnabled(false);

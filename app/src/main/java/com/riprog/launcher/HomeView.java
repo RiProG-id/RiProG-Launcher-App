@@ -186,7 +186,7 @@ public class HomeView extends FrameLayout {
         }
 
         LayoutParams lp;
-        if (item.type == HomeItem.Type.WIDGET) {
+        if (item.type == HomeItem.Type.WIDGET || item.type == HomeItem.Type.FOLDER) {
             lp = new LayoutParams((int) (cellWidth * item.spanX), (int) (cellHeight * item.spanY));
         } else {
 
