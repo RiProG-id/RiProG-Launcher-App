@@ -137,7 +137,18 @@ public class SettingsManager {
     }
 
     private File getPageFile(int pageIndex) {
-        return new File(context.getFilesDir(), "home_page_" + pageIndex + ".json");
+        File dir = new File(context.getCacheDir(), DiskCache.TYPE_LAYOUT);
+        if (!dir.exists()) dir.mkdirs();
+        File cacheFile = new File(dir, "home_page_" + pageIndex + ".json");
+
+        // Migration: if not in cache, check filesDir
+        if (!cacheFile.exists()) {
+            File oldFile = new File(context.getFilesDir(), "home_page_" + pageIndex + ".json");
+            if (oldFile.exists()) {
+                oldFile.renameTo(cacheFile);
+            }
+        }
+        return cacheFile;
     }
 
     private void writeToFile(File file, String data) {

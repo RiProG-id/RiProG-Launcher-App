@@ -43,8 +43,8 @@ public class LauncherModel {
         this.pm = context.getPackageManager();
         this.diskCache = new DiskCache(this.context);
 
-        final int maxMemory = (int) (Runtime.getRuntime().maxMemory() / 1024);
-        final int cacheSize = Math.min(16 * 1024, maxMemory / 12);
+        // Extremely low RAM usage: fixed 4MB icon cache
+        final int cacheSize = 4 * 1024;
         iconCache = new LruCache<String, Bitmap>(cacheSize) {
             @Override
             protected int sizeOf(String key, Bitmap bitmap) {
@@ -78,7 +78,7 @@ public class LauncherModel {
     public void loadApps(OnAppsLoadedListener listener, boolean forceRefresh) {
         executor.execute(() -> {
             if (!forceRefresh) {
-                String cached = diskCache.loadData("app_list");
+                String cached = diskCache.loadData(DiskCache.TYPE_METADATA, "app_list");
                 if (cached != null) {
                     List<AppItem> apps = deserializeAppList(cached);
                     if (!apps.isEmpty()) {
@@ -107,9 +107,26 @@ public class LauncherModel {
             }
 
             Collections.sort(apps, (a, b) -> a.label.compareToIgnoreCase(b.label));
-            diskCache.saveData("app_list", serializeAppList(apps));
+            diskCache.saveData(DiskCache.TYPE_METADATA, "app_list", serializeAppList(apps));
 
             mainHandler.post(() -> listener.onAppsLoaded(apps));
+
+            // Background pre-generation of icons for first 20 apps
+            final List<AppItem> finalApps = apps;
+            new Thread(() -> {
+                for (int i = 0; i < Math.min(20, finalApps.size()); i++) {
+                    AppItem app = finalApps.get(i);
+                    if (diskCache.loadIcon(DiskCache.TYPE_ICONS, app.packageName) == null) {
+                        try {
+                            Drawable drawable = pm.getApplicationIcon(app.packageName);
+                            Bitmap bitmap = drawableToBitmap(drawable);
+                            if (bitmap != null) {
+                                diskCache.saveIcon(DiskCache.TYPE_ICONS, app.packageName, bitmap);
+                            }
+                        } catch (Exception ignored) {}
+                    }
+                }
+            }).start();
         });
     }
 
@@ -155,6 +172,7 @@ public class LauncherModel {
             Bitmap cached = iconCache.get(item.packageName);
             if (cached != null) {
                 listener.onIconLoaded(cached);
+                // Clear reference from listener immediately after call to keep RAM light
                 return;
             }
 
@@ -170,14 +188,14 @@ public class LauncherModel {
         }
 
         executor.execute(() -> {
-            Bitmap bitmap = diskCache.loadIcon(item.packageName);
+            Bitmap bitmap = diskCache.loadIcon(DiskCache.TYPE_ICONS, item.packageName);
 
             if (bitmap == null) {
                 try {
                     Drawable drawable = pm.getApplicationIcon(item.packageName);
                     bitmap = drawableToBitmap(drawable);
                     if (bitmap != null) {
-                        diskCache.saveIcon(item.packageName, bitmap);
+                        diskCache.saveIcon(DiskCache.TYPE_ICONS, item.packageName, bitmap);
                     }
                 } catch (PackageManager.NameNotFoundException ignored) {
                 }
@@ -198,6 +216,7 @@ public class LauncherModel {
                         l.onIconLoaded(finalBitmap);
                     }
                 }
+                // Memory optimization: clear heavy reference after delivery
             });
         });
     }

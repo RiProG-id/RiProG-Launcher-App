@@ -69,6 +69,10 @@ public class MainActivity extends Activity {
     private float lastGridCol, lastGridRow;
     private boolean isStateRestored = false;
 
+    private final Handler debounceHandler = new Handler();
+    private final Runnable saveStateRunnable = this::saveHomeStateInternal;
+    private final Map<Integer, Runnable> savePageRunnables = new HashMap<>();
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -209,6 +213,11 @@ public class MainActivity extends Activity {
     }
 
     public void saveHomeState() {
+        debounceHandler.removeCallbacks(saveStateRunnable);
+        debounceHandler.postDelayed(saveStateRunnable, 500);
+    }
+
+    private void saveHomeStateInternal() {
         if (isStateRestored) {
             int pageCount = homeView != null ? homeView.getPageCount() : 1;
             settingsManager.saveHomeItems(homeItems, pageCount);
@@ -216,9 +225,17 @@ public class MainActivity extends Activity {
     }
 
     public void savePage(int index) {
-        if (isStateRestored && index >= 0) {
-            settingsManager.savePageItems(index, homeItems);
+        Runnable r = savePageRunnables.get(index);
+        if (r == null) {
+            r = () -> {
+                if (isStateRestored && index >= 0) {
+                    settingsManager.savePageItems(index, homeItems);
+                }
+            };
+            savePageRunnables.put(index, r);
         }
+        debounceHandler.removeCallbacks(r);
+        debounceHandler.postDelayed(r, 500);
     }
 
     public void moveItemToPage(HomeItem item, int toPage) {
@@ -1010,10 +1027,9 @@ public class MainActivity extends Activity {
         if (model != null) {
             model.onTrimMemory(level);
         }
-        if (level >= TRIM_MEMORY_MODERATE) {
+        if (level >= TRIM_MEMORY_UI_HIDDEN) {
             if (allApps != null) {
                 allApps.clear();
-                allApps = null;
             }
             System.gc();
         }
@@ -1278,8 +1294,8 @@ public class MainActivity extends Activity {
         appWidgetHost.stopListening();
         if (allApps != null) {
             allApps.clear();
-            allApps = null;
         }
+        debounceHandler.removeCallbacksAndMessages(null);
         System.gc();
     }
 
