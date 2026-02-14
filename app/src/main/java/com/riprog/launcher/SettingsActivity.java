@@ -49,6 +49,10 @@ public class SettingsActivity extends Activity {
             w.setDecorFitsSystemWindows(false);
         }
 
+        if (settingsManager.isLiquidGlass()) {
+            ThemeUtils.applyWindowBlur(w, true);
+        }
+
         FrameLayout rootContainer = new FrameLayout(this);
         rootContainer.setPadding(dpToPx(16), dpToPx(48), dpToPx(16), dpToPx(32));
 
@@ -64,7 +68,6 @@ public class SettingsActivity extends Activity {
 
         ScrollView scrollView = new ScrollView(this);
         scrollView.setBackground(ThemeUtils.getGlassDrawable(this, settingsManager));
-        ThemeUtils.applyBlurIfSupported(scrollView, settingsManager.isLiquidGlass());
         scrollView.setVerticalScrollBarEnabled(false);
         rootContainer.addView(scrollView);
 

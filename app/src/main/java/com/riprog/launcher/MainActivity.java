@@ -144,7 +144,6 @@ public class MainActivity extends Activity {
         LinearLayout prompt = new LinearLayout(this);
         prompt.setOrientation(LinearLayout.VERTICAL);
         prompt.setBackground(ThemeUtils.getGlassDrawable(this, settingsManager, 12));
-        ThemeUtils.applyBlurIfSupported(prompt, settingsManager.isLiquidGlass());
         prompt.setPadding(dpToPx(24), dpToPx(24), dpToPx(24), dpToPx(24));
         prompt.setGravity(Gravity.CENTER);
         prompt.setElevation(dpToPx(8));
@@ -215,6 +214,12 @@ public class MainActivity extends Activity {
 
     private void setupDefaultHome() {
         saveHomeState();
+    }
+
+    private void setOverlayBlur(boolean enabled) {
+        if (!settingsManager.isLiquidGlass()) return;
+        ThemeUtils.applyBlurIfSupported(homeView, enabled);
+        ThemeUtils.applyWindowBlur(getWindow(), enabled);
     }
 
     private void renderHomeItem(HomeItem item) {
@@ -366,6 +371,7 @@ public class MainActivity extends Activity {
 
     private void openFolder(HomeItem folderItem, View folderView) {
         if (currentFolderOverlay != null) closeFolder();
+        setOverlayBlur(true);
 
         FrameLayout container = new FrameLayout(this);
         container.setBackgroundColor(0x33000000);
@@ -393,7 +399,6 @@ public class MainActivity extends Activity {
         LinearLayout overlay = new LinearLayout(this);
         overlay.setOrientation(LinearLayout.VERTICAL);
         overlay.setBackground(ThemeUtils.getGlassDrawable(this, settingsManager, 12));
-        ThemeUtils.applyBlurIfSupported(overlay, settingsManager.isLiquidGlass());
         overlay.setPadding(dpToPx(24), dpToPx(24), dpToPx(24), dpToPx(24));
         overlay.setElevation(dpToPx(16));
         overlay.setGravity(Gravity.CENTER_HORIZONTAL);
@@ -943,6 +948,7 @@ public class MainActivity extends Activity {
         if (currentFolderOverlay != null) {
             mainLayout.removeView(currentFolderOverlay);
             currentFolderOverlay = null;
+            setOverlayBlur(false);
             InputMethodManager imm = (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
             imm.hideSoftInputFromWindow(mainLayout.getWindowToken(), 0);
             if (homeView != null) homeView.refreshIcons(model, allApps);
@@ -1290,7 +1296,6 @@ public class MainActivity extends Activity {
             dragOverlay = new LinearLayout(getContext());
             dragOverlay.setOrientation(LinearLayout.HORIZONTAL);
             dragOverlay.setBackground(ThemeUtils.getGlassDrawable(getContext(), settingsManager, 12));
-            ThemeUtils.applyBlurIfSupported(dragOverlay, settingsManager.isLiquidGlass());
             dragOverlay.setGravity(Gravity.CENTER);
             dragOverlay.setVisibility(View.GONE);
             dragOverlay.setElevation(dpToPx(8));
@@ -1584,7 +1589,10 @@ public class MainActivity extends Activity {
                 .setDuration(250)
                 .setInterpolator(new android.view.animation.DecelerateInterpolator())
                 .start();
-            homeView.animate().alpha(0).setDuration(250).start();
+
+            float targetAlpha = settingsManager.isLiquidGlass() ? 0.4f : 0f;
+            homeView.animate().alpha(targetAlpha).setDuration(250).start();
+            setOverlayBlur(true);
             drawerView.onOpen();
         }
 
@@ -1668,6 +1676,7 @@ public class MainActivity extends Activity {
                 .start();
             homeView.setVisibility(View.VISIBLE);
             homeView.animate().alpha(1).setDuration(200).start();
+            setOverlayBlur(false);
             InputMethodManager imm = (InputMethodManager)
                     getContext().getSystemService(Context.INPUT_METHOD_SERVICE);
             imm.hideSoftInputFromWindow(getWindowToken(), 0);
