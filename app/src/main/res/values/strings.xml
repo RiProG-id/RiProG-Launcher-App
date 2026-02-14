@@ -34,6 +34,8 @@
     <string name="theme_dark">Dark</string>
     <string name="setting_liquid_glass">Liquid Glass Theme</string>
     <string name="setting_liquid_glass_summary">Enable transparent glass-style visual effects for launcher interface.</string>
+    <string name="setting_darken_wallpaper">Darken wallpaper in dark mode</string>
+    <string name="setting_darken_wallpaper_summary">Slightly darkens wallpaper background to improve readability when using Dark Mode.</string>
     <string name="setting_freeform">Freeform Home</string>
     <string name="setting_freeform_summary">Enable advanced free placement. Resize, rotate, and move home items freely using transform controls.</string>
     <string name="setting_hide_labels">Hide Home Labels</string>

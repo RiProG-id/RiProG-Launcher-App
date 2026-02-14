@@ -144,22 +144,25 @@ public class MainActivity extends Activity {
         LinearLayout prompt = new LinearLayout(this);
         prompt.setOrientation(LinearLayout.VERTICAL);
         prompt.setBackground(ThemeUtils.getGlassDrawable(this, settingsManager, 12));
+        ThemeUtils.applyBlurIfSupported(prompt, settingsManager.isLiquidGlass());
         prompt.setPadding(dpToPx(24), dpToPx(24), dpToPx(24), dpToPx(24));
         prompt.setGravity(Gravity.CENTER);
         prompt.setElevation(dpToPx(8));
+
+        int adaptiveColor = ThemeUtils.getAdaptiveColor(this, settingsManager, true);
 
         TextView title = new TextView(this);
         title.setText(R.string.prompt_default_launcher_title);
         title.setTextSize(18);
         title.setTypeface(null, Typeface.BOLD);
-        title.setTextColor(getColor(R.color.foreground));
+        title.setTextColor(adaptiveColor);
         prompt.addView(title);
 
         TextView message = new TextView(this);
         message.setText(R.string.prompt_default_launcher_message);
         message.setPadding(0, dpToPx(8), 0, dpToPx(16));
         message.setGravity(Gravity.CENTER);
-        message.setTextColor(getColor(R.color.foreground_dim));
+        message.setTextColor(adaptiveColor & 0xBBFFFFFF);
         prompt.addView(message);
 
         LinearLayout buttons = new LinearLayout(this);
@@ -169,7 +172,7 @@ public class MainActivity extends Activity {
         TextView btnLater = new TextView(this);
         btnLater.setText(R.string.action_later);
         btnLater.setPadding(dpToPx(16), dpToPx(8), dpToPx(16), dpToPx(8));
-        btnLater.setTextColor(getColor(R.color.foreground));
+        btnLater.setTextColor(adaptiveColor);
         btnLater.setOnClickListener(v -> mainLayout.removeView(prompt));
         buttons.addView(btnLater);
 
@@ -254,7 +257,7 @@ public class MainActivity extends Activity {
 
         TextView labelView = new TextView(this);
         labelView.setTag("item_label");
-        labelView.setTextColor(getColor(R.color.foreground));
+        labelView.setTextColor(ThemeUtils.getAdaptiveColor(this, settingsManager, false));
         labelView.setTextSize(10 * scale);
         labelView.setGravity(Gravity.CENTER);
         labelView.setMaxLines(1);
@@ -302,7 +305,7 @@ public class MainActivity extends Activity {
         refreshFolderPreview(item, grid);
 
         TextView labelView = new TextView(this);
-        labelView.setTextColor(getColor(R.color.foreground));
+        labelView.setTextColor(ThemeUtils.getAdaptiveColor(this, settingsManager, false));
         labelView.setTextSize(10 * scale);
         labelView.setGravity(Gravity.CENTER);
         labelView.setMaxLines(1);
@@ -390,6 +393,7 @@ public class MainActivity extends Activity {
         LinearLayout overlay = new LinearLayout(this);
         overlay.setOrientation(LinearLayout.VERTICAL);
         overlay.setBackground(ThemeUtils.getGlassDrawable(this, settingsManager, 12));
+        ThemeUtils.applyBlurIfSupported(overlay, settingsManager.isLiquidGlass());
         overlay.setPadding(dpToPx(24), dpToPx(24), dpToPx(24), dpToPx(24));
         overlay.setElevation(dpToPx(16));
         overlay.setGravity(Gravity.CENTER_HORIZONTAL);
@@ -398,7 +402,7 @@ public class MainActivity extends Activity {
         TextView titleText = new TextView(this);
         String name = folderItem.folderName == null || folderItem.folderName.isEmpty() ? "Folder" : folderItem.folderName;
         titleText.setText(name);
-        titleText.setTextColor(getColor(R.color.foreground));
+        titleText.setTextColor(ThemeUtils.getAdaptiveColor(this, settingsManager, true));
         titleText.setTextSize(20);
         titleText.setTypeface(null, android.graphics.Typeface.BOLD);
         titleText.setGravity(Gravity.CENTER);
@@ -407,7 +411,7 @@ public class MainActivity extends Activity {
 
         EditText titleEdit = new EditText(this);
         titleEdit.setText(folderItem.folderName);
-        titleEdit.setTextColor(getColor(R.color.foreground));
+        titleEdit.setTextColor(ThemeUtils.getAdaptiveColor(this, settingsManager, true));
         titleEdit.setBackground(null);
         titleEdit.setGravity(Gravity.CENTER);
         titleEdit.setImeOptions(android.view.inputmethod.EditorInfo.IME_ACTION_DONE);
@@ -623,7 +627,10 @@ public class MainActivity extends Activity {
                 else removeHomeItem(item, hostView);
             }).create();
         dialog.show();
-        if (dialog.getWindow() != null) dialog.getWindow().setBackgroundDrawable(ThemeUtils.getGlassDrawable(this, settingsManager));
+        if (dialog.getWindow() != null) {
+            dialog.getWindow().setBackgroundDrawable(ThemeUtils.getGlassDrawable(this, settingsManager));
+            ThemeUtils.applyWindowBlur(dialog.getWindow(), settingsManager.isLiquidGlass());
+        }
     }
 
     private void showResizeDialog(HomeItem item, View hostView) {
@@ -642,7 +649,10 @@ public class MainActivity extends Activity {
                 saveHomeState();
             }).create();
         dialog.show();
-        if (dialog.getWindow() != null) dialog.getWindow().setBackgroundDrawable(ThemeUtils.getGlassDrawable(this, settingsManager));
+        if (dialog.getWindow() != null) {
+            dialog.getWindow().setBackgroundDrawable(ThemeUtils.getGlassDrawable(this, settingsManager));
+            ThemeUtils.applyWindowBlur(dialog.getWindow(), settingsManager.isLiquidGlass());
+        }
     }
 
     private void removeHomeItem(HomeItem item, View view) {
@@ -695,12 +705,13 @@ public class MainActivity extends Activity {
 
         TextView tvTime = new TextView(this);
         tvTime.setTextSize(64);
-        tvTime.setTextColor(getColor(R.color.foreground));
+        tvTime.setTextColor(ThemeUtils.getAdaptiveColor(this, settingsManager, false));
         tvTime.setTypeface(Typeface.create("sans-serif-thin", Typeface.NORMAL));
 
         TextView tvDate = new TextView(this);
         tvDate.setTextSize(18);
-        tvDate.setTextColor(getColor(R.color.foreground_dim));
+        int adaptiveDim = ThemeUtils.getAdaptiveColor(this, settingsManager, false) & 0xBBFFFFFF;
+        tvDate.setTextColor(adaptiveDim);
         tvDate.setGravity(Gravity.CENTER);
 
         clockRoot.addView(tvTime);
@@ -735,6 +746,7 @@ public class MainActivity extends Activity {
         };
         int[] icons = {R.drawable.ic_widgets, R.drawable.ic_wallpaper, R.drawable.ic_settings};
 
+        int adaptiveColor = ThemeUtils.getAdaptiveColor(this, settingsManager, true);
         ArrayAdapter<String> adapter = new ArrayAdapter<String>(this, android.R.layout.select_dialog_item, android.R.id.text1, options) {
             @Override
             public View getView(int position, View convertView, ViewGroup parent) {
@@ -742,9 +754,9 @@ public class MainActivity extends Activity {
                 TextView tv = view.findViewById(android.R.id.text1);
                 tv.setCompoundDrawablesWithIntrinsicBounds(icons[position], 0, 0, 0);
                 tv.setCompoundDrawablePadding(dpToPx(16));
-                tv.setTextColor(getColor(R.color.foreground));
+                tv.setTextColor(adaptiveColor);
                 Drawable d = tv.getCompoundDrawables()[0];
-                if (d != null) d.setTint(getColor(R.color.foreground));
+                if (d != null) d.setTint(adaptiveColor);
                 return view;
             }
         };
@@ -763,7 +775,10 @@ public class MainActivity extends Activity {
                 }
             }).create();
         dialog.show();
-        if (dialog.getWindow() != null) dialog.getWindow().setBackgroundDrawable(ThemeUtils.getGlassDrawable(this, settingsManager));
+        if (dialog.getWindow() != null) {
+            dialog.getWindow().setBackgroundDrawable(ThemeUtils.getGlassDrawable(this, settingsManager));
+            ThemeUtils.applyWindowBlur(dialog.getWindow(), settingsManager.isLiquidGlass());
+        }
     }
 
     private void pickAppForHome(int col, int row, int page) {
@@ -784,7 +799,10 @@ public class MainActivity extends Activity {
                 saveHomeState();
             }).create();
         dialog.show();
-        if (dialog.getWindow() != null) dialog.getWindow().setBackgroundDrawable(ThemeUtils.getGlassDrawable(this, settingsManager));
+        if (dialog.getWindow() != null) {
+            dialog.getWindow().setBackgroundDrawable(ThemeUtils.getGlassDrawable(this, settingsManager));
+            ThemeUtils.applyWindowBlur(dialog.getWindow(), settingsManager.isLiquidGlass());
+        }
     }
 
     private void openWallpaperPicker() {
@@ -935,6 +953,9 @@ public class MainActivity extends Activity {
     protected void onResume() {
         super.onResume();
         ThemeUtils.updateStatusBarContrast(this);
+        if (mainLayout != null) {
+            mainLayout.updateDimVisibility();
+        }
         if (homeView != null) {
             homeView.refreshLayout();
             homeView.refreshIcons(model, allApps);
@@ -1121,7 +1142,10 @@ public class MainActivity extends Activity {
         }
 
         dialog.show();
-        if (dialog.getWindow() != null) dialog.getWindow().setBackgroundDrawable(ThemeUtils.getGlassDrawable(this, settingsManager));
+        if (dialog.getWindow() != null) {
+            dialog.getWindow().setBackgroundDrawable(ThemeUtils.getGlassDrawable(this, settingsManager));
+            ThemeUtils.applyWindowBlur(dialog.getWindow(), settingsManager.isLiquidGlass());
+        }
     }
 
     private String getAppName(String packageName) {
@@ -1176,6 +1200,7 @@ public class MainActivity extends Activity {
     }
 
     private class MainLayout extends FrameLayout {
+        private View dimView;
         private boolean isDrawerOpen = false;
         private float startX, startY;
         private long downTime;
@@ -1234,7 +1259,26 @@ public class MainActivity extends Activity {
         public MainLayout(Context context) {
             super(context);
             touchSlop = ViewConfiguration.get(context).getScaledTouchSlop();
+            setupDimView();
             setupDragOverlay();
+        }
+
+        private void setupDimView() {
+            dimView = new View(getContext());
+            dimView.setBackgroundColor(Color.BLACK);
+            dimView.setAlpha(0.3f);
+            dimView.setVisibility(View.GONE);
+            addView(dimView, new LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT));
+        }
+
+        public void updateDimVisibility() {
+            boolean isNight = (getResources().getConfiguration().uiMode & android.content.res.Configuration.UI_MODE_NIGHT_MASK)
+                    == android.content.res.Configuration.UI_MODE_NIGHT_YES;
+            if (isNight && settingsManager.isDarkenWallpaper()) {
+                dimView.setVisibility(View.VISIBLE);
+            } else {
+                dimView.setVisibility(View.GONE);
+            }
         }
 
         @Override
@@ -1246,21 +1290,24 @@ public class MainActivity extends Activity {
             dragOverlay = new LinearLayout(getContext());
             dragOverlay.setOrientation(LinearLayout.HORIZONTAL);
             dragOverlay.setBackground(ThemeUtils.getGlassDrawable(getContext(), settingsManager, 12));
+            ThemeUtils.applyBlurIfSupported(dragOverlay, settingsManager.isLiquidGlass());
             dragOverlay.setGravity(Gravity.CENTER);
             dragOverlay.setVisibility(View.GONE);
             dragOverlay.setElevation(dpToPx(8));
 
+            int adaptiveColor = ThemeUtils.getAdaptiveColor(getContext(), settingsManager, true);
+
             ivRemove = new ImageView(getContext());
             ivRemove.setImageResource(R.drawable.ic_remove);
             ivRemove.setPadding(dpToPx(24), dpToPx(16), dpToPx(24), dpToPx(16));
-            ivRemove.setColorFilter(getContext().getColor(R.color.foreground));
+            ivRemove.setColorFilter(adaptiveColor);
             ivRemove.setContentDescription(getContext().getString(R.string.drag_remove));
             dragOverlay.addView(ivRemove);
 
             ivAppInfo = new ImageView(getContext());
             ivAppInfo.setImageResource(R.drawable.ic_info);
             ivAppInfo.setPadding(dpToPx(24), dpToPx(16), dpToPx(24), dpToPx(16));
-            ivAppInfo.setColorFilter(getContext().getColor(R.color.foreground));
+            ivAppInfo.setColorFilter(adaptiveColor);
             ivAppInfo.setContentDescription(getContext().getString(R.string.drag_app_info));
             dragOverlay.addView(ivAppInfo);
 
