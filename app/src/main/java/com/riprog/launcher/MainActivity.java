@@ -12,6 +12,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.graphics.Color;
+import android.graphics.RectF;
 import android.graphics.drawable.Drawable;
 import android.graphics.drawable.GradientDrawable;
 import android.graphics.Typeface;
@@ -803,12 +804,27 @@ public class MainActivity extends Activity {
     }
 
     private void showHomeContextMenu(float col, float row, int page) {
-        String[] options = {
-                getString(R.string.menu_widgets),
-                getString(R.string.menu_wallpaper),
-                getString(R.string.menu_settings)
-        };
-        int[] icons = {R.drawable.ic_widgets, R.drawable.ic_wallpaper, R.drawable.ic_settings};
+        List<String> optionsList = new ArrayList<>();
+        List<Integer> iconsList = new ArrayList<>();
+
+        optionsList.add(getString(R.string.menu_widgets));
+        iconsList.add(R.drawable.ic_widgets);
+        optionsList.add(getString(R.string.menu_wallpaper));
+        iconsList.add(R.drawable.ic_wallpaper);
+        optionsList.add(getString(R.string.menu_settings));
+        iconsList.add(R.drawable.ic_settings);
+
+        optionsList.add(getString(R.string.layout_add_page));
+        iconsList.add(R.drawable.ic_layout);
+
+        if (homeView != null && homeView.getPageCount() > 1) {
+            optionsList.add(getString(R.string.layout_remove_page));
+            iconsList.add(R.drawable.ic_remove);
+        }
+
+        String[] options = optionsList.toArray(new String[0]);
+        int[] icons = new int[iconsList.size()];
+        for (int i = 0; i < iconsList.size(); i++) icons[i] = iconsList.get(i);
 
         int adaptiveColor = ThemeUtils.getAdaptiveColor(this, settingsManager, true);
         ArrayAdapter<String> adapter = new ArrayAdapter<String>(this, android.R.layout.select_dialog_item, android.R.id.text1, options) {
@@ -828,19 +844,31 @@ public class MainActivity extends Activity {
         AlertDialog dialog = new AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert)
             .setTitle(R.string.title_home_menu)
             .setAdapter(adapter, (d, which) -> {
-                switch (which) {
-                    case 0:
-                        if (!settingsManager.isFreeformHome()) {
-                            lastGridCol = Math.round(col);
-                            lastGridRow = Math.round(row);
-                        } else {
-                            lastGridCol = col;
-                            lastGridRow = row;
-                        }
-                        pickWidget();
-                        break;
-                    case 1: openWallpaperPicker(); break;
-                    case 2: openSettings(); break;
+                String option = options[which];
+                if (option.equals(getString(R.string.menu_widgets))) {
+                    if (!settingsManager.isFreeformHome()) {
+                        lastGridCol = Math.round(col);
+                        lastGridRow = Math.round(row);
+                    } else {
+                        lastGridCol = col;
+                        lastGridRow = row;
+                    }
+                    pickWidget();
+                } else if (option.equals(getString(R.string.menu_wallpaper))) {
+                    openWallpaperPicker();
+                } else if (option.equals(getString(R.string.menu_settings))) {
+                    openSettings();
+                } else if (option.equals(getString(R.string.layout_add_page))) {
+                    if (homeView != null) {
+                        homeView.addPage();
+                        saveHomeState();
+                        Toast.makeText(this, R.string.page_added, Toast.LENGTH_SHORT).show();
+                    }
+                } else if (option.equals(getString(R.string.layout_remove_page))) {
+                    if (homeView != null && homeView.getPageCount() > 1) {
+                        homeView.removePage(homeView.getCurrentPage());
+                        saveHomeState();
+                    }
                 }
             }).create();
         dialog.show();
@@ -1085,7 +1113,8 @@ public class MainActivity extends Activity {
         currentTransformOverlay = new TransformOverlay(this, targetView, settingsManager, new TransformOverlay.OnSaveListener() {
             @Override public void onMove(float x, float y) {
                 if (homeView != null) {
-                    homeView.checkEdgeScroll(x);
+                    homeView.performRepulsion(targetView);
+                    homeView.checkEdgeScrollLoopStart(x);
                 }
             }
             @Override public void onSave() {
@@ -1137,8 +1166,8 @@ public class MainActivity extends Activity {
                 View child = pageLayout.getChildAt(i);
                 if (child == exclude) continue;
 
-                if (adjustedX >= child.getX() && adjustedX <= child.getX() + child.getWidth() &&
-                    adjustedY >= child.getY() && adjustedY <= child.getY() + child.getHeight()) {
+                RectF visualRect = homeView.getVisualRect(child);
+                if (visualRect.contains(adjustedX, adjustedY)) {
                     return child;
                 }
             }
@@ -1161,6 +1190,7 @@ public class MainActivity extends Activity {
             transformingViewOriginalParent = null;
 
             if (homeView != null) {
+                homeView.clearRepulsion();
                 homeView.cleanupEmptyPages();
                 homeView.refreshIcons(model, allApps);
             }
@@ -1774,10 +1804,10 @@ public class MainActivity extends Activity {
                                 isGestureCanceled = true;
                             }
                         } else {
-                            if (dx > touchSlop * 2 && homeView.getCurrentPage() > 0) {
+                            if (dx > touchSlop * 2) {
                                 homeView.scrollToPage(homeView.getCurrentPage() - 1);
                                 isGestureCanceled = true;
-                            } else if (dx < -touchSlop * 2 && homeView.getCurrentPage() < homeView.getPageCount() - 1) {
+                            } else if (dx < -touchSlop * 2) {
                                 homeView.scrollToPage(homeView.getCurrentPage() + 1);
                                 isGestureCanceled = true;
                             }
@@ -1844,12 +1874,19 @@ public class MainActivity extends Activity {
             ViewGroup pagesContainer = (ViewGroup) homeView.getChildAt(0);
             if (pagesContainer != null && page < pagesContainer.getChildCount()) {
                 ViewGroup pageLayout = (ViewGroup) pagesContainer.getChildAt(page);
-                float adjustedX = x - homeView.getPaddingLeft();
-                float adjustedY = y - homeView.getPaddingTop();
+
+                int[] pagePos = new int[2];
+                pageLayout.getLocationOnScreen(pagePos);
+                int[] rootPos = new int[2];
+                this.getLocationOnScreen(rootPos);
+
+                float adjustedX = x - (pagePos[0] - rootPos[0]);
+                float adjustedY = y - (pagePos[1] - rootPos[1]);
+
                 for (int i = pageLayout.getChildCount() - 1; i >= 0; i--) {
                     View child = pageLayout.getChildAt(i);
-                    if (adjustedX >= child.getX() && adjustedX <= child.getX() + child.getWidth() &&
-                        adjustedY >= child.getY() && adjustedY <= child.getY() + child.getHeight()) {
+                    RectF visualRect = homeView.getVisualRect(child);
+                    if (visualRect.contains(adjustedX, adjustedY)) {
                         return child;
                     }
                 }

@@ -5,6 +5,11 @@ import android.os.Handler;
 import android.content.Context;
 import android.content.Intent;
 import android.graphics.Color;
+import android.graphics.Matrix;
+import android.graphics.Path;
+import android.graphics.Rect;
+import android.graphics.RectF;
+import android.graphics.Region;
 import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
 import android.text.format.DateFormat;
@@ -39,65 +44,38 @@ public class HomeView extends FrameLayout {
     private LauncherModel model;
     private List<AppItem> allApps;
 
+    // Reusable objects for performance
+    private final Matrix tempMatrix = new Matrix();
+    private final Path tempPath = new Path();
+    private final RectF tempRectF = new RectF();
+    private final Region tempRegion1 = new Region();
+    private final Region tempRegion2 = new Region();
+    private final Region tempIntersect = new Region();
+
     private View draggingView = null;
     private float lastX, lastY;
     private final Handler mainHandler = new Handler();
     private final Handler edgeScrollHandler = new Handler();
     private boolean isEdgeScrolling = false;
-    private long edgeHoldStart = 0;
-    private long lastPageCreateTime = 0;
-    private static final long PAGE_CREATE_DELAY = 1000;
 
     private final Runnable edgeScrollRunnable = new Runnable() {
         @Override
         public void run() {
             if (draggingView != null || (getContext() instanceof MainActivity && ((MainActivity) getContext()).isTransforming())) {
-                checkAndPerformEdgeAction(lastX);
+                checkEdgeScrollLoop(lastX);
                 edgeScrollHandler.postDelayed(this, 400);
             } else {
                 isEdgeScrolling = false;
-                edgeHoldStart = 0;
             }
         }
     };
 
-    public void checkAndPerformEdgeAction(float x) {
+    public void checkEdgeScrollLoop(float x) {
         lastX = x;
         if (x < getWidth() * 0.05f) {
-            if (currentPage > 0) {
-                scrollToPage(currentPage - 1);
-                edgeHoldStart = 0;
-            } else {
-                handleEdgePageCreation(x);
-            }
+            scrollToPage(currentPage - 1);
         } else if (x > getWidth() * 0.95f) {
-            if (currentPage < pages.size() - 1) {
-                scrollToPage(currentPage + 1);
-                edgeHoldStart = 0;
-            } else {
-                handleEdgePageCreation(x);
-            }
-        } else {
-            edgeHoldStart = 0;
-        }
-    }
-
-    private void handleEdgePageCreation(float x) {
-        if (System.currentTimeMillis() - lastPageCreateTime < PAGE_CREATE_DELAY) return;
-
-        if (edgeHoldStart == 0) {
-            edgeHoldStart = System.currentTimeMillis();
-        } else if (System.currentTimeMillis() - edgeHoldStart > 1000) {
-            if (x < getWidth() * 0.05f && currentPage == 0) {
-                addPageAtIndex(0);
-                scrollToPage(0);
-                lastPageCreateTime = System.currentTimeMillis();
-            } else if (x > getWidth() * 0.95f && currentPage == pages.size() - 1) {
-                addPage();
-                scrollToPage(pages.size() - 1);
-                lastPageCreateTime = System.currentTimeMillis();
-            }
-            edgeHoldStart = 0;
+            scrollToPage(currentPage + 1);
         }
     }
 
@@ -276,11 +254,63 @@ public class HomeView extends FrameLayout {
             lastX = x;
             lastY = y;
 
-            checkEdgeScroll(x);
+            performRepulsion(draggingView);
+            checkEdgeScrollLoopStart(x);
         }
     }
 
-    public void checkEdgeScroll(float x) {
+    public void performRepulsion(View dragged) {
+        if (pages.isEmpty() || currentPage >= pages.size()) return;
+        FrameLayout currentPageLayout = pages.get(currentPage);
+
+        getVisualRegion(dragged, tempRegion1);
+        RectF r1 = getVisualRect(dragged);
+
+        for (int i = 0; i < currentPageLayout.getChildCount(); i++) {
+            View other = currentPageLayout.getChildAt(i);
+            if (other == dragged || other == null) continue;
+
+            getVisualRegion(other, tempRegion2);
+            tempIntersect.set(tempRegion1);
+            if (tempIntersect.op(tempRegion2, Region.Op.INTERSECT)) {
+                Rect intersectionBounds = tempIntersect.getBounds();
+                float overlapArea = intersectionBounds.width() * intersectionBounds.height();
+
+                RectF r2 = getVisualRect(other);
+                float otherArea = r2.width() * r2.height();
+                float ratio = otherArea > 0 ? overlapArea / otherArea : 0;
+                if (ratio > 0.5f) ratio = 0.5f;
+
+                float dx = r2.centerX() - r1.centerX();
+                float dy = r2.centerY() - r1.centerY();
+                float dist = (float) Math.sqrt(dx * dx + dy * dy);
+                if (dist == 0) dist = 1;
+
+                // Proportional push
+                float pushFactor = dpToPx(16) * ratio;
+                other.setTranslationX((dx / dist) * pushFactor);
+                other.setTranslationY((dy / dist) * pushFactor);
+            } else if (other.getTranslationX() != 0 || other.getTranslationY() != 0) {
+                other.setTranslationX(other.getTranslationX() * 0.8f);
+                other.setTranslationY(other.getTranslationY() * 0.8f);
+                if (Math.abs(other.getTranslationX()) < 0.1f) other.setTranslationX(0);
+                if (Math.abs(other.getTranslationY()) < 0.1f) other.setTranslationY(0);
+            }
+        }
+    }
+
+    public void clearRepulsion() {
+        for (FrameLayout page : pages) {
+            for (int i = 0; i < page.getChildCount(); i++) {
+                View v = page.getChildAt(i);
+                if (v != null) {
+                    v.animate().translationX(0).translationY(0).setDuration(200).start();
+                }
+            }
+        }
+    }
+
+    public void checkEdgeScrollLoopStart(float x) {
         lastX = x;
         if (x < getWidth() * 0.05f || x > getWidth() * 0.95f) {
             if (!isEdgeScrolling) {
@@ -302,8 +332,8 @@ public class HomeView extends FrameLayout {
             }
             draggingView = null;
             isEdgeScrolling = false;
-            edgeHoldStart = 0;
             edgeScrollHandler.removeCallbacks(edgeScrollRunnable);
+            clearRepulsion();
             cleanupEmptyPages();
             if (model != null && allApps != null) {
                 refreshIcons(model, allApps);
@@ -312,48 +342,19 @@ public class HomeView extends FrameLayout {
     }
 
     public void cleanupEmptyPages() {
-        if (pages.size() <= 1) return;
-
-        int oldCurrentPage = currentPage;
-        int pagesRemovedBefore = 0;
-        boolean changed = false;
-
-        for (int i = pages.size() - 1; i >= 0; i--) {
-            if (pages.get(i).getChildCount() == 0) {
-                if (pages.size() > 1) {
-                    removePage(i);
-                    changed = true;
-                    if (i < oldCurrentPage) {
-                        pagesRemovedBefore++;
-                    }
+        // Now only synchronizes indices, does not remove pages automatically
+        for (int i = 0; i < pages.size(); i++) {
+            FrameLayout p = pages.get(i);
+            for (int j = 0; j < p.getChildCount(); j++) {
+                View v = p.getChildAt(j);
+                if (v != null && v.getTag() instanceof HomeItem) {
+                    HomeItem item = (HomeItem) v.getTag();
+                    item.page = i;
                 }
             }
         }
-
-        if (changed) {
-            currentPage -= pagesRemovedBefore;
-            if (currentPage < 0) currentPage = 0;
-            if (currentPage >= pages.size()) currentPage = Math.max(0, pages.size() - 1);
-
-            for (int i = 0; i < pages.size(); i++) {
-                FrameLayout p = pages.get(i);
-                for (int j = 0; j < p.getChildCount(); j++) {
-                    View v = p.getChildAt(j);
-                    if (v != null && v.getTag() instanceof HomeItem) {
-                        HomeItem item = (HomeItem) v.getTag();
-                        item.page = i;
-                    }
-                }
-            }
-
-            scrollToPage(currentPage);
-            pageIndicator.setPageCount(pages.size());
-            pageIndicator.setCurrentPage(currentPage);
-
-            if (getContext() instanceof MainActivity) {
-                ((MainActivity) getContext()).saveHomeState();
-            }
-        }
+        pageIndicator.setPageCount(pages.size());
+        pageIndicator.setCurrentPage(currentPage);
     }
 
     public void removePage(int index) {
@@ -484,9 +485,60 @@ public class HomeView extends FrameLayout {
     }
 
     public void scrollToPage(int page) {
-        if (page < 0 || page >= pages.size()) return;
-        currentPage = page;
-        int targetX = page * getWidth();
+        if (pages.size() <= 1) {
+            currentPage = 0;
+            pagesContainer.setTranslationX(0);
+            pageIndicator.setCurrentPage(0);
+            return;
+        }
+
+        int n = pages.size();
+
+        if (page == n && currentPage == n - 1) {
+            // Forward Loop (N-1 -> 0)
+            final View p0 = pages.get(0);
+            pagesContainer.removeView(p0);
+            pagesContainer.addView(p0);
+            pagesContainer.setTranslationX(-(n - 2) * getWidth());
+
+            pagesContainer.animate()
+                    .translationX(-(n - 1) * getWidth())
+                    .setDuration(300)
+                    .setInterpolator(new android.view.animation.DecelerateInterpolator())
+                    .withEndAction(() -> {
+                        pagesContainer.removeView(p0);
+                        pagesContainer.addView(p0, 0);
+                        pagesContainer.setTranslationX(0);
+                        currentPage = 0;
+                        pageIndicator.setCurrentPage(0);
+                        refreshIconsDebounced();
+                    }).start();
+            return;
+        } else if (page == -1 && currentPage == 0) {
+            // Backward Loop (0 -> N-1)
+            final View pLast = pages.get(n - 1);
+            pagesContainer.removeView(pLast);
+            pagesContainer.addView(pLast, 0);
+            pagesContainer.setTranslationX(-getWidth());
+
+            pagesContainer.animate()
+                    .translationX(0)
+                    .setDuration(300)
+                    .setInterpolator(new android.view.animation.DecelerateInterpolator())
+                    .withEndAction(() -> {
+                        pagesContainer.removeView(pLast);
+                        pagesContainer.addView(pLast);
+                        pagesContainer.setTranslationX(-(n - 1) * getWidth());
+                        currentPage = n - 1;
+                        pageIndicator.setCurrentPage(n - 1);
+                        refreshIconsDebounced();
+                    }).start();
+            return;
+        }
+
+        int targetPage = (page + n) % n;
+        currentPage = targetPage;
+        int targetX = currentPage * getWidth();
         pagesContainer.animate()
                 .translationX(-targetX)
                 .setDuration(300)
@@ -495,7 +547,7 @@ public class HomeView extends FrameLayout {
                     refreshIconsDebounced();
                 })
                 .start();
-        pageIndicator.setCurrentPage(page);
+        pageIndicator.setCurrentPage(currentPage);
     }
 
     public int getCurrentPage() {
@@ -585,7 +637,47 @@ public class HomeView extends FrameLayout {
         }
     }
 
+    public RectF getVisualRect(View v) {
+        if (v == null) return new RectF();
+        RectF rect = new RectF(0, 0, v.getWidth(), v.getHeight());
+        tempMatrix.set(v.getMatrix());
+        tempMatrix.postTranslate(v.getLeft(), v.getTop());
+        tempMatrix.mapRect(rect);
+        return rect;
+    }
+
+    private Region getVisualRegion(View v, Region outRegion) {
+        if (v == null) {
+            outRegion.setEmpty();
+            return outRegion;
+        }
+        tempPath.reset();
+        tempRectF.set(0, 0, v.getWidth(), v.getHeight());
+        tempPath.addRect(tempRectF, Path.Direction.CW);
+        tempMatrix.set(v.getMatrix());
+        tempMatrix.postTranslate(v.getLeft(), v.getTop());
+        tempPath.transform(tempMatrix);
+
+        tempRectF.setEmpty();
+        tempPath.computeBounds(tempRectF, true);
+        outRegion.setPath(tempPath, new Region((int) tempRectF.left, (int) tempRectF.top, (int) tempRectF.right, (int) tempRectF.bottom));
+        return outRegion;
+    }
+
+    public boolean isVisuallyOverlapping(View v1, View v2) {
+        if (v1 == null || v2 == null) return false;
+        getVisualRegion(v1, tempRegion1);
+        getVisualRegion(v2, tempRegion2);
+        tempIntersect.set(tempRegion1);
+        return tempIntersect.op(tempRegion2, Region.Op.INTERSECT);
+    }
+
     private boolean isOverlapping(HomeItem a, HomeItem b) {
+        View va = findViewForItem(a);
+        View vb = findViewForItem(b);
+        if (va != null && vb != null) {
+            return isVisuallyOverlapping(va, vb);
+        }
         return a.col < b.col + b.spanX &&
                a.col + a.spanX > b.col &&
                a.row < b.row + b.spanY &&
