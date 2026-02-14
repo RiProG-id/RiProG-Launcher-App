@@ -53,7 +53,7 @@ public class HomeView extends FrameLayout {
 
     private static final long PAGE_SWITCH_COOLDOWN = 1000L;
     private static final long HOLD_DELAY = 1000L;
-    private static final float EDGE_THRESHOLD = 0.10f;
+    private static final float EDGE_THRESHOLD = 0.05f;
     private static final int MIN_DRAG_DISTANCE_DP = 50;
 
     private long lastPageSwitchTime = 0;
@@ -393,6 +393,29 @@ public class HomeView extends FrameLayout {
 
 
 
+    private HomeItem findCollision(View draggedView) {
+        HomeItem draggedItem = (HomeItem) draggedView.getTag();
+        if (draggedItem == null) return null;
+
+        FrameLayout currentPageLayout = pages.get(currentPage);
+        float centerX = draggedView.getX() + draggedView.getWidth() / 2f;
+        float centerY = draggedView.getY() + draggedView.getHeight() / 2f;
+
+        for (int i = 0; i < currentPageLayout.getChildCount(); i++) {
+            View child = currentPageLayout.getChildAt(i);
+            if (child == draggedView) continue;
+
+            HomeItem targetItem = (HomeItem) child.getTag();
+            if (targetItem == null) continue;
+
+            if (centerX >= child.getX() && centerX <= child.getX() + child.getWidth() &&
+                    centerY >= child.getY() && centerY <= child.getY() + child.getHeight()) {
+                return targetItem;
+            }
+        }
+        return null;
+    }
+
     private float[] getRelativeCoords(View v) {
         int[] homePos = new int[2];
         this.getLocationOnScreen(homePos);
@@ -415,6 +438,21 @@ public class HomeView extends FrameLayout {
         float yInHome = coords[1] - getPaddingTop();
 
         item.page = currentPage;
+
+        HomeItem target = findCollision(v);
+        if (target != null && item.type == HomeItem.Type.APP) {
+            if (target.type == HomeItem.Type.APP || target.type == HomeItem.Type.FOLDER) {
+                if (getContext() instanceof MainActivity) {
+                    // Remove view from root layout before merging
+                    if (v.getParent() instanceof ViewGroup) {
+                        ((ViewGroup) v.getParent()).removeView(v);
+                    }
+                    if (target.type == HomeItem.Type.APP) ((MainActivity) getContext()).mergeToFolder(target, item);
+                    else ((MainActivity) getContext()).addToFolder(target, item);
+                    return;
+                }
+            }
+        }
 
         if (settingsManager.isFreeformHome()) {
             item.col = xInHome / (float) cellWidth;
