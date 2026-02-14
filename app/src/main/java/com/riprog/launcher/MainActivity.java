@@ -1062,6 +1062,26 @@ public class MainActivity extends Activity {
             item.row = isFreeform ? row : Math.round(row);
         }
 
+        // Folder merging logic
+        float centerX = transformingView.getX() + transformingView.getWidth() / 2f;
+        float centerY = transformingView.getY() + transformingView.getHeight() / 2f;
+        View collisionView = findHomeItemAtRoot(centerX, centerY, transformingView);
+        if (collisionView != null && item.type == HomeItem.Type.APP) {
+            HomeItem target = (HomeItem) collisionView.getTag();
+            if (target != null) {
+                if (target.type == HomeItem.Type.APP) {
+                    mainLayout.removeView(transformingView);
+                    mergeToFolder(target, item);
+                    transformingView = null;
+                    return;
+                } else if (target.type == HomeItem.Type.FOLDER) {
+                    mainLayout.removeView(transformingView);
+                    addToFolder(target, item);
+                    transformingView = null;
+                    return;
+                }
+            }
+        }
     }
 
     private void showTransformOverlay(View targetView) {
