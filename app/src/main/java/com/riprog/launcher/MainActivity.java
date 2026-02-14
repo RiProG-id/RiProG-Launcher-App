@@ -956,9 +956,45 @@ public class MainActivity extends Activity {
             @Override public void onAppInfo() {
                 showAppInfo((HomeItem) targetView.getTag());
             }
+            @Override public void onCollision(View otherView) {
+                saveHomeState();
+                closeTransformOverlay();
+                showTransformOverlay(otherView);
+            }
+            @Override public View findItemAt(float x, float y, View exclude) {
+                return findHomeItemAtRoot(x, y, exclude);
+            }
         });
         mainLayout.addView(currentTransformOverlay, new FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+    }
+
+    private View findHomeItemAtRoot(float x, float y, View exclude) {
+        if (homeView == null) return null;
+        int page = homeView.getCurrentPage();
+        ViewGroup pagesContainer = (ViewGroup) homeView.getChildAt(0);
+        if (pagesContainer != null && page < pagesContainer.getChildCount()) {
+            ViewGroup pageLayout = (ViewGroup) pagesContainer.getChildAt(page);
+
+            int[] pagePos = new int[2];
+            pageLayout.getLocationOnScreen(pagePos);
+            int[] rootPos = new int[2];
+            mainLayout.getLocationOnScreen(rootPos);
+
+            float adjustedX = x - (pagePos[0] - rootPos[0]);
+            float adjustedY = y - (pagePos[1] - rootPos[1]);
+
+            for (int i = pageLayout.getChildCount() - 1; i >= 0; i--) {
+                View child = pageLayout.getChildAt(i);
+                if (child == exclude) continue;
+
+                if (adjustedX >= child.getX() && adjustedX <= child.getX() + child.getWidth() &&
+                    adjustedY >= child.getY() && adjustedY <= child.getY() + child.getHeight()) {
+                    return child;
+                }
+            }
+        }
+        return null;
     }
 
     private void closeTransformOverlay() {
