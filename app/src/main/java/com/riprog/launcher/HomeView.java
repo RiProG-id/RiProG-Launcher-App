@@ -187,7 +187,7 @@ public class HomeView extends FrameLayout {
 
         LayoutParams lp;
         if (item.type == HomeItem.Type.WIDGET) {
-            lp = new LayoutParams(cellWidth * item.spanX, cellHeight * item.spanY);
+            lp = new LayoutParams((int) (cellWidth * item.spanX), (int) (cellHeight * item.spanY));
         } else {
 
             int size = getResources().getDimensionPixelSize(R.dimen.grid_icon_size);
@@ -382,8 +382,8 @@ public class HomeView extends FrameLayout {
             item.tiltX = v.getRotationX();
             item.tiltY = v.getRotationY();
         } else {
-            item.col = Math.max(0, Math.min(GRID_COLUMNS - item.spanX, Math.round(v.getX() / (float) cellWidth)));
-            item.row = Math.max(0, Math.min(GRID_ROWS - item.spanY, Math.round(v.getY() / (float) cellHeight)));
+            item.col = Math.max(0, Math.min(GRID_COLUMNS - (int) item.spanX, Math.round(v.getX() / (float) cellWidth)));
+            item.row = Math.max(0, Math.min(GRID_ROWS - (int) item.spanY, Math.round(v.getY() / (float) cellHeight)));
             item.rotation = 0;
             item.scaleX = 1.0f;
             item.scaleY = 1.0f;
@@ -527,8 +527,8 @@ public class HomeView extends FrameLayout {
                     HomeItem item = (HomeItem) v.getTag();
                     if (item != null) {
                         if (!freeform) {
-                            item.col = Math.max(0, Math.min(GRID_COLUMNS - item.spanX, Math.round(item.col)));
-                            item.row = Math.max(0, Math.min(GRID_ROWS - item.spanY, Math.round(item.row)));
+                            item.col = Math.max(0, Math.min(GRID_COLUMNS - (int) item.spanX, Math.round(item.col)));
+                            item.row = Math.max(0, Math.min(GRID_ROWS - (int) item.spanY, Math.round(item.row)));
                             item.rotation = 0;
                             item.scaleX = 1.0f;
                             item.scaleY = 1.0f;

@@ -23,6 +23,8 @@ public class TransformOverlay extends FrameLayout {
 
     private float lastTouchX, lastTouchY;
     private float initialTouchX, initialTouchY;
+    private float gestureInitialScaleX, gestureInitialScaleY;
+    private int gestureInitialWidth, gestureInitialHeight;
     private boolean hasPassedThreshold = false;
     private int activeHandle = -1;
 
@@ -264,6 +266,10 @@ public class TransformOverlay extends FrameLayout {
                 initialTouchY = y;
                 lastTouchX = x;
                 lastTouchY = y;
+                gestureInitialScaleX = targetView.getScaleX();
+                gestureInitialScaleY = targetView.getScaleY();
+                gestureInitialWidth = targetView.getWidth();
+                gestureInitialHeight = targetView.getHeight();
                 hasPassedThreshold = false;
                 return activeHandle != -1;
 
@@ -336,21 +342,14 @@ public class TransformOverlay extends FrameLayout {
     }
 
     private void handleInteraction(float tx, float ty) {
-        float sx = targetView.getScaleX();
-        float sy = targetView.getScaleY();
+        float sx = gestureInitialScaleX;
+        float sy = gestureInitialScaleY;
         float cx = targetView.getX() + targetView.getPivotX();
         float cy = targetView.getY() + targetView.getPivotY();
 
         if (activeHandle == ACTION_MOVE) {
             targetView.setX(targetView.getX() + (tx - lastTouchX));
             targetView.setY(targetView.getY() + (ty - lastTouchY));
-
-            if (onSaveListener != null) {
-                View other = onSaveListener.findItemAt(cx, cy, targetView);
-                if (other != null) {
-                    onSaveListener.onCollision(other);
-                }
-            }
         } else if (activeHandle == HANDLE_ROTATE) {
             double angle = Math.toDegrees(Math.atan2(ty - cy, tx - cx)) + 90;
 
@@ -401,8 +400,21 @@ public class TransformOverlay extends FrameLayout {
             newScaleX = Math.round(newScaleX * 20f) / 20.0f;
             newScaleY = Math.round(newScaleY * 20f) / 20.0f;
 
-            targetView.setScaleX(newScaleX);
-            targetView.setScaleY(newScaleY);
+            if (targetView instanceof android.appwidget.AppWidgetHostView) {
+                ViewGroup.LayoutParams lp = targetView.getLayoutParams();
+                lp.width = (int) (newScaleX * (gestureInitialWidth / gestureInitialScaleX));
+                lp.height = (int) (newScaleY * (gestureInitialHeight / gestureInitialScaleY));
+                targetView.setLayoutParams(lp);
+                targetView.setScaleX(1.0f);
+                targetView.setScaleY(1.0f);
+
+                int dw = (int) (lp.width / getResources().getDisplayMetrics().density);
+                int dh = (int) (lp.height / getResources().getDisplayMetrics().density);
+                ((android.appwidget.AppWidgetHostView) targetView).updateAppWidgetSize(null, dw, dh, dw, dh);
+            } else {
+                targetView.setScaleX(newScaleX);
+                targetView.setScaleY(newScaleY);
+            }
         }
     }
 

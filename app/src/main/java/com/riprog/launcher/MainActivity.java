@@ -39,12 +39,15 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 public class MainActivity extends Activity {
 
     private static final int REQUEST_PICK_APPWIDGET = 1;
     private static final int REQUEST_CREATE_APPWIDGET = 2;
     private static final int APPWIDGET_HOST_ID = 1024;
+    private static final ExecutorService widgetPreviewExecutor = Executors.newFixedThreadPool(4);
 
     private LauncherModel model;
     private SettingsManager settingsManager;
@@ -774,8 +777,13 @@ public class MainActivity extends Activity {
             .setAdapter(adapter, (d, which) -> {
                 switch (which) {
                     case 0:
-                        lastGridCol = col;
-                        lastGridRow = row;
+                        if (!settingsManager.isFreeformHome()) {
+                            lastGridCol = Math.round(col);
+                            lastGridRow = Math.round(row);
+                        } else {
+                            lastGridCol = col;
+                            lastGridRow = row;
+                        }
                         pickWidget();
                         break;
                     case 1: openWallpaperPicker(); break;
@@ -921,8 +929,20 @@ public class MainActivity extends Activity {
         if (transformingView == null || transformingViewOriginalParent == null) return;
         HomeItem item = (HomeItem) transformingView.getTag();
         item.rotation = transformingView.getRotation();
-        item.scaleX = transformingView.getScaleX();
-        item.scaleY = transformingView.getScaleY();
+
+        int cellWidth = transformingViewOriginalParent.getWidth() / HomeView.GRID_COLUMNS;
+        int cellHeight = transformingViewOriginalParent.getHeight() / HomeView.GRID_ROWS;
+
+        if (item.type == HomeItem.Type.WIDGET) {
+            if (cellWidth > 0) item.spanX = transformingView.getWidth() / (float) cellWidth;
+            if (cellHeight > 0) item.spanY = transformingView.getHeight() / (float) cellHeight;
+            item.scaleX = 1.0f;
+            item.scaleY = 1.0f;
+        } else {
+            item.scaleX = transformingView.getScaleX();
+            item.scaleY = transformingView.getScaleY();
+        }
+
         item.tiltX = transformingView.getRotationX();
         item.tiltY = transformingView.getRotationY();
 
@@ -933,9 +953,6 @@ public class MainActivity extends Activity {
 
         float xInParent = transformingView.getX() - (pagePos[0] - rootPos[0]);
         float yInParent = transformingView.getY() - (pagePos[1] - rootPos[1]);
-
-        int cellWidth = transformingViewOriginalParent.getWidth() / HomeView.GRID_COLUMNS;
-        int cellHeight = transformingViewOriginalParent.getHeight() / HomeView.GRID_ROWS;
 
         if (cellWidth > 0) item.col = xInParent / (float) cellWidth;
         if (cellHeight > 0) item.row = yInParent / (float) cellHeight;
@@ -1187,15 +1204,30 @@ public class MainActivity extends Activity {
 
 
                 ImageView preview = new ImageView(this);
-                int spanX = Math.max(1, info.minWidth / (getResources().getDisplayMetrics().widthPixels / HomeView.GRID_COLUMNS));
-                int spanY = Math.max(1, info.minHeight / (getResources().getDisplayMetrics().heightPixels / HomeView.GRID_ROWS));
-
-                Drawable previewDrawable = info.loadPreviewImage(this, 0);
-                if (previewDrawable == null) {
-                    previewDrawable = info.loadIcon(this, 0);
+                float sX = info.minWidth / (float) (getResources().getDisplayMetrics().widthPixels / HomeView.GRID_COLUMNS);
+                float sY = info.minHeight / (float) (getResources().getDisplayMetrics().heightPixels / HomeView.GRID_ROWS);
+                if (!settingsManager.isFreeformHome()) {
+                    sX = Math.max(1, (int) Math.ceil(sX));
+                    sY = Math.max(1, (int) Math.ceil(sY));
                 }
-                preview.setImageDrawable(previewDrawable);
+                final float spanX = sX;
+                final float spanY = sY;
+
                 preview.setScaleType(ImageView.ScaleType.FIT_CENTER);
+                widgetPreviewExecutor.execute(() -> {
+                    try {
+                        Drawable previewDrawable = info.loadPreviewImage(MainActivity.this, 0);
+                        if (previewDrawable == null) {
+                            previewDrawable = info.loadIcon(MainActivity.this, 0);
+                        }
+                        final Drawable finalDrawable = previewDrawable;
+                        runOnUiThread(() -> {
+                            if (finalDrawable != null) preview.setImageDrawable(finalDrawable);
+                        });
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
+                });
 
                 android.graphics.drawable.GradientDrawable shape = new android.graphics.drawable.GradientDrawable();
                 shape.setColor(getColor(R.color.search_background));
@@ -1216,7 +1248,7 @@ public class MainActivity extends Activity {
                 textLayout.addView(label);
 
                 TextView size = new TextView(this);
-                size.setText(getString(R.string.widget_size_format, spanX, spanY));
+                size.setText(getString(R.string.widget_size_format, (int) Math.ceil(spanX), (int) Math.ceil(spanY)));
                 size.setTextSize(12);
                 size.setTextColor(getColor(R.color.foreground_dim));
                 textLayout.addView(size);
