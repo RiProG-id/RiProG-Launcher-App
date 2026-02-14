@@ -217,7 +217,6 @@ public class DrawerView extends LinearLayout {
 
     public void onOpen() {
         setBackground(ThemeUtils.getGlassDrawable(getContext(), settingsManager));
-        ThemeUtils.applyBlurIfSupported(this, settingsManager.isLiquidGlass());
         updatePadding();
         int adaptiveColor = ThemeUtils.getAdaptiveColor(getContext(), settingsManager, true);
         searchBar.setTextColor(adaptiveColor);
@@ -235,7 +234,6 @@ public class DrawerView extends LinearLayout {
     public void onClose() {
         searchBar.setText("");
         filteredApps.clear();
-        ThemeUtils.applyBlurIfSupported(this, false);
         adapter.notifyDataSetChanged();
     }
 
