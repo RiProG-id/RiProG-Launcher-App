@@ -948,7 +948,7 @@ public class MainActivity extends Activity {
 
         if (isFreeform) {
             item.rotation = transformingView.getRotation();
-            if (item.type == HomeItem.Type.WIDGET) {
+            if (item.type == HomeItem.Type.WIDGET || item.type == HomeItem.Type.FOLDER) {
                 if (cellWidth > 0) item.spanX = transformingView.getWidth() / (float) cellWidth;
                 if (cellHeight > 0) item.spanY = transformingView.getHeight() / (float) cellHeight;
                 item.scaleX = 1.0f;
@@ -965,7 +965,7 @@ public class MainActivity extends Activity {
             item.scaleY = 1.0f;
             item.tiltX = 0;
             item.tiltY = 0;
-            if (item.type == HomeItem.Type.WIDGET && cellWidth > 0 && cellHeight > 0) {
+            if ((item.type == HomeItem.Type.WIDGET || item.type == HomeItem.Type.FOLDER) && cellWidth > 0 && cellHeight > 0) {
                 item.spanX = Math.round(transformingView.getWidth() / (float) cellWidth);
                 item.spanY = Math.round(transformingView.getHeight() / (float) cellHeight);
                 if (item.spanX < 1) item.spanX = 1;
@@ -1250,12 +1250,13 @@ public class MainActivity extends Activity {
         Collections.sort(packages, (a, b) -> getAppName(a).compareToIgnoreCase(getAppName(b)));
 
         final android.app.Dialog dialog = new android.app.Dialog(this, android.R.style.Theme_DeviceDefault_NoActionBar_Fullscreen);
+        if (dialog.getWindow() != null) {
+            dialog.getWindow().setBackgroundDrawable(new android.graphics.drawable.ColorDrawable(Color.TRANSPARENT));
+            ThemeUtils.applyWindowBlur(dialog.getWindow(), settingsManager.isLiquidGlass());
+        }
 
         FrameLayout root = new FrameLayout(this);
         root.setBackground(ThemeUtils.getGlassDrawable(this, settingsManager, 0));
-        if (dialog.getWindow() != null) {
-            ThemeUtils.applyWindowBlur(dialog.getWindow(), settingsManager.isLiquidGlass());
-        }
 
         LinearLayout container = new LinearLayout(this);
         container.setOrientation(LinearLayout.VERTICAL);
