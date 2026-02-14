@@ -56,23 +56,12 @@ public class SettingsActivity extends Activity {
         FrameLayout rootContainer = new FrameLayout(this);
         rootContainer.setBackground(ThemeUtils.getGlassDrawable(this, settingsManager, 0));
 
-        rootContainer.setOnApplyWindowInsetsListener((v, insets) -> {
-            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
-                android.graphics.Insets systemInsets = insets.getInsets(android.view.WindowInsets.Type.systemBars());
-                v.setPadding(0, systemInsets.top, 0, systemInsets.bottom);
-            } else {
-                v.setPadding(0, insets.getSystemWindowInsetTop(), 0, insets.getSystemWindowInsetBottom());
-            }
-            return insets;
-        });
-
         ScrollView scrollView = new ScrollView(this);
         scrollView.setVerticalScrollBarEnabled(false);
         rootContainer.addView(scrollView);
 
         LinearLayout root = new LinearLayout(this);
         root.setOrientation(LinearLayout.VERTICAL);
-        root.setPadding(dpToPx(24), dpToPx(64), dpToPx(24), dpToPx(24));
         scrollView.addView(root);
 
         ImageView closeBtn = new ImageView(this);
@@ -84,6 +73,25 @@ public class SettingsActivity extends Activity {
         closeLp.rightMargin = dpToPx(16);
         closeBtn.setOnClickListener(v -> finish());
         rootContainer.addView(closeBtn, closeLp);
+
+        rootContainer.setOnApplyWindowInsetsListener((v, insets) -> {
+            int top = 0, bottom = 0;
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
+                android.graphics.Insets systemInsets = insets.getInsets(android.view.WindowInsets.Type.systemBars());
+                top = systemInsets.top;
+                bottom = systemInsets.bottom;
+            } else {
+                top = insets.getSystemWindowInsetTop();
+                bottom = insets.getSystemWindowInsetBottom();
+            }
+            root.setPadding(dpToPx(24), top + dpToPx(64), dpToPx(24), bottom + dpToPx(24));
+
+            FrameLayout.LayoutParams lp = (FrameLayout.LayoutParams) closeBtn.getLayoutParams();
+            lp.topMargin = top + dpToPx(16);
+            closeBtn.setLayoutParams(lp);
+
+            return insets;
+        });
 
         LinearLayout titleLayout = new LinearLayout(this);
         titleLayout.setOrientation(LinearLayout.HORIZONTAL);

@@ -75,4 +75,28 @@ public class HomeItem {
         item.folderItems = new ArrayList<>();
         return item;
     }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        HomeItem item = (HomeItem) o;
+        if (type != item.type) return false;
+        if (widgetId != -1 && widgetId == item.widgetId) return true;
+        if (packageName != null ? !packageName.equals(item.packageName) : item.packageName != null) return false;
+        if (className != null ? !className.equals(item.className) : item.className != null) return false;
+        return Float.compare(item.col, col) == 0 && Float.compare(item.row, row) == 0 && page == item.page;
+    }
+
+    @Override
+    public int hashCode() {
+        int result = type != null ? type.hashCode() : 0;
+        result = 31 * result + (packageName != null ? packageName.hashCode() : 0);
+        result = 31 * result + (className != null ? className.hashCode() : 0);
+        result = 31 * result + Float.floatToIntBits(col);
+        result = 31 * result + Float.floatToIntBits(row);
+        result = 31 * result + page;
+        result = 31 * result + widgetId;
+        return result;
+    }
 }
