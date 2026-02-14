@@ -27,6 +27,8 @@ public class TransformOverlay extends FrameLayout {
     private int gestureInitialWidth, gestureInitialHeight;
     private boolean hasPassedThreshold = false;
     private int activeHandle = -1;
+    private boolean canResizeHorizontal = true;
+    private boolean canResizeVertical = true;
 
     private static final float MOVE_THRESHOLD_DP = 8f;
     private static final float SMOOTHING_FACTOR = 1.0f;
@@ -69,6 +71,14 @@ public class TransformOverlay extends FrameLayout {
         this.initialScaleY = targetView.getScaleY();
         this.initialX = targetView.getX();
         this.initialY = targetView.getY();
+
+        if (targetView instanceof android.appwidget.AppWidgetHostView) {
+            android.appwidget.AppWidgetProviderInfo info = ((android.appwidget.AppWidgetHostView) targetView).getAppWidgetInfo();
+            if (info != null) {
+                canResizeHorizontal = (info.resizeMode & android.appwidget.AppWidgetProviderInfo.RESIZE_HORIZONTAL) != 0;
+                canResizeVertical = (info.resizeMode & android.appwidget.AppWidgetProviderInfo.RESIZE_VERTICAL) != 0;
+            }
+        }
 
         setWillNotDraw(false);
         setupButtons();
@@ -293,6 +303,14 @@ public class TransformOverlay extends FrameLayout {
 
             case MotionEvent.ACTION_UP:
             case MotionEvent.ACTION_CANCEL:
+                if (activeHandle != -1 && activeHandle != ACTION_MOVE && activeHandle != HANDLE_ROTATE && activeHandle != ACTION_OUTSIDE) {
+                    if (targetView instanceof android.appwidget.AppWidgetHostView) {
+                        ViewGroup.LayoutParams lp = targetView.getLayoutParams();
+                        int dw = (int) (lp.width / getResources().getDisplayMetrics().density);
+                        int dh = (int) (lp.height / getResources().getDisplayMetrics().density);
+                        ((android.appwidget.AppWidgetHostView) targetView).updateAppWidgetSize(null, dw, dh, dw, dh);
+                    }
+                }
                 activeHandle = -1;
                 hasPassedThreshold = false;
                 return true;
@@ -324,16 +342,22 @@ public class TransformOverlay extends FrameLayout {
         if (dist(rx, ry, (left + right) / 2f, top - rotationHandleDist) < hs) return HANDLE_ROTATE;
 
         // Corners
-        if (dist(rx, ry, left, top) < hs) return HANDLE_TOP_LEFT;
-        if (dist(rx, ry, right, top) < hs) return HANDLE_TOP_RIGHT;
-        if (dist(rx, ry, right, bottom) < hs) return HANDLE_BOTTOM_RIGHT;
-        if (dist(rx, ry, left, bottom) < hs) return HANDLE_BOTTOM_LEFT;
+        if (canResizeHorizontal && canResizeVertical) {
+            if (dist(rx, ry, left, top) < hs) return HANDLE_TOP_LEFT;
+            if (dist(rx, ry, right, top) < hs) return HANDLE_TOP_RIGHT;
+            if (dist(rx, ry, right, bottom) < hs) return HANDLE_BOTTOM_RIGHT;
+            if (dist(rx, ry, left, bottom) < hs) return HANDLE_BOTTOM_LEFT;
+        }
 
         // Sides
-        if (dist(rx, ry, (left + right) / 2f, top) < hs) return HANDLE_TOP;
-        if (dist(rx, ry, right, (top + bottom) / 2f) < hs) return HANDLE_RIGHT;
-        if (dist(rx, ry, (left + right) / 2f, bottom) < hs) return HANDLE_BOTTOM;
-        if (dist(rx, ry, left, (top + bottom) / 2f) < hs) return HANDLE_LEFT;
+        if (canResizeVertical) {
+            if (dist(rx, ry, (left + right) / 2f, top) < hs) return HANDLE_TOP;
+            if (dist(rx, ry, (left + right) / 2f, bottom) < hs) return HANDLE_BOTTOM;
+        }
+        if (canResizeHorizontal) {
+            if (dist(rx, ry, right, (top + bottom) / 2f) < hs) return HANDLE_RIGHT;
+            if (dist(rx, ry, left, (top + bottom) / 2f) < hs) return HANDLE_LEFT;
+        }
 
         // Move action if inside the box
         if (rx >= left && rx <= right && ry >= top && ry <= bottom) return ACTION_MOVE;
@@ -375,24 +399,26 @@ public class TransformOverlay extends FrameLayout {
             switch (activeHandle) {
                 case HANDLE_TOP:
                 case HANDLE_BOTTOM:
-                    if (halfContentH > 0)
+                    if (halfContentH > 0 && canResizeVertical)
                         newScaleY = Math.max(0.2f, Math.min(5.0f, Math.abs(ry) / halfContentH));
                     break;
                 case HANDLE_LEFT:
                 case HANDLE_RIGHT:
-                    if (halfContentW > 0)
+                    if (halfContentW > 0 && canResizeHorizontal)
                         newScaleX = Math.max(0.2f, Math.min(5.0f, Math.abs(rx) / halfContentW));
                     break;
                 case HANDLE_TOP_LEFT:
                 case HANDLE_TOP_RIGHT:
                 case HANDLE_BOTTOM_LEFT:
                 case HANDLE_BOTTOM_RIGHT:
-                    float lastDist = dist(lastTouchX, lastTouchY, cx, cy);
-                    float currDist = dist(tx, ty, cx, cy);
-                    if (lastDist > 0) {
-                        float factor = currDist / lastDist;
-                        newScaleX = Math.max(0.2f, Math.min(5.0f, sx * factor));
-                        newScaleY = Math.max(0.2f, Math.min(5.0f, sy * factor));
+                    if (canResizeHorizontal && canResizeVertical) {
+                        float lastDist = dist(lastTouchX, lastTouchY, cx, cy);
+                        float currDist = dist(tx, ty, cx, cy);
+                        if (lastDist > 0) {
+                            float factor = currDist / lastDist;
+                            newScaleX = Math.max(0.2f, Math.min(5.0f, sx * factor));
+                            newScaleY = Math.max(0.2f, Math.min(5.0f, sy * factor));
+                        }
                     }
                     break;
             }
@@ -402,15 +428,18 @@ public class TransformOverlay extends FrameLayout {
 
             if (targetView instanceof android.appwidget.AppWidgetHostView) {
                 ViewGroup.LayoutParams lp = targetView.getLayoutParams();
+                int oldW = lp.width;
+                int oldH = lp.height;
                 lp.width = (int) (newScaleX * (gestureInitialWidth / gestureInitialScaleX));
                 lp.height = (int) (newScaleY * (gestureInitialHeight / gestureInitialScaleY));
                 targetView.setLayoutParams(lp);
+
+                targetView.setX(targetView.getX() + (oldW - lp.width) / 2f);
+                targetView.setY(targetView.getY() + (oldH - lp.height) / 2f);
+
                 targetView.setScaleX(1.0f);
                 targetView.setScaleY(1.0f);
 
-                int dw = (int) (lp.width / getResources().getDisplayMetrics().density);
-                int dh = (int) (lp.height / getResources().getDisplayMetrics().density);
-                ((android.appwidget.AppWidgetHostView) targetView).updateAppWidgetSize(null, dw, dh, dw, dh);
             } else {
                 targetView.setScaleX(newScaleX);
                 targetView.setScaleY(newScaleY);
