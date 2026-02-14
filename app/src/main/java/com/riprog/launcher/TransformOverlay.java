@@ -10,6 +10,7 @@ import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.FrameLayout;
+import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
@@ -25,6 +26,7 @@ public class TransformOverlay extends FrameLayout {
     private float initialTouchX, initialTouchY;
     private float gestureInitialScaleX, gestureInitialScaleY;
     private int gestureInitialWidth, gestureInitialHeight;
+    private RectF gestureInitialBounds;
     private boolean hasPassedThreshold = false;
     private int activeHandle = -1;
     private boolean canResizeHorizontal = true;
@@ -111,14 +113,27 @@ public class TransformOverlay extends FrameLayout {
     }
 
     private void setupButtons() {
+        int adaptiveColor = ThemeUtils.getAdaptiveColor(getContext(), settingsManager, true);
+
+        // Top-right close button
+        ImageView closeBtn = new ImageView(getContext());
+        closeBtn.setImageResource(R.drawable.ic_remove);
+        closeBtn.setColorFilter(adaptiveColor);
+        closeBtn.setPadding(dpToPx(12), dpToPx(12), dpToPx(12), dpToPx(12));
+        closeBtn.setOnClickListener(v -> save());
+
+        LayoutParams closeLp = new LayoutParams(dpToPx(48), dpToPx(48));
+        closeLp.gravity = Gravity.TOP | Gravity.END;
+        closeLp.topMargin = dpToPx(32);
+        closeLp.rightMargin = dpToPx(16);
+        addView(closeBtn, closeLp);
+
         LinearLayout container = new LinearLayout(getContext());
         container.setOrientation(LinearLayout.HORIZONTAL);
         container.setGravity(Gravity.CENTER);
         container.setPadding(dpToPx(12), dpToPx(6), dpToPx(12), dpToPx(6));
         container.setBackground(ThemeUtils.getGlassDrawable(getContext(), settingsManager, 12));
         container.setOnClickListener(v -> {});
-
-        int adaptiveColor = ThemeUtils.getAdaptiveColor(getContext(), settingsManager, true);
 
         TextView btnRemove = new TextView(getContext());
         btnRemove.setText("REMOVE");
@@ -190,14 +205,16 @@ public class TransformOverlay extends FrameLayout {
         super.onDraw(canvas);
         if (targetView == null) return;
 
+        boolean isFreeform = settingsManager.isFreeformHome();
+
         float sx = targetView.getScaleX();
         float sy = targetView.getScaleY();
-        float r = targetView.getRotation();
+        float r = isFreeform ? targetView.getRotation() : 0;
 
         float cx = targetView.getX() + targetView.getPivotX();
         float cy = targetView.getY() + targetView.getPivotY();
 
-        RectF bounds = getContentBounds();
+        RectF bounds = (activeHandle != -1 && gestureInitialBounds != null) ? gestureInitialBounds : getContentBounds();
         float left = (bounds.left - targetView.getPivotX()) * sx;
         float top = (bounds.top - targetView.getPivotY()) * sy;
         float right = (bounds.right - targetView.getPivotX()) * sx;
@@ -230,11 +247,13 @@ public class TransformOverlay extends FrameLayout {
         drawHandle(canvas, (left + right) / 2f, bottom, hs * 0.75f, false, foregroundColor);
         drawHandle(canvas, left, (top + bottom) / 2f, hs * 0.75f, false, foregroundColor);
 
-        // Rotation Handle
-        paint.setColor(foregroundColor);
-        paint.setAlpha(100);
-        canvas.drawLine((left + right) / 2f, top, (left + right) / 2f, top - rotationHandleDist, paint);
-        drawHandle(canvas, (left + right) / 2f, top - rotationHandleDist, hs * 1.1f, true, foregroundColor);
+        // Rotation Handle - Only in freeform mode
+        if (isFreeform) {
+            paint.setColor(foregroundColor);
+            paint.setAlpha(100);
+            canvas.drawLine((left + right) / 2f, top, (left + right) / 2f, top - rotationHandleDist, paint);
+            drawHandle(canvas, (left + right) / 2f, top - rotationHandleDist, hs * 1.1f, true, foregroundColor);
+        }
 
         canvas.restore();
     }
@@ -280,6 +299,7 @@ public class TransformOverlay extends FrameLayout {
                 gestureInitialScaleY = targetView.getScaleY();
                 gestureInitialWidth = targetView.getWidth();
                 gestureInitialHeight = targetView.getHeight();
+                gestureInitialBounds = getContentBounds();
                 hasPassedThreshold = false;
                 return activeHandle != -1;
 
@@ -319,13 +339,14 @@ public class TransformOverlay extends FrameLayout {
     }
 
     private int findHandle(float tx, float ty) {
+        boolean isFreeform = settingsManager.isFreeformHome();
         float sx = targetView.getScaleX();
         float sy = targetView.getScaleY();
 
         float cx = targetView.getX() + targetView.getPivotX();
         float cy = targetView.getY() + targetView.getPivotY();
 
-        double angle = Math.toRadians(-targetView.getRotation());
+        double angle = isFreeform ? Math.toRadians(-targetView.getRotation()) : 0;
         float rx = (float) (Math.cos(angle) * (tx - cx) - Math.sin(angle) * (ty - cy));
         float ry = (float) (Math.sin(angle) * (tx - cx) + Math.cos(angle) * (ty - cy));
 
@@ -339,7 +360,7 @@ public class TransformOverlay extends FrameLayout {
         float hs = dpToPx(24); // High precision touch area
 
         // Rotation handle first
-        if (dist(rx, ry, (left + right) / 2f, top - rotationHandleDist) < hs) return HANDLE_ROTATE;
+        if (isFreeform && dist(rx, ry, (left + right) / 2f, top - rotationHandleDist) < hs) return HANDLE_ROTATE;
 
         // Corners
         if (canResizeHorizontal && canResizeVertical) {
@@ -366,15 +387,32 @@ public class TransformOverlay extends FrameLayout {
     }
 
     private void handleInteraction(float tx, float ty) {
+        boolean isFreeform = settingsManager.isFreeformHome();
         float sx = gestureInitialScaleX;
         float sy = gestureInitialScaleY;
         float cx = targetView.getX() + targetView.getPivotX();
         float cy = targetView.getY() + targetView.getPivotY();
 
         if (activeHandle == ACTION_MOVE) {
-            targetView.setX(targetView.getX() + (tx - lastTouchX));
-            targetView.setY(targetView.getY() + (ty - lastTouchY));
-        } else if (activeHandle == HANDLE_ROTATE) {
+            float newX = targetView.getX() + (tx - lastTouchX);
+            float newY = targetView.getY() + (ty - lastTouchY);
+
+            // Screen clamping
+            newX = Math.max(0, Math.min(newX, getWidth() - targetView.getWidth()));
+            newY = Math.max(0, Math.min(newY, getHeight() - targetView.getHeight()));
+
+            if (!isFreeform) {
+                int cellWidth = getWidth() / HomeView.GRID_COLUMNS;
+                int cellHeight = getHeight() / HomeView.GRID_ROWS;
+                if (cellWidth > 0 && cellHeight > 0) {
+                    newX = Math.round(newX / (float) cellWidth) * cellWidth;
+                    newY = Math.round(newY / (float) cellHeight) * cellHeight;
+                }
+            }
+
+            targetView.setX(newX);
+            targetView.setY(newY);
+        } else if (activeHandle == HANDLE_ROTATE && isFreeform) {
             double angle = Math.toDegrees(Math.atan2(ty - cy, tx - cx)) + 90;
 
             float targetR = (float) angle;
@@ -389,7 +427,7 @@ public class TransformOverlay extends FrameLayout {
             float rx = (float) (Math.cos(rotAngle) * (tx - cx) - Math.sin(rotAngle) * (ty - cy));
             float ry = (float) (Math.sin(rotAngle) * (tx - cx) + Math.cos(rotAngle) * (ty - cy));
 
-            RectF bounds = getContentBounds();
+            RectF bounds = gestureInitialBounds != null ? gestureInitialBounds : getContentBounds();
             float halfContentW = bounds.width() / 2f;
             float halfContentH = bounds.height() / 2f;
 
@@ -423,8 +461,29 @@ public class TransformOverlay extends FrameLayout {
                     break;
             }
 
-            newScaleX = Math.round(newScaleX * 20f) / 20.0f;
-            newScaleY = Math.round(newScaleY * 20f) / 20.0f;
+            // Bounds clamping for symmetrical scaling
+            if (gestureInitialWidth > 0 && gestureInitialHeight > 0) {
+                float maxSX = Math.min(5.0f, Math.min(2 * cx, 2 * (getWidth() - cx)) * gestureInitialScaleX / (float) gestureInitialWidth);
+                float maxSY = Math.min(5.0f, Math.min(2 * cy, 2 * (getHeight() - cy)) * gestureInitialScaleY / (float) gestureInitialHeight);
+                newScaleX = Math.min(newScaleX, maxSX);
+                newScaleY = Math.min(newScaleY, maxSY);
+            }
+
+            if (!isFreeform) {
+                int cellWidth = getWidth() / HomeView.GRID_COLUMNS;
+                int cellHeight = getHeight() / HomeView.GRID_ROWS;
+                if (cellWidth > 0 && cellHeight > 0) {
+                    float targetW = newScaleX * (gestureInitialWidth / gestureInitialScaleX);
+                    float targetH = newScaleY * (gestureInitialHeight / gestureInitialScaleY);
+                    targetW = Math.max(cellWidth, Math.round(targetW / (float) cellWidth) * cellWidth);
+                    targetH = Math.max(cellHeight, Math.round(targetH / (float) cellHeight) * cellHeight);
+                    newScaleX = targetW * gestureInitialScaleX / gestureInitialWidth;
+                    newScaleY = targetH * gestureInitialScaleY / gestureInitialHeight;
+                }
+            } else {
+                newScaleX = Math.round(newScaleX * 20f) / 20.0f;
+                newScaleY = Math.round(newScaleY * 20f) / 20.0f;
+            }
 
             if (targetView instanceof android.appwidget.AppWidgetHostView) {
                 ViewGroup.LayoutParams lp = targetView.getLayoutParams();
@@ -439,7 +498,6 @@ public class TransformOverlay extends FrameLayout {
 
                 targetView.setScaleX(1.0f);
                 targetView.setScaleY(1.0f);
-
             } else {
                 targetView.setScaleX(newScaleX);
                 targetView.setScaleY(newScaleY);
