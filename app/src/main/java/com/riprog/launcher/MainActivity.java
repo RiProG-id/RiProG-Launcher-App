@@ -1041,10 +1041,12 @@ public class MainActivity extends Activity {
             HomeItem target = (HomeItem) collisionView.getTag();
             if (target != null) {
                 if (target.type == HomeItem.Type.APP) {
+                    mainLayout.removeView(transformingView);
                     mergeToFolder(target, item);
                     transformingView = null;
                     return;
                 } else if (target.type == HomeItem.Type.FOLDER) {
+                    mainLayout.removeView(transformingView);
                     addToFolder(target, item);
                     transformingView = null;
                     return;
