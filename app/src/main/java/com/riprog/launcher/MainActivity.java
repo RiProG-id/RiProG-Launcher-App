@@ -55,6 +55,9 @@ public class MainActivity extends Activity {
     private DrawerView drawerView;
     private View currentFolderOverlay = null;
     private TransformOverlay currentTransformOverlay = null;
+    private ViewGroup transformingViewOriginalParent;
+    private int transformingViewOriginalIndex;
+    private View transformingView;
     private AppInstallReceiver appInstallReceiver;
     private List<HomeItem> homeItems = new ArrayList<>();
     private List<AppItem> allApps = new ArrayList<>();
@@ -84,7 +87,7 @@ public class MainActivity extends Activity {
             mainLayout.closeDrawer();
             HomeItem item = HomeItem.createApp(app.packageName, app.className, 0, 0, homeView.getCurrentPage());
             homeItems.add(item);
-            View view = createAppView(item);
+            View view = createAppView(item, false);
             homeView.addItemView(item, view);
             saveHomeState();
             mainLayout.startExternalDrag(view);
@@ -227,10 +230,10 @@ public class MainActivity extends Activity {
         View view = null;
         switch (item.type) {
             case APP:
-                view = createAppView(item);
+                view = createAppView(item, false);
                 break;
             case FOLDER:
-                view = createFolderView(item);
+                view = createFolderView(item, false);
                 break;
             case WIDGET:
                 view = createWidgetView(item);
@@ -244,7 +247,7 @@ public class MainActivity extends Activity {
         }
     }
 
-    private View createAppView(HomeItem item) {
+    private View createAppView(HomeItem item, boolean isOnGlass) {
         if (item == null) return null;
         LinearLayout container = new LinearLayout(this);
         container.setOrientation(LinearLayout.VERTICAL);
@@ -262,7 +265,7 @@ public class MainActivity extends Activity {
 
         TextView labelView = new TextView(this);
         labelView.setTag("item_label");
-        labelView.setTextColor(ThemeUtils.getAdaptiveColor(this, settingsManager, false));
+        labelView.setTextColor(ThemeUtils.getAdaptiveColor(this, settingsManager, isOnGlass));
         labelView.setTextSize(10 * scale);
         labelView.setGravity(Gravity.CENTER);
         labelView.setMaxLines(1);
@@ -285,7 +288,7 @@ public class MainActivity extends Activity {
         return container;
     }
 
-    private View createFolderView(HomeItem item) {
+    private View createFolderView(HomeItem item, boolean isOnGlass) {
         if (item == null) return null;
         LinearLayout container = new LinearLayout(this);
         container.setOrientation(LinearLayout.VERTICAL);
@@ -310,7 +313,7 @@ public class MainActivity extends Activity {
         refreshFolderPreview(item, grid);
 
         TextView labelView = new TextView(this);
-        labelView.setTextColor(ThemeUtils.getAdaptiveColor(this, settingsManager, false));
+        labelView.setTextColor(ThemeUtils.getAdaptiveColor(this, settingsManager, isOnGlass));
         labelView.setTextSize(10 * scale);
         labelView.setGravity(Gravity.CENTER);
         labelView.setMaxLines(1);
@@ -460,7 +463,7 @@ public class MainActivity extends Activity {
         grid.setColumnCount(4);
 
         for (HomeItem sub : folderItem.folderItems) {
-            View subView = createAppView(sub);
+            View subView = createAppView(sub, true);
             subView.setTag(sub);
             subView.setOnClickListener(v -> {
                 handleAppLaunch(sub.packageName);
@@ -916,6 +919,21 @@ public class MainActivity extends Activity {
 
     private void showTransformOverlay(View targetView) {
         if (currentTransformOverlay != null) return;
+        setOverlayBlur(true);
+        transformingView = targetView;
+        transformingViewOriginalParent = (ViewGroup) targetView.getParent();
+        transformingViewOriginalIndex = transformingViewOriginalParent.indexOfChild(targetView);
+
+        int[] pos = new int[2];
+        targetView.getLocationOnScreen(pos);
+        int[] layoutPos = new int[2];
+        mainLayout.getLocationOnScreen(layoutPos);
+
+        transformingViewOriginalParent.removeView(targetView);
+        mainLayout.addView(targetView);
+        targetView.setX(pos[0] - layoutPos[0]);
+        targetView.setY(pos[1] - layoutPos[1]);
+
         currentTransformOverlay = new TransformOverlay(this, targetView, settingsManager, new TransformOverlay.OnSaveListener() {
             @Override public void onSave() {
                 saveHomeState();
@@ -940,6 +958,16 @@ public class MainActivity extends Activity {
         if (currentTransformOverlay != null) {
             mainLayout.removeView(currentTransformOverlay);
             currentTransformOverlay = null;
+
+            if (transformingView != null && transformingViewOriginalParent != null) {
+                mainLayout.removeView(transformingView);
+                transformingViewOriginalParent.addView(transformingView, transformingViewOriginalIndex);
+                homeView.updateViewPosition((HomeItem) transformingView.getTag(), transformingView);
+            }
+            setOverlayBlur(false);
+            transformingView = null;
+            transformingViewOriginalParent = null;
+
             if (homeView != null) homeView.refreshIcons(model, allApps);
         }
     }

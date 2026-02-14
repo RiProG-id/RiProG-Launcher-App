@@ -101,7 +101,6 @@ public class TransformOverlay extends FrameLayout {
         container.setGravity(Gravity.CENTER);
         container.setPadding(dpToPx(12), dpToPx(6), dpToPx(12), dpToPx(6));
         container.setBackground(ThemeUtils.getGlassDrawable(getContext(), settingsManager, 12));
-        ThemeUtils.applyBlurIfSupported(container, settingsManager.isLiquidGlass());
 
         int adaptiveColor = ThemeUtils.getAdaptiveColor(getContext(), settingsManager, true);
 
