@@ -64,6 +64,7 @@ public class SettingsActivity extends Activity {
 
         ScrollView scrollView = new ScrollView(this);
         scrollView.setBackground(ThemeUtils.getGlassDrawable(this, settingsManager));
+        ThemeUtils.applyBlurIfSupported(scrollView, settingsManager.isLiquidGlass());
         scrollView.setVerticalScrollBarEnabled(false);
         rootContainer.addView(scrollView);
 
@@ -77,9 +78,11 @@ public class SettingsActivity extends Activity {
         titleLayout.setGravity(Gravity.CENTER_VERTICAL);
         titleLayout.setPadding(0, 0, 0, dpToPx(24));
 
+        int adaptiveColor = ThemeUtils.getAdaptiveColor(this, settingsManager, true);
+
         ImageView titleIcon = new ImageView(this);
         titleIcon.setImageResource(R.drawable.ic_settings);
-        titleIcon.setColorFilter(getColor(R.color.foreground));
+        titleIcon.setColorFilter(adaptiveColor);
         LinearLayout.LayoutParams iconParams = new LinearLayout.LayoutParams(dpToPx(32), dpToPx(32));
         iconParams.rightMargin = dpToPx(12);
         titleLayout.addView(titleIcon, iconParams);
@@ -88,7 +91,7 @@ public class SettingsActivity extends Activity {
         title.setText(R.string.title_settings);
         title.setTextSize(32);
         title.setTypeface(null, Typeface.BOLD);
-        title.setTextColor(getColor(R.color.foreground));
+        title.setTextColor(adaptiveColor);
         titleLayout.addView(title);
         root.addView(titleLayout);
 
@@ -107,6 +110,8 @@ public class SettingsActivity extends Activity {
                     settingsManager.setLiquidGlass(isChecked);
                     recreate();
                 });
+        addToggleSetting(root, R.string.setting_darken_wallpaper, R.string.setting_darken_wallpaper_summary,
+                settingsManager.isDarkenWallpaper(), settingsManager::setDarkenWallpaper);
         addScaleSetting(root);
 
         // About Group
@@ -114,7 +119,7 @@ public class SettingsActivity extends Activity {
 
         TextView aboutContent = new TextView(this);
         aboutContent.setText(R.string.about_content);
-        aboutContent.setTextColor(getColor(R.color.foreground_dim));
+        aboutContent.setTextColor(adaptiveColor & 0xBBFFFFFF);
         aboutContent.setTextSize(14);
         aboutContent.setPadding(dpToPx(16), 0, dpToPx(16), dpToPx(32));
         Linkify.addLinks(aboutContent, Linkify.WEB_URLS);
@@ -130,10 +135,12 @@ public class SettingsActivity extends Activity {
         layout.setGravity(Gravity.CENTER_VERTICAL);
         layout.setPadding(dpToPx(8), dpToPx(32), 0, dpToPx(16));
 
+        int adaptiveColor = ThemeUtils.getAdaptiveColor(this, settingsManager, true);
+
         if (iconRes != 0) {
             ImageView icon = new ImageView(this);
             icon.setImageResource(iconRes);
-            icon.setColorFilter(getColor(R.color.foreground));
+            icon.setColorFilter(adaptiveColor);
             LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(dpToPx(24), dpToPx(24));
             lp.rightMargin = dpToPx(12);
             layout.addView(icon, lp);
@@ -143,7 +150,7 @@ public class SettingsActivity extends Activity {
         tv.setText(title);
         tv.setTextSize(20);
         tv.setTypeface(null, Typeface.BOLD);
-        tv.setTextColor(getColor(R.color.foreground));
+        tv.setTextColor(adaptiveColor);
         layout.addView(tv);
 
         parent.addView(layout);
@@ -161,16 +168,18 @@ public class SettingsActivity extends Activity {
         LinearLayout.LayoutParams textParams = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1);
         item.addView(textLayout, textParams);
 
+        int adaptiveColor = ThemeUtils.getAdaptiveColor(this, settingsManager, true);
+
         TextView titleView = new TextView(this);
         titleView.setText(titleRes);
         titleView.setTextSize(18);
-        titleView.setTextColor(getColor(R.color.foreground));
+        titleView.setTextColor(adaptiveColor);
         textLayout.addView(titleView);
 
         TextView summaryView = new TextView(this);
         summaryView.setText(summaryRes);
         summaryView.setTextSize(14);
-        summaryView.setTextColor(getColor(R.color.foreground_dim));
+        summaryView.setTextColor(adaptiveColor & 0xBBFFFFFF);
         textLayout.addView(summaryView);
 
         Switch toggle = new Switch(this);
@@ -199,10 +208,12 @@ public class SettingsActivity extends Activity {
         item.setPadding(dpToPx(16), dpToPx(16), dpToPx(16), dpToPx(16));
         applySettingItemStyle(item);
 
+        int adaptiveColor = ThemeUtils.getAdaptiveColor(this, settingsManager, true);
+
         TextView titleView = new TextView(this);
         titleView.setText(R.string.setting_theme_mode);
         titleView.setTextSize(18);
-        titleView.setTextColor(getColor(R.color.foreground));
+        titleView.setTextColor(adaptiveColor);
         item.addView(titleView);
 
         String[] modes = {getString(R.string.theme_system), getString(R.string.theme_light), getString(R.string.theme_dark)};
@@ -221,7 +232,7 @@ public class SettingsActivity extends Activity {
             option.setTextSize(14);
 
             boolean isSelected = values[i].equals(current);
-            option.setTextColor(isSelected ? getColor(R.color.foreground) : getColor(R.color.foreground_dim));
+            option.setTextColor(isSelected ? adaptiveColor : adaptiveColor & 0xBBFFFFFF);
 
             if (isSelected) {
                 GradientDrawable gd = new GradientDrawable();
@@ -279,10 +290,12 @@ public class SettingsActivity extends Activity {
         item.setPadding(dpToPx(16), dpToPx(16), dpToPx(16), dpToPx(16));
         applySettingItemStyle(item);
 
+        int adaptiveColor = ThemeUtils.getAdaptiveColor(this, settingsManager, true);
+
         TextView titleView = new TextView(this);
         titleView.setText(R.string.setting_scale);
         titleView.setTextSize(18);
-        titleView.setTextColor(getColor(R.color.foreground));
+        titleView.setTextColor(adaptiveColor);
         item.addView(titleView);
 
         SeekBar seekBar = new SeekBar(this);
@@ -305,7 +318,7 @@ public class SettingsActivity extends Activity {
         TextView description = new TextView(this);
         description.setText(R.string.setting_scale_summary);
         description.setTextSize(12);
-        description.setTextColor(getColor(R.color.foreground_dim));
+        description.setTextColor(adaptiveColor & 0xBBFFFFFF);
         item.addView(description);
 
         LinearLayout.LayoutParams itemLp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);

@@ -460,6 +460,8 @@ public class HomeView extends FrameLayout {
             }
         }
 
+        int adaptiveColor = ThemeUtils.getAdaptiveColor(getContext(), settingsManager, false);
+
         for (FrameLayout page : pages) {
             for (int i = 0; i < page.getChildCount(); i++) {
                 View view = page.getChildAt(i);
@@ -480,6 +482,7 @@ public class HomeView extends FrameLayout {
                         }
                     }
                     if (tv != null) {
+                        tv.setTextColor(adaptiveColor);
                         tv.setTextSize(10 * globalScale);
                         tv.setVisibility(hideLabels ? View.GONE : View.VISIBLE);
                     }
@@ -498,6 +501,7 @@ public class HomeView extends FrameLayout {
                 } else if (item.type == HomeItem.Type.FOLDER) {
                     TextView tv = container.findViewWithTag("item_label");
                     if (tv != null) {
+                        tv.setTextColor(adaptiveColor);
                         tv.setTextSize(10 * globalScale);
                         tv.setVisibility(hideLabels ? View.GONE : View.VISIBLE);
                         tv.setText(item.folderName == null || item.folderName.isEmpty() ? "" : item.folderName);

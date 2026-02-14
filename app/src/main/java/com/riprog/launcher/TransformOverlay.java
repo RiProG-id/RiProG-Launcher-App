@@ -101,11 +101,14 @@ public class TransformOverlay extends FrameLayout {
         container.setGravity(Gravity.CENTER);
         container.setPadding(dpToPx(12), dpToPx(6), dpToPx(12), dpToPx(6));
         container.setBackground(ThemeUtils.getGlassDrawable(getContext(), settingsManager, 12));
+        ThemeUtils.applyBlurIfSupported(container, settingsManager.isLiquidGlass());
+
+        int adaptiveColor = ThemeUtils.getAdaptiveColor(getContext(), settingsManager, true);
 
         TextView btnRemove = new TextView(getContext());
         btnRemove.setText("REMOVE");
         btnRemove.setPadding(dpToPx(8), dpToPx(8), dpToPx(8), dpToPx(8));
-        btnRemove.setTextColor(getContext().getColor(R.color.foreground));
+        btnRemove.setTextColor(adaptiveColor);
         btnRemove.setTextSize(11);
         btnRemove.setTypeface(null, android.graphics.Typeface.BOLD);
         btnRemove.setGravity(Gravity.CENTER);
@@ -116,7 +119,7 @@ public class TransformOverlay extends FrameLayout {
         TextView btnReset = new TextView(getContext());
         btnReset.setText("RESET");
         btnReset.setPadding(dpToPx(8), dpToPx(8), dpToPx(8), dpToPx(8));
-        btnReset.setTextColor(getContext().getColor(R.color.foreground));
+        btnReset.setTextColor(adaptiveColor);
         btnReset.setTextSize(11);
         btnReset.setTypeface(null, android.graphics.Typeface.BOLD);
         btnReset.setGravity(Gravity.CENTER);
@@ -127,7 +130,7 @@ public class TransformOverlay extends FrameLayout {
         TextView btnSave = new TextView(getContext());
         btnSave.setText("SAVE");
         btnSave.setPadding(dpToPx(8), dpToPx(8), dpToPx(8), dpToPx(8));
-        btnSave.setTextColor(getContext().getColor(R.color.foreground));
+        btnSave.setTextColor(adaptiveColor);
         btnSave.setTextSize(11);
         btnSave.setTypeface(null, android.graphics.Typeface.BOLD);
         btnSave.setGravity(Gravity.CENTER);
@@ -138,7 +141,7 @@ public class TransformOverlay extends FrameLayout {
         TextView btnInfo = new TextView(getContext());
         btnInfo.setText("APP INFO");
         btnInfo.setPadding(dpToPx(8), dpToPx(8), dpToPx(8), dpToPx(8));
-        btnInfo.setTextColor(getContext().getColor(R.color.foreground));
+        btnInfo.setTextColor(adaptiveColor);
         btnInfo.setTextSize(11);
         btnInfo.setTypeface(null, android.graphics.Typeface.BOLD);
         btnInfo.setGravity(Gravity.CENTER);
@@ -208,7 +211,7 @@ public class TransformOverlay extends FrameLayout {
         canvas.translate(cx, cy);
         canvas.rotate(r);
 
-        int foregroundColor = getContext().getColor(R.color.foreground);
+        int foregroundColor = ThemeUtils.getAdaptiveColor(getContext(), settingsManager, false);
 
         // Bounding Box - Thin and subtle
         paint.setColor(foregroundColor);
