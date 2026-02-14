@@ -5,6 +5,11 @@ import android.content.SharedPreferences;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -27,8 +32,10 @@ public class SettingsManager {
     private static final String KEY_DEFAULT_PROMPT_COUNT = "default_prompt_count";
 
     private final SharedPreferences prefs;
+    private final Context context;
 
     public SettingsManager(Context context) {
+        this.context = context;
         prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
     }
 
@@ -129,35 +136,89 @@ public class SettingsManager {
         prefs.edit().putInt(KEY_DEFAULT_PROMPT_COUNT, getDefaultPromptCount() + 1).apply();
     }
 
+    private File getPageFile(int pageIndex) {
+        return new File(context.getFilesDir(), "home_page_" + pageIndex + ".json");
+    }
+
+    private void writeToFile(File file, String data) {
+        try (FileOutputStream out = new FileOutputStream(file)) {
+            out.write(data.getBytes(StandardCharsets.UTF_8));
+        } catch (IOException ignored) {}
+    }
+
+    private String readFromFile(File file) {
+        if (!file.exists()) return null;
+        try (FileInputStream in = new FileInputStream(file)) {
+            byte[] bytes = new byte[(int) file.length()];
+            in.read(bytes);
+            return new String(bytes, StandardCharsets.UTF_8);
+        } catch (IOException e) {
+            return null;
+        }
+    }
+
+    public void savePageItems(int pageIndex, List<HomeItem> items) {
+        if (items == null) return;
+        JSONArray array = new JSONArray();
+        for (HomeItem item : items) {
+            if (item.page == pageIndex) {
+                JSONObject obj = serializeItem(item);
+                if (obj != null) array.put(obj);
+            }
+        }
+        writeToFile(getPageFile(pageIndex), array.toString());
+    }
+
+    public List<HomeItem> getPageItems(int pageIndex) {
+        List<HomeItem> items = new ArrayList<>();
+        String json = readFromFile(getPageFile(pageIndex));
+
+        // Fallback to SharedPreferences during migration
+        if (json == null) {
+            json = prefs.getString(KEY_HOME_ITEMS + "_page_" + pageIndex, null);
+        }
+
+        if (json != null) {
+            try {
+                JSONArray array = new JSONArray(json);
+                for (int i = 0; i < array.length(); i++) {
+                    HomeItem item = deserializeItem(array.getJSONObject(i));
+                    if (item != null) items.add(item);
+                }
+            } catch (Exception ignored) {}
+        }
+        return items;
+    }
+
+    public void removePageData(int index, int oldPageCount) {
+        // Shift file data from index+1...oldPageCount-1 down to index...oldPageCount-2
+        for (int i = index; i < oldPageCount - 1; i++) {
+            File currentFile = getPageFile(i);
+            File nextFile = getPageFile(i + 1);
+            if (nextFile.exists()) {
+                nextFile.renameTo(currentFile);
+            } else {
+                currentFile.delete();
+            }
+
+            // Also clean up SharedPreferences if they exist
+            prefs.edit().remove(KEY_HOME_ITEMS + "_page_" + i).apply();
+        }
+        // Remove the last one
+        getPageFile(oldPageCount - 1).delete();
+        prefs.edit().remove(KEY_HOME_ITEMS + "_page_" + (oldPageCount - 1)).apply();
+
+        prefs.edit().putInt("page_count", oldPageCount - 1).apply();
+    }
+
     public void saveHomeItems(List<HomeItem> items, int pageCount) {
         if (items == null) return;
 
-        Map<Integer, List<HomeItem>> pagesMap = new HashMap<>();
-        for (HomeItem item : items) {
-            if (!pagesMap.containsKey(item.page)) pagesMap.put(item.page, new ArrayList<>());
-            pagesMap.get(item.page).add(item);
+        for (int i = 0; i < pageCount; i++) {
+            savePageItems(i, items);
         }
 
         SharedPreferences.Editor editor = prefs.edit();
-
-        // Remove existing page data to ensure no ghost items from removed pages
-        int lastPageCount = prefs.getInt("page_count", 0);
-        for (int i = 0; i < lastPageCount; i++) {
-            editor.remove(KEY_HOME_ITEMS + "_page_" + i);
-        }
-
-        for (int i = 0; i < pageCount; i++) {
-            List<HomeItem> pageItems = pagesMap.get(i);
-            JSONArray array = new JSONArray();
-            if (pageItems != null) {
-                for (HomeItem item : pageItems) {
-                    JSONObject obj = serializeItem(item);
-                    if (obj != null) array.put(obj);
-                }
-            }
-            editor.putString(KEY_HOME_ITEMS + "_page_" + i, array.toString());
-        }
-
         editor.putInt("page_count", pageCount);
         editor.remove(KEY_HOME_ITEMS); // Clear old unified storage
         editor.apply();
