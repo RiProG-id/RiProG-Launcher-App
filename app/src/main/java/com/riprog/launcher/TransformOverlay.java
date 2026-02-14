@@ -61,6 +61,23 @@ public class TransformOverlay extends FrameLayout {
         View findItemAt(float x, float y, View exclude);
     }
 
+    public void startDirectMove(float x, float y) {
+        activeHandle = ACTION_MOVE;
+        initialTouchX = x;
+        initialTouchY = y;
+        lastTouchX = x;
+        lastTouchY = y;
+        gestureInitialScaleX = targetView.getScaleX();
+        gestureInitialScaleY = targetView.getScaleY();
+        gestureInitialX = targetView.getX();
+        gestureInitialY = targetView.getY();
+        gestureInitialWidth = targetView.getWidth();
+        gestureInitialHeight = targetView.getHeight();
+        gestureInitialBounds = getContentBounds();
+        hasPassedThreshold = true;
+        invalidate();
+    }
+
     public TransformOverlay(Context context, View targetView, SettingsManager settingsManager, OnSaveListener listener) {
         super(context);
         this.targetView = targetView;
