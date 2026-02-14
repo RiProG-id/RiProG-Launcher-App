@@ -5,6 +5,7 @@ import android.os.Handler;
 import android.content.Context;
 import android.content.Intent;
 import android.graphics.Color;
+import android.graphics.RectF;
 import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
 import android.text.format.DateFormat;
@@ -107,13 +108,21 @@ public class HomeView extends FrameLayout {
         pagesContainer.addView(page, index, new LinearLayout.LayoutParams(
                 LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT));
 
+        if (homeItems != null) {
+            for (HomeItem item : homeItems) {
+                if (item.page >= index) {
+                    item.page++;
+                }
+            }
+        }
 
         for (int i = 0; i < pages.size(); i++) {
             FrameLayout p = pages.get(i);
             for (int j = 0; j < p.getChildCount(); j++) {
                 View v = p.getChildAt(j);
-                HomeItem item = (HomeItem) v.getTag();
-                if (item != null) item.page = i;
+                if (v != null && v.getTag() instanceof HomeItem) {
+                    ((HomeItem) v.getTag()).page = i;
+                }
             }
         }
         pageIndicator.setPageCount(pages.size());
@@ -431,39 +440,31 @@ public class HomeView extends FrameLayout {
         edgeScrollHandler.removeCallbacks(edgeScrollRunnable);
     }
 
-    private HomeItem findCollision(View draggedView) {
+    private HomeItem findCollision(View draggedView, float currentCol, float currentRow) {
         HomeItem draggedItem = (HomeItem) draggedView.getTag();
         if (draggedItem == null) return null;
 
-        FrameLayout currentPageLayout = pages.get(currentPage);
+        float oldCol = draggedItem.col;
+        float oldRow = draggedItem.row;
+        draggedItem.col = currentCol;
+        draggedItem.row = currentRow;
 
-        // Calculate draggedItem's current temporary grid position for overlap check
-        int availW = getWidth() - getPaddingLeft() - getPaddingRight();
-        int availH = getHeight() - getPaddingTop() - getPaddingBottom();
-        int cellWidth = availW / GRID_COLUMNS;
-        int cellHeight = availH / GRID_ROWS;
-        if (cellWidth <= 0 || cellHeight <= 0) return null;
+        try {
+            FrameLayout currentPageLayout = pages.get(currentPage);
+            for (int i = 0; i < currentPageLayout.getChildCount(); i++) {
+                View child = currentPageLayout.getChildAt(i);
+                if (child == draggedView) continue;
 
-        float[] coords = getRelativeCoords(draggedView);
-        float xInHome = coords[0] - getPaddingLeft();
-        float yInHome = coords[1] - getPaddingTop();
+                HomeItem targetItem = (HomeItem) child.getTag();
+                if (targetItem == null) continue;
 
-        float currentCol = xInHome / (float) cellWidth;
-        float currentRow = yInHome / (float) cellHeight;
-
-        for (int i = 0; i < currentPageLayout.getChildCount(); i++) {
-            View child = currentPageLayout.getChildAt(i);
-            if (child == draggedView) continue;
-
-            HomeItem targetItem = (HomeItem) child.getTag();
-            if (targetItem == null) continue;
-
-            if (currentCol < targetItem.col + targetItem.spanX &&
-                currentCol + draggedItem.spanX > targetItem.col &&
-                currentRow < targetItem.row + targetItem.spanY &&
-                currentRow + draggedItem.spanY > targetItem.row) {
-                return targetItem;
+                if (isOverlapping(draggedItem, targetItem)) {
+                    return targetItem;
+                }
             }
+        } finally {
+            draggedItem.col = oldCol;
+            draggedItem.row = oldRow;
         }
         return null;
     }
@@ -489,9 +490,12 @@ public class HomeView extends FrameLayout {
         float xInHome = coords[0] - getPaddingLeft();
         float yInHome = coords[1] - getPaddingTop();
 
+        float currentCol = cellWidth > 0 ? xInHome / (float) cellWidth : 0;
+        float currentRow = cellHeight > 0 ? yInHome / (float) cellHeight : 0;
+
         item.page = currentPage;
 
-        HomeItem target = findCollision(v);
+        HomeItem target = findCollision(v, currentCol, currentRow);
         if (target != null && item.type == HomeItem.Type.APP) {
             if (target.type == HomeItem.Type.APP || target.type == HomeItem.Type.FOLDER) {
                 if (getContext() instanceof MainActivity) {
@@ -632,30 +636,43 @@ public class HomeView extends FrameLayout {
                     }
                 } else {
                     // Freeform Repelling Logic: Shift 'other' by minimum distance to resolve overlap
-                    float overlapX1 = movedItem.col + movedItem.spanX - other.col;
-                    float overlapX2 = other.col + other.spanX - movedItem.col;
-                    float overlapY1 = movedItem.row + movedItem.spanY - other.row;
-                    float overlapY2 = other.row + other.spanY - movedItem.row;
+                    RectF rMoved = getVisualRect(movedItem);
+                    RectF rOther = getVisualRect(other);
+
+                    float overlapX1 = rMoved.right - rOther.left;
+                    float overlapX2 = rOther.right - rMoved.left;
+                    float overlapY1 = rMoved.bottom - rOther.top;
+                    float overlapY2 = rOther.bottom - rMoved.top;
 
                     float dx = Math.min(overlapX1, overlapX2);
                     float dy = Math.min(overlapY1, overlapY2);
 
+                    int availW = getWidth() - getPaddingLeft() - getPaddingRight();
+                    int availH = getHeight() - getPaddingTop() - getPaddingBottom();
+                    int cellWidth = availW / GRID_COLUMNS;
+                    int cellHeight = availH / GRID_ROWS;
+
+                    // Convert pixel overlap to grid units, adding a tiny epsilon to ensure they no longer touch
+                    float epsilon = 0.01f;
+                    float shiftCol = cellWidth > 0 ? (dx / cellWidth) + epsilon : epsilon;
+                    float shiftRow = cellHeight > 0 ? (dy / cellHeight) + epsilon : epsilon;
+
                     if (dx < dy) {
-                        if (overlapX1 < overlapX2) other.col += dx;
-                        else other.col -= dx;
+                        if (overlapX1 < overlapX2) other.col += shiftCol;
+                        else other.col -= shiftCol;
                     } else {
-                        if (overlapY1 < overlapY2) other.row += dy;
-                        else other.row -= dy;
+                        if (overlapY1 < overlapY2) other.row += shiftRow;
+                        else other.row -= shiftRow;
                     }
 
                     // Clamp to page bounds in freeform
                     other.col = Math.max(0, Math.min(GRID_COLUMNS - other.spanX, other.col));
                     other.row = Math.max(0, Math.min(GRID_ROWS - other.spanY, other.row));
 
-                    // If still overlapping after clamp, move along the other axis or slightly offset
+                    // If still overlapping after clamp, move along the other axis
                     if (isOverlapping(movedItem, other)) {
-                        if (dx < dy) other.row += (overlapY1 < overlapY2 ? dy : -dy);
-                        else other.col += (overlapX1 < overlapX2 ? dx : -dx);
+                        if (dx < dy) other.row += (overlapY1 < overlapY2 ? shiftRow : -shiftRow);
+                        else other.col += (overlapX1 < overlapX2 ? shiftCol : -shiftCol);
                     }
                 }
 
@@ -672,11 +689,51 @@ public class HomeView extends FrameLayout {
         }
     }
 
+    private RectF getVisualRect(HomeItem item) {
+        int availW = getWidth() - getPaddingLeft() - getPaddingRight();
+        int availH = getHeight() - getPaddingTop() - getPaddingBottom();
+        int cellWidth = availW / GRID_COLUMNS;
+        int cellHeight = availH / GRID_ROWS;
+
+        if (cellWidth <= 0 || cellHeight <= 0) return new RectF();
+
+        float width, height;
+        if (item.type == HomeItem.Type.WIDGET || (item.type == HomeItem.Type.FOLDER && (item.spanX > 1.0f || item.spanY > 1.0f))) {
+            width = cellWidth * item.spanX;
+            height = cellHeight * item.spanY;
+        } else {
+            int size = getResources().getDimensionPixelSize(R.dimen.grid_icon_size);
+            width = size * 2;
+            height = size * 2;
+        }
+
+        float x, y;
+        if (item.type == HomeItem.Type.APP || (item.type == HomeItem.Type.FOLDER && item.spanX <= 1.0f && item.spanY <= 1.0f)) {
+            x = getPaddingLeft() + item.col * cellWidth + (cellWidth - width) / 2f;
+            y = getPaddingTop() + item.row * cellHeight + (cellHeight - height) / 2f;
+        } else {
+            x = getPaddingLeft() + item.col * cellWidth;
+            y = getPaddingTop() + item.row * cellHeight;
+        }
+
+        float visualWidth = width * item.scaleX;
+        float visualHeight = height * item.scaleY;
+        float visualX = x + (width - visualWidth) / 2f;
+        float visualY = y + (height - visualHeight) / 2f;
+
+        return new RectF(visualX, visualY, visualX + visualWidth, visualY + visualHeight);
+    }
+
     private boolean isOverlapping(HomeItem a, HomeItem b) {
-        return a.col < b.col + b.spanX &&
-               a.col + a.spanX > b.col &&
-               a.row < b.row + b.spanY &&
-               a.row + a.spanY > b.row;
+        RectF rA = getVisualRect(a);
+        RectF rB = getVisualRect(b);
+
+        // Allow objects to be placed as close as possible as long as the edges do not touch or overlap.
+        // This means we repel if they touch or overlap.
+        return rA.left <= rB.right &&
+               rA.right >= rB.left &&
+               rA.top <= rB.bottom &&
+               rA.bottom >= rB.top;
     }
 
     public View findViewForItem(HomeItem item) {

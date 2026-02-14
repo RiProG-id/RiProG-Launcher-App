@@ -499,6 +499,7 @@ public class TransformOverlay extends FrameLayout {
 
             targetView.setScaleX(newScaleX);
             targetView.setScaleY(newScaleY);
+            if (onSaveListener != null) onSaveListener.onMove(tx, ty);
         }
     }
 
