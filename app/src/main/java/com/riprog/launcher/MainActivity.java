@@ -373,7 +373,9 @@ public class MainActivity extends Activity {
 
         int folderW, folderH;
         float scale = settingsManager.getIconScale();
-        if (folder.spanX <= 1.0f && folder.spanY <= 1.0f) {
+        boolean isSmall = folder.spanX <= 1.0f && folder.spanY <= 1.0f;
+
+        if (isSmall) {
             int baseSize = getResources().getDimensionPixelSize(R.dimen.grid_icon_size);
             folderW = (int) (baseSize * scale);
             folderH = folderW;
@@ -382,23 +384,22 @@ public class MainActivity extends Activity {
             folderH = (int) (cellHeight * folder.spanY);
         }
 
-        int padding = dpToPx(folder.spanX <= 1.0f ? 4 : 12);
+        int padding = dpToPx(isSmall ? 6 : 12);
         int availableW = folderW - 2 * padding;
         int availableH = folderH - 2 * padding;
 
-        // Dynamic columns based on size and count
-        int columns = (int) Math.max(2, Math.round(folder.spanX));
+        int columns = isSmall ? 2 : (int) Math.max(2, Math.round(folder.spanX));
         if (columns > 4) columns = 4;
 
-        // Adjust iconsToShow based on grid size
         int maxIcons = columns * columns;
         int iconsToShow = Math.min(count, maxIcons);
+        if (isSmall) iconsToShow = Math.min(count, 4);
 
         grid.setColumnCount(columns);
         grid.setRowCount((int) Math.ceil(iconsToShow / (double) columns));
 
         int iconSize = Math.min(availableW / columns, availableH / columns);
-        int iconMargin = iconSize / 10;
+        int iconMargin = dpToPx(isSmall ? 1 : 4);
         iconSize -= 2 * iconMargin;
 
         for (int i = 0; i < iconsToShow; i++) {
@@ -1068,6 +1069,7 @@ public class MainActivity extends Activity {
             }
             @Override public void onRemove() {
                 removeHomeItem((HomeItem) targetView.getTag(), targetView);
+                transformingView = null; // Prevent re-adding in closeTransformOverlay
                 closeTransformOverlay();
             }
             @Override public void onAppInfo() {
@@ -1258,7 +1260,6 @@ public class MainActivity extends Activity {
 
         LinearLayout container = new LinearLayout(this);
         container.setOrientation(LinearLayout.VERTICAL);
-        container.setPadding(dpToPx(24), dpToPx(64), dpToPx(24), dpToPx(24));
         root.addView(container);
 
         int adaptiveColor = ThemeUtils.getAdaptiveColor(this, settingsManager, true);
@@ -1392,6 +1393,23 @@ public class MainActivity extends Activity {
         closeLp.rightMargin = dpToPx(16);
         closeBtn.setOnClickListener(v -> dialog.dismiss());
         root.addView(closeBtn, closeLp);
+
+        root.setOnApplyWindowInsetsListener((v, insets) -> {
+            int top = 0, bottom = 0;
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
+                android.graphics.Insets systemInsets = insets.getInsets(android.view.WindowInsets.Type.systemBars());
+                top = systemInsets.top;
+                bottom = systemInsets.bottom;
+            } else {
+                top = insets.getSystemWindowInsetTop();
+                bottom = insets.getSystemWindowInsetBottom();
+            }
+            container.setPadding(dpToPx(24), top + dpToPx(64), dpToPx(24), bottom + dpToPx(24));
+            FrameLayout.LayoutParams lp = (FrameLayout.LayoutParams) closeBtn.getLayoutParams();
+            lp.topMargin = top + dpToPx(16);
+            closeBtn.setLayoutParams(lp);
+            return insets;
+        });
 
         dialog.setContentView(root);
         dialog.show();
