@@ -11,37 +11,37 @@
     <string name="menu_wallpaper">Wallpaper</string>
     <string name="menu_settings">Launcher Settings</string>
     <string name="menu_layout">Layout Options</string>
-    <string name="title_pick_app">Pick App</string>
-    <string name="apps_not_loaded">Apps not loaded yet</string>
+    <string name="title_pick_app">Select App</string>
+    <string name="apps_not_loaded">Apps are still loading&#8230;</string>
     <string name="title_select_wallpaper">Select Wallpaper</string>
-    <string name="wallpaper_picker_failed">Wallpaper picker not available</string>
+    <string name="wallpaper_picker_failed">Wallpaper picker not found</string>
     <string name="layout_add_page">Add Page</string>
-    <string name="layout_remove_page">Remove Last Page</string>
-    <string name="page_added">Page added</string>
-    <string name="remove_page_not_implemented">Remove page not implemented yet</string>
-    <string name="title_pick_widget">Pick Widget</string>
+    <string name="layout_remove_page">Remove Page</string>
+    <string name="page_added">New page added</string>
+    <string name="remove_page_not_implemented">Page removal not supported</string>
+    <string name="title_pick_widget">Select Widget</string>
     <string name="action_cancel">Cancel</string>
-    <string name="drag_remove">REMOVE</string>
-    <string name="drag_app_info">APP INFO</string>
-    <string name="drag_uninstall">UNINSTALL</string>
+    <string name="drag_remove">Remove</string>
+    <string name="drag_app_info">App Info</string>
+    <string name="drag_uninstall">Uninstall</string>
     <string name="widget_size_format">%1$dx%2$d</string>
     <string name="title_settings">Settings</string>
     <string name="title_about">About</string>
     <string name="about_content" tools:ignore="TypographyDashes">RiProG Launcher v2.3.1\n\nAn ultra-lightweight, high-performance Android launcher designed for simplicity and speed.\n\nCORE FEATURES\n&#8226; Minimal RAM &amp; CPU Footprint\n&#8226; Premium Liquid Glass UI Aesthetic\n&#8226; Efficient App Drawer with Search\n&#8226; Alphabetical Quick Navigation Bar\n&#8226; Advanced Widget Selection UI\n&#8226; Precision Freeform Layout Support\n&#8226; Seamless Icon &amp; Label Scaling\n&#8226; Full Material Design Theme Integration\n\nPROJECT RESOURCES\nGitHub: https://github.com/RiProG-id/RiProG-Launcher-App\nTelegram: https://t.me/RiOpSo\nTelegram Group: https://t.me/RiOpSoDisc\n\nSUPPORT DEVELOPMENT\nPayPal: https://paypal.me/RiProG\nSociabuzz: https://sociabuzz.com/riprog/tribe\nDana / GoPay: 0831-4095-0951\nBank Jago: 503442488516\n\nFREE SUPPORT\nSafelinku: https://sfl.gl/NTX6\nArahlink: https://arahlink.id/WAUR</string>
     <string name="setting_theme_mode">Theme Mode</string>
-    <string name="theme_system">System</string>
-    <string name="theme_light">Light</string>
-    <string name="theme_dark">Dark</string>
+    <string name="theme_system">System Default</string>
+    <string name="theme_light">Light Mode</string>
+    <string name="theme_dark">Dark Mode</string>
     <string name="setting_liquid_glass">Liquid Glass Theme</string>
-    <string name="setting_liquid_glass_summary">Enable transparent glass-style visual effects for launcher interface.</string>
-    <string name="setting_darken_wallpaper">Darken wallpaper in dark mode</string>
-    <string name="setting_darken_wallpaper_summary">Slightly darkens wallpaper background to improve readability when using Dark Mode.</string>
+    <string name="setting_liquid_glass_summary">Enable premium transparent glass effects with blur and adaptive tints.</string>
+    <string name="setting_darken_wallpaper">Wallpaper Dimming</string>
+    <string name="setting_darken_wallpaper_summary">Apply a subtle dark overlay to the wallpaper in dark mode to improve contrast.</string>
     <string name="setting_freeform">Freeform Home</string>
-    <string name="setting_freeform_summary">Enable advanced free placement. Resize, rotate, and move home items freely using transform controls.</string>
-    <string name="setting_hide_labels">Hide Home Labels</string>
-    <string name="setting_hide_labels_summary">Hide application labels on the home screen for a cleaner look.</string>
-    <string name="setting_scale">Icon Size &amp; Label Scale</string>
-    <string name="setting_scale_summary">Scale icons and labels together. Affect both home screen and app drawer.</string>
+    <string name="setting_freeform_summary">Enable free movement, rotation, and scaling. Items can overlap and move without grid constraints.</string>
+    <string name="setting_hide_labels">Hide all home labels</string>
+    <string name="setting_hide_labels_summary">Completely hide labels for apps and folders on the home screen for a cleaner look.</string>
+    <string name="setting_scale">Icon &amp; Label Scaling</string>
+    <string name="setting_scale_summary">Uniformly adjust the size of icons and labels across the home screen and app drawer.</string>
 
     <string name="category_home">Home Screen</string>
     <string name="category_appearance">Appearance</string>
@@ -49,7 +49,7 @@
     <string name="search_hint">Search apps&#8230;</string>
 
     <string name="prompt_default_launcher_title">Set Default Launcher</string>
-    <string name="prompt_default_launcher_message">RiProG Launcher works best when set as your default home application.</string>
+    <string name="prompt_default_launcher_message">RiProG Launcher works best when set as your primary home application.</string>
     <string name="action_set_default">Set Default</string>
     <string name="action_later">Later</string>
 </resources>
