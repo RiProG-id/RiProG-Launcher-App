@@ -9,6 +9,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.Comparator;
 
 public class DiskCache {
@@ -163,7 +164,7 @@ public class DiskCache {
         if (totalSize > MAX_CACHE_SIZE) {
             // Sort by score: higher is better (keep), lower is worse (delete)
             // score = access_count / (hours_since_last_access + 1)
-            allFiles.sort((f1, f2) -> {
+            Collections.sort(allFiles, (f1, f2) -> {
                 String name1 = f1.getName();
                 String name2 = f2.getName();
                 String k1 = name1.contains(".") ? name1.substring(0, name1.lastIndexOf('.')) : name1;
