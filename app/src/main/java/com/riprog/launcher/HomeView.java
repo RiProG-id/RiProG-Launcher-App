@@ -5,6 +5,7 @@ import android.os.Handler;
 import android.content.Context;
 import android.content.Intent;
 import android.graphics.Color;
+import android.graphics.Matrix;
 import android.graphics.RectF;
 import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
@@ -652,10 +653,9 @@ public class HomeView extends FrameLayout {
                     int cellWidth = availW / GRID_COLUMNS;
                     int cellHeight = availH / GRID_ROWS;
 
-                    // Convert pixel overlap to grid units, adding a tiny epsilon to ensure they no longer touch
-                    float epsilon = 0.01f;
-                    float shiftCol = cellWidth > 0 ? (dx / cellWidth) + epsilon : epsilon;
-                    float shiftRow = cellHeight > 0 ? (dy / cellHeight) + epsilon : epsilon;
+                    // Convert pixel overlap to grid units
+                    float shiftCol = cellWidth > 0 ? (dx / cellWidth) : 0;
+                    float shiftRow = cellHeight > 0 ? (dy / cellHeight) : 0;
 
                     if (dx < dy) {
                         if (overlapX1 < overlapX2) other.col += shiftCol;
@@ -671,8 +671,13 @@ public class HomeView extends FrameLayout {
 
                     // If still overlapping after clamp, move along the other axis
                     if (isOverlapping(movedItem, other)) {
-                        if (dx < dy) other.row += (overlapY1 < overlapY2 ? shiftRow : -shiftRow);
-                        else other.col += (overlapX1 < overlapX2 ? shiftCol : -shiftCol);
+                        if (dx < dy) {
+                            float sRow = cellHeight > 0 ? (Math.min(overlapY1, overlapY2) / cellHeight) : 0;
+                            other.row += (overlapY1 < overlapY2 ? sRow : -sRow);
+                        } else {
+                            float sCol = cellWidth > 0 ? (Math.min(overlapX1, overlapX2) / cellWidth) : 0;
+                            other.col += (overlapX1 < overlapX2 ? sCol : -sCol);
+                        }
                     }
                 }
 
@@ -716,24 +721,24 @@ public class HomeView extends FrameLayout {
             y = getPaddingTop() + item.row * cellHeight;
         }
 
-        float visualWidth = width * item.scaleX;
-        float visualHeight = height * item.scaleY;
-        float visualX = x + (width - visualWidth) / 2f;
-        float visualY = y + (height - visualHeight) / 2f;
-
-        return new RectF(visualX, visualY, visualX + visualWidth, visualY + visualHeight);
+        Matrix m = new Matrix();
+        m.postScale(item.scaleX, item.scaleY, x + width / 2f, y + height / 2f);
+        m.postRotate(item.rotation, x + width / 2f, y + height / 2f);
+        RectF rect = new RectF(x, y, x + width, y + height);
+        m.mapRect(rect);
+        return rect;
     }
 
     private boolean isOverlapping(HomeItem a, HomeItem b) {
         RectF rA = getVisualRect(a);
         RectF rB = getVisualRect(b);
 
-        // Allow objects to be placed as close as possible as long as the edges do not touch or overlap.
-        // This means we repel if they touch or overlap.
-        return rA.left <= rB.right &&
-               rA.right >= rB.left &&
-               rA.top <= rB.bottom &&
-               rA.bottom >= rB.top;
+        // Trigger ONLY when real bounding box intersection occurs.
+        // Exclusive comparison allows objects to touch at the edges without repelling.
+        return rA.left < rB.right &&
+               rA.right > rB.left &&
+               rA.top < rB.bottom &&
+               rA.bottom > rB.top;
     }
 
     public View findViewForItem(HomeItem item) {
