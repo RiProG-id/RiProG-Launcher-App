@@ -13,6 +13,7 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.graphics.Color;
 import android.graphics.drawable.Drawable;
+import android.graphics.drawable.GradientDrawable;
 import android.graphics.Typeface;
 import android.os.Bundle;
 import android.os.Handler;
@@ -1166,42 +1167,67 @@ public class MainActivity extends Activity {
             grouped.get(pkg).add(info);
         }
 
-        ScrollView scrollView = new ScrollView(this);
-        LinearLayout root = new LinearLayout(this);
-        root.setOrientation(LinearLayout.VERTICAL);
-        root.setPadding(dpToPx(16), dpToPx(16), dpToPx(16), dpToPx(16));
-        scrollView.addView(root);
-
         List<String> packages = new ArrayList<>(grouped.keySet());
-        Collections.sort(packages, (a, b) -> {
-            String labelA = getAppName(a);
-            String labelB = getAppName(b);
-            return labelA.compareToIgnoreCase(labelB);
-        });
+        Collections.sort(packages, (a, b) -> getAppName(a).compareToIgnoreCase(getAppName(b)));
 
-        AlertDialog dialog = new AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert)
-                .setTitle(R.string.title_pick_widget)
-                .setView(scrollView)
-                .setNegativeButton(R.string.action_cancel, null)
-                .create();
+        final android.app.Dialog dialog = new android.app.Dialog(this, android.R.style.Theme_DeviceDefault_NoActionBar_Fullscreen);
+
+        FrameLayout root = new FrameLayout(this);
+        root.setBackground(ThemeUtils.getGlassDrawable(this, settingsManager, 0));
+        ThemeUtils.applyBlurIfSupported(root, settingsManager.isLiquidGlass());
+
+        LinearLayout container = new LinearLayout(this);
+        container.setOrientation(LinearLayout.VERTICAL);
+        container.setPadding(dpToPx(24), dpToPx(64), dpToPx(24), dpToPx(24));
+        root.addView(container);
+
+        int adaptiveColor = ThemeUtils.getAdaptiveColor(this, settingsManager, true);
+        int secondaryColor = (adaptiveColor & 0x00FFFFFF) | 0x80000000;
+
+        TextView title = new TextView(this);
+        title.setText(R.string.title_pick_widget);
+        title.setTextSize(32);
+        title.setTypeface(Typeface.create("sans-serif-light", Typeface.NORMAL));
+        title.setTextColor(adaptiveColor);
+        title.setPadding(0, 0, 0, dpToPx(32));
+        container.addView(title);
+
+        ScrollView scrollView = new ScrollView(this);
+        scrollView.setVerticalScrollBarEnabled(false);
+        LinearLayout itemsContainer = new LinearLayout(this);
+        itemsContainer.setOrientation(LinearLayout.VERTICAL);
+        scrollView.addView(itemsContainer);
+        container.addView(scrollView);
 
         for (String pkg : packages) {
             TextView header = new TextView(this);
             header.setText(getAppName(pkg));
-            header.setTextSize(18);
+            header.setTextSize(12);
             header.setTypeface(null, Typeface.BOLD);
-            header.setTextColor(getColor(R.color.foreground));
-            header.setPadding(0, dpToPx(16), 0, dpToPx(8));
-            root.addView(header);
+            header.setTextColor(secondaryColor);
+            header.setAllCaps(true);
+            header.setPadding(0, dpToPx(24), 0, dpToPx(12));
+            itemsContainer.addView(header);
 
             for (AppWidgetProviderInfo info : grouped.get(pkg)) {
-                LinearLayout item = new LinearLayout(this);
-                item.setOrientation(LinearLayout.HORIZONTAL);
-                item.setGravity(Gravity.CENTER_VERTICAL);
-                item.setPadding(dpToPx(8), dpToPx(8), dpToPx(8), dpToPx(8));
-                item.setClickable(true);
-                item.setBackgroundResource(android.R.drawable.list_selector_background);
+                LinearLayout card = new LinearLayout(this);
+                card.setOrientation(LinearLayout.HORIZONTAL);
+                card.setGravity(Gravity.CENTER_VERTICAL);
+                card.setPadding(dpToPx(16), dpToPx(16), dpToPx(16), dpToPx(16));
+                card.setClickable(true);
+                card.setFocusable(true);
 
+                GradientDrawable cardBg = new GradientDrawable();
+                boolean isNight = (getResources().getConfiguration().uiMode & android.content.res.Configuration.UI_MODE_NIGHT_MASK)
+                        == android.content.res.Configuration.UI_MODE_NIGHT_YES;
+                int cardColor = settingsManager.isLiquidGlass() ? 0x1AFFFFFF : (isNight ? 0x1AFFFFFF : 0x0D000000);
+                cardBg.setColor(cardColor);
+                cardBg.setCornerRadius(dpToPx(16));
+                card.setBackground(cardBg);
+
+                LinearLayout.LayoutParams cardLp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+                cardLp.bottomMargin = dpToPx(12);
+                itemsContainer.addView(card, cardLp);
 
                 ImageView preview = new ImageView(this);
                 float sX = info.minWidth / (float) (getResources().getDisplayMetrics().widthPixels / HomeView.GRID_COLUMNS);
@@ -1217,45 +1243,35 @@ public class MainActivity extends Activity {
                 widgetPreviewExecutor.execute(() -> {
                     try {
                         Drawable previewDrawable = info.loadPreviewImage(MainActivity.this, 0);
-                        if (previewDrawable == null) {
-                            previewDrawable = info.loadIcon(MainActivity.this, 0);
-                        }
+                        if (previewDrawable == null) previewDrawable = info.loadIcon(MainActivity.this, 0);
                         final Drawable finalDrawable = previewDrawable;
-                        runOnUiThread(() -> {
-                            if (finalDrawable != null) preview.setImageDrawable(finalDrawable);
-                        });
-                    } catch (Exception e) {
-                        e.printStackTrace();
-                    }
+                        runOnUiThread(() -> { if (finalDrawable != null) preview.setImageDrawable(finalDrawable); });
+                    } catch (Exception e) { e.printStackTrace(); }
                 });
 
-                android.graphics.drawable.GradientDrawable shape = new android.graphics.drawable.GradientDrawable();
-                shape.setColor(getColor(R.color.search_background));
-                shape.setCornerRadius(dpToPx(4));
-                shape.setStroke(dpToPx(1), getColor(R.color.foreground_dim));
-                preview.setBackground(shape);
-
-                LinearLayout.LayoutParams previewParams = new LinearLayout.LayoutParams(dpToPx(60), dpToPx(60));
-                previewParams.rightMargin = dpToPx(12);
-                item.addView(preview, previewParams);
+                LinearLayout.LayoutParams previewParams = new LinearLayout.LayoutParams(dpToPx(64), dpToPx(64));
+                previewParams.rightMargin = dpToPx(16);
+                card.addView(preview, previewParams);
 
                 LinearLayout textLayout = new LinearLayout(this);
                 textLayout.setOrientation(LinearLayout.VERTICAL);
 
                 TextView label = new TextView(this);
                 label.setText(info.label);
-                label.setTextColor(getColor(R.color.foreground));
+                label.setTextColor(adaptiveColor);
+                label.setTextSize(16);
+                label.setTypeface(null, Typeface.BOLD);
                 textLayout.addView(label);
 
                 TextView size = new TextView(this);
                 size.setText(getString(R.string.widget_size_format, (int) Math.ceil(spanX), (int) Math.ceil(spanY)));
                 size.setTextSize(12);
-                size.setTextColor(getColor(R.color.foreground_dim));
+                size.setTextColor(secondaryColor);
                 textLayout.addView(size);
 
-                item.addView(textLayout);
+                card.addView(textLayout);
 
-                item.setOnClickListener(v -> {
+                card.setOnClickListener(v -> {
                     dialog.dismiss();
                     int appWidgetId = appWidgetHost.allocateAppWidgetId();
                     boolean allowed = appWidgetManager.bindAppWidgetIdIfAllowed(appWidgetId, info.provider);
@@ -1271,16 +1287,21 @@ public class MainActivity extends Activity {
                         startActivityForResult(intent, REQUEST_PICK_APPWIDGET);
                     }
                 });
-
-                root.addView(item);
             }
         }
 
+        ImageView closeBtn = new ImageView(this);
+        closeBtn.setImageResource(android.R.drawable.ic_menu_close_clear_cancel);
+        closeBtn.setColorFilter(adaptiveColor);
+        closeBtn.setAlpha(0.6f);
+        FrameLayout.LayoutParams closeLp = new FrameLayout.LayoutParams(dpToPx(48), dpToPx(48), Gravity.TOP | Gravity.RIGHT);
+        closeLp.topMargin = dpToPx(16);
+        closeLp.rightMargin = dpToPx(16);
+        closeBtn.setOnClickListener(v -> dialog.dismiss());
+        root.addView(closeBtn, closeLp);
+
+        dialog.setContentView(root);
         dialog.show();
-        if (dialog.getWindow() != null) {
-            dialog.getWindow().setBackgroundDrawable(ThemeUtils.getGlassDrawable(this, settingsManager));
-            ThemeUtils.applyWindowBlur(dialog.getWindow(), settingsManager.isLiquidGlass());
-        }
     }
 
     private String getAppName(String packageName) {
@@ -1478,6 +1499,11 @@ public class MainActivity extends Activity {
 
         @Override
         public boolean onInterceptTouchEvent(MotionEvent ev) {
+            if ((ev.getAction() & MotionEvent.ACTION_MASK) == MotionEvent.ACTION_DOWN) {
+                startX = ev.getX();
+                startY = ev.getY();
+                downTime = System.currentTimeMillis();
+            }
             if (currentTransformOverlay != null) return false;
             if (isDrawerOpen) {
                 switch (ev.getAction()) {
