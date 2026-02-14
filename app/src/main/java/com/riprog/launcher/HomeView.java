@@ -139,6 +139,7 @@ public class HomeView extends FrameLayout {
         addPage();
 
         addDrawerHint();
+        post(this::cleanupEmptyPages);
     }
 
     private void addDrawerHint() {
@@ -261,18 +262,6 @@ public class HomeView extends FrameLayout {
             draggingView.setY(draggingView.getY() + dy);
             lastX = x;
             lastY = y;
-
-            HomeItem item = (HomeItem) draggingView.getTag();
-            if (item != null) {
-                float[] coords = getRelativeCoords(draggingView);
-                int cellWidth = getWidth() / GRID_COLUMNS;
-                int cellHeight = getHeight() / GRID_ROWS;
-                if (cellWidth > 0 && cellHeight > 0) {
-                    item.col = coords[0] / (float) cellWidth;
-                    item.row = coords[1] / (float) cellHeight;
-                    shiftCollidingItems(item);
-                }
-            }
 
             checkEdgeScroll(x);
         }
@@ -470,6 +459,7 @@ public class HomeView extends FrameLayout {
         }
 
         addItemView(item, v);
+        shiftCollidingItems(item);
 
         if (getContext() instanceof MainActivity) {
             ((MainActivity) getContext()).saveHomeState();
@@ -535,34 +525,49 @@ public class HomeView extends FrameLayout {
                 // Shift 'other' away.
                 float targetRow = other.row;
                 float targetCol = other.col;
+                boolean movedToNextPage = false;
 
                 if (movedItem.row + movedItem.spanY <= GRID_ROWS - other.spanY) {
                     targetRow = movedItem.row + movedItem.spanY;
                 } else if (movedItem.col + movedItem.spanX <= GRID_COLUMNS - other.spanX) {
                     targetCol = movedItem.col + movedItem.spanX;
                 } else {
-                    targetRow = Math.min(GRID_ROWS - other.spanY, other.row + 1);
+                    // Move to next page
+                    other.page++;
+                    other.row = 0;
+                    other.col = 0;
+                    movedToNextPage = true;
                 }
 
-                if (!isFreeform) {
-                    // For grid mode, ensure items stay on integer coordinates
-                    other.row = (float) Math.ceil(targetRow);
-                    other.col = (float) Math.ceil(targetCol);
-                    // Ensure they actually move if still overlapping due to rounding/clamping
-                    if (isOverlapping(movedItem, other)) {
-                        if (other.row < GRID_ROWS - other.spanY) other.row++;
-                        else if (other.col < GRID_COLUMNS - other.spanX) other.col++;
+                if (!movedToNextPage) {
+                    if (!isFreeform) {
+                        other.row = (float) Math.ceil(targetRow);
+                        other.col = (float) Math.ceil(targetCol);
+                        if (isOverlapping(movedItem, other)) {
+                            if (other.row < GRID_ROWS - other.spanY) other.row++;
+                            else if (other.col < GRID_COLUMNS - other.spanX) other.col++;
+                            else {
+                                // Still no room, move to next page
+                                other.page++;
+                                other.row = 0;
+                                other.col = 0;
+                                movedToNextPage = true;
+                            }
+                        }
+                    } else {
+                        other.row = targetRow;
+                        other.col = targetCol;
                     }
-                } else {
-                    other.row = targetRow;
-                    other.col = targetCol;
                 }
 
                 View otherView = findViewForItem(other);
                 if (otherView != null) {
-                    updateViewPosition(other, otherView);
+                    if (movedToNextPage) {
+                        addItemView(other, otherView);
+                    } else {
+                        updateViewPosition(other, otherView);
+                    }
                 }
-                // Recurse to handle chain reactions
                 shiftCollidingItems(other);
             }
         }

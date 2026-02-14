@@ -465,29 +465,8 @@ public class TransformOverlay extends FrameLayout {
                 newScaleY = Math.round(newScaleY * 100f) / 100.0f;
             }
 
-            if (targetView instanceof android.appwidget.AppWidgetHostView || item.type == HomeItem.Type.FOLDER) {
-                ViewGroup.LayoutParams lp = targetView.getLayoutParams();
-                int oldW = lp.width;
-                int oldH = lp.height;
-                lp.width = (int) (newScaleX * (gestureInitialWidth / gestureInitialScaleX));
-                lp.height = (int) (newScaleY * (gestureInitialHeight / gestureInitialScaleY));
-                targetView.setLayoutParams(lp);
-
-                targetView.setX(targetView.getX() + (oldW - lp.width) / 2f);
-                targetView.setY(targetView.getY() + (oldH - lp.height) / 2f);
-
-                targetView.setScaleX(1.0f);
-                targetView.setScaleY(1.0f);
-
-                if (targetView instanceof android.appwidget.AppWidgetHostView) {
-                    int dw = (int) (lp.width / getResources().getDisplayMetrics().density);
-                    int dh = (int) (lp.height / getResources().getDisplayMetrics().density);
-                    ((android.appwidget.AppWidgetHostView) targetView).updateAppWidgetSize(null, dw, dh, dw, dh);
-                }
-            } else {
-                targetView.setScaleX(newScaleX);
-                targetView.setScaleY(newScaleY);
-            }
+            targetView.setScaleX(newScaleX);
+            targetView.setScaleY(newScaleY);
         }
     }
 
