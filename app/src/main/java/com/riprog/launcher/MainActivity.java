@@ -929,23 +929,37 @@ public class MainActivity extends Activity {
     private void updateHomeItemFromTransform() {
         if (transformingView == null || transformingViewOriginalParent == null) return;
         HomeItem item = (HomeItem) transformingView.getTag();
-        item.rotation = transformingView.getRotation();
+        boolean isFreeform = settingsManager.isFreeformHome();
 
         int cellWidth = transformingViewOriginalParent.getWidth() / HomeView.GRID_COLUMNS;
         int cellHeight = transformingViewOriginalParent.getHeight() / HomeView.GRID_ROWS;
 
-        if (item.type == HomeItem.Type.WIDGET) {
-            if (cellWidth > 0) item.spanX = transformingView.getWidth() / (float) cellWidth;
-            if (cellHeight > 0) item.spanY = transformingView.getHeight() / (float) cellHeight;
+        if (isFreeform) {
+            item.rotation = transformingView.getRotation();
+            if (item.type == HomeItem.Type.WIDGET) {
+                if (cellWidth > 0) item.spanX = transformingView.getWidth() / (float) cellWidth;
+                if (cellHeight > 0) item.spanY = transformingView.getHeight() / (float) cellHeight;
+                item.scaleX = 1.0f;
+                item.scaleY = 1.0f;
+            } else {
+                item.scaleX = transformingView.getScaleX();
+                item.scaleY = transformingView.getScaleY();
+            }
+            item.tiltX = transformingView.getRotationX();
+            item.tiltY = transformingView.getRotationY();
+        } else {
+            item.rotation = 0;
             item.scaleX = 1.0f;
             item.scaleY = 1.0f;
-        } else {
-            item.scaleX = transformingView.getScaleX();
-            item.scaleY = transformingView.getScaleY();
+            item.tiltX = 0;
+            item.tiltY = 0;
+            if (item.type == HomeItem.Type.WIDGET && cellWidth > 0 && cellHeight > 0) {
+                item.spanX = Math.round(transformingView.getWidth() / (float) cellWidth);
+                item.spanY = Math.round(transformingView.getHeight() / (float) cellHeight);
+                if (item.spanX < 1) item.spanX = 1;
+                if (item.spanY < 1) item.spanY = 1;
+            }
         }
-
-        item.tiltX = transformingView.getRotationX();
-        item.tiltY = transformingView.getRotationY();
 
         int[] pagePos = new int[2];
         transformingViewOriginalParent.getLocationOnScreen(pagePos);
@@ -955,8 +969,14 @@ public class MainActivity extends Activity {
         float xInParent = transformingView.getX() - (pagePos[0] - rootPos[0]);
         float yInParent = transformingView.getY() - (pagePos[1] - rootPos[1]);
 
-        if (cellWidth > 0) item.col = xInParent / (float) cellWidth;
-        if (cellHeight > 0) item.row = yInParent / (float) cellHeight;
+        if (cellWidth > 0) {
+            float col = xInParent / (float) cellWidth;
+            item.col = isFreeform ? col : Math.round(col);
+        }
+        if (cellHeight > 0) {
+            float row = yInParent / (float) cellHeight;
+            item.row = isFreeform ? row : Math.round(row);
+        }
     }
 
     private void showTransformOverlay(View targetView) {
@@ -1383,13 +1403,13 @@ public class MainActivity extends Activity {
                 if (touchedView != null) {
                     Object tag = touchedView.getTag();
                     if (tag instanceof HomeItem) {
-                        if (settingsManager.isFreeformHome()) {
+                        HomeItem item = (HomeItem) tag;
+                        if (settingsManager.isFreeformHome() || item.type == HomeItem.Type.WIDGET) {
                             showTransformOverlay(touchedView);
                             return;
                         }
                         isDragging = true;
                         isExternalDrag = false;
-                        HomeItem item = (HomeItem) tag;
                         origCol = item.col;
                         origRow = item.row;
                         origPage = item.page;
