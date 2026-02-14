@@ -27,7 +27,7 @@ public class TransformOverlay extends FrameLayout {
     private int activeHandle = -1;
 
     private static final float MOVE_THRESHOLD_DP = 8f;
-    private static final float SMOOTHING_FACTOR = 0.2f;
+    private static final float SMOOTHING_FACTOR = 1.0f;
 
     private static final int HANDLE_TOP_LEFT = 0;
     private static final int HANDLE_TOP = 1;
@@ -57,7 +57,7 @@ public class TransformOverlay extends FrameLayout {
         this.item = (HomeItem) targetView.getTag();
         this.onSaveListener = listener;
         this.handleSize = dpToPx(12);
-        this.rotationHandleDist = dpToPx(30);
+        this.rotationHandleDist = dpToPx(50);
 
         this.initialRotation = targetView.getRotation();
         this.initialScaleX = targetView.getScaleX();
@@ -186,25 +186,18 @@ public class TransformOverlay extends FrameLayout {
         super.onDraw(canvas);
         if (targetView == null) return;
 
-        int[] pos = new int[2];
-        targetView.getLocationOnScreen(pos);
-        int[] myPos = new int[2];
-        getLocationOnScreen(myPos);
-
-        float w = targetView.getWidth();
-        float h = targetView.getHeight();
         float sx = targetView.getScaleX();
         float sy = targetView.getScaleY();
         float r = targetView.getRotation();
 
-        float cx = pos[0] - myPos[0] + (w * sx / 2f);
-        float cy = pos[1] - myPos[1] + (h * sy / 2f);
+        float cx = targetView.getX() + targetView.getPivotX();
+        float cy = targetView.getY() + targetView.getPivotY();
 
         RectF bounds = getContentBounds();
-        float left = (bounds.left - w / 2f) * sx;
-        float top = (bounds.top - h / 2f) * sy;
-        float right = (bounds.right - w / 2f) * sx;
-        float bottom = (bounds.bottom - h / 2f) * sy;
+        float left = (bounds.left - targetView.getPivotX()) * sx;
+        float top = (bounds.top - targetView.getPivotY()) * sy;
+        float right = (bounds.right - targetView.getPivotX()) * sx;
+        float bottom = (bounds.bottom - targetView.getPivotY()) * sy;
 
         canvas.save();
         canvas.translate(cx, cy);
@@ -299,18 +292,11 @@ public class TransformOverlay extends FrameLayout {
     }
 
     private int findHandle(float tx, float ty) {
-        int[] pos = new int[2];
-        targetView.getLocationOnScreen(pos);
-        int[] myPos = new int[2];
-        getLocationOnScreen(myPos);
-
-        float w = targetView.getWidth();
-        float h = targetView.getHeight();
         float sx = targetView.getScaleX();
         float sy = targetView.getScaleY();
 
-        float cx = pos[0] - myPos[0] + (w * sx / 2f);
-        float cy = pos[1] - myPos[1] + (h * sy / 2f);
+        float cx = targetView.getX() + targetView.getPivotX();
+        float cy = targetView.getY() + targetView.getPivotY();
 
         double angle = Math.toRadians(-targetView.getRotation());
         float rx = (float) (Math.cos(angle) * (tx - cx) - Math.sin(angle) * (ty - cy));
@@ -318,10 +304,10 @@ public class TransformOverlay extends FrameLayout {
 
         RectF bounds = getContentBounds();
 
-        float left = (bounds.left - w / 2f) * sx;
-        float top = (bounds.top - h / 2f) * sy;
-        float right = (bounds.right - w / 2f) * sx;
-        float bottom = (bounds.bottom - h / 2f) * sy;
+        float left = (bounds.left - targetView.getPivotX()) * sx;
+        float top = (bounds.top - targetView.getPivotY()) * sy;
+        float right = (bounds.right - targetView.getPivotX()) * sx;
+        float bottom = (bounds.bottom - targetView.getPivotY()) * sy;
 
         float hs = dpToPx(24); // High precision touch area
 
@@ -347,16 +333,10 @@ public class TransformOverlay extends FrameLayout {
     }
 
     private void handleInteraction(float tx, float ty) {
-        int[] pos = new int[2];
-        targetView.getLocationOnScreen(pos);
-        int[] myPos = new int[2];
-        getLocationOnScreen(myPos);
-        float w = targetView.getWidth();
-        float h = targetView.getHeight();
         float sx = targetView.getScaleX();
         float sy = targetView.getScaleY();
-        float cx = pos[0] - myPos[0] + (w * sx / 2f);
-        float cy = pos[1] - myPos[1] + (h * sy / 2f);
+        float cx = targetView.getX() + targetView.getPivotX();
+        float cy = targetView.getY() + targetView.getPivotY();
 
         if (activeHandle == ACTION_MOVE) {
             targetView.setX(targetView.getX() + (tx - lastTouchX));

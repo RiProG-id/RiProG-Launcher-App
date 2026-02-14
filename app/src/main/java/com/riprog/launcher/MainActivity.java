@@ -924,15 +924,22 @@ public class MainActivity extends Activity {
         transformingViewOriginalParent = (ViewGroup) targetView.getParent();
         transformingViewOriginalIndex = transformingViewOriginalParent.indexOfChild(targetView);
 
-        int[] pos = new int[2];
-        targetView.getLocationOnScreen(pos);
-        int[] layoutPos = new int[2];
-        mainLayout.getLocationOnScreen(layoutPos);
+        float x = targetView.getX();
+        float y = targetView.getY();
+        android.view.ViewParent p = targetView.getParent();
+        while (p != null && p != mainLayout) {
+            if (p instanceof View) {
+                View pv = (View) p;
+                x += pv.getX();
+                y += pv.getY();
+            }
+            p = p.getParent();
+        }
 
         transformingViewOriginalParent.removeView(targetView);
         mainLayout.addView(targetView);
-        targetView.setX(pos[0] - layoutPos[0]);
-        targetView.setY(pos[1] - layoutPos[1]);
+        targetView.setX(x);
+        targetView.setY(y);
 
         currentTransformOverlay = new TransformOverlay(this, targetView, settingsManager, new TransformOverlay.OnSaveListener() {
             @Override public void onSave() {
