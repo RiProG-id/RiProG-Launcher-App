@@ -91,11 +91,12 @@ public class MainActivity extends Activity {
         drawerView.setColumns(settingsManager.getColumns());
         drawerView.setOnAppLongClickListener(app -> {
             mainLayout.closeDrawer();
-            HomeItem item = HomeItem.createApp(app.packageName, app.className, 0, 0, homeView.getCurrentPage());
+            int currentPage = homeView.getCurrentPage();
+            HomeItem item = HomeItem.createApp(app.packageName, app.className, 0, 0, currentPage);
             homeItems.add(item);
             View view = createAppView(item, false);
             homeView.addItemView(item, view);
-            saveHomeState();
+            savePage(currentPage);
             mainLayout.startExternalDrag(view);
         });
 
@@ -211,6 +212,12 @@ public class MainActivity extends Activity {
         if (isStateRestored) {
             int pageCount = homeView != null ? homeView.getPageCount() : 1;
             settingsManager.saveHomeItems(homeItems, pageCount);
+        }
+    }
+
+    public void savePage(int index) {
+        if (isStateRestored && index >= 0) {
+            settingsManager.savePageItems(index, homeItems);
         }
     }
 

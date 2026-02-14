@@ -50,6 +50,7 @@ public class HomeView extends FrameLayout {
 
     private View draggingView = null;
     private float lastX, lastY;
+    private int initialPage = -1;
 
     private static final long PAGE_SWITCH_COOLDOWN = 1000L;
     private static final long HOLD_DELAY = 1000L;
@@ -234,6 +235,8 @@ public class HomeView extends FrameLayout {
         lastX = x;
         lastY = y;
         initialDragX = x;
+        HomeItem item = (HomeItem) v.getTag();
+        if (item != null) initialPage = item.page;
 
         int[] vPos = new int[2];
         v.getLocationOnScreen(vPos);
@@ -344,6 +347,7 @@ public class HomeView extends FrameLayout {
 
     public void removePage(int index) {
         if (index < 0 || index >= pages.size() || pages.size() <= 1) return;
+        int oldPageCount = pages.size();
 
         // Remove items belonging to the deleted page from the master list
         if (homeItems != null) {
@@ -366,7 +370,9 @@ public class HomeView extends FrameLayout {
 
         cleanupEmptyPages();
         if (getContext() instanceof MainActivity) {
-            ((MainActivity) getContext()).saveHomeState();
+            MainActivity activity = (MainActivity) getContext();
+            settingsManager.removePageData(index, oldPageCount);
+            activity.saveHomeState();
             scrollToPage(currentPage);
         }
     }
@@ -437,6 +443,7 @@ public class HomeView extends FrameLayout {
         float xInHome = coords[0] - getPaddingLeft();
         float yInHome = coords[1] - getPaddingTop();
 
+        int oldPage = initialPage;
         item.page = currentPage;
 
         HomeItem target = findCollision(v);
@@ -475,7 +482,11 @@ public class HomeView extends FrameLayout {
         addItemView(item, v);
 
         if (getContext() instanceof MainActivity) {
-            ((MainActivity) getContext()).saveHomeState();
+            MainActivity activity = (MainActivity) getContext();
+            if (oldPage != -1 && oldPage != item.page) {
+                activity.savePage(oldPage);
+            }
+            activity.savePage(item.page);
         }
     }
 
