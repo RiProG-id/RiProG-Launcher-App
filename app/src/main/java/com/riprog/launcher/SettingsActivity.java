@@ -54,27 +54,36 @@ public class SettingsActivity extends Activity {
         }
 
         FrameLayout rootContainer = new FrameLayout(this);
-        rootContainer.setPadding(dpToPx(16), dpToPx(48), dpToPx(16), dpToPx(32));
+        rootContainer.setBackground(ThemeUtils.getGlassDrawable(this, settingsManager, 0));
 
         rootContainer.setOnApplyWindowInsetsListener((v, insets) -> {
             if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
                 android.graphics.Insets systemInsets = insets.getInsets(android.view.WindowInsets.Type.systemBars());
-                v.setPadding(dpToPx(16), systemInsets.top + dpToPx(16), dpToPx(16), systemInsets.bottom + dpToPx(16));
+                v.setPadding(0, systemInsets.top, 0, systemInsets.bottom);
             } else {
-                v.setPadding(dpToPx(16), insets.getSystemWindowInsetTop() + dpToPx(16), dpToPx(16), insets.getSystemWindowInsetBottom() + dpToPx(16));
+                v.setPadding(0, insets.getSystemWindowInsetTop(), 0, insets.getSystemWindowInsetBottom());
             }
             return insets;
         });
 
         ScrollView scrollView = new ScrollView(this);
-        scrollView.setBackground(ThemeUtils.getGlassDrawable(this, settingsManager));
         scrollView.setVerticalScrollBarEnabled(false);
         rootContainer.addView(scrollView);
 
         LinearLayout root = new LinearLayout(this);
         root.setOrientation(LinearLayout.VERTICAL);
-        root.setPadding(dpToPx(24), dpToPx(32), dpToPx(24), dpToPx(32));
+        root.setPadding(dpToPx(24), dpToPx(64), dpToPx(24), dpToPx(24));
         scrollView.addView(root);
+
+        ImageView closeBtn = new ImageView(this);
+        closeBtn.setImageResource(android.R.drawable.ic_menu_close_clear_cancel);
+        closeBtn.setColorFilter(ThemeUtils.getAdaptiveColor(this, settingsManager, true));
+        closeBtn.setAlpha(0.6f);
+        FrameLayout.LayoutParams closeLp = new FrameLayout.LayoutParams(dpToPx(48), dpToPx(48), Gravity.TOP | Gravity.RIGHT);
+        closeLp.topMargin = dpToPx(16);
+        closeLp.rightMargin = dpToPx(16);
+        closeBtn.setOnClickListener(v -> finish());
+        rootContainer.addView(closeBtn, closeLp);
 
         LinearLayout titleLayout = new LinearLayout(this);
         titleLayout.setOrientation(LinearLayout.HORIZONTAL);
