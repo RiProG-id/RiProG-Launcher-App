@@ -58,7 +58,7 @@ public class HomeView extends FrameLayout {
     private static final int MIN_DRAG_DISTANCE_DP = 50;
 
     private long lastPageSwitchTime = 0;
-    public float initialDragX = 0;
+    private float initialDragX = 0;
     private long edgeStartTime = 0;
 
     private final Handler mainHandler = new Handler();
@@ -283,6 +283,11 @@ public class HomeView extends FrameLayout {
 
             checkEdgeScrollLoopStart(x);
         }
+    }
+
+    public void setInitialDragState(float x, int page) {
+        this.initialDragX = x;
+        this.initialPage = page;
     }
 
     public void checkEdgeScrollLoopStart(float x) {

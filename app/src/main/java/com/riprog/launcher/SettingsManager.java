@@ -157,6 +157,10 @@ public class SettingsManager {
         }
     }
 
+    public void savePageCount(int count) {
+        prefs.edit().putInt("page_count", count).apply();
+    }
+
     public void savePageItems(int pageIndex, List<HomeItem> items) {
         if (items == null) return;
         JSONArray array = new JSONArray();
@@ -167,6 +171,11 @@ public class SettingsManager {
             }
         }
         writeToFile(getPageFile(pageIndex), array.toString());
+
+        int currentCount = getPageCount();
+        if (pageIndex >= currentCount) {
+            savePageCount(pageIndex + 1);
+        }
     }
 
     public List<HomeItem> getPageItems(int pageIndex) {
