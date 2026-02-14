@@ -329,6 +329,21 @@ public class TransformOverlay extends FrameLayout {
 
             case MotionEvent.ACTION_UP:
             case MotionEvent.ACTION_CANCEL:
+                if (activeHandle == ACTION_MOVE && onSaveListener != null) {
+                    float cx = targetView.getX() + targetView.getWidth() / 2f;
+                    float cy = targetView.getY() + targetView.getHeight() / 2f;
+                    View other = onSaveListener.findItemAt(cx, cy, targetView);
+                    if (other != null && item.type == HomeItem.Type.APP) {
+                        HomeItem otherItem = (HomeItem) other.getTag();
+                        if (otherItem != null && (otherItem.type == HomeItem.Type.APP || otherItem.type == HomeItem.Type.FOLDER)) {
+                            onSaveListener.onSave();
+                            activeHandle = -1;
+                            hasPassedThreshold = false;
+                            return true;
+                        }
+                    }
+                }
+
                 if (activeHandle != -1 && activeHandle != ACTION_MOVE && activeHandle != HANDLE_ROTATE && activeHandle != ACTION_OUTSIDE) {
                     if (targetView instanceof android.appwidget.AppWidgetHostView) {
                         ViewGroup.LayoutParams lp = targetView.getLayoutParams();
