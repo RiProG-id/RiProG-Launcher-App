@@ -320,9 +320,17 @@ public class MainActivity extends Activity {
         int cellHeight = homeView.getHeight() / HomeView.GRID_ROWS;
 
         FrameLayout previewContainer = new FrameLayout(this);
-        int sizeW = (int) (cellWidth * item.spanX);
-        int sizeH = (int) (cellHeight * item.spanY);
+        int sizeW, sizeH;
         float scale = settingsManager.getIconScale();
+
+        if (item.spanX <= 1.0f && item.spanY <= 1.0f) {
+            int baseSize = getResources().getDimensionPixelSize(R.dimen.grid_icon_size);
+            sizeW = (int) (baseSize * scale);
+            sizeH = sizeW;
+        } else {
+            sizeW = (int) (cellWidth * item.spanX);
+            sizeH = (int) (cellHeight * item.spanY);
+        }
 
         previewContainer.setLayoutParams(new LinearLayout.LayoutParams(sizeW, sizeH));
         previewContainer.setBackground(ThemeUtils.getGlassDrawable(this, settingsManager, 12));
@@ -363,10 +371,18 @@ public class MainActivity extends Activity {
         int cellWidth = homeView.getWidth() / HomeView.GRID_COLUMNS;
         int cellHeight = homeView.getHeight() / HomeView.GRID_ROWS;
 
-        int folderW = (int) (cellWidth * folder.spanX);
-        int folderH = (int) (cellHeight * folder.spanY);
+        int folderW, folderH;
+        float scale = settingsManager.getIconScale();
+        if (folder.spanX <= 1.0f && folder.spanY <= 1.0f) {
+            int baseSize = getResources().getDimensionPixelSize(R.dimen.grid_icon_size);
+            folderW = (int) (baseSize * scale);
+            folderH = folderW;
+        } else {
+            folderW = (int) (cellWidth * folder.spanX);
+            folderH = (int) (cellHeight * folder.spanY);
+        }
 
-        int padding = dpToPx(12);
+        int padding = dpToPx(folder.spanX <= 1.0f ? 4 : 12);
         int availableW = folderW - 2 * padding;
         int availableH = folderH - 2 * padding;
 
@@ -1045,7 +1061,6 @@ public class MainActivity extends Activity {
             @Override public void onSave() {
                 updateHomeItemFromTransform();
                 saveHomeState();
-                if (homeView != null) homeView.cleanupEmptyPages();
                 closeTransformOverlay();
             }
             @Override public void onCancel() {
@@ -1053,7 +1068,6 @@ public class MainActivity extends Activity {
             }
             @Override public void onRemove() {
                 removeHomeItem((HomeItem) targetView.getTag(), targetView);
-                if (homeView != null) homeView.cleanupEmptyPages();
                 closeTransformOverlay();
             }
             @Override public void onAppInfo() {
@@ -1115,7 +1129,10 @@ public class MainActivity extends Activity {
             transformingView = null;
             transformingViewOriginalParent = null;
 
-            if (homeView != null) homeView.refreshIcons(model, allApps);
+            if (homeView != null) {
+                homeView.cleanupEmptyPages();
+                homeView.refreshIcons(model, allApps);
+            }
         }
     }
 

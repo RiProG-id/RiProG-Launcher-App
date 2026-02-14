@@ -199,10 +199,9 @@ public class HomeView extends FrameLayout {
         }
 
         LayoutParams lp;
-        if (item.type == HomeItem.Type.WIDGET || item.type == HomeItem.Type.FOLDER) {
+        if (item.type == HomeItem.Type.WIDGET || (item.type == HomeItem.Type.FOLDER && (item.spanX > 1.0f || item.spanY > 1.0f))) {
             lp = new LayoutParams((int) (cellWidth * item.spanX), (int) (cellHeight * item.spanY));
         } else {
-
             int size = getResources().getDimensionPixelSize(R.dimen.grid_icon_size);
             lp = new LayoutParams(size * 2, size * 2);
         }
