@@ -46,14 +46,20 @@ public class HomeView extends FrameLayout {
 
     // Reusable objects for performance
     private final Matrix tempMatrix = new Matrix();
-    private final Path tempPath = new Path();
     private final RectF tempRectF = new RectF();
-    private final Region tempRegion1 = new Region();
-    private final Region tempRegion2 = new Region();
-    private final Region tempIntersect = new Region();
 
     private View draggingView = null;
     private float lastX, lastY;
+
+    private static final long PAGE_SWITCH_COOLDOWN = 1000L;
+    private static final long HOLD_DELAY = 1000L;
+    private static final float EDGE_THRESHOLD = 0.10f;
+    private static final int MIN_DRAG_DISTANCE_DP = 50;
+
+    private long lastPageSwitchTime = 0;
+    public float initialDragX = 0;
+    private long edgeStartTime = 0;
+
     private final Handler mainHandler = new Handler();
     private final Handler edgeScrollHandler = new Handler();
     private boolean isEdgeScrolling = false;
@@ -72,10 +78,17 @@ public class HomeView extends FrameLayout {
 
     public void checkEdgeScrollLoop(float x) {
         lastX = x;
-        if (x < getWidth() * 0.05f) {
+        long currentTime = System.currentTimeMillis();
+        if (currentTime - lastPageSwitchTime < PAGE_SWITCH_COOLDOWN) return;
+
+        if (Math.abs(x - initialDragX) < dpToPx(MIN_DRAG_DISTANCE_DP)) return;
+
+        if (x < getWidth() * EDGE_THRESHOLD) {
             scrollToPage(currentPage - 1);
-        } else if (x > getWidth() * 0.95f) {
+            lastPageSwitchTime = currentTime;
+        } else if (x > getWidth() * (1f - EDGE_THRESHOLD)) {
             scrollToPage(currentPage + 1);
+            lastPageSwitchTime = currentTime;
         }
     }
 
@@ -220,6 +233,7 @@ public class HomeView extends FrameLayout {
         draggingView = v;
         lastX = x;
         lastY = y;
+        initialDragX = x;
 
         int[] vPos = new int[2];
         v.getLocationOnScreen(vPos);
@@ -264,68 +278,17 @@ public class HomeView extends FrameLayout {
             lastX = x;
             lastY = y;
 
-            performRepulsion(draggingView);
             checkEdgeScrollLoopStart(x);
-        }
-    }
-
-    public void performRepulsion(View dragged) {
-        if (pages.isEmpty() || currentPage >= pages.size()) return;
-        FrameLayout currentPageLayout = pages.get(currentPage);
-
-        getVisualRegion(dragged, tempRegion1);
-        RectF r1 = getVisualRect(dragged);
-
-        for (int i = 0; i < currentPageLayout.getChildCount(); i++) {
-            View other = currentPageLayout.getChildAt(i);
-            if (other == dragged || other == null) continue;
-
-            getVisualRegion(other, tempRegion2);
-            tempIntersect.set(tempRegion1);
-            if (tempIntersect.op(tempRegion2, Region.Op.INTERSECT)) {
-                Rect intersectionBounds = tempIntersect.getBounds();
-                float overlapArea = intersectionBounds.width() * intersectionBounds.height();
-
-                RectF r2 = getVisualRect(other);
-                float otherArea = r2.width() * r2.height();
-                float ratio = otherArea > 0 ? overlapArea / otherArea : 0;
-                if (ratio > 0.5f) ratio = 0.5f;
-
-                float dx = r2.centerX() - r1.centerX();
-                float dy = r2.centerY() - r1.centerY();
-                float dist = (float) Math.sqrt(dx * dx + dy * dy);
-                if (dist == 0) dist = 1;
-
-                // Proportional push
-                float pushFactor = dpToPx(16) * ratio;
-                other.setTranslationX((dx / dist) * pushFactor);
-                other.setTranslationY((dy / dist) * pushFactor);
-            } else if (other.getTranslationX() != 0 || other.getTranslationY() != 0) {
-                other.setTranslationX(other.getTranslationX() * 0.8f);
-                other.setTranslationY(other.getTranslationY() * 0.8f);
-                if (Math.abs(other.getTranslationX()) < 0.1f) other.setTranslationX(0);
-                if (Math.abs(other.getTranslationY()) < 0.1f) other.setTranslationY(0);
-            }
-        }
-    }
-
-    public void clearRepulsion() {
-        for (FrameLayout page : pages) {
-            for (int i = 0; i < page.getChildCount(); i++) {
-                View v = page.getChildAt(i);
-                if (v != null) {
-                    v.animate().translationX(0).translationY(0).setDuration(200).start();
-                }
-            }
         }
     }
 
     public void checkEdgeScrollLoopStart(float x) {
         lastX = x;
-        if (x < getWidth() * 0.05f || x > getWidth() * 0.95f) {
+        if (x < getWidth() * EDGE_THRESHOLD || x > getWidth() * (1f - EDGE_THRESHOLD)) {
             if (!isEdgeScrolling) {
                 isEdgeScrolling = true;
-                edgeScrollHandler.postDelayed(edgeScrollRunnable, 800);
+                edgeStartTime = System.currentTimeMillis();
+                edgeScrollHandler.postDelayed(edgeScrollRunnable, HOLD_DELAY);
             }
         } else {
             isEdgeScrolling = false;
@@ -343,7 +306,6 @@ public class HomeView extends FrameLayout {
             draggingView = null;
             isEdgeScrolling = false;
             edgeScrollHandler.removeCallbacks(edgeScrollRunnable);
-            clearRepulsion();
             cleanupEmptyPages();
             if (model != null && allApps != null) {
                 refreshIcons(model, allApps);
@@ -362,7 +324,6 @@ public class HomeView extends FrameLayout {
         draggingView = null;
         isEdgeScrolling = false;
         edgeScrollHandler.removeCallbacks(edgeScrollRunnable);
-        clearRepulsion();
     }
 
     public void cleanupEmptyPages() {
@@ -431,28 +392,6 @@ public class HomeView extends FrameLayout {
     }
 
 
-    private HomeItem findCollision(View draggedView) {
-        HomeItem draggedItem = (HomeItem) draggedView.getTag();
-        if (draggedItem == null) return null;
-
-        FrameLayout currentPageLayout = pages.get(currentPage);
-        float centerX = draggedView.getX() + draggedView.getWidth() / 2f;
-        float centerY = draggedView.getY() + draggedView.getHeight() / 2f;
-
-        for (int i = 0; i < currentPageLayout.getChildCount(); i++) {
-            View child = currentPageLayout.getChildAt(i);
-            if (child == draggedView) continue;
-
-            HomeItem targetItem = (HomeItem) child.getTag();
-            if (targetItem == null) continue;
-
-            if (centerX >= child.getX() && centerX <= child.getX() + child.getWidth() &&
-                    centerY >= child.getY() && centerY <= child.getY() + child.getHeight()) {
-                return targetItem;
-            }
-        }
-        return null;
-    }
 
     private float[] getRelativeCoords(View v) {
         int[] homePos = new int[2];
@@ -477,21 +416,6 @@ public class HomeView extends FrameLayout {
 
         item.page = currentPage;
 
-        HomeItem target = findCollision(v);
-        if (target != null && item.type == HomeItem.Type.APP) {
-            if (target.type == HomeItem.Type.APP || target.type == HomeItem.Type.FOLDER) {
-                if (getContext() instanceof MainActivity) {
-                    // Remove view from root layout before merging
-                    if (v.getParent() instanceof ViewGroup) {
-                        ((ViewGroup) v.getParent()).removeView(v);
-                    }
-                    if (target.type == HomeItem.Type.APP) ((MainActivity) getContext()).mergeToFolder(target, item);
-                    else ((MainActivity) getContext()).addToFolder(target, item);
-                    return;
-                }
-            }
-        }
-
         if (settingsManager.isFreeformHome()) {
             item.col = xInHome / (float) cellWidth;
             item.row = yInHome / (float) cellHeight;
@@ -511,7 +435,6 @@ public class HomeView extends FrameLayout {
         }
 
         addItemView(item, v);
-        shiftCollidingItems(item);
 
         if (getContext() instanceof MainActivity) {
             ((MainActivity) getContext()).saveHomeState();
@@ -618,63 +541,6 @@ public class HomeView extends FrameLayout {
         refreshIconsDebounced();
     }
 
-    public void shiftCollidingItems(HomeItem movedItem) {
-        shiftCollidingItemsRecursive(movedItem, 0);
-    }
-
-    private void shiftCollidingItemsRecursive(HomeItem movedItem, int depth) {
-        if (homeItems == null || depth > 10) return;
-        if (settingsManager.isFreeformHome()) return; // Disable auto-shifting in freeform mode
-
-        for (HomeItem other : homeItems) {
-            if (other == movedItem || other.page != movedItem.page) continue;
-
-            if (isOverlapping(movedItem, other)) {
-                // Shift 'other' away.
-                float targetRow = other.row;
-                float targetCol = other.col;
-                boolean movedToNextPage = false;
-
-                if (movedItem.row + movedItem.spanY <= GRID_ROWS - other.spanY) {
-                    targetRow = movedItem.row + movedItem.spanY;
-                } else if (movedItem.col + movedItem.spanX <= GRID_COLUMNS - other.spanX) {
-                    targetCol = movedItem.col + movedItem.spanX;
-                } else {
-                    // Move to next page
-                    other.page++;
-                    other.row = 0;
-                    other.col = 0;
-                    movedToNextPage = true;
-                }
-
-                if (!movedToNextPage) {
-                    other.row = (float) Math.ceil(targetRow);
-                    other.col = (float) Math.ceil(targetCol);
-                    if (isOverlapping(movedItem, other)) {
-                        if (other.row < GRID_ROWS - other.spanY) other.row++;
-                        else if (other.col < GRID_COLUMNS - other.spanX) other.col++;
-                        else {
-                            // Still no room, move to next page
-                            other.page++;
-                            other.row = 0;
-                            other.col = 0;
-                            movedToNextPage = true;
-                        }
-                    }
-                }
-
-                View otherView = findViewForItem(other);
-                if (otherView != null) {
-                    if (movedToNextPage) {
-                        addItemView(other, otherView);
-                    } else {
-                        updateViewPosition(other, otherView);
-                    }
-                }
-                shiftCollidingItemsRecursive(other, depth + 1);
-            }
-        }
-    }
 
     public RectF getVisualRect(View v) {
         if (v == null) return new RectF();
@@ -685,43 +551,6 @@ public class HomeView extends FrameLayout {
         return rect;
     }
 
-    private Region getVisualRegion(View v, Region outRegion) {
-        if (v == null) {
-            outRegion.setEmpty();
-            return outRegion;
-        }
-        tempPath.reset();
-        tempRectF.set(0, 0, v.getWidth(), v.getHeight());
-        tempPath.addRect(tempRectF, Path.Direction.CW);
-        tempMatrix.set(v.getMatrix());
-        tempMatrix.postTranslate(v.getLeft(), v.getTop());
-        tempPath.transform(tempMatrix);
-
-        tempRectF.setEmpty();
-        tempPath.computeBounds(tempRectF, true);
-        outRegion.setPath(tempPath, new Region((int) tempRectF.left, (int) tempRectF.top, (int) tempRectF.right, (int) tempRectF.bottom));
-        return outRegion;
-    }
-
-    public boolean isVisuallyOverlapping(View v1, View v2) {
-        if (v1 == null || v2 == null) return false;
-        getVisualRegion(v1, tempRegion1);
-        getVisualRegion(v2, tempRegion2);
-        tempIntersect.set(tempRegion1);
-        return tempIntersect.op(tempRegion2, Region.Op.INTERSECT);
-    }
-
-    private boolean isOverlapping(HomeItem a, HomeItem b) {
-        View va = findViewForItem(a);
-        View vb = findViewForItem(b);
-        if (va != null && vb != null) {
-            return isVisuallyOverlapping(va, vb);
-        }
-        return a.col < b.col + b.spanX &&
-               a.col + a.spanX > b.col &&
-               a.row < b.row + b.spanY &&
-               a.row + a.spanY > b.row;
-    }
 
     public View findViewForItem(HomeItem item) {
         for (int p = 0; p < pages.size(); p++) {

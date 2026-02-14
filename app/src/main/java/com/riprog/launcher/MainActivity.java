@@ -1062,29 +1062,6 @@ public class MainActivity extends Activity {
             item.row = isFreeform ? row : Math.round(row);
         }
 
-        // Folder merging logic
-        float centerX = transformingView.getX() + transformingView.getWidth() / 2f;
-        float centerY = transformingView.getY() + transformingView.getHeight() / 2f;
-        View collisionView = findHomeItemAtRoot(centerX, centerY, transformingView);
-        if (collisionView != null && item.type == HomeItem.Type.APP) {
-            HomeItem target = (HomeItem) collisionView.getTag();
-            if (target != null) {
-                if (target.type == HomeItem.Type.APP) {
-                    mainLayout.removeView(transformingView);
-                    mergeToFolder(target, item);
-                    transformingView = null;
-                    return;
-                } else if (target.type == HomeItem.Type.FOLDER) {
-                    mainLayout.removeView(transformingView);
-                    addToFolder(target, item);
-                    transformingView = null;
-                    return;
-                }
-            }
-        }
-
-        // Collision shifting to prevent overlapping
-        if (homeView != null) homeView.shiftCollidingItems(item);
     }
 
     private void showTransformOverlay(View targetView) {
@@ -1114,8 +1091,12 @@ public class MainActivity extends Activity {
         currentTransformOverlay = new TransformOverlay(this, targetView, settingsManager, new TransformOverlay.OnSaveListener() {
             @Override public void onMove(float x, float y) {
                 if (homeView != null) {
-                    homeView.performRepulsion(targetView);
                     homeView.checkEdgeScrollLoopStart(x);
+                }
+            }
+            @Override public void onMoveStart(float x, float y) {
+                if (homeView != null) {
+                    homeView.initialDragX = x;
                 }
             }
             @Override public void onSave() {
@@ -1191,7 +1172,6 @@ public class MainActivity extends Activity {
             transformingViewOriginalParent = null;
 
             if (homeView != null) {
-                homeView.clearRepulsion();
                 homeView.cleanupEmptyPages();
                 homeView.refreshIcons(model, allApps);
             }
