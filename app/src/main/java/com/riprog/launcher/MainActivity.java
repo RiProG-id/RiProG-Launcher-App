@@ -917,6 +917,30 @@ public class MainActivity extends Activity {
         }
     }
 
+    private void updateHomeItemFromTransform() {
+        if (transformingView == null || transformingViewOriginalParent == null) return;
+        HomeItem item = (HomeItem) transformingView.getTag();
+        item.rotation = transformingView.getRotation();
+        item.scaleX = transformingView.getScaleX();
+        item.scaleY = transformingView.getScaleY();
+        item.tiltX = transformingView.getRotationX();
+        item.tiltY = transformingView.getRotationY();
+
+        int[] pagePos = new int[2];
+        transformingViewOriginalParent.getLocationOnScreen(pagePos);
+        int[] rootPos = new int[2];
+        mainLayout.getLocationOnScreen(rootPos);
+
+        float xInParent = transformingView.getX() - (pagePos[0] - rootPos[0]);
+        float yInParent = transformingView.getY() - (pagePos[1] - rootPos[1]);
+
+        int cellWidth = transformingViewOriginalParent.getWidth() / HomeView.GRID_COLUMNS;
+        int cellHeight = transformingViewOriginalParent.getHeight() / HomeView.GRID_ROWS;
+
+        if (cellWidth > 0) item.col = xInParent / (float) cellWidth;
+        if (cellHeight > 0) item.row = yInParent / (float) cellHeight;
+    }
+
     private void showTransformOverlay(View targetView) {
         if (currentTransformOverlay != null) return;
         setOverlayBlur(true);
@@ -943,6 +967,7 @@ public class MainActivity extends Activity {
 
         currentTransformOverlay = new TransformOverlay(this, targetView, settingsManager, new TransformOverlay.OnSaveListener() {
             @Override public void onSave() {
+                updateHomeItemFromTransform();
                 saveHomeState();
                 closeTransformOverlay();
             }
@@ -957,6 +982,7 @@ public class MainActivity extends Activity {
                 showAppInfo((HomeItem) targetView.getTag());
             }
             @Override public void onCollision(View otherView) {
+                updateHomeItemFromTransform();
                 saveHomeState();
                 closeTransformOverlay();
                 showTransformOverlay(otherView);

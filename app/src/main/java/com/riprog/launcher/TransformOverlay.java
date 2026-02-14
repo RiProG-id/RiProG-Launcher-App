@@ -170,18 +170,6 @@ public class TransformOverlay extends FrameLayout {
     }
 
     private void save() {
-        item.rotation = targetView.getRotation();
-        item.scaleX = targetView.getScaleX();
-        item.scaleY = targetView.getScaleY();
-
-        View parent = (View) targetView.getParent();
-        if (parent != null) {
-            int cellWidth = parent.getWidth() / HomeView.GRID_COLUMNS;
-            int cellHeight = parent.getHeight() / HomeView.GRID_ROWS;
-            if (cellWidth > 0) item.col = targetView.getX() / (float) cellWidth;
-            if (cellHeight > 0) item.row = targetView.getY() / (float) cellHeight;
-        }
-
         if (onSaveListener != null) onSaveListener.onSave();
     }
 
