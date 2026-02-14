@@ -142,7 +142,7 @@ public class TransformOverlay extends FrameLayout {
         container.setOnClickListener(v -> {});
 
         TextView btnRemove = new TextView(getContext());
-        btnRemove.setText("REMOVE");
+        btnRemove.setText("Remove");
         btnRemove.setPadding(dpToPx(8), dpToPx(8), dpToPx(8), dpToPx(8));
         btnRemove.setTextColor(adaptiveColor);
         btnRemove.setTextSize(11);
@@ -153,7 +153,7 @@ public class TransformOverlay extends FrameLayout {
         container.addView(btnRemove, lpRemove);
 
         TextView btnReset = new TextView(getContext());
-        btnReset.setText("RESET");
+        btnReset.setText("Reset");
         btnReset.setPadding(dpToPx(8), dpToPx(8), dpToPx(8), dpToPx(8));
         btnReset.setTextColor(adaptiveColor);
         btnReset.setTextSize(11);
@@ -164,7 +164,7 @@ public class TransformOverlay extends FrameLayout {
         container.addView(btnReset, lpReset);
 
         TextView btnSave = new TextView(getContext());
-        btnSave.setText("SAVE");
+        btnSave.setText("Save");
         btnSave.setPadding(dpToPx(8), dpToPx(8), dpToPx(8), dpToPx(8));
         btnSave.setTextColor(adaptiveColor);
         btnSave.setTextSize(11);
@@ -176,7 +176,7 @@ public class TransformOverlay extends FrameLayout {
 
         if (item.type != HomeItem.Type.WIDGET && item.type != HomeItem.Type.FOLDER) {
             TextView btnInfo = new TextView(getContext());
-            btnInfo.setText("APP INFO");
+            btnInfo.setText("App Info");
             btnInfo.setPadding(dpToPx(8), dpToPx(8), dpToPx(8), dpToPx(8));
             btnInfo.setTextColor(adaptiveColor);
             btnInfo.setTextSize(11);

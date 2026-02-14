@@ -894,7 +894,7 @@ public class MainActivity extends Activity {
             Intent intent = new Intent(this, SettingsActivity.class);
             startActivityForResult(intent, 100);
         } catch (Exception e) {
-            Toast.makeText(this, "Settings could not be opened", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, "Launcher settings could not be opened", Toast.LENGTH_SHORT).show();
         }
     }
 
