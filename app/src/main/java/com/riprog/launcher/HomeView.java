@@ -210,13 +210,14 @@ public class HomeView extends FrameLayout {
         }
         view.setLayoutParams(lp);
 
-        // Center the icon within the grid area and respect padding
+        // Center the icon within the grid area.
+        // Parent (page) is already offset by HomeView padding via pagesContainer.
         if (item.type == HomeItem.Type.APP || (item.type == HomeItem.Type.FOLDER && item.spanX <= 1.0f && item.spanY <= 1.0f)) {
-            view.setX(getPaddingLeft() + item.col * cellWidth + (cellWidth - lp.width) / 2f);
-            view.setY(getPaddingTop() + item.row * cellHeight + (cellHeight - lp.height) / 2f);
+            view.setX(item.col * cellWidth + (cellWidth - lp.width) / 2f);
+            view.setY(item.row * cellHeight + (cellHeight - lp.height) / 2f);
         } else {
-            view.setX(getPaddingLeft() + item.col * cellWidth);
-            view.setY(getPaddingTop() + item.row * cellHeight);
+            view.setX(item.col * cellWidth);
+            view.setY(item.row * cellHeight);
         }
 
         view.setRotation(item.rotation);
@@ -277,7 +278,29 @@ public class HomeView extends FrameLayout {
             lastY = y;
 
             checkEdgeScroll(x);
+
+            HomeItem item = (HomeItem) draggingView.getTag();
+            if (item != null && !settingsManager.isFreeformHome()) {
+                updateItemPositionFromView(item, draggingView);
+                shiftCollidingItems(item);
+            }
         }
+    }
+
+    private void updateItemPositionFromView(HomeItem item, View v) {
+        int availW = getWidth() - getPaddingLeft() - getPaddingRight();
+        int availH = getHeight() - getPaddingTop() - getPaddingBottom();
+        int cellWidth = availW / GRID_COLUMNS;
+        int cellHeight = availH / GRID_ROWS;
+        if (cellWidth <= 0 || cellHeight <= 0) return;
+
+        float[] coords = getRelativeCoords(v);
+        float xInHome = coords[0] - getPaddingLeft();
+        float yInHome = coords[1] - getPaddingTop();
+
+        item.col = Math.max(0, Math.min(GRID_COLUMNS - (int) item.spanX, Math.round(xInHome / (float) cellWidth)));
+        item.row = Math.max(0, Math.min(GRID_ROWS - (int) item.spanY, Math.round(yInHome / (float) cellHeight)));
+        item.page = currentPage;
     }
 
     public void checkEdgeScroll(float x) {
@@ -360,6 +383,12 @@ public class HomeView extends FrameLayout {
         if (index < 0 || index >= pages.size()) return;
         FrameLayout page = pages.remove(index);
         pagesContainer.removeView(page);
+    }
+
+    public void removeAllItemViews() {
+        for (FrameLayout page : pages) {
+            page.removeAllViews();
+        }
     }
 
     public void removeItemsByPackage(String packageName) {

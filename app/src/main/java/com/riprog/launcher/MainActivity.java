@@ -739,11 +739,43 @@ public class MainActivity extends Activity {
             if (item.type == HomeItem.Type.APP && packageName.equals(item.packageName)) {
                 homeItems.remove(i);
                 changed = true;
+            } else if (item.type == HomeItem.Type.WIDGET && packageName.equals(item.packageName)) {
+                homeItems.remove(i);
+                changed = true;
+            } else if (item.type == HomeItem.Type.FOLDER && item.folderItems != null) {
+                boolean folderChanged = false;
+                for (int j = item.folderItems.size() - 1; j >= 0; j--) {
+                    if (packageName.equals(item.folderItems.get(j).packageName)) {
+                        item.folderItems.remove(j);
+                        folderChanged = true;
+                        changed = true;
+                    }
+                }
+                if (folderChanged) {
+                    if (item.folderItems.isEmpty()) {
+                        homeItems.remove(i);
+                    } else if (item.folderItems.size() == 1) {
+                        HomeItem lastItem = item.folderItems.get(0);
+                        lastItem.col = item.col;
+                        lastItem.row = item.row;
+                        lastItem.page = item.page;
+                        lastItem.rotation = item.rotation;
+                        lastItem.scaleX = item.scaleX;
+                        lastItem.scaleY = item.scaleY;
+                        lastItem.tiltX = item.tiltX;
+                        lastItem.tiltY = item.tiltY;
+                        homeItems.set(i, lastItem);
+                    }
+                }
             }
         }
         if (changed) {
             if (homeView != null) {
-                homeView.removeItemsByPackage(packageName);
+                homeView.removeAllItemViews();
+                for (HomeItem item : homeItems) {
+                    renderHomeItem(item);
+                }
+                homeView.cleanupEmptyPages();
                 homeView.refreshIcons(model, allApps);
             }
             saveHomeState();
@@ -1086,6 +1118,28 @@ public class MainActivity extends Activity {
             @Override public void onMove(float x, float y) {
                 if (homeView != null) {
                     homeView.checkEdgeScroll(x);
+                    if (!settingsManager.isFreeformHome()) {
+                        HomeItem item = (HomeItem) targetView.getTag();
+                        if (item != null) {
+                            // Update item coordinates temporarily for real-time shifting
+                            int cellWidth = homeView.getWidth() / HomeView.GRID_COLUMNS;
+                            int cellHeight = homeView.getHeight() / HomeView.GRID_ROWS;
+                            if (cellWidth > 0 && cellHeight > 0) {
+                                // Calculate position relative to homeView content area
+                                int[] homePos = new int[2];
+                                homeView.getLocationOnScreen(homePos);
+                                int[] vPos = new int[2];
+                                targetView.getLocationOnScreen(vPos);
+                                float rx = vPos[0] - homePos[0] - homeView.getPaddingLeft();
+                                float ry = vPos[1] - homePos[1] - homeView.getPaddingTop();
+
+                                item.col = Math.round(rx / (float) cellWidth);
+                                item.row = Math.round(ry / (float) cellHeight);
+                                item.page = homeView.getCurrentPage();
+                                homeView.shiftCollidingItems(item);
+                            }
+                        }
+                    }
                 }
             }
             @Override public void onSave() {
@@ -1116,6 +1170,7 @@ public class MainActivity extends Activity {
         });
         mainLayout.addView(currentTransformOverlay, new FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+        currentTransformOverlay.bringToFront();
     }
 
     private View findHomeItemAtRoot(float x, float y, View exclude) {
@@ -1259,6 +1314,10 @@ public class MainActivity extends Activity {
     private void createWidget(Intent data) {
         int appWidgetId = data.getIntExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, -1);
         HomeItem item = HomeItem.createWidget(appWidgetId, lastGridCol, lastGridRow, 2, 1, homeView.getCurrentPage());
+        AppWidgetProviderInfo info = appWidgetManager.getAppWidgetInfo(appWidgetId);
+        if (info != null && info.provider != null) {
+            item.packageName = info.provider.getPackageName();
+        }
         homeItems.add(item);
         renderHomeItem(item);
         saveHomeState();
@@ -1400,6 +1459,7 @@ public class MainActivity extends Activity {
                     boolean allowed = appWidgetManager.bindAppWidgetIdIfAllowed(appWidgetId, info.provider);
                     if (allowed) {
                         HomeItem homeItem = HomeItem.createWidget(appWidgetId, lastGridCol, lastGridRow, spanX, spanY, homeView.getCurrentPage());
+                        homeItem.packageName = info.provider.getPackageName();
                         homeItems.add(homeItem);
                         renderHomeItem(homeItem);
                         saveHomeState();

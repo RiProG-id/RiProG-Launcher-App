@@ -251,13 +251,11 @@ public class TransformOverlay extends FrameLayout {
             drawHandle(canvas, left, bottom, hs, true, foregroundColor);
         }
 
-        // Rotation Handle - Only in freeform mode
-        if (isFreeform) {
-            paint.setColor(foregroundColor);
-            paint.setAlpha(100);
-            canvas.drawLine((left + right) / 2f, top, (left + right) / 2f, top - rotationHandleDist, paint);
-            drawHandle(canvas, (left + right) / 2f, top - rotationHandleDist, hs * 1.1f, true, foregroundColor);
-        }
+        // Rotation Handle - Always supported for home items in transform mode
+        paint.setColor(foregroundColor);
+        paint.setAlpha(100);
+        canvas.drawLine((left + right) / 2f, top, (left + right) / 2f, top - rotationHandleDist, paint);
+        drawHandle(canvas, (left + right) / 2f, top - rotationHandleDist, hs * 1.1f, true, foregroundColor);
 
         canvas.restore();
     }
@@ -381,7 +379,7 @@ public class TransformOverlay extends FrameLayout {
         float hs = dpToPx(24); // High precision touch area
 
         // Rotation handle first
-        if ((isFreeform || item.type == HomeItem.Type.WIDGET || item.type == HomeItem.Type.FOLDER) && dist(rx, ry, (left + right) / 2f, top - rotationHandleDist) < hs) return HANDLE_ROTATE;
+        if (dist(rx, ry, (left + right) / 2f, top - rotationHandleDist) < hs) return HANDLE_ROTATE;
 
         // Corners - Proportional scale - Only in Freeform Mode
         if (isFreeform && canResizeHorizontal && canResizeVertical) {
@@ -424,7 +422,7 @@ public class TransformOverlay extends FrameLayout {
             targetView.setX(newX);
             targetView.setY(newY);
             if (onSaveListener != null) onSaveListener.onMove(tx, ty);
-        } else if (activeHandle == HANDLE_ROTATE && (isFreeform || item.type == HomeItem.Type.FOLDER || item.type == HomeItem.Type.WIDGET)) {
+        } else if (activeHandle == HANDLE_ROTATE) {
             double angle = Math.toDegrees(Math.atan2(ty - cy, tx - cx)) + 90;
 
             float targetR = (float) angle;
@@ -447,16 +445,6 @@ public class TransformOverlay extends FrameLayout {
             float newScaleY = sy;
 
             switch (activeHandle) {
-                case HANDLE_TOP:
-                case HANDLE_BOTTOM:
-                    if (halfContentH > 0 && canResizeVertical)
-                        newScaleY = Math.max(0.2f, Math.min(5.0f, Math.abs(ry) / halfContentH));
-                    break;
-                case HANDLE_LEFT:
-                case HANDLE_RIGHT:
-                    if (halfContentW > 0 && canResizeHorizontal)
-                        newScaleX = Math.max(0.2f, Math.min(5.0f, Math.abs(rx) / halfContentW));
-                    break;
                 case HANDLE_TOP_LEFT:
                 case HANDLE_TOP_RIGHT:
                 case HANDLE_BOTTOM_LEFT:
