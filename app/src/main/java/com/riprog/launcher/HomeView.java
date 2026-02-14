@@ -633,55 +633,69 @@ public class HomeView extends FrameLayout {
 
         int adaptiveColor = ThemeUtils.getAdaptiveColor(getContext(), settingsManager, false);
 
-        for (FrameLayout page : pages) {
-            for (int i = 0; i < page.getChildCount(); i++) {
-                View view = page.getChildAt(i);
-                HomeItem item = (HomeItem) view.getTag();
-                if (item == null || !(view instanceof ViewGroup)) continue;
+        // Prioritize current page for immediate visual feedback
+        if (currentPage >= 0 && currentPage < pages.size()) {
+            refreshPageIcons(pages.get(currentPage), model, appMap, targetIconSize, globalScale, hideLabels, adaptiveColor);
+        }
 
-                ViewGroup container = (ViewGroup) view;
-                if (item.type == HomeItem.Type.APP) {
-                    ImageView iv = container.findViewWithTag("item_icon");
-                    TextView tv = container.findViewWithTag("item_label");
+        // Defer background pages to avoid UI blocking
+        post(() -> {
+            for (int i = 0; i < pages.size(); i++) {
+                if (i == currentPage) continue;
+                refreshPageIcons(pages.get(i), model, appMap, targetIconSize, globalScale, hideLabels, adaptiveColor);
+            }
+        });
+    }
 
-                    if (iv != null) {
-                        ViewGroup.LayoutParams lp = iv.getLayoutParams();
-                        if (lp.width != targetIconSize) {
-                            lp.width = targetIconSize;
-                            lp.height = targetIconSize;
-                            iv.setLayoutParams(lp);
+    private void refreshPageIcons(FrameLayout page, LauncherModel model, Map<String, AppItem> appMap,
+                                  int targetIconSize, float globalScale, boolean hideLabels, int adaptiveColor) {
+        for (int i = 0; i < page.getChildCount(); i++) {
+            View view = page.getChildAt(i);
+            HomeItem item = (HomeItem) view.getTag();
+            if (item == null || !(view instanceof ViewGroup)) continue;
+
+            ViewGroup container = (ViewGroup) view;
+            if (item.type == HomeItem.Type.APP) {
+                ImageView iv = container.findViewWithTag("item_icon");
+                TextView tv = container.findViewWithTag("item_label");
+
+                if (iv != null) {
+                    ViewGroup.LayoutParams lp = iv.getLayoutParams();
+                    if (lp.width != targetIconSize) {
+                        lp.width = targetIconSize;
+                        lp.height = targetIconSize;
+                        iv.setLayoutParams(lp);
+                    }
+                }
+                if (tv != null) {
+                    tv.setTextColor(adaptiveColor);
+                    tv.setTextSize(10 * globalScale);
+                    tv.setVisibility(hideLabels ? View.GONE : View.VISIBLE);
+                }
+
+                AppItem app = appMap.get(item.packageName);
+                if (iv != null && app != null) {
+                    final AppItem finalApp = app;
+                    final TextView finalTv = tv;
+                    model.loadIcon(app, bitmap -> {
+                        if (bitmap != null) {
+                            iv.setImageBitmap(bitmap);
+                            if (finalTv != null) finalTv.setText(finalApp.label);
                         }
-                    }
-                    if (tv != null) {
-                        tv.setTextColor(adaptiveColor);
-                        tv.setTextSize(10 * globalScale);
-                        tv.setVisibility(hideLabels ? View.GONE : View.VISIBLE);
-                    }
-
-                    AppItem app = appMap.get(item.packageName);
-                    if (iv != null && app != null) {
-                        final AppItem finalApp = app;
-                        final TextView finalTv = tv;
-                        model.loadIcon(app, bitmap -> {
-                            if (bitmap != null) {
-                                iv.setImageBitmap(bitmap);
-                                if (finalTv != null) finalTv.setText(finalApp.label);
-                            }
-                        });
-                    }
-                } else if (item.type == HomeItem.Type.FOLDER) {
-                    TextView tv = container.findViewWithTag("item_label");
-                    if (tv != null) {
-                        tv.setTextColor(adaptiveColor);
-                        tv.setTextSize(10 * globalScale);
-                        tv.setVisibility(hideLabels ? View.GONE : View.VISIBLE);
-                        tv.setText(item.folderName == null || item.folderName.isEmpty() ? "" : item.folderName);
-                    }
-                    if (getContext() instanceof MainActivity) {
-                        android.widget.GridLayout grid = container.findViewWithTag("folder_grid");
-                        if (grid != null) {
-                            ((MainActivity) getContext()).refreshFolderPreview(item, grid);
-                        }
+                    });
+                }
+            } else if (item.type == HomeItem.Type.FOLDER) {
+                TextView tv = container.findViewWithTag("item_label");
+                if (tv != null) {
+                    tv.setTextColor(adaptiveColor);
+                    tv.setTextSize(10 * globalScale);
+                    tv.setVisibility(hideLabels ? View.GONE : View.VISIBLE);
+                    tv.setText(item.folderName == null || item.folderName.isEmpty() ? "" : item.folderName);
+                }
+                if (getContext() instanceof MainActivity) {
+                    android.widget.GridLayout grid = container.findViewWithTag("folder_grid");
+                    if (grid != null) {
+                        ((MainActivity) getContext()).refreshFolderPreview(item, grid);
                     }
                 }
             }
