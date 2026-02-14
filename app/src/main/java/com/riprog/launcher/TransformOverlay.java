@@ -52,6 +52,7 @@ public class TransformOverlay extends FrameLayout {
     private final OnSaveListener onSaveListener;
 
     public interface OnSaveListener {
+        void onMove(float x, float y);
         void onSave();
         void onCancel();
         void onRemove();
@@ -225,20 +226,12 @@ public class TransformOverlay extends FrameLayout {
 
         float hs = handleSize / 2f;
 
-        // Corners - Proportional scale (Primary handles) - Only for Apps
-        if (item.type == HomeItem.Type.APP) {
+        // Corners - Zoom in/out handles - Only in Freeform Mode
+        if (isFreeform) {
             drawHandle(canvas, left, top, hs, true, foregroundColor);
             drawHandle(canvas, right, top, hs, true, foregroundColor);
             drawHandle(canvas, right, bottom, hs, true, foregroundColor);
             drawHandle(canvas, left, bottom, hs, true, foregroundColor);
-        }
-
-        // Sides - Width/Height resize (Secondary handles) - For Widgets and Folders
-        if (item.type == HomeItem.Type.WIDGET || item.type == HomeItem.Type.FOLDER) {
-            drawHandle(canvas, (left + right) / 2f, top, hs * 0.75f, false, foregroundColor);
-            drawHandle(canvas, right, (top + bottom) / 2f, hs * 0.75f, false, foregroundColor);
-            drawHandle(canvas, (left + right) / 2f, bottom, hs * 0.75f, false, foregroundColor);
-            drawHandle(canvas, left, (top + bottom) / 2f, hs * 0.75f, false, foregroundColor);
         }
 
         // Rotation Handle - Only in freeform mode
@@ -358,24 +351,12 @@ public class TransformOverlay extends FrameLayout {
         // Rotation handle first
         if ((isFreeform || item.type == HomeItem.Type.WIDGET || item.type == HomeItem.Type.FOLDER) && dist(rx, ry, (left + right) / 2f, top - rotationHandleDist) < hs) return HANDLE_ROTATE;
 
-        // Corners - Proportional scale - Only for Apps
-        if (item.type == HomeItem.Type.APP && canResizeHorizontal && canResizeVertical) {
+        // Corners - Proportional scale - Only in Freeform Mode
+        if (isFreeform && canResizeHorizontal && canResizeVertical) {
             if (dist(rx, ry, left, top) < hs) return HANDLE_TOP_LEFT;
             if (dist(rx, ry, right, top) < hs) return HANDLE_TOP_RIGHT;
             if (dist(rx, ry, right, bottom) < hs) return HANDLE_BOTTOM_RIGHT;
             if (dist(rx, ry, left, bottom) < hs) return HANDLE_BOTTOM_LEFT;
-        }
-
-        // Sides - Width/Height resize - For Widgets and Folders
-        if (item.type == HomeItem.Type.WIDGET || item.type == HomeItem.Type.FOLDER) {
-            if (canResizeVertical) {
-                if (dist(rx, ry, (left + right) / 2f, top) < hs) return HANDLE_TOP;
-                if (dist(rx, ry, (left + right) / 2f, bottom) < hs) return HANDLE_BOTTOM;
-            }
-            if (canResizeHorizontal) {
-                if (dist(rx, ry, right, (top + bottom) / 2f) < hs) return HANDLE_RIGHT;
-                if (dist(rx, ry, left, (top + bottom) / 2f) < hs) return HANDLE_LEFT;
-            }
         }
 
         // Move action if inside the box
@@ -410,6 +391,7 @@ public class TransformOverlay extends FrameLayout {
 
             targetView.setX(newX);
             targetView.setY(newY);
+            if (onSaveListener != null) onSaveListener.onMove(tx, ty);
         } else if (activeHandle == HANDLE_ROTATE && (isFreeform || item.type == HomeItem.Type.FOLDER || item.type == HomeItem.Type.WIDGET)) {
             double angle = Math.toDegrees(Math.atan2(ty - cy, tx - cx)) + 90;
 
