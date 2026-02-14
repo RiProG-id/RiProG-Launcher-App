@@ -218,6 +218,7 @@ public class MainActivity extends Activity {
 
     private void restoreHomeState() {
         homeItems = settingsManager.getHomeItems();
+        if (homeView != null) homeView.setHomeItems(homeItems);
         if (homeItems.isEmpty()) {
             setupDefaultHome();
         } else {
@@ -957,20 +958,23 @@ public class MainActivity extends Activity {
         HomeItem item = (HomeItem) transformingView.getTag();
         boolean isFreeform = settingsManager.isFreeformHome();
 
+        if (homeView != null) {
+            item.page = homeView.getCurrentPage();
+            // Important: update the original parent so closeTransformOverlay puts it in the current page
+            ViewGroup pagesContainer = (ViewGroup) homeView.getChildAt(0);
+            if (item.page < pagesContainer.getChildCount()) {
+                transformingViewOriginalParent = (ViewGroup) pagesContainer.getChildAt(item.page);
+                transformingViewOriginalIndex = -1;
+            }
+        }
+
         int cellWidth = transformingViewOriginalParent.getWidth() / HomeView.GRID_COLUMNS;
         int cellHeight = transformingViewOriginalParent.getHeight() / HomeView.GRID_ROWS;
 
         if (isFreeform) {
             item.rotation = transformingView.getRotation();
-            if (item.type == HomeItem.Type.WIDGET || item.type == HomeItem.Type.FOLDER) {
-                if (cellWidth > 0) item.spanX = transformingView.getWidth() / (float) cellWidth;
-                if (cellHeight > 0) item.spanY = transformingView.getHeight() / (float) cellHeight;
-                item.scaleX = 1.0f;
-                item.scaleY = 1.0f;
-            } else {
-                item.scaleX = transformingView.getScaleX();
-                item.scaleY = transformingView.getScaleY();
-            }
+            item.scaleX = transformingView.getScaleX();
+            item.scaleY = transformingView.getScaleY();
             item.tiltX = transformingView.getRotationX();
             item.tiltY = transformingView.getRotationY();
         } else {
@@ -1036,37 +1040,12 @@ public class MainActivity extends Activity {
             @Override public void onMove(float x, float y) {
                 if (homeView != null) {
                     homeView.checkEdgeScroll(x);
-
-                    HomeItem item = (HomeItem) targetView.getTag();
-                    if (item != null && transformingViewOriginalParent != null) {
-                        int cellWidth = transformingViewOriginalParent.getWidth() / HomeView.GRID_COLUMNS;
-                        int cellHeight = transformingViewOriginalParent.getHeight() / HomeView.GRID_ROWS;
-
-                        int[] pagePos = new int[2];
-                        transformingViewOriginalParent.getLocationOnScreen(pagePos);
-                        int[] rootPos = new int[2];
-                        mainLayout.getLocationOnScreen(rootPos);
-
-                        float xInParent = targetView.getX() - (pagePos[0] - rootPos[0]);
-                        float yInParent = targetView.getY() - (pagePos[1] - rootPos[1]);
-
-                        if (cellWidth > 0 && cellHeight > 0) {
-                            item.col = xInParent / (float) cellWidth;
-                            item.row = yInParent / (float) cellHeight;
-                            if (settingsManager.isFreeformHome()) {
-                                if (item.type == HomeItem.Type.WIDGET || item.type == HomeItem.Type.FOLDER) {
-                                    item.spanX = targetView.getWidth() / (float) cellWidth;
-                                    item.spanY = targetView.getHeight() / (float) cellHeight;
-                                }
-                            }
-                            homeView.shiftCollidingItems(item);
-                        }
-                    }
                 }
             }
             @Override public void onSave() {
                 updateHomeItemFromTransform();
                 saveHomeState();
+                if (homeView != null) homeView.cleanupEmptyPages();
                 closeTransformOverlay();
             }
             @Override public void onCancel() {
@@ -1074,6 +1053,7 @@ public class MainActivity extends Activity {
             }
             @Override public void onRemove() {
                 removeHomeItem((HomeItem) targetView.getTag(), targetView);
+                if (homeView != null) homeView.cleanupEmptyPages();
                 closeTransformOverlay();
             }
             @Override public void onAppInfo() {
