@@ -144,8 +144,8 @@ public class SettingsManager {
             obj.put("className", item.className);
             obj.put("col", (double) item.col);
             obj.put("row", (double) item.row);
-            obj.put("spanX", item.spanX);
-            obj.put("spanY", item.spanY);
+            obj.put("spanX", (double) item.spanX);
+            obj.put("spanY", (double) item.spanY);
             obj.put("page", item.page);
             obj.put("widgetId", item.widgetId);
             obj.put("rotation", (double) item.rotation);
@@ -202,10 +202,10 @@ public class SettingsManager {
         } else {
             item.row = (float) (obj.optDouble("y", 0.0) / 100.0);
         }
-        item.spanX = obj.optInt("spanX", obj.optInt("width", 100) / 100);
-        item.spanY = obj.optInt("spanY", obj.optInt("height", 100) / 100);
-        if (item.spanX <= 0) item.spanX = 1;
-        if (item.spanY <= 0) item.spanY = 1;
+        item.spanX = (float) obj.optDouble("spanX", obj.optDouble("width", 100.0) / 100.0);
+        item.spanY = (float) obj.optDouble("spanY", obj.optDouble("height", 100.0) / 100.0);
+        if (item.spanX <= 0) item.spanX = 1f;
+        if (item.spanY <= 0) item.spanY = 1f;
         item.page = obj.optInt("page", 0);
         item.widgetId = obj.optInt("widgetId", -1);
         item.rotation = (float) obj.optDouble("rotation", 0.0);

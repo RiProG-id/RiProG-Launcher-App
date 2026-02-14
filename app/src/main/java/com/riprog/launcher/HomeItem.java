@@ -11,8 +11,8 @@ public class HomeItem {
     public String className;
     public float row;
     public float col;
-    public int spanX = 1;
-    public int spanY = 1;
+    public float spanX = 1f;
+    public float spanY = 1f;
     public int page;
     public int widgetId = -1;
     public String folderName;
@@ -40,7 +40,7 @@ public class HomeItem {
         return item;
     }
 
-    public static HomeItem createWidget(int widgetId, float col, float row, int spanX, int spanY, int page) {
+    public static HomeItem createWidget(int widgetId, float col, float row, float spanX, float spanY, int page) {
         HomeItem item = new HomeItem();
         item.type = Type.WIDGET;
         item.widgetId = widgetId;
@@ -52,7 +52,7 @@ public class HomeItem {
         return item;
     }
 
-    public static HomeItem createClock(float col, float row, int spanX, int spanY, int page) {
+    public static HomeItem createClock(float col, float row, float spanX, float spanY, int page) {
         HomeItem item = new HomeItem();
         item.type = Type.CLOCK;
         item.col = col;
