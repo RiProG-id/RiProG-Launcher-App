@@ -33,6 +33,7 @@ class LauncherModel(context: Context) {
             }
         }
     }
+    @Suppress("DEPRECATION")
     fun onTrimMemory(level: Int) {
         if (level >= android.content.ComponentCallbacks2.TRIM_MEMORY_UI_HIDDEN) {
             iconCache.trimToSize(iconCache.size() / 2)

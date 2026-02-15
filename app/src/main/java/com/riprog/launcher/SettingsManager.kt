@@ -264,7 +264,7 @@ class SettingsManager(private val context: Context) {
         }
         item.tiltX = obj.optDouble("tiltX", 0.0).toFloat()
         item.tiltY = obj.optDouble("tiltY", 0.0).toFloat()
-        item.folderName = obj.optString("folderName", null)
+        item.folderName = obj.opt("folderName") as? String
         if (obj.has("folderItems")) {
             item.folderItems = ArrayList()
             val folderArray = obj.optJSONArray("folderItems")

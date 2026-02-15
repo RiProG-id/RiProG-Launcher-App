@@ -31,10 +31,10 @@ fun MainScreen(
     settingsManager: SettingsManager,
     model: LauncherModel?,
     appWidgetHost: AppWidgetHost?,
-    appWidgetManager: AppWidgetManager?
+    appWidgetManager: AppWidgetManager?,
+    homeItems: MutableList<HomeItem>
 ) {
     val context = LocalContext.current
-    var homeItems by remember { mutableStateOf(settingsManager.getHomeItems().toMutableList()) }
     var allApps by remember { mutableStateOf(emptyList<AppItem>()) }
     var isDrawerOpen by remember { mutableStateOf(false) }
     var currentFolder by remember { mutableStateOf<HomeItem?>(null) }
@@ -111,9 +111,7 @@ fun MainScreen(
                 },
                 onAppLongClick = { app ->
                     val newItem = HomeItem.createApp(app.packageName, app.className, 0f, 0f, pagerState.currentPage)
-                    val newList = homeItems.toMutableList()
-                    newList.add(newItem)
-                    homeItems = newList
+                    homeItems.add(newItem)
                     transformingItem = newItem
                     isDrawerOpen = false
                 }
@@ -145,16 +143,12 @@ fun MainScreen(
                     transformingItem = null
                 },
                 onRemove = {
-                    val newList = homeItems.toMutableList()
-                    newList.remove(transformingItem)
-                    homeItems = newList
-                    settingsManager.saveHomeItems(homeItems, settingsManager.pageCount)
+                    homeItems.remove(transformingItem)
+                    settingsManager.saveHomeItems(homeItems.toList(), settingsManager.pageCount)
                     transformingItem = null
                 },
                 onCancel = { transformingItem = null },
                 onMove = {
-                    val newList = homeItems.toMutableList()
-                    homeItems = newList
                 }
             )
         }

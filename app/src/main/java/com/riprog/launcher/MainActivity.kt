@@ -12,6 +12,7 @@ import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.runtime.*
 
@@ -22,12 +23,20 @@ class MainActivity : ComponentActivity() {
     private var appWidgetHost: AppWidgetHost? = null
     private var appWidgetManager: AppWidgetManager? = null
     private var appInstallReceiver: AppInstallReceiver? = null
+    private val homeItems = mutableStateListOf<HomeItem>()
+
+    private val configureWidgetLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+        if (result.resultCode == Activity.RESULT_OK) {
+            result.data?.let { createWidget(it) }
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         settingsManager = SettingsManager(this)
         enableEdgeToEdge()
 
+        homeItems.addAll(settingsManager.getHomeItems())
         model = (application as LauncherApplication).getModel()
         appWidgetManager = AppWidgetManager.getInstance(this)
         appWidgetHost = AppWidgetHost(this, APPWIDGET_HOST_ID)
@@ -40,7 +49,8 @@ class MainActivity : ComponentActivity() {
                 settingsManager = settingsManager,
                 model = model,
                 appWidgetHost = appWidgetHost,
-                appWidgetManager = appWidgetManager
+                appWidgetManager = appWidgetManager,
+                homeItems = homeItems
             )
         }
     }
@@ -75,16 +85,6 @@ class MainActivity : ComponentActivity() {
         appInstallReceiver?.let { unregisterReceiver(it) }
     }
 
-    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
-        super.onActivityResult(requestCode, resultCode, data)
-        if (resultCode == Activity.RESULT_OK && data != null) {
-            when (requestCode) {
-                REQUEST_PICK_APPWIDGET -> configureWidget(data)
-                REQUEST_CREATE_APPWIDGET -> createWidget(data)
-            }
-        }
-    }
-
     private fun configureWidget(data: Intent) {
         val appWidgetId = data.getIntExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, -1)
         val info = appWidgetManager?.getAppWidgetInfo(appWidgetId) ?: return
@@ -92,7 +92,7 @@ class MainActivity : ComponentActivity() {
             val intent = Intent(AppWidgetManager.ACTION_APPWIDGET_CONFIGURE)
             intent.component = info.configure
             intent.putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, appWidgetId)
-            startActivityForResult(intent, REQUEST_CREATE_APPWIDGET)
+            configureWidgetLauncher.launch(intent)
         } else {
             createWidget(data)
         }
@@ -100,10 +100,9 @@ class MainActivity : ComponentActivity() {
 
     private fun createWidget(data: Intent) {
         val appWidgetId = data.getIntExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, -1)
-        val homeItems = settingsManager.getHomeItems().toMutableList()
         val newItem = HomeItem.createWidget(appWidgetId, 0f, 0f, 2f, 2f, 0)
         homeItems.add(newItem)
-        settingsManager.saveHomeItems(homeItems, settingsManager.pageCount)
+        settingsManager.saveHomeItems(homeItems.toList(), settingsManager.pageCount)
     }
 
     private inner class AppInstallReceiver : BroadcastReceiver() {
@@ -119,8 +118,6 @@ class MainActivity : ComponentActivity() {
     }
 
     companion object {
-        private const val REQUEST_PICK_APPWIDGET = 1
-        private const val REQUEST_CREATE_APPWIDGET = 2
         private const val APPWIDGET_HOST_ID = 1024
     }
 }
