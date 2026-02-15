@@ -1,17 +1,18 @@
 plugins {
     id 'com.android.application'
+    id 'org.jetbrains.kotlin.android'
 }
 
 android {
     compileSdkVersion 35
-
+    namespace 'com.riprog.launcher'
 
     defaultConfig {
         applicationId "com.riprog.launcher"
         minSdkVersion 23
         targetSdkVersion 35
-        versionCode 231
-        versionName "2.3.1"
+        versionCode 300
+        versionName "3.0.0"
     }
 
     signingConfigs {
@@ -38,13 +39,16 @@ android {
     }
 
     compileOptions {
-        sourceCompatibility JavaVersion.VERSION_17
-        targetCompatibility JavaVersion.VERSION_17
+        sourceCompatibility JavaVersion.VERSION_21
+        targetCompatibility JavaVersion.VERSION_21
     }
 
-    namespace 'com.riprog.launcher'
+    kotlinOptions {
+        jvmTarget = "21"
+    }
 }
 
 dependencies {
+    implementation "org.jetbrains.kotlin:kotlin-stdlib:2.1.0"
     testImplementation 'junit:junit:4.13.2'
 }
