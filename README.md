@@ -1,4 +1,4 @@
-# RiProG Launcher v2.3.1
+# RiProG Launcher v3.0.0
 
 RiProG Launcher is an ultra-lightweight, high-performance Android launcher designed for simplicity, speed, and a distraction-free user experience.
 
@@ -7,6 +7,7 @@ RiProG Launcher is an ultra-lightweight, high-performance Android launcher desig
 ## 🚀 Key Features
 
 ### Exceptional Performance
+- **Modern Architecture**: Fully migrated to Kotlin and Jetpack Compose for superior performance and maintainability.
 - **Minimal Footprint**: Optimized APK size and extremely low RAM utilization.
 - **Fast Execution**: Engineered for rapid app launching and smooth navigation.
 
@@ -19,7 +20,7 @@ RiProG Launcher is an ultra-lightweight, high-performance Android launcher desig
 - **Quick Index**: Alphabetical scroll bar for efficient navigation through large app lists.
 
 ### Customization & Flexibility
-- **Widget Support**: Grouped widget selection with visual shape previews for easy identification.
+- **Widget Support**: Grouped widget selection with visual previews for easy identification.
 - **Freeform Home**: Optional mode to bypass grid constraints for precise item placement.
 - **Dynamic Scaling**: Real-time adjustment of icon and label sizes to suit your preferences.
 
@@ -30,10 +31,11 @@ RiProG Launcher is an ultra-lightweight, high-performance Android launcher desig
 
 ## 🛠 Technical Specifications
 
+- **Version**: 3.0.0 (Code 300)
 - **Minimum SDK**: API 23 (Android 6.0)
 - **Target SDK**: API 35 (Android 15)
-- **Implementation**: Fully programmatic UI to eliminate XML inflation overhead and maximize performance.
-- **Memory Management**: Active cache management and background task optimization.
+- **Implementation**: Jetpack Compose and Kotlin 2.2.10.
+- **Build System**: Gradle 9.1.0 with AGP 9.0.0.
 
 ---
 
