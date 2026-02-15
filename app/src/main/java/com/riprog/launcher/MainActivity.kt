@@ -74,11 +74,18 @@ class MainActivity : Activity(), MainLayout.Callback, AppInstallReceiver.Callbac
         settingsManager = SettingsManager(this)
         applyThemeMode(settingsManager.themeMode)
 
+        @Suppress("DEPRECATION")
         window.statusBarColor = Color.TRANSPARENT
+        @Suppress("DEPRECATION")
         window.navigationBarColor = Color.TRANSPARENT
+        androidx.core.view.WindowCompat.setDecorFitsSystemWindows(window, false)
 
-        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
-            window.setDecorFitsSystemWindows(false)
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+            onBackInvokedDispatcher.registerOnBackInvokedCallback(
+                android.window.OnBackInvokedDispatcher.PRIORITY_DEFAULT
+            ) {
+                handleBackPressed()
+            }
         }
 
         model = (application as LauncherApplication).model
@@ -104,22 +111,13 @@ class MainActivity : Activity(), MainLayout.Callback, AppInstallReceiver.Callbac
         mainLayout?.addView(drawerView)
         drawerView?.visibility = View.GONE
 
-        mainLayout?.setOnApplyWindowInsetsListener { _, insets ->
-            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
-                val bars = insets.getInsets(android.view.WindowInsets.Type.systemBars())
+        mainLayout?.let { ml ->
+            androidx.core.view.ViewCompat.setOnApplyWindowInsetsListener(ml) { _, insets ->
+                val bars = insets.getInsets(androidx.core.view.WindowInsetsCompat.Type.systemBars())
                 drawerView?.setSystemInsets(bars.left, bars.top, bars.right, bars.bottom)
                 homeView?.setPadding(bars.left, bars.top, bars.right, bars.bottom)
-            } else {
-                drawerView?.setSystemInsets(
-                    insets.systemWindowInsetLeft, insets.systemWindowInsetTop,
-                    insets.systemWindowInsetRight, insets.systemWindowInsetBottom
-                )
-                homeView?.setPadding(
-                    insets.systemWindowInsetLeft, insets.systemWindowInsetTop,
-                    insets.systemWindowInsetRight, insets.systemWindowInsetBottom
-                )
+                insets
             }
-            insets
         }
 
         setContentView(mainLayout)
@@ -940,18 +938,28 @@ class MainActivity : Activity(), MainLayout.Callback, AppInstallReceiver.Callbac
         homeView?.scrollToPage(0)
     }
 
+    @Deprecated("Deprecated in Java")
     override fun onBackPressed() {
+        if (!handleBackPressed()) {
+            @Suppress("DEPRECATION")
+            super.onBackPressed()
+        }
+    }
+
+    private fun handleBackPressed(): Boolean {
         if (currentTransformOverlay != null) {
             closeTransformOverlay()
-            return
+            return true
         }
         if (currentFolderOverlay != null) {
             closeFolder()
-            return
+            return true
         }
         if (mainLayout?.isDrawerOpen == true) {
             mainLayout?.closeDrawer()
+            return true
         }
+        return false
     }
 
     private fun updateHomeItemFromTransform() {
@@ -1304,7 +1312,7 @@ class MainActivity : Activity(), MainLayout.Callback, AppInstallReceiver.Callbac
 
                     val textLayout = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
                     textLayout.addView(TextView(this).apply {
-                        text = info.label
+                        text = info.loadLabel(packageManager)
                         setTextColor(adaptiveColor)
                         textSize = 16f
                         setTypeface(null, Typeface.BOLD)
@@ -1344,9 +1352,10 @@ class MainActivity : Activity(), MainLayout.Callback, AppInstallReceiver.Callbac
         }
         root.addView(closeBtn, FrameLayout.LayoutParams(dpToPx(48), dpToPx(48), Gravity.TOP or Gravity.RIGHT).apply { topMargin = dpToPx(16); rightMargin = dpToPx(16) })
 
-        root.setOnApplyWindowInsetsListener { _, insets ->
-            val top = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) insets.getInsets(android.view.WindowInsets.Type.systemBars()).top else insets.systemWindowInsetTop
-            val bottom = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) insets.getInsets(android.view.WindowInsets.Type.systemBars()).bottom else insets.systemWindowInsetBottom
+        androidx.core.view.ViewCompat.setOnApplyWindowInsetsListener(root) { _, insets ->
+            val bars = insets.getInsets(androidx.core.view.WindowInsetsCompat.Type.systemBars())
+            val top = bars.top
+            val bottom = bars.bottom
             container.setPadding(dpToPx(24), top + dpToPx(64), dpToPx(24), bottom + dpToPx(24))
             val clp = closeBtn.layoutParams as FrameLayout.LayoutParams
             clp.topMargin = top + dpToPx(16)

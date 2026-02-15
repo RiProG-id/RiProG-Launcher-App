@@ -281,17 +281,17 @@ class MainLayout(context: Context, private val callback: Callback) : FrameLayout
                     dragOverlay?.let {
                         val overlayWidth = it.width
                         val left = (width - overlayWidth) / 2f
-                        if (touchedView != null &&
-                            event.y < it.bottom + touchSlop * 2 &&
-                            event.x >= left && event.x <= left + overlayWidth
-                        ) {
+                        val isInside = event.y < it.bottom + touchSlop * 2 &&
+                                     event.x >= left - touchSlop && event.x <= left + overlayWidth + touchSlop
+                        if (touchedView != null && isInside) {
                             val tag = touchedView!!.tag as? HomeItem
                             if (tag != null) {
                                 val isApp = ivAppInfo?.visibility == VISIBLE
                                 if (!isApp) {
                                     callback.removeHomeItem(tag, touchedView!!)
                                 } else {
-                                    if (event.x < left + overlayWidth / 2f) {
+                                    val midX = left + overlayWidth / 2f
+                                    if (event.x < midX) {
                                         callback.removeHomeItem(tag, touchedView!!)
                                     } else {
                                         callback.showAppInfo(tag)

@@ -41,12 +41,11 @@ class SettingsActivity : Activity() {
         applyThemeMode(settingsManager.themeMode)
 
         val w = window
+        @Suppress("DEPRECATION")
         w.statusBarColor = Color.TRANSPARENT
+        @Suppress("DEPRECATION")
         w.navigationBarColor = Color.TRANSPARENT
-
-        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
-            w.setDecorFitsSystemWindows(false)
-        }
+        androidx.core.view.WindowCompat.setDecorFitsSystemWindows(w, false)
 
         if (settingsManager.isLiquidGlass) {
             ThemeUtils.applyWindowBlur(w, true)
@@ -73,17 +72,10 @@ class SettingsActivity : Activity() {
         closeBtn.setOnClickListener { finish() }
         rootContainer.addView(closeBtn, closeLp)
 
-        rootContainer.setOnApplyWindowInsetsListener { v, insets ->
-            var top = 0
-            var bottom = 0
-            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
-                val systemInsets = insets.getInsets(android.view.WindowInsets.Type.systemBars())
-                top = systemInsets.top
-                bottom = systemInsets.bottom
-            } else {
-                top = insets.systemWindowInsetTop
-                bottom = insets.systemWindowInsetBottom
-            }
+        androidx.core.view.ViewCompat.setOnApplyWindowInsetsListener(rootContainer) { _, insets ->
+            val systemInsets = insets.getInsets(androidx.core.view.WindowInsetsCompat.Type.systemBars())
+            val top = systemInsets.top
+            val bottom = systemInsets.bottom
             root.setPadding(dpToPx(24), top + dpToPx(64), dpToPx(24), bottom + dpToPx(24))
 
             val lp = closeBtn.layoutParams as FrameLayout.LayoutParams

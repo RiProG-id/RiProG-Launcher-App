@@ -195,7 +195,6 @@ class TransformOverlay(
 
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
-        if (targetView == null) return
 
         val isFreeform = settingsManager.isFreeformHome
 
@@ -330,6 +329,7 @@ class TransformOverlay(
                         val lp = targetView.layoutParams
                         val dw = (lp.width / resources.displayMetrics.density).toInt()
                         val dh = (lp.height / resources.displayMetrics.density).toInt()
+                        @Suppress("DEPRECATION")
                         targetView.updateAppWidgetSize(null, dw, dh, dw, dh)
                     }
                 }
@@ -440,8 +440,14 @@ class TransformOverlay(
                         val currDist = dist(tx, ty, cx, cy)
                         if (initialDist > 0) {
                             val factor = currDist / initialDist
-                            newScaleX = Math.max(0.2f, Math.min(5.0f, sx * factor))
-                            newScaleY = Math.max(0.2f, Math.min(5.0f, sy * factor))
+                            if (isFreeform) {
+                                // Scale uniformly based on current distance vs initial distance
+                                newScaleX = Math.max(0.2f, Math.min(5.0f, sx * factor))
+                                newScaleY = Math.max(0.2f, Math.min(5.0f, sy * factor))
+                            } else {
+                                newScaleX = Math.max(0.2f, Math.min(5.0f, sx * factor))
+                                newScaleY = Math.max(0.2f, Math.min(5.0f, sy * factor))
+                            }
                         }
                     }
                 }

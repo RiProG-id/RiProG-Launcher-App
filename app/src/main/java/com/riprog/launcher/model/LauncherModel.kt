@@ -43,11 +43,12 @@ class LauncherModel(context: Context) {
         if (level >= android.content.ComponentCallbacks2.TRIM_MEMORY_UI_HIDDEN) {
             iconCache.trimToSize(iconCache.size() / 2)
         }
+        @Suppress("DEPRECATION")
         if (level >= android.content.ComponentCallbacks2.TRIM_MEMORY_MODERATE) {
             iconCache.evictAll()
             diskCache.performCleanup()
             System.gc()
-        } else if (level >= android.content.ComponentCallbacks2.TRIM_MEMORY_BACKGROUND) {
+        } else @Suppress("DEPRECATION") if (level >= android.content.ComponentCallbacks2.TRIM_MEMORY_BACKGROUND) {
             iconCache.evictAll()
             System.gc()
         }

@@ -38,6 +38,8 @@ class HomeView(context: Context) : FrameLayout(context) {
     private var lastX = 0f
     private var lastY = 0f
     private var initialPage = -1
+    private var initialCol = 0f
+    private var initialRow = 0f
 
     private var lastPageSwitchTime: Long = 0
     private var initialDragX = 0f
@@ -172,9 +174,12 @@ class HomeView(context: Context) : FrameLayout(context) {
         val cellHeight = if (availH > 0) availH / GRID_ROWS else 0
 
         if (cellWidth <= 0 || cellHeight <= 0) {
+            view.visibility = View.INVISIBLE
             post { updateViewPosition(item, view) }
             return
         }
+
+        view.visibility = View.VISIBLE
 
         val lp: LayoutParams
         if (item.type == HomeItem.Type.WIDGET || (item.type == HomeItem.Type.FOLDER && (item.spanX > 1.0f || item.spanY > 1.0f))) {
@@ -209,7 +214,11 @@ class HomeView(context: Context) : FrameLayout(context) {
         lastY = y
         initialDragX = x
         val item = v.tag as? HomeItem
-        if (item != null) initialPage = item.page
+        if (item != null) {
+            initialPage = item.page
+            initialCol = item.col
+            initialRow = item.row
+        }
 
         val vPos = IntArray(2)
         v.getLocationOnScreen(vPos)
@@ -393,6 +402,45 @@ class HomeView(context: Context) : FrameLayout(context) {
         return floatArrayOf(xInHome, yInHome)
     }
 
+    private fun isAreaOccupied(col: Int, row: Int, spanX: Int, spanY: Int, page: Int, exclude: HomeItem?): Boolean {
+        if (page !in pages.indices) return false
+        val pageLayout = pages[page]
+        for (i in 0 until pageLayout.childCount) {
+            val child = pageLayout.getChildAt(i)
+            val item = child.tag as? HomeItem ?: continue
+            if (item === exclude) continue
+
+            val itCol = Math.round(item.col)
+            val itRow = Math.round(item.row)
+            val itSpanX = Math.round(item.spanX)
+            val itSpanY = Math.round(item.spanY)
+
+            if (col < itCol + itSpanX && col + spanX > itCol &&
+                row < itRow + itSpanY && row + spanY > itRow
+            ) {
+                return true
+            }
+        }
+        return false
+    }
+
+    private fun findNearestEmptySpot(col: Int, row: Int, spanX: Int, spanY: Int, page: Int, item: HomeItem): Pair<Int, Int>? {
+        for (r in 0 until 3) {
+            for (dx in -r..r) {
+                for (dy in -r..r) {
+                    val tc = col + dx
+                    val tr = row + dy
+                    if (tc >= 0 && tc + spanX <= GRID_COLUMNS && tr >= 0 && tr + spanY <= GRID_ROWS) {
+                        if (!isAreaOccupied(tc, tr, spanX, spanY, page, item)) {
+                            return Pair(tc, tr)
+                        }
+                    }
+                }
+            }
+        }
+        return null
+    }
+
     private fun snapToGrid(item: HomeItem, v: View) {
         val availW = width - paddingLeft - paddingRight
         val availH = height - paddingTop - paddingBottom
@@ -428,8 +476,24 @@ class HomeView(context: Context) : FrameLayout(context) {
             item.tiltX = v.rotationX
             item.tiltY = v.rotationY
         } else {
-            item.col = Math.max(0, Math.min(GRID_COLUMNS - item.spanX.toInt(), Math.round(xInHome / cellWidth.toFloat()))).toFloat()
-            item.row = Math.max(0, Math.min(GRID_ROWS - item.spanY.toInt(), Math.round(yInHome / cellHeight.toFloat()))).toFloat()
+            val targetCol = Math.max(0, Math.min(GRID_COLUMNS - item.spanX.toInt(), Math.round(xInHome / cellWidth.toFloat()))).toFloat()
+            val targetRow = Math.max(0, Math.min(GRID_ROWS - item.spanY.toInt(), Math.round(yInHome / cellHeight.toFloat()))).toFloat()
+
+            if (isAreaOccupied(targetCol.toInt(), targetRow.toInt(), item.spanX.toInt(), item.spanY.toInt(), item.page, item)) {
+                val nearest = findNearestEmptySpot(targetCol.toInt(), targetRow.toInt(), item.spanX.toInt(), item.spanY.toInt(), item.page, item)
+                if (nearest != null) {
+                    item.col = nearest.first.toFloat()
+                    item.row = nearest.second.toFloat()
+                } else {
+                    item.col = initialCol
+                    item.row = initialRow
+                    item.page = initialPage
+                }
+            } else {
+                item.col = targetCol
+                item.row = targetRow
+            }
+
             item.rotation = 0f
             item.scaleX = 1.0f
             item.scaleY = 1.0f

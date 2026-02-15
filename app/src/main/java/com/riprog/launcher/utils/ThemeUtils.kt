@@ -88,32 +88,11 @@ object ThemeUtils {
 
     @JvmStatic
     fun updateStatusBarContrast(activity: android.app.Activity) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            val window = activity.window
-            val controller = window.insetsController
-            if (controller != null) {
-                val isNight = (activity.resources.configuration.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK) ==
-                        android.content.res.Configuration.UI_MODE_NIGHT_YES
-                if (isNight) {
-                    controller.setSystemBarsAppearance(0, WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS)
-                } else {
-                    controller.setSystemBarsAppearance(
-                        WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS,
-                        WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS
-                    )
-                }
-            }
-        } else {
-            var flags = activity.window.decorView.systemUiVisibility
-            val isNight = (activity.resources.configuration.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK) ==
-                    android.content.res.Configuration.UI_MODE_NIGHT_YES
-            flags = if (isNight) {
-                flags and View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR.inv()
-            } else {
-                flags or View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR
-            }
-            activity.window.decorView.systemUiVisibility = flags
-        }
+        val window = activity.window
+        val isNight = (activity.resources.configuration.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK) ==
+                android.content.res.Configuration.UI_MODE_NIGHT_YES
+        val controller = androidx.core.view.WindowCompat.getInsetsController(window, window.decorView)
+        controller.isAppearanceLightStatusBars = !isNight
     }
 
     private fun dpToPx(context: Context, dp: Float): Int {
