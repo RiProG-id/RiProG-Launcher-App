@@ -104,7 +104,6 @@ class MainActivity : ComponentActivity() {
         val newItem = HomeItem.createWidget(appWidgetId, 0f, 0f, 2f, 2f, 0)
         homeItems.add(newItem)
         settingsManager.saveHomeItems(homeItems, settingsManager.pageCount)
-        // Trigger recomposition in Compose
     }
 
     private inner class AppInstallReceiver : BroadcastReceiver() {
