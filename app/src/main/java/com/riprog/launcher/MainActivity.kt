@@ -596,9 +596,8 @@ class MainActivity : Activity(), MainLayout.Callback, AppInstallReceiver.Callbac
             .setAdapter(adapter) { _, which ->
                 when (optionsList[which]) {
                     getString(R.string.menu_widgets) -> {
-                        val c = if (!settingsManager.isFreeformHome) Math.round(col).toFloat() else col
-                        val r = if (!settingsManager.isFreeformHome) Math.round(row).toFloat() else row
-                        widgetManager.pickWidget(c, r)
+                        // Pass exact coordinates to ensure raw spawn state regardless of grid settings
+                        widgetManager.pickWidget(col, row)
                     }
                     getString(R.string.menu_wallpaper) -> openWallpaperPicker()
                     getString(R.string.menu_settings) -> openSettings()
@@ -960,7 +959,14 @@ class MainActivity : Activity(), MainLayout.Callback, AppInstallReceiver.Callbac
 
     fun createWidgetAt(appWidgetId: Int, col: Float, row: Float, spanX: Float, spanY: Float, page: Int = -1) {
         val targetPage = if (page >= 0) page else (homeView?.getCurrentPage() ?: 0)
-        val item = HomeItem.createWidget(appWidgetId, col, row, spanX, spanY, targetPage)
+
+        // Ensure the widget remains within home boundaries while preserving raw dimensions
+        val finalSpanX = Math.min(spanX, gridManager.columns.toFloat())
+        val finalSpanY = Math.min(spanY, gridManager.rows.toFloat())
+        val finalCol = Math.max(0f, Math.min(gridManager.columns - finalSpanX, col))
+        val finalRow = Math.max(0f, Math.min(gridManager.rows - finalSpanY, row))
+
+        val item = HomeItem.createWidget(appWidgetId, finalCol, finalRow, finalSpanX, finalSpanY, targetPage)
         homeItems.add(item)
         renderHomeItem(item)
         saveHomeState()

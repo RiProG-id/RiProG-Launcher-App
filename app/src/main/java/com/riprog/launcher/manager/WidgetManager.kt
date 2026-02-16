@@ -119,14 +119,9 @@ class WidgetManager(
                     val availH = if (hv != null && hv.height > 0) hv.height - hv.paddingTop - hv.paddingBottom else activity.resources.displayMetrics.heightPixels
                     val cellWidth = grid.getCellWidth(availW)
                     val cellHeight = grid.getCellHeight(availH)
-                    var sX = grid.calculateSpanX(info.minWidth * density, cellWidth)
-                    var sY = grid.calculateSpanY(info.minHeight * density, cellHeight)
-                    if (!settingsManager.isFreeformHome) {
-                        sX = Math.max(1f, Math.ceil(sX.toDouble()).toFloat())
-                        sY = Math.max(1f, Math.ceil(sY.toDouble()).toFloat())
-                    }
-                    val spanX = sX
-                    val spanY = sY
+                    // Calculate exact spans based on raw widget dimensions, ignoring launcher grid/freeform settings
+                    val spanX = grid.calculateSpanX(info.minWidth * density, cellWidth)
+                    val spanY = grid.calculateSpanY(info.minHeight * density, cellHeight)
 
                     widgetPreviewExecutor.execute {
                         try {
@@ -144,7 +139,8 @@ class WidgetManager(
                         setTypeface(null, Typeface.BOLD)
                     })
                     textLayout.addView(TextView(activity).apply {
-                        text = activity.getString(R.string.widget_size_format, Math.ceil(spanX.toDouble()).toInt(), Math.ceil(spanY.toDouble()).toInt())
+                        // Display rounded size for cleaner UI, but underlying span remains raw
+                        text = activity.getString(R.string.widget_size_format, Math.max(1, Math.ceil(spanX.toDouble()).toInt()), Math.max(1, Math.ceil(spanY.toDouble()).toInt()))
                         textSize = 12f
                         setTextColor(secondaryColor)
                     })

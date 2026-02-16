@@ -590,8 +590,14 @@ class HomeView(context: Context) : FrameLayout(context) {
                     val item = v.tag as? HomeItem
                     if (item != null) {
                         if (!freeform) {
-                            item.col = Math.max(0, Math.min(gridManager.columns - item.spanX.toInt(), Math.round(item.col))).toFloat()
-                            item.row = Math.max(0, Math.min(gridManager.rows - item.spanY.toInt(), Math.round(item.row))).toFloat()
+                            if (item.type == HomeItem.Type.WIDGET) {
+                                // Preserve raw fractional coordinates for widgets in grid mode, but ensure boundaries
+                                item.col = Math.max(0f, Math.min(gridManager.columns - item.spanX, item.col))
+                                item.row = Math.max(0f, Math.min(gridManager.rows - item.spanY, item.row))
+                            } else {
+                                item.col = Math.max(0, Math.min(gridManager.columns - item.spanX.toInt(), Math.round(item.col))).toFloat()
+                                item.row = Math.max(0, Math.min(gridManager.rows - item.spanY.toInt(), Math.round(item.row))).toFloat()
+                            }
                             item.rotation = 0f
                             item.scaleX = 1.0f
                             item.scaleY = 1.0f
