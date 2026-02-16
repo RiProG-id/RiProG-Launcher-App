@@ -219,7 +219,7 @@ class HomeView(context: Context) : FrameLayout(context) {
             v.y = absY
         }
 
-        v.animate().scaleX(1.1f).scaleY(1.1f).alpha(0.8f).setDuration(150).start()
+        v.animate().scaleX(1.1f).scaleY(1.1f).alpha(0.8f).setDuration(0).start()
         v.performHapticFeedback(android.view.HapticFeedbackConstants.LONG_PRESS)
     }
 
@@ -329,7 +329,7 @@ class HomeView(context: Context) : FrameLayout(context) {
         }
     }
 
-    private fun isAreaOccupied(col: Int, row: Int, spanX: Int, spanY: Int, page: Int, exclude: HomeItem?): Boolean {
+    fun isAreaOccupied(col: Int, row: Int, spanX: Int, spanY: Int, page: Int, exclude: HomeItem?): Boolean {
         for (item in homeItems ?: return false) {
             if (item === exclude || item.page != page) continue
             val itemCol = Math.round(item.col)
@@ -344,15 +344,24 @@ class HomeView(context: Context) : FrameLayout(context) {
         return false
     }
 
-    private fun findNearestEmptySpot(item: HomeItem): Pair<Int, Int>? {
+    fun findNearestEmptySpot(item: HomeItem, page: Int = -1): Pair<Int, Int>? {
+        val targetPage = if (page >= 0) page else item.page
         val spanX = Math.round(item.spanX)
         val spanY = Math.round(item.spanY)
         for (r in 0 until gridManager.rows - spanY + 1) {
             for (c in 0 until gridManager.columns - spanX + 1) {
-                if (!isAreaOccupied(c, r, spanX, spanY, item.page, item)) {
+                if (!isAreaOccupied(c, r, spanX, spanY, targetPage, item)) {
                     return Pair(c, r)
                 }
             }
+        }
+        return null
+    }
+
+    private fun findFirstEmptySpotGlobally(item: HomeItem): Triple<Int, Int, Int>? {
+        for (p in 0 until pageManager.getPageCount()) {
+            val spot = findNearestEmptySpot(item, p)
+            if (spot != null) return Triple(spot.first, spot.second, p)
         }
         return null
     }
@@ -434,10 +443,16 @@ class HomeView(context: Context) : FrameLayout(context) {
             val targetCol = Math.max(0, Math.min(gridManager.columns - item.spanX.toInt(), Math.round(xInHome / cellWidth.toFloat())))
             val targetRow = Math.max(0, Math.min(gridManager.rows - item.spanY.toInt(), Math.round(yInHome / cellHeight.toFloat())))
             if (isAreaOccupied(targetCol, targetRow, Math.round(item.spanX), Math.round(item.spanY), item.page, item)) {
-                val spot = findNearestEmptySpot(item)
+                val spot = findFirstEmptySpotGlobally(item)
                 if (spot != null) {
                     item.col = spot.first.toFloat()
                     item.row = spot.second.toFloat()
+                    item.page = spot.third
+                } else {
+                    val newPageIndex = pageManager.addPage()
+                    item.page = newPageIndex
+                    item.col = 0f
+                    item.row = 0f
                 }
             } else {
                 item.col = targetCol.toFloat()

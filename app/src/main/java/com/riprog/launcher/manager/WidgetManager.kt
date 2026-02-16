@@ -119,11 +119,20 @@ class WidgetManager(
                     val availH = if (hv != null && hv.height > 0) hv.height - hv.paddingTop - hv.paddingBottom else activity.resources.displayMetrics.heightPixels
                     val cellWidth = grid.getCellWidth(availW)
                     val cellHeight = grid.getCellHeight(availH)
-                    var sX = grid.calculateSpanX(info.minWidth * density, cellWidth)
-                    var sY = grid.calculateSpanY(info.minHeight * density, cellHeight)
+                    var sX = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S && info.targetCellWidth > 0) {
+                        info.targetCellWidth.toFloat()
+                    } else {
+                        grid.calculateSpanX(info.minWidth * density, cellWidth)
+                    }
+                    var sY = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S && info.targetCellHeight > 0) {
+                        info.targetCellHeight.toFloat()
+                    } else {
+                        grid.calculateSpanY(info.minHeight * density, cellHeight)
+                    }
+
                     if (!settingsManager.isFreeformHome) {
-                        sX = Math.max(1f, Math.ceil(sX.toDouble()).toFloat())
-                        sY = Math.max(1f, Math.ceil(sY.toDouble()).toFloat())
+                        sX = Math.round(sX).coerceAtLeast(1).toFloat()
+                        sY = Math.round(sY).coerceAtLeast(1).toFloat()
                     }
                     val spanX = sX
                     val spanY = sY

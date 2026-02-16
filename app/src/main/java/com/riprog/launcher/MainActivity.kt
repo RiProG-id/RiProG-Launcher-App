@@ -762,6 +762,17 @@ class MainActivity : Activity(), MainLayout.Callback, AppInstallReceiver.Callbac
         if (cellWidth > 0) item.col = if (isFreeform) xInParent / cellWidth else Math.round(xInParent / cellWidth).toFloat()
         if (cellHeight > 0) item.row = if (isFreeform) yInParent / cellHeight else Math.round(yInParent / cellHeight).toFloat()
 
+        if (!isFreeform && homeView != null) {
+            val hv = homeView!!
+            if (hv.isAreaOccupied(item.col.toInt(), item.row.toInt(), Math.round(item.spanX), Math.round(item.spanY), item.page, item)) {
+                val spot = hv.findNearestEmptySpot(item, item.page)
+                if (spot != null) {
+                    item.col = spot.first.toFloat()
+                    item.row = spot.second.toFloat()
+                }
+            }
+        }
+
         val centerX = v.x + v.width / 2f
         val centerY = v.y + v.height / 2f
         val collisionView = findHomeItemAtRoot(centerX, centerY, v)
@@ -1029,4 +1040,6 @@ class MainActivity : Activity(), MainLayout.Callback, AppInstallReceiver.Callbac
     override fun closeDrawerInstantly() {
         mainLayout?.closeDrawerInstantly()
     }
+
+    override fun getTransformOverlay(): View? = currentTransformOverlay
 }

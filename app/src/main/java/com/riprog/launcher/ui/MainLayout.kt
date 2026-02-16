@@ -37,6 +37,7 @@ class MainLayout(context: Context, private val callback: Callback) : FrameLayout
         fun openDrawer()
         fun closeDrawer()
         fun closeDrawerInstantly()
+        fun getTransformOverlay(): View?
     }
 
     private var dimView: View? = null
@@ -177,7 +178,10 @@ class MainLayout(context: Context, private val callback: Callback) : FrameLayout
     }
 
     override fun onTouchEvent(event: MotionEvent): Boolean {
-        if (callback.isTransforming()) return false
+        if (callback.isTransforming()) {
+            callback.getTransformOverlay()?.dispatchTouchEvent(event)
+            return true
+        }
 
         if (isDrawerOpen) {
             if (event.action == MotionEvent.ACTION_DOWN) {

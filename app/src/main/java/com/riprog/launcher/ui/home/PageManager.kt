@@ -25,7 +25,7 @@ class PageManager(
         }
     }
 
-    fun addPage() {
+    fun addPage(): Int {
         val page = FrameLayout(container.context)
         pages.add(page)
         container.addView(page, LinearLayout.LayoutParams(
@@ -33,6 +33,7 @@ class PageManager(
         ))
         indicator.setPageCount(pages.size)
         indicator.setCurrentPage(currentPage)
+        return pages.size - 1
     }
 
     fun addPageAtIndex(index: Int) {

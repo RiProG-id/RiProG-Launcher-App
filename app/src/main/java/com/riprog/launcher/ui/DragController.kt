@@ -82,9 +82,15 @@ class DragController(
         }
 
         if (isExternal) {
-            val iconSize = layout.resources.getDimensionPixelSize(R.dimen.grid_icon_size)
-            v.x = x - iconSize
-            v.y = y - iconSize
+            val lp = v.layoutParams
+            if (lp != null && lp.width > 0 && lp.height > 0) {
+                v.x = x - lp.width / 2f
+                v.y = y - lp.height / 2f
+            } else {
+                val iconSize = layout.resources.getDimensionPixelSize(R.dimen.grid_icon_size)
+                v.x = x - iconSize
+                v.y = y - iconSize
+            }
         }
         callback.getHomeView()?.startDragging(v, x, y)
     }
@@ -102,11 +108,10 @@ class DragController(
             val outPos = IntArray(2)
             it.getLocationOnScreen(outPos)
             val rect = android.graphics.Rect(outPos[0], outPos[1], outPos[0] + it.width, outPos[1] + it.height)
+            val hitRect = android.graphics.Rect(rect)
+            hitRect.inset(-touchSlop * 4, -touchSlop * 4)
 
-            if (touchedView != null &&
-                event.rawY >= rect.top - touchSlop * 2 && event.rawY <= rect.bottom + touchSlop * 2 &&
-                event.rawX >= rect.left - touchSlop * 2 && event.rawX <= rect.right + touchSlop * 2
-            ) {
+            if (touchedView != null && hitRect.contains(event.rawX.toInt(), event.rawY.toInt())) {
                 val tag = touchedView!!.tag as? HomeItem
                 if (tag != null) {
                     val isApp = ivAppInfo?.visibility == View.VISIBLE
@@ -154,8 +159,10 @@ class DragController(
             ivRemove?.setBackgroundColor(Color.TRANSPARENT)
             ivAppInfo?.setBackgroundColor(Color.TRANSPARENT)
 
-            if (rawY >= rect.top - touchSlop * 2 && rawY <= rect.bottom + touchSlop * 2 &&
-                rawX >= rect.left - touchSlop * 2 && rawX <= rect.right + touchSlop * 2) {
+            val hitRect = android.graphics.Rect(rect)
+            hitRect.inset(-touchSlop * 4, -touchSlop * 4)
+
+            if (hitRect.contains(rawX.toInt(), rawY.toInt())) {
                 if (!isApp) {
                     ivRemove?.setBackgroundColor(0x40FFFFFF)
                 } else {
