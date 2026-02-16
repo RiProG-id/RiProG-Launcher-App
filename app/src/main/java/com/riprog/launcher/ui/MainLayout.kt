@@ -48,39 +48,20 @@ class MainLayout(context: Context, private val callback: Callback) : FrameLayout
     private val longPressHandler = Handler(Looper.getMainLooper())
     private var touchedView: View? = null
     private var longPressTriggered = false
-    private var isDragging = false
-    private var dragOverlay: LinearLayout? = null
-    private var ivRemove: ImageView? = null
-    private var ivAppInfo: ImageView? = null
-    private var origCol = 0f
-    private var origRow = 0f
-    private var origPage = 0
-    private var isExternalDrag = false
+    private val dragController: DragController = DragController(this, callback)
 
     private val longPressRunnable = Runnable {
-        if (isDragging || callback.isTransforming() || isDrawerOpen || callback.isFolderOpen()) return@Runnable
+        if (dragController.isDragging() || callback.isTransforming() || isDrawerOpen || callback.isFolderOpen()) return@Runnable
         longPressTriggered = true
         if (touchedView != null) {
             val tag = touchedView!!.tag
             if (tag is HomeItem) {
-                if (callback.getSettingsManager().isFreeformHome || tag.type == HomeItem.Type.WIDGET) {
+                if (callback.getSettingsManager().isFreeformHome) {
                     callback.showTransformOverlay(touchedView!!)
                     callback.startTransformDirectMove(touchedView!!, startX, startY)
                     return@Runnable
                 }
-                isDragging = true
-                isExternalDrag = false
-                origCol = tag.col
-                origRow = tag.row
-                origPage = tag.page
-
-                dragOverlay?.let {
-                    val isApp = tag.type == HomeItem.Type.APP
-                    ivAppInfo?.visibility = if (isApp) VISIBLE else GONE
-                    it.visibility = VISIBLE
-                    it.bringToFront()
-                }
-                callback.getHomeView()?.startDragging(touchedView!!, startX, startY)
+                dragController.startDrag(touchedView!!, startX, startY)
             }
         } else {
             val cellWidth = width / HomeView.GRID_COLUMNS
@@ -93,7 +74,6 @@ class MainLayout(context: Context, private val callback: Callback) : FrameLayout
 
     init {
         setupDimView()
-        setupDragOverlay()
     }
 
     private fun setupDimView() {
@@ -118,44 +98,9 @@ class MainLayout(context: Context, private val callback: Callback) : FrameLayout
         return super.performClick()
     }
 
-    private fun setupDragOverlay() {
-        dragOverlay = LinearLayout(context)
-        dragOverlay!!.orientation = LinearLayout.HORIZONTAL
-        dragOverlay!!.background = ThemeUtils.getGlassDrawable(context, callback.getSettingsManager(), 12f)
-        dragOverlay!!.gravity = Gravity.CENTER
-        dragOverlay!!.visibility = GONE
-        dragOverlay!!.elevation = dpToPx(8).toFloat()
-
-        val adaptiveColor = ThemeUtils.getAdaptiveColor(context, callback.getSettingsManager(), true)
-
-        ivRemove = ImageView(context)
-        ivRemove!!.setImageResource(R.drawable.ic_remove)
-        ivRemove!!.setPadding(dpToPx(24), dpToPx(16), dpToPx(24), dpToPx(16))
-        ivRemove!!.setColorFilter(adaptiveColor)
-        ivRemove!!.contentDescription = context.getString(R.string.drag_remove)
-        dragOverlay!!.addView(ivRemove)
-
-        ivAppInfo = ImageView(context)
-        ivAppInfo!!.setImageResource(R.drawable.ic_info)
-        ivAppInfo!!.setPadding(dpToPx(24), dpToPx(16), dpToPx(24), dpToPx(16))
-        ivAppInfo!!.setColorFilter(adaptiveColor)
-        ivAppInfo!!.contentDescription = context.getString(R.string.drag_app_info)
-        dragOverlay!!.addView(ivAppInfo)
-
-        val lp = LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT, Gravity.TOP or Gravity.CENTER_HORIZONTAL)
-        lp.topMargin = dpToPx(48)
-        addView(dragOverlay, lp)
-    }
-
     private fun resetDragState() {
-        isDragging = false
         longPressHandler.removeCallbacks(longPressRunnable)
-        dragOverlay?.let {
-            it.visibility = GONE
-            ivRemove?.setBackgroundColor(Color.TRANSPARENT)
-            ivAppInfo?.setBackgroundColor(Color.TRANSPARENT)
-        }
-        callback.getHomeView()?.cancelDragging()
+        dragController.resetDragState()
     }
 
     override fun onInterceptTouchEvent(ev: MotionEvent): Boolean {
@@ -213,10 +158,10 @@ class MainLayout(context: Context, private val callback: Callback) : FrameLayout
                         return true
                     }
                 }
-                return isDragging
+                return dragController.isDragging()
             }
             MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
-                if (isDragging) return true
+                if (dragController.isDragging()) return true
                 val duration = System.currentTimeMillis() - downTime
                 if (duration < 80) {
                     longPressHandler.removeCallbacks(longPressRunnable)
@@ -224,7 +169,7 @@ class MainLayout(context: Context, private val callback: Callback) : FrameLayout
                 }
             }
         }
-        return isDragging
+        return dragController.isDragging()
     }
 
     override fun onTouchEvent(event: MotionEvent): Boolean {
@@ -252,9 +197,8 @@ class MainLayout(context: Context, private val callback: Callback) : FrameLayout
             MotionEvent.ACTION_MOVE -> {
                 val dx = event.x - startX
                 val dy = event.y - startY
-                if (isDragging) {
-                    callback.getHomeView()?.handleDrag(event.x, event.y)
-                    updateDragHighlight(event.x, event.y)
+                if (dragController.isDragging()) {
+                    dragController.handleDrag(event)
                     return true
                 }
                 if (!isGestureCanceled && (Math.abs(dx) > touchSlop || Math.abs(dy) > touchSlop)) {
@@ -277,36 +221,9 @@ class MainLayout(context: Context, private val callback: Callback) : FrameLayout
                 return true
             }
             MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
-                if (isDragging) {
-                    dragOverlay?.let {
-                        val overlayWidth = it.width
-                        val left = (width - overlayWidth) / 2f
-                        if (touchedView != null &&
-                            event.y < it.bottom + touchSlop * 2 &&
-                            event.x >= left && event.x <= left + overlayWidth
-                        ) {
-                            val tag = touchedView!!.tag as? HomeItem
-                            if (tag != null) {
-                                val isApp = ivAppInfo?.visibility == VISIBLE
-                                if (!isApp) {
-                                    callback.removeHomeItem(tag, touchedView!!)
-                                } else {
-                                    if (event.x < left + overlayWidth / 2f) {
-                                        callback.removeHomeItem(tag, touchedView!!)
-                                    } else {
-                                        callback.showAppInfo(tag)
-                                        revertPosition(tag, touchedView!!)
-                                    }
-                                }
-                            }
-                            resetDragState()
-                        } else {
-                            callback.getHomeView()?.endDragging()
-                            resetDragState()
-                        }
-                    } ?: run {
-                        callback.getHomeView()?.endDragging()
-                        resetDragState()
+                if (dragController.isDragging()) {
+                    if (dragController.onActionUp(event)) {
+                        return true
                     }
                     return true
                 }
@@ -329,7 +246,7 @@ class MainLayout(context: Context, private val callback: Callback) : FrameLayout
     private fun findTouchedHomeItem(x: Float, y: Float): View? {
         val homeView = callback.getHomeView() ?: return null
         val page = homeView.getCurrentPage()
-        val pagesContainer = homeView.getChildAt(0) as? ViewGroup ?: return null
+        val pagesContainer = homeView.pagesContainer
         if (page < pagesContainer.childCount) {
             val pageLayout = pagesContainer.getChildAt(page) as? ViewGroup ?: return null
             val pagePos = IntArray(2)
@@ -387,57 +304,7 @@ class MainLayout(context: Context, private val callback: Callback) : FrameLayout
     }
 
     fun startExternalDrag(v: View) {
-        isDragging = true
-        isExternalDrag = true
-        dragOverlay?.let {
-            val item = v.tag as? HomeItem
-            ivAppInfo?.visibility = if (item?.type == HomeItem.Type.APP) VISIBLE else GONE
-            it.visibility = VISIBLE
-            it.bringToFront()
-        }
-        touchedView = v
-        val iconSize = resources.getDimensionPixelSize(R.dimen.grid_icon_size)
-        v.x = startX - iconSize
-        v.y = startY - iconSize - dpToPx(24)
-        callback.getHomeView()?.startDragging(v, startX, startY)
-    }
-
-    private fun updateDragHighlight(x: Float, y: Float) {
-        dragOverlay?.let {
-            if (it.visibility != VISIBLE) return@let
-            it.bringToFront()
-            val overlayWidth = it.width
-            val left = (width - overlayWidth) / 2f
-            val isApp = ivAppInfo?.visibility == VISIBLE
-            ivRemove?.setBackgroundColor(Color.TRANSPARENT)
-            ivAppInfo?.setBackgroundColor(Color.TRANSPARENT)
-            if (y < it.bottom + touchSlop * 2 && x >= left && x <= left + overlayWidth) {
-                if (!isApp) {
-                    ivRemove?.setBackgroundColor(0x40FFFFFF)
-                } else {
-                    if (x < left + overlayWidth / 2f) ivRemove?.setBackgroundColor(0x40FFFFFF)
-                    else ivAppInfo?.setBackgroundColor(0x40FFFFFF)
-                }
-            }
-        }
-    }
-
-    private fun revertPosition(item: HomeItem, v: View) {
-        if (isExternalDrag) {
-            callback.removeHomeItem(item, v)
-        } else {
-            item.col = origCol
-            item.row = origRow
-            item.page = origPage
-            callback.getHomeView()?.addItemView(item, v)
-            v.rotation = item.rotation
-            v.scaleX = item.scaleX
-            v.scaleY = item.scaleY
-            v.rotationX = item.tiltX
-            v.rotationY = item.tiltY
-            callback.getHomeView()?.updateViewPosition(item, v)
-            callback.saveHomeState()
-        }
+        dragController.startDrag(v, startX, startY, true)
     }
 
     private fun dpToPx(dp: Int): Int {
