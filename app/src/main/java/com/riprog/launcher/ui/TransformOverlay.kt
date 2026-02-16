@@ -425,33 +425,55 @@ class TransformOverlay(
             var newScaleX = sx
             var newScaleY = sy
 
-            when (activeHandle) {
-                HANDLE_TOP, HANDLE_BOTTOM -> {
-                    if (halfContentH > 0 && canResizeVertical)
-                        newScaleY = Math.max(0.2f, Math.min(5.0f, Math.abs(ry) / halfContentH))
+            if (isFreeform) {
+                val initialDist = dist(initialTouchX, initialTouchY, cx, cy)
+                val currDist = dist(tx, ty, cx, cy)
+                if (initialDist > 0) {
+                    var factor = currDist / initialDist
+
+                    val minFactor = 0.2f / Math.min(sx, sy)
+                    val maxFactor = 5.0f / Math.max(sx, sy)
+                    factor = Math.max(minFactor, Math.min(maxFactor, factor))
+
+                    if (gestureInitialWidth > 0 && gestureInitialHeight > 0) {
+                        val maxSX = Math.min(2 * cx, 2 * (width - cx)) * sx / gestureInitialWidth.toFloat()
+                        val maxSY = Math.min(2 * cy, 2 * (height - cy)) * sy / gestureInitialHeight.toFloat()
+                        val boundFactor = Math.min(maxSX / sx, maxSY / sy)
+                        factor = Math.min(factor, boundFactor)
+                    }
+
+                    newScaleX = sx * factor
+                    newScaleY = sy * factor
                 }
-                HANDLE_LEFT, HANDLE_RIGHT -> {
-                    if (halfContentW > 0 && canResizeHorizontal)
-                        newScaleX = Math.max(0.2f, Math.min(5.0f, Math.abs(rx) / halfContentW))
-                }
-                HANDLE_TOP_LEFT, HANDLE_TOP_RIGHT, HANDLE_BOTTOM_LEFT, HANDLE_BOTTOM_RIGHT -> {
-                    if (canResizeHorizontal && canResizeVertical) {
-                        val initialDist = dist(initialTouchX, initialTouchY, cx, cy)
-                        val currDist = dist(tx, ty, cx, cy)
-                        if (initialDist > 0) {
-                            val factor = currDist / initialDist
-                            newScaleX = Math.max(0.2f, Math.min(5.0f, sx * factor))
-                            newScaleY = Math.max(0.2f, Math.min(5.0f, sy * factor))
+            } else {
+                when (activeHandle) {
+                    HANDLE_TOP, HANDLE_BOTTOM -> {
+                        if (halfContentH > 0 && canResizeVertical)
+                            newScaleY = Math.max(0.2f, Math.min(5.0f, Math.abs(ry) / halfContentH))
+                    }
+                    HANDLE_LEFT, HANDLE_RIGHT -> {
+                        if (halfContentW > 0 && canResizeHorizontal)
+                            newScaleX = Math.max(0.2f, Math.min(5.0f, Math.abs(rx) / halfContentW))
+                    }
+                    HANDLE_TOP_LEFT, HANDLE_TOP_RIGHT, HANDLE_BOTTOM_LEFT, HANDLE_BOTTOM_RIGHT -> {
+                        if (canResizeHorizontal && canResizeVertical) {
+                            val initialDist = dist(initialTouchX, initialTouchY, cx, cy)
+                            val currDist = dist(tx, ty, cx, cy)
+                            if (initialDist > 0) {
+                                val factor = currDist / initialDist
+                                newScaleX = sx * factor
+                                newScaleY = sy * factor
+                            }
                         }
                     }
                 }
-            }
 
-            if (gestureInitialWidth > 0 && gestureInitialHeight > 0) {
-                val maxSX = Math.min(5.0f, Math.min(2 * cx, 2 * (width - cx)) * gestureInitialScaleX / gestureInitialWidth.toFloat())
-                val maxSY = Math.min(5.0f, Math.min(2 * cy, 2 * (height - cy)) * gestureInitialScaleY / gestureInitialHeight.toFloat())
-                newScaleX = Math.min(newScaleX, maxSX)
-                newScaleY = Math.min(newScaleY, maxSY)
+                if (gestureInitialWidth > 0 && gestureInitialHeight > 0) {
+                    val maxSX = Math.min(5.0f, Math.min(2 * cx, 2 * (width - cx)) * sx / gestureInitialWidth.toFloat())
+                    val maxSY = Math.min(5.0f, Math.min(2 * cy, 2 * (height - cy)) * sy / gestureInitialHeight.toFloat())
+                    newScaleX = Math.min(newScaleX, maxSX)
+                    newScaleY = Math.min(newScaleY, maxSY)
+                }
             }
 
             if (!isFreeform) {

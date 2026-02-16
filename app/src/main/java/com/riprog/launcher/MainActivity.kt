@@ -1,32 +1,24 @@
 package com.riprog.launcher
 
 import android.app.Activity
-import android.app.AlertDialog
-import android.app.Dialog
-import android.app.UiModeManager
 import android.appwidget.AppWidgetHost
 import android.appwidget.AppWidgetManager
-import android.appwidget.AppWidgetProviderInfo
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.graphics.Color
 import android.graphics.Typeface
-import android.graphics.drawable.ColorDrawable
-import android.graphics.drawable.GradientDrawable
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
-import android.text.Editable
 import android.text.TextUtils
-import android.text.TextWatcher
 import android.view.Gravity
-import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
-import android.view.inputmethod.EditorInfo
 import android.view.inputmethod.InputMethodManager
 import android.widget.*
+import com.riprog.launcher.manager.FolderManager
+import com.riprog.launcher.manager.WidgetManager
 import com.riprog.launcher.model.AppItem
 import com.riprog.launcher.model.HomeItem
 import com.riprog.launcher.model.LauncherModel
@@ -35,32 +27,31 @@ import com.riprog.launcher.ui.*
 import com.riprog.launcher.utils.SettingsManager
 import com.riprog.launcher.utils.ThemeUtils
 import java.util.*
-import java.util.concurrent.Executors
 
 class MainActivity : Activity(), MainLayout.Callback, AppInstallReceiver.Callback {
 
     companion object {
-        private const val REQUEST_PICK_APPWIDGET = 1
+        const val REQUEST_PICK_APPWIDGET = 1
         private const val REQUEST_CREATE_APPWIDGET = 2
         private const val APPWIDGET_HOST_ID = 1024
-        private val widgetPreviewExecutor = Executors.newFixedThreadPool(4)
     }
 
     private var model: LauncherModel? = null
     private lateinit var settingsManager: SettingsManager
     private var appWidgetHost: AppWidgetHost? = null
     private var appWidgetManager: AppWidgetManager? = null
-    private var mainLayout: MainLayout? = null
+    var mainLayout: MainLayout? = null
     private var homeView: HomeView? = null
     private var drawerView: DrawerView? = null
-    private var currentFolderOverlay: View? = null
+    lateinit var folderManager: FolderManager
+    lateinit var widgetManager: WidgetManager
+    var allApps = mutableListOf<AppItem>()
     private var currentTransformOverlay: TransformOverlay? = null
     private var transformingViewOriginalParent: ViewGroup? = null
     private var transformingViewOriginalIndex: Int = -1
     private var transformingView: View? = null
     private var appInstallReceiver: AppInstallReceiver? = null
     private var homeItems = mutableListOf<HomeItem>()
-    private var allApps = mutableListOf<AppItem>()
     private var lastGridCol = 0f
     private var lastGridRow = 0f
     private var isStateRestored = false
@@ -127,6 +118,9 @@ class MainActivity : Activity(), MainLayout.Callback, AppInstallReceiver.Callbac
         appWidgetManager = AppWidgetManager.getInstance(this)
         appWidgetHost = AppWidgetHost(this, APPWIDGET_HOST_ID)
         appWidgetHost?.startListening()
+
+        folderManager = FolderManager(this, settingsManager)
+        widgetManager = WidgetManager(this, settingsManager, appWidgetManager, appWidgetHost)
 
         applyDynamicColors()
         loadApps()
@@ -242,6 +236,10 @@ class MainActivity : Activity(), MainLayout.Callback, AppInstallReceiver.Callbac
 
     override fun isTransforming(): Boolean = currentTransformOverlay != null
 
+    override fun isFolderOpen(): Boolean = folderManager.isFolderOpen()
+
+    fun getModel(): LauncherModel? = model
+
     private fun restoreHomeState() {
         homeItems = settingsManager.getHomeItems()
         homeView?.setHomeItems(homeItems)
@@ -259,7 +257,7 @@ class MainActivity : Activity(), MainLayout.Callback, AppInstallReceiver.Callbac
         saveHomeState()
     }
 
-    private fun setOverlayBlur(enabled: Boolean, isTransform: Boolean = false) {
+    fun setOverlayBlur(enabled: Boolean, isTransform: Boolean = false) {
         if (!settingsManager.isLiquidGlass) return
         if (!isTransform) {
             homeView?.let { ThemeUtils.applyBlurIfSupported(it, enabled) }
@@ -269,7 +267,7 @@ class MainActivity : Activity(), MainLayout.Callback, AppInstallReceiver.Callbac
         ThemeUtils.applyWindowBlur(window, enabled)
     }
 
-    private fun renderHomeItem(item: HomeItem?) {
+    fun renderHomeItem(item: HomeItem?) {
         if (item?.type == null) return
         val view: View? = when (item.type) {
             HomeItem.Type.APP -> createAppView(item, false)
@@ -283,7 +281,7 @@ class MainActivity : Activity(), MainLayout.Callback, AppInstallReceiver.Callbac
         }
     }
 
-    private fun createAppView(item: HomeItem, isOnGlass: Boolean): View? {
+    fun createAppView(item: HomeItem, isOnGlass: Boolean): View? {
         val container = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             gravity = Gravity.CENTER
@@ -434,131 +432,7 @@ class MainActivity : Activity(), MainLayout.Callback, AppInstallReceiver.Callbac
         }
     }
 
-    private fun openFolder(folderItem: HomeItem, folderView: View) {
-        if (currentFolderOverlay != null) closeFolder()
-        setOverlayBlur(true)
-
-        val container = FrameLayout(this).apply {
-            setBackgroundColor(0x33000000)
-            setOnClickListener { closeFolder() }
-        }
-
-        container.setOnTouchListener(object : View.OnTouchListener {
-            var startY = 0f
-            override fun onTouch(v: View, event: MotionEvent): Boolean {
-                when (event.action) {
-                    MotionEvent.ACTION_DOWN -> startY = event.y
-                    MotionEvent.ACTION_UP -> if (event.y - startY > dpToPx(100)) {
-                        closeFolder()
-                        return true
-                    }
-                }
-                return false
-            }
-        })
-
-        val overlay = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            background = ThemeUtils.getGlassDrawable(this@MainActivity, settingsManager, 12f)
-            setPadding(dpToPx(24), dpToPx(24), dpToPx(24), dpToPx(24))
-            elevation = dpToPx(16).toFloat()
-            gravity = Gravity.CENTER_HORIZONTAL
-            setOnClickListener { }
-        }
-
-        val titleText = TextView(this).apply {
-            text = if (folderItem.folderName.isNullOrEmpty()) "Folder" else folderItem.folderName
-            setTextColor(ThemeUtils.getAdaptiveColor(this@MainActivity, settingsManager, true))
-            textSize = 20f
-            setTypeface(null, Typeface.BOLD)
-            gravity = Gravity.CENTER
-            setPadding(0, 0, 0, dpToPx(16))
-        }
-        overlay.addView(titleText)
-
-        val titleEdit = EditText(this).apply {
-            setText(folderItem.folderName)
-            setTextColor(ThemeUtils.getAdaptiveColor(this@MainActivity, settingsManager, true))
-            background = null
-            gravity = Gravity.CENTER
-            imeOptions = EditorInfo.IME_ACTION_DONE
-            setSingleLine(true)
-            visibility = View.GONE
-            addTextChangedListener(object : TextWatcher {
-                override fun beforeTextChanged(s: CharSequence, start: Int, count: Int, after: Int) {}
-                override fun onTextChanged(s: CharSequence, start: Int, before: Int, count: Int) {
-                    folderItem.folderName = s.toString()
-                    saveHomeState()
-                }
-                override fun afterTextChanged(s: Editable) {}
-            })
-        }
-        overlay.addView(titleEdit)
-
-        titleText.setOnClickListener {
-            titleText.visibility = View.GONE
-            titleEdit.visibility = View.VISIBLE
-            titleEdit.requestFocus()
-            val imm = getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
-            imm.showSoftInput(titleEdit, InputMethodManager.SHOW_IMPLICIT)
-        }
-
-        titleEdit.setOnEditorActionListener { v, actionId, _ ->
-            if (actionId == EditorInfo.IME_ACTION_DONE) {
-                val newName = titleEdit.text.toString()
-                folderItem.folderName = newName
-                titleText.text = if (newName.isEmpty()) "Folder" else newName
-                titleEdit.visibility = View.GONE
-                titleText.visibility = View.VISIBLE
-                val imm = getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
-                imm.hideSoftInputFromWindow(v.windowToken, 0)
-                saveHomeState()
-                homeView?.refreshIcons(model!!, allApps)
-                true
-            } else false
-        }
-
-        val grid = GridLayout(this).apply {
-            columnCount = 4
-            alignmentMode = GridLayout.ALIGN_MARGINS
-            useDefaultMargins = true
-        }
-
-        val folderPadding = dpToPx(8)
-        folderItem.folderItems?.let { items ->
-            for (sub in items) {
-                val subView = createAppView(sub, true) ?: continue
-                subView.layoutParams = GridLayout.LayoutParams().apply {
-                    setMargins(folderPadding, folderPadding, folderPadding, folderPadding)
-                }
-                subView.tag = sub
-                subView.setOnClickListener {
-                    handleAppLaunch(sub.packageName)
-                    closeFolder()
-                }
-                subView.setOnLongClickListener {
-                    closeFolder()
-                    removeFromFolder(folderItem, sub)
-                    homeItems.add(sub)
-                    sub.page = homeView?.getCurrentPage() ?: 0
-                    homeView?.addItemView(sub, subView)
-                    mainLayout?.startExternalDrag(subView)
-                    true
-                }
-                grid.addView(subView)
-            }
-        }
-        overlay.addView(grid)
-
-        val lp = FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.CENTER)
-        lp.setMargins(dpToPx(24), 0, dpToPx(24), 0)
-        container.addView(overlay, lp)
-
-        mainLayout?.addView(container, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
-        currentFolderOverlay = container
-    }
-
-    private fun handleAppLaunch(packageName: String?) {
+    fun handleAppLaunch(packageName: String?) {
         packageName ?: return
         try {
             val intent = packageManager.getLaunchIntentForPackage(packageName)
@@ -567,109 +441,9 @@ class MainActivity : Activity(), MainLayout.Callback, AppInstallReceiver.Callbac
         }
     }
 
-    fun mergeToFolder(target: HomeItem, dragged: HomeItem) {
-        val oldDraggedPage = dragged.page
-        val targetPage = target.page
+    fun mergeToFolder(target: HomeItem, dragged: HomeItem) = folderManager.mergeToFolder(target, dragged, homeItems)
 
-        homeItems.remove(dragged)
-        homeItems.remove(target)
-
-        val folder = HomeItem.createFolder("", target.col, target.row, targetPage)
-        folder.folderItems?.add(target)
-        folder.folderItems?.add(dragged)
-        folder.rotation = 0f
-        folder.scaleX = 1.0f
-        folder.scaleY = 1.0f
-        folder.tiltX = 0f
-        folder.tiltY = 0f
-        homeItems.add(folder)
-
-        homeView?.removeItemsByPackage(target.packageName)
-        homeView?.removeItemsByPackage(dragged.packageName)
-        renderHomeItem(folder)
-
-        if (oldDraggedPage != targetPage) savePage(oldDraggedPage)
-        savePage(targetPage)
-    }
-
-    fun addToFolder(folder: HomeItem, dragged: HomeItem) {
-        val oldDraggedPage = dragged.page
-        val targetPage = folder.page
-
-        homeItems.remove(dragged)
-        folder.folderItems?.add(dragged)
-
-        homeView?.removeItemsByPackage(dragged.packageName)
-        refreshFolderIconsOnHome(folder)
-
-        if (oldDraggedPage != targetPage) savePage(oldDraggedPage)
-        savePage(targetPage)
-    }
-
-    private fun removeFromFolder(folder: HomeItem, item: HomeItem) {
-        val page = folder.page
-        folder.folderItems?.remove(item)
-        if (folder.folderItems?.size == 1) {
-            val lastItem = folder.folderItems!![0]
-            homeItems.remove(folder)
-            lastItem.col = folder.col
-            lastItem.row = folder.row
-            lastItem.page = page
-            lastItem.rotation = folder.rotation
-            lastItem.scaleX = folder.scaleX
-            lastItem.scaleY = folder.scaleY
-            lastItem.tiltX = folder.tiltX
-            lastItem.tiltY = folder.tiltY
-            homeItems.add(lastItem)
-
-            removeFolderView(folder)
-            renderHomeItem(lastItem)
-        } else {
-            refreshFolderIconsOnHome(folder)
-        }
-        savePage(page)
-    }
-
-    private fun removeFolderView(folder: HomeItem) {
-        val pagesContainer = homeView?.getChildAt(0) as? ViewGroup ?: return
-        for (i in 0 until pagesContainer.childCount) {
-            val page = pagesContainer.getChildAt(i) as? ViewGroup ?: continue
-            for (j in 0 until page.childCount) {
-                val v = page.getChildAt(j)
-                if (v.tag === folder) {
-                    page.removeView(v)
-                    return
-                }
-            }
-        }
-    }
-
-    private fun refreshFolderIconsOnHome(folder: HomeItem) {
-        val pagesContainer = homeView?.getChildAt(0) as? ViewGroup ?: return
-        for (i in 0 until pagesContainer.childCount) {
-            val page = pagesContainer.getChildAt(i) as? ViewGroup ?: continue
-            for (j in 0 until page.childCount) {
-                val v = page.getChildAt(j)
-                if (v.tag === folder) {
-                    val grid = findGridLayout(v as ViewGroup)
-                    if (grid != null) refreshFolderPreview(folder, grid)
-                    return
-                }
-            }
-        }
-    }
-
-    private fun findGridLayout(container: ViewGroup): GridLayout? {
-        for (i in 0 until container.childCount) {
-            val child = container.getChildAt(i)
-            if (child is GridLayout) return child
-            if (child is ViewGroup) {
-                val g = findGridLayout(child)
-                if (g != null) return g
-            }
-        }
-        return null
-    }
+    fun addToFolder(folder: HomeItem, dragged: HomeItem) = folderManager.addToFolder(folder, dragged, homeItems)
 
     private fun createWidgetView(item: HomeItem): View? {
         val am = appWidgetManager ?: return null
@@ -684,48 +458,12 @@ class MainActivity : Activity(), MainLayout.Callback, AppInstallReceiver.Callbac
         }
     }
 
-    private fun showWidgetOptions(item: HomeItem, hostView: View) {
-        val options = arrayOf(getString(R.string.action_resize), getString(R.string.action_remove))
-        val dialog = AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert)
-            .setItems(options) { _, which ->
-                if (which == 0) showResizeDialog(item, hostView)
-                else removeHomeItem(item, hostView)
-            }.create()
-        dialog.show()
-        dialog.window?.let {
-            it.setBackgroundDrawable(ThemeUtils.getGlassDrawable(this, settingsManager))
-            ThemeUtils.applyWindowBlur(it, settingsManager.isLiquidGlass)
-        }
-    }
-
-    private fun showResizeDialog(item: HomeItem, hostView: View) {
-        val sizes = arrayOf("1x1", "2x1", "2x2", "4x2", "4x1")
-        val dialog = AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert)
-            .setTitle(R.string.title_resize_widget)
-            .setItems(sizes) { _, which ->
-                when (which) {
-                    0 -> { item.spanX = 1f; item.spanY = 1f }
-                    1 -> { item.spanX = 2f; item.spanY = 1f }
-                    2 -> { item.spanX = 2f; item.spanY = 2f }
-                    3 -> { item.spanX = 4f; item.spanY = 2f }
-                    4 -> { item.spanX = 4f; item.spanY = 1f }
-                }
-                homeView?.updateViewPosition(item, hostView)
-                saveHomeState()
-            }.create()
-        dialog.show()
-        dialog.window?.let {
-            it.setBackgroundDrawable(ThemeUtils.getGlassDrawable(this, settingsManager))
-            ThemeUtils.applyWindowBlur(it, settingsManager.isLiquidGlass)
-        }
-    }
-
     override fun removeHomeItem(item: HomeItem, v: View) {
         val page = item.page
         homeItems.remove(item)
         (v.parent as? ViewGroup)?.removeView(v)
         savePage(page)
-        homeView?.cleanupEmptyPages()
+        homeView?.pageManager?.cleanupEmptyPages()
         homeView?.refreshIcons(model!!, allApps)
     }
 
@@ -828,19 +566,14 @@ class MainActivity : Activity(), MainLayout.Callback, AppInstallReceiver.Callbac
             }
         }
 
-        val dialog = AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert)
+        val dialog = android.app.AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert)
             .setTitle(R.string.title_home_menu)
             .setAdapter(adapter) { _, which ->
                 when (optionsList[which]) {
                     getString(R.string.menu_widgets) -> {
-                        if (!settingsManager.isFreeformHome) {
-                            lastGridCol = Math.round(col).toFloat()
-                            lastGridRow = Math.round(row).toFloat()
-                        } else {
-                            lastGridCol = col
-                            lastGridRow = row
-                        }
-                        pickWidget()
+                        val c = if (!settingsManager.isFreeformHome) Math.round(col).toFloat() else col
+                        val r = if (!settingsManager.isFreeformHome) Math.round(row).toFloat() else row
+                        widgetManager.pickWidget(c, r)
                     }
                     getString(R.string.menu_wallpaper) -> openWallpaperPicker()
                     getString(R.string.menu_settings) -> openSettings()
@@ -945,8 +678,8 @@ class MainActivity : Activity(), MainLayout.Callback, AppInstallReceiver.Callbac
             closeTransformOverlay()
             return
         }
-        if (currentFolderOverlay != null) {
-            closeFolder()
+        if (folderManager.isFolderOpen()) {
+            folderManager.closeFolder()
             return
         }
         if (mainLayout?.isDrawerOpen == true) {
@@ -962,8 +695,8 @@ class MainActivity : Activity(), MainLayout.Callback, AppInstallReceiver.Callbac
 
         homeView?.let {
             item.page = it.getCurrentPage()
-            val pagesContainer = it.getChildAt(0) as? ViewGroup
-            if (pagesContainer != null && item.page < pagesContainer.childCount) {
+            val pagesContainer = it.pagesContainer
+            if (item.page < pagesContainer.childCount) {
                 transformingViewOriginalParent = pagesContainer.getChildAt(item.page) as? ViewGroup
                 transformingViewOriginalIndex = -1
             }
@@ -1091,7 +824,7 @@ class MainActivity : Activity(), MainLayout.Callback, AppInstallReceiver.Callbac
     private fun findHomeItemAtRoot(x: Float, y: Float, exclude: View): View? {
         val hv = homeView ?: return null
         val page = hv.getCurrentPage()
-        val pagesContainer = hv.getChildAt(0) as? ViewGroup ?: return null
+        val pagesContainer = hv.pagesContainer
         if (page < pagesContainer.childCount) {
             val pageLayout = pagesContainer.getChildAt(page) as? ViewGroup ?: return null
             val pagePos = IntArray(2)
@@ -1122,18 +855,7 @@ class MainActivity : Activity(), MainLayout.Callback, AppInstallReceiver.Callbac
             setOverlayBlur(false, true)
             transformingView = null
             transformingViewOriginalParent = null
-            homeView?.cleanupEmptyPages()
-            homeView?.refreshIcons(model!!, allApps)
-        }
-    }
-
-    private fun closeFolder() {
-        currentFolderOverlay?.let {
-            mainLayout?.removeView(it)
-            currentFolderOverlay = null
-            setOverlayBlur(false)
-            val imm = getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
-            imm.hideSoftInputFromWindow(mainLayout?.windowToken, 0)
+            homeView?.pageManager?.cleanupEmptyPages()
             homeView?.refreshIcons(model!!, allApps)
         }
     }
@@ -1179,186 +901,48 @@ class MainActivity : Activity(), MainLayout.Callback, AppInstallReceiver.Callbac
             return
         }
         if (resultCode == RESULT_OK && data != null) {
-            if (requestCode == REQUEST_PICK_APPWIDGET) configureWidget(data)
-            else if (requestCode == REQUEST_CREATE_APPWIDGET) createWidget(data)
+            if (requestCode == REQUEST_PICK_APPWIDGET) {
+                val appWidgetId = data.getIntExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, -1)
+                val lastGridCol = data.getFloatExtra("lastGridCol", 0f)
+                val lastGridRow = data.getFloatExtra("lastGridRow", 0f)
+                val spanX = data.getFloatExtra("spanX", 2f)
+                val spanY = data.getFloatExtra("spanY", 1f)
+                configureWidget(appWidgetId, lastGridCol, lastGridRow, spanX, spanY)
+            }
+            else if (requestCode == REQUEST_CREATE_APPWIDGET) {
+                val appWidgetId = data.getIntExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, -1)
+                val lastGridCol = data.getFloatExtra("lastGridCol", 0f)
+                val lastGridRow = data.getFloatExtra("lastGridRow", 0f)
+                val spanX = data.getFloatExtra("spanX", 2f)
+                val spanY = data.getFloatExtra("spanY", 1f)
+                createWidgetAt(appWidgetId, lastGridCol, lastGridRow, spanX, spanY)
+            }
         }
     }
 
-    private fun configureWidget(data: Intent) {
-        val appWidgetId = data.getIntExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, -1)
+    private fun configureWidget(appWidgetId: Int, lastGridCol: Float, lastGridRow: Float, spanX: Float, spanY: Float) {
         val info = appWidgetManager?.getAppWidgetInfo(appWidgetId) ?: return
         if (info.configure != null) {
             val intent = Intent(AppWidgetManager.ACTION_APPWIDGET_CONFIGURE).apply {
                 component = info.configure
                 putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, appWidgetId)
+                putExtra("lastGridCol", lastGridCol)
+                putExtra("lastGridRow", lastGridRow)
+                putExtra("spanX", spanX)
+                putExtra("spanY", spanY)
             }
             startActivityForResult(intent, REQUEST_CREATE_APPWIDGET)
-        } else createWidget(data)
+        } else createWidgetAt(appWidgetId, lastGridCol, lastGridRow, spanX, spanY)
     }
 
-    private fun createWidget(data: Intent) {
-        val appWidgetId = data.getIntExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, -1)
-        val item = HomeItem.createWidget(appWidgetId, lastGridCol, lastGridRow, 2f, 1f, homeView?.getCurrentPage() ?: 0)
+    fun createWidgetAt(appWidgetId: Int, col: Float, row: Float, spanX: Float, spanY: Float) {
+        val item = HomeItem.createWidget(appWidgetId, col, row, spanX, spanY, homeView?.getCurrentPage() ?: 0)
         homeItems.add(item)
         renderHomeItem(item)
         saveHomeState()
     }
 
-    fun pickWidget() {
-        val am = appWidgetManager ?: return
-        val providers = am.installedProviders ?: return
-        val grouped = mutableMapOf<String, MutableList<AppWidgetProviderInfo>>()
-        for (info in providers) {
-            val pkg = info.provider.packageName
-            grouped.getOrPut(pkg) { mutableListOf() }.add(info)
-        }
-
-        val packages = grouped.keys.sortedWith { a, b -> getAppName(a).compareTo(getAppName(b), true) }
-
-        val dialog = Dialog(this, android.R.style.Theme_DeviceDefault_NoActionBar_Fullscreen)
-        dialog.window?.let {
-            it.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
-            ThemeUtils.applyWindowBlur(it, settingsManager.isLiquidGlass)
-        }
-
-        val root = FrameLayout(this).apply { background = ThemeUtils.getGlassDrawable(this@MainActivity, settingsManager, 0f) }
-        val container = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
-        root.addView(container)
-
-        val adaptiveColor = ThemeUtils.getAdaptiveColor(this, settingsManager, true)
-        val secondaryColor = (adaptiveColor and 0x00FFFFFF) or 0x80000000.toInt()
-
-        val titleLayout = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.CENTER_VERTICAL
-            setPadding(0, 0, 0, dpToPx(32))
-        }
-
-        val titleIcon = ImageView(this).apply {
-            setImageResource(R.drawable.ic_widgets)
-            setColorFilter(adaptiveColor)
-        }
-        titleLayout.addView(titleIcon, LinearLayout.LayoutParams(dpToPx(32), dpToPx(32)).apply { rightMargin = dpToPx(16) })
-
-        val title = TextView(this).apply {
-            setText(R.string.title_pick_widget)
-            textSize = 32f
-            typeface = Typeface.create("sans-serif-light", Typeface.NORMAL)
-            setTextColor(adaptiveColor)
-        }
-        titleLayout.addView(title)
-        container.addView(titleLayout)
-
-        val scrollView = ScrollView(this).apply { isVerticalScrollBarEnabled = false }
-        val itemsContainer = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
-        scrollView.addView(itemsContainer)
-        container.addView(scrollView)
-
-        for (pkg in packages) {
-            val header = TextView(this).apply {
-                text = getAppName(pkg)
-                textSize = 12f
-                setTypeface(null, Typeface.BOLD)
-                setTextColor(secondaryColor)
-                isAllCaps = true
-                setPadding(0, dpToPx(24), 0, dpToPx(12))
-            }
-            itemsContainer.addView(header)
-
-            grouped[pkg]?.let { infos ->
-                for (info in infos) {
-                    val card = LinearLayout(this).apply {
-                        orientation = LinearLayout.HORIZONTAL
-                        gravity = Gravity.CENTER_VERTICAL
-                        setPadding(dpToPx(16), dpToPx(16), dpToPx(16), dpToPx(16))
-                        isClickable = true
-                        isFocusable = true
-                    }
-
-                    val cardBg = GradientDrawable()
-                    val isNight = (resources.configuration.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK) == android.content.res.Configuration.UI_MODE_NIGHT_YES
-                    val cardColor = if (settingsManager.isLiquidGlass) 0x1AFFFFFF else (if (isNight) 0x1AFFFFFF else 0x0D000000)
-                    cardBg.setColor(cardColor)
-                    cardBg.cornerRadius = dpToPx(16).toFloat()
-                    card.background = cardBg
-
-                    itemsContainer.addView(card, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { bottomMargin = dpToPx(12) })
-
-                    val preview = ImageView(this).apply { scaleType = ImageView.ScaleType.FIT_CENTER }
-                    var sX = info.minWidth.toFloat() / (resources.displayMetrics.widthPixels / HomeView.GRID_COLUMNS)
-                    var sY = info.minHeight.toFloat() / (resources.displayMetrics.heightPixels / HomeView.GRID_ROWS)
-                    if (!settingsManager.isFreeformHome) {
-                        sX = Math.max(1f, Math.ceil(sX.toDouble()).toFloat())
-                        sY = Math.max(1f, Math.ceil(sY.toDouble()).toFloat())
-                    }
-                    val spanX = sX
-                    val spanY = sY
-
-                    widgetPreviewExecutor.execute {
-                        try {
-                            val previewDrawable = info.loadPreviewImage(this@MainActivity, 0) ?: info.loadIcon(this@MainActivity, 0)
-                            runOnUiThread { preview.setImageDrawable(previewDrawable) }
-                        } catch (ignored: Exception) { }
-                    }
-                    card.addView(preview, LinearLayout.LayoutParams(dpToPx(64), dpToPx(64)).apply { rightMargin = dpToPx(16) })
-
-                    val textLayout = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
-                    textLayout.addView(TextView(this).apply {
-                        text = info.label
-                        setTextColor(adaptiveColor)
-                        textSize = 16f
-                        setTypeface(null, Typeface.BOLD)
-                    })
-                    textLayout.addView(TextView(this).apply {
-                        text = getString(R.string.widget_size_format, Math.ceil(spanX.toDouble()).toInt(), Math.ceil(spanY.toDouble()).toInt())
-                        textSize = 12f
-                        setTextColor(secondaryColor)
-                    })
-                    card.addView(textLayout)
-
-                    card.setOnClickListener {
-                        dialog.dismiss()
-                        val appWidgetId = appWidgetHost!!.allocateAppWidgetId()
-                        if (am.bindAppWidgetIdIfAllowed(appWidgetId, info.provider)) {
-                            val homeItem = HomeItem.createWidget(appWidgetId, lastGridCol, lastGridRow, spanX, spanY, homeView?.getCurrentPage() ?: 0)
-                            homeItems.add(homeItem)
-                            renderHomeItem(homeItem)
-                            saveHomeState()
-                        } else {
-                            val intent = Intent(AppWidgetManager.ACTION_APPWIDGET_BIND).apply {
-                                putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, appWidgetId)
-                                putExtra(AppWidgetManager.EXTRA_APPWIDGET_PROVIDER, info.provider)
-                            }
-                            startActivityForResult(intent, REQUEST_PICK_APPWIDGET)
-                        }
-                    }
-                }
-            }
-        }
-
-        val closeBtn = ImageView(this).apply {
-            setImageResource(android.R.drawable.ic_menu_close_clear_cancel)
-            setColorFilter(adaptiveColor)
-            alpha = 0.6f
-            setOnClickListener { dialog.dismiss() }
-        }
-        root.addView(closeBtn, FrameLayout.LayoutParams(dpToPx(48), dpToPx(48), Gravity.TOP or Gravity.RIGHT).apply { topMargin = dpToPx(16); rightMargin = dpToPx(16) })
-
-        root.setOnApplyWindowInsetsListener { _, insets ->
-            val top = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) insets.getInsets(android.view.WindowInsets.Type.systemBars()).top else insets.systemWindowInsetTop
-            val bottom = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) insets.getInsets(android.view.WindowInsets.Type.systemBars()).bottom else insets.systemWindowInsetBottom
-            container.setPadding(dpToPx(24), top + dpToPx(64), dpToPx(24), bottom + dpToPx(24))
-            val clp = closeBtn.layoutParams as FrameLayout.LayoutParams
-            clp.topMargin = top + dpToPx(16)
-            closeBtn.layoutParams = clp
-            insets
-        }
-
-        dialog.setContentView(root)
-        dialog.show()
-    }
-
-    private fun getAppName(packageName: String): String {
+    fun getAppName(packageName: String): String {
         return try {
             packageManager.getApplicationLabel(packageManager.getApplicationInfo(packageName, 0)).toString()
         } catch (e: Exception) { packageName }
@@ -1366,11 +950,11 @@ class MainActivity : Activity(), MainLayout.Callback, AppInstallReceiver.Callbac
 
     private fun applyThemeMode(mode: String?) {
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
-            val uiModeManager = getSystemService(Context.UI_MODE_SERVICE) as UiModeManager
+            val uiModeManager = getSystemService(Context.UI_MODE_SERVICE) as android.app.UiModeManager
             val nightMode = when (mode) {
-                "light" -> UiModeManager.MODE_NIGHT_NO
-                "dark" -> UiModeManager.MODE_NIGHT_YES
-                else -> UiModeManager.MODE_NIGHT_AUTO
+                "light" -> android.app.UiModeManager.MODE_NIGHT_NO
+                "dark" -> android.app.UiModeManager.MODE_NIGHT_YES
+                else -> android.app.UiModeManager.MODE_NIGHT_AUTO
             }
             if (uiModeManager.nightMode != nightMode) uiModeManager.setApplicationNightMode(nightMode)
         }
@@ -1382,7 +966,6 @@ class MainActivity : Activity(), MainLayout.Callback, AppInstallReceiver.Callbac
         ).toInt()
     }
 
-    override fun isFolderOpen(): Boolean = currentFolderOverlay != null
     override fun getHomeView(): HomeView? = homeView
     override fun getDrawerView(): DrawerView? = drawerView
     override fun getSettingsManager(): SettingsManager = settingsManager
@@ -1397,8 +980,8 @@ class MainActivity : Activity(), MainLayout.Callback, AppInstallReceiver.Callbac
             HomeItem.Type.APP -> {
                 handleAppLaunch(item.packageName)
             }
-            HomeItem.Type.FOLDER -> openFolder(item, v)
-            HomeItem.Type.WIDGET -> showWidgetOptions(item, v)
+            HomeItem.Type.FOLDER -> folderManager.openFolder(item, v, homeItems, allApps, model)
+            HomeItem.Type.WIDGET -> widgetManager.showWidgetOptions(item, v)
             else -> {}
         }
     }
