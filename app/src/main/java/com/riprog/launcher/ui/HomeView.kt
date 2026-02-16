@@ -15,6 +15,7 @@ import android.widget.LinearLayout
 import android.widget.TextView
 import com.riprog.launcher.MainActivity
 import com.riprog.launcher.R
+import com.riprog.launcher.manager.GridManager
 import com.riprog.launcher.model.AppItem
 import com.riprog.launcher.model.HomeItem
 import com.riprog.launcher.model.LauncherModel
@@ -27,6 +28,7 @@ class HomeView(context: Context) : FrameLayout(context) {
     private val pageIndicator: PageIndicator = PageIndicator(context)
     val pageManager: PageManager
     private val settingsManager: SettingsManager = SettingsManager(context)
+    val gridManager: GridManager = GridManager(settingsManager)
     private var homeItems: List<HomeItem>? = null
     private var accentColor = Color.WHITE
     private var model: LauncherModel? = null
@@ -145,8 +147,8 @@ class HomeView(context: Context) : FrameLayout(context) {
         val availW = width - paddingLeft - paddingRight
         val availH = height - paddingTop - paddingBottom
 
-        val cellWidth = if (availW > 0) availW / GRID_COLUMNS else 0
-        val cellHeight = if (availH > 0) availH / GRID_ROWS else 0
+        val cellWidth = gridManager.getCellWidth(availW)
+        val cellHeight = gridManager.getCellHeight(availH)
 
         if (cellWidth <= 0 || cellHeight <= 0) {
             view.visibility = INVISIBLE
@@ -326,8 +328,8 @@ class HomeView(context: Context) : FrameLayout(context) {
             if (item === exclude || item.page != page) continue
             val itemCol = Math.round(item.col)
             val itemRow = Math.round(item.row)
-            val itemSpanX = Math.round(item.spanX)
-            val itemSpanY = Math.round(item.spanY)
+            val itemSpanX = Math.max(1, Math.round(item.spanX))
+            val itemSpanY = Math.max(1, Math.round(item.spanY))
             if (col < itemCol + itemSpanX && col + spanX > itemCol &&
                 row < itemRow + itemSpanY && row + spanY > itemRow) {
                 return true
@@ -339,8 +341,8 @@ class HomeView(context: Context) : FrameLayout(context) {
     private fun findNearestEmptySpot(item: HomeItem): Pair<Int, Int>? {
         val spanX = Math.round(item.spanX)
         val spanY = Math.round(item.spanY)
-        for (r in 0 until GRID_ROWS - spanY + 1) {
-            for (c in 0 until GRID_COLUMNS - spanX + 1) {
+        for (r in 0 until gridManager.rows - spanY + 1) {
+            for (c in 0 until gridManager.columns - spanX + 1) {
                 if (!isAreaOccupied(c, r, spanX, spanY, item.page, item)) {
                     return Pair(c, r)
                 }
@@ -350,11 +352,15 @@ class HomeView(context: Context) : FrameLayout(context) {
     }
 
     private fun findCollision(draggedView: View): HomeItem? {
-        val draggedItem = draggedView.tag as? HomeItem ?: return null
-
         val currentPageLayout = pageManager.getPageAt(pageManager.getCurrentPage()) ?: return null
-        val centerX = draggedView.x + draggedView.width / 2f
-        val centerY = draggedView.y + draggedView.height / 2f
+
+        val draggedPos = IntArray(2)
+        draggedView.getLocationOnScreen(draggedPos)
+        val centerX = draggedPos[0] + draggedView.width / 2f
+        val centerY = draggedPos[1] + draggedView.height / 2f
+
+        val pagePos = IntArray(2)
+        currentPageLayout.getLocationOnScreen(pagePos)
 
         for (i in 0 until currentPageLayout.childCount) {
             val child = currentPageLayout.getChildAt(i)
@@ -362,8 +368,11 @@ class HomeView(context: Context) : FrameLayout(context) {
 
             val targetItem = child.tag as? HomeItem ?: continue
 
-            if (centerX >= child.x && centerX <= child.x + child.width &&
-                centerY >= child.y && centerY <= child.y + child.height
+            val childLeft = pagePos[0] + child.x
+            val childTop = pagePos[1] + child.y
+
+            if (centerX >= childLeft && centerX <= childLeft + child.width &&
+                centerY >= childTop && centerY <= childTop + child.height
             ) {
                 return targetItem
             }
@@ -385,8 +394,8 @@ class HomeView(context: Context) : FrameLayout(context) {
         val availW = width - paddingLeft - paddingRight
         val availH = height - paddingTop - paddingBottom
 
-        val cellWidth = if (availW > 0) availW / GRID_COLUMNS else 1
-        val cellHeight = if (availH > 0) availH / GRID_ROWS else 1
+        val cellWidth = gridManager.getCellWidth(availW).let { if (it > 0) it else 1 }
+        val cellHeight = gridManager.getCellHeight(availH).let { if (it > 0) it else 1 }
 
         val coords = getRelativeCoords(v)
         val xInHome = coords[0] - paddingLeft
@@ -416,8 +425,8 @@ class HomeView(context: Context) : FrameLayout(context) {
             item.tiltX = v.rotationX
             item.tiltY = v.rotationY
         } else {
-            val targetCol = Math.max(0, Math.min(GRID_COLUMNS - item.spanX.toInt(), Math.round(xInHome / cellWidth.toFloat())))
-            val targetRow = Math.max(0, Math.min(GRID_ROWS - item.spanY.toInt(), Math.round(yInHome / cellHeight.toFloat())))
+            val targetCol = Math.max(0, Math.min(gridManager.columns - item.spanX.toInt(), Math.round(xInHome / cellWidth.toFloat())))
+            val targetRow = Math.max(0, Math.min(gridManager.rows - item.spanY.toInt(), Math.round(yInHome / cellHeight.toFloat())))
             if (isAreaOccupied(targetCol, targetRow, Math.round(item.spanX), Math.round(item.spanY), item.page, item)) {
                 val spot = findNearestEmptySpot(item)
                 if (spot != null) {
@@ -583,8 +592,8 @@ class HomeView(context: Context) : FrameLayout(context) {
                     val item = v.tag as? HomeItem
                     if (item != null) {
                         if (!freeform) {
-                            item.col = Math.max(0, Math.min(GRID_COLUMNS - item.spanX.toInt(), Math.round(item.col))).toFloat()
-                            item.row = Math.max(0, Math.min(GRID_ROWS - item.spanY.toInt(), Math.round(item.row))).toFloat()
+                            item.col = Math.max(0, Math.min(gridManager.columns - item.spanX.toInt(), Math.round(item.col))).toFloat()
+                            item.row = Math.max(0, Math.min(gridManager.rows - item.spanY.toInt(), Math.round(item.row))).toFloat()
                             item.rotation = 0f
                             item.scaleX = 1.0f
                             item.scaleY = 1.0f
@@ -613,8 +622,6 @@ class HomeView(context: Context) : FrameLayout(context) {
     }
 
     companion object {
-        const val GRID_COLUMNS = 4
-        const val GRID_ROWS = 6
         private const val PAGE_SWITCH_COOLDOWN = 500L
         private const val HOLD_DELAY = 400L
         private const val EDGE_THRESHOLD = 0.12f

@@ -28,6 +28,7 @@ class WidgetManager(
     private val appWidgetManager: AppWidgetManager?,
     private val appWidgetHost: android.appwidget.AppWidgetHost?
 ) {
+    private val gridManager = GridManager(settingsManager)
     private val widgetPreviewExecutor = Executors.newFixedThreadPool(4)
 
     fun pickWidget(lastGridCol: Float, lastGridRow: Float) {
@@ -113,12 +114,13 @@ class WidgetManager(
                     val preview = ImageView(activity).apply { scaleType = ImageView.ScaleType.FIT_CENTER }
                     val density = activity.resources.displayMetrics.density
                     val hv = activity.getHomeView()
+                    val grid = hv?.gridManager ?: gridManager
                     val availW = if (hv != null && hv.width > 0) hv.width - hv.paddingLeft - hv.paddingRight else activity.resources.displayMetrics.widthPixels
                     val availH = if (hv != null && hv.height > 0) hv.height - hv.paddingTop - hv.paddingBottom else activity.resources.displayMetrics.heightPixels
-                    val cellWidth = availW / HomeView.GRID_COLUMNS
-                    val cellHeight = availH / HomeView.GRID_ROWS
-                    var sX = (info.minWidth * density) / cellWidth
-                    var sY = (info.minHeight * density) / cellHeight
+                    val cellWidth = grid.getCellWidth(availW)
+                    val cellHeight = grid.getCellHeight(availH)
+                    var sX = grid.calculateSpanX(info.minWidth * density, cellWidth)
+                    var sY = grid.calculateSpanY(info.minHeight * density, cellHeight)
                     if (!settingsManager.isFreeformHome) {
                         sX = Math.max(1f, Math.ceil(sX.toDouble()).toFloat())
                         sY = Math.max(1f, Math.ceil(sY.toDouble()).toFloat())
