@@ -1,6 +1,5 @@
 package com.riprog.launcher.ui.home
 
-import android.view.View
 import android.view.ViewGroup
 import android.widget.FrameLayout
 import android.widget.LinearLayout
@@ -65,14 +64,14 @@ class PageManager(
             currentPage = pages.size - 1
         }
 
-        cleanupEmptyPages()
+        reindexItems()
         if (container.context is MainActivity) {
             settingsManager.removePageData(index, oldPageCount)
             scrollToPage(currentPage)
         }
     }
 
-    fun cleanupEmptyPages() {
+    fun reindexItems() {
         for (i in pages.indices) {
             val p = pages[i]
             for (j in 0 until p.childCount) {
@@ -100,47 +99,9 @@ class PageManager(
             return
         }
 
-        if (page == n && currentPage == n - 1) {
-            val p0 = pages[0]
-            p0.translationX = (n * width).toFloat()
+        val targetPage = if (page < 0) 0 else if (page >= n) n - 1 else page
+        if (targetPage == currentPage) return
 
-            container.animate()
-                .translationX((-(n) * width).toFloat())
-                .setDuration(300)
-                .setInterpolator(android.view.animation.DecelerateInterpolator())
-                .withEndAction {
-                    p0.translationX = 0f
-                    container.translationX = 0f
-                    currentPage = 0
-                    indicator.setCurrentPage(0)
-                    onPageChanged()
-                    indicator.animate().alpha(0.5f).setDuration(100).withEndAction {
-                        indicator.animate().alpha(1f).setDuration(100).start()
-                    }.start()
-                }.start()
-            return
-        } else if (page == -1 && currentPage == 0) {
-            val pLast = pages[n - 1]
-            pLast.translationX = (-n * width).toFloat()
-
-            container.animate()
-                .translationX(width.toFloat())
-                .setDuration(300)
-                .setInterpolator(android.view.animation.DecelerateInterpolator())
-                .withEndAction {
-                    pLast.translationX = 0f
-                    container.translationX = (-(n - 1) * width).toFloat()
-                    currentPage = n - 1
-                    indicator.setCurrentPage(n - 1)
-                    onPageChanged()
-                    indicator.animate().alpha(0.5f).setDuration(100).withEndAction {
-                        indicator.animate().alpha(1f).setDuration(100).start()
-                    }.start()
-                }.start()
-            return
-        }
-
-        val targetPage = (page + n) % n
         currentPage = targetPage
         val targetX = currentPage * width
         container.animate()

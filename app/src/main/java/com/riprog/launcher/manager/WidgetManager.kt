@@ -17,7 +17,7 @@ import android.widget.*
 import com.riprog.launcher.MainActivity
 import com.riprog.launcher.R
 import com.riprog.launcher.model.HomeItem
-import com.riprog.launcher.ui.HomeView
+import com.riprog.launcher.ui.home.GridManager
 import com.riprog.launcher.utils.SettingsManager
 import com.riprog.launcher.utils.ThemeUtils
 import java.util.concurrent.Executors
@@ -115,8 +115,8 @@ class WidgetManager(
                     val hv = activity.getHomeView()
                     val availW = if (hv != null && hv.width > 0) hv.width - hv.paddingLeft - hv.paddingRight else activity.resources.displayMetrics.widthPixels
                     val availH = if (hv != null && hv.height > 0) hv.height - hv.paddingTop - hv.paddingBottom else activity.resources.displayMetrics.heightPixels
-                    val cellWidth = availW / HomeView.GRID_COLUMNS
-                    val cellHeight = availH / HomeView.GRID_ROWS
+                    val cellWidth = availW / GridManager.GRID_COLUMNS
+                    val cellHeight = availH / GridManager.GRID_ROWS
                     var sX = (info.minWidth * density) / cellWidth
                     var sY = (info.minHeight * density) / cellHeight
                     if (!settingsManager.isFreeformHome) {

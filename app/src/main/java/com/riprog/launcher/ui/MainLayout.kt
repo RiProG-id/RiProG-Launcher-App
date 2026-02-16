@@ -14,6 +14,7 @@ import android.widget.ImageView
 import android.widget.LinearLayout
 import com.riprog.launcher.R
 import com.riprog.launcher.model.HomeItem
+import com.riprog.launcher.ui.home.GridManager
 import com.riprog.launcher.utils.SettingsManager
 import com.riprog.launcher.utils.ThemeUtils
 
@@ -64,8 +65,8 @@ class MainLayout(context: Context, private val callback: Callback) : FrameLayout
                 dragController.startDrag(touchedView!!, startX, startY)
             }
         } else {
-            val cellWidth = width / HomeView.GRID_COLUMNS
-            val cellHeight = height / HomeView.GRID_ROWS
+            val cellWidth = width / GridManager.GRID_COLUMNS
+            val cellHeight = height / GridManager.GRID_ROWS
             val col = startX / if (cellWidth > 0) cellWidth.toFloat() else 1.0f
             val row = startY / if (cellHeight > 0) cellHeight.toFloat() else 1.0f
             callback.showHomeContextMenu(col, row, callback.getCurrentPage())

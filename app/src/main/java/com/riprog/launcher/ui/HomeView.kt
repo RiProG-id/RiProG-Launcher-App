@@ -10,7 +10,6 @@ import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
 import android.widget.FrameLayout
-import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
 import com.riprog.launcher.MainActivity
@@ -18,6 +17,8 @@ import com.riprog.launcher.R
 import com.riprog.launcher.model.AppItem
 import com.riprog.launcher.model.HomeItem
 import com.riprog.launcher.model.LauncherModel
+import com.riprog.launcher.ui.home.GridManager
+import com.riprog.launcher.ui.home.ItemRenderer
 import com.riprog.launcher.ui.home.PageManager
 import com.riprog.launcher.utils.SettingsManager
 import com.riprog.launcher.utils.ThemeUtils
@@ -26,6 +27,8 @@ class HomeView(context: Context) : FrameLayout(context) {
     val pagesContainer: LinearLayout = LinearLayout(context)
     private val pageIndicator: PageIndicator = PageIndicator(context)
     val pageManager: PageManager
+    val gridManager: GridManager
+    val itemRenderer: ItemRenderer
     private val settingsManager: SettingsManager = SettingsManager(context)
     private var homeItems: List<HomeItem>? = null
     private var accentColor = Color.WHITE
@@ -70,9 +73,11 @@ class HomeView(context: Context) : FrameLayout(context) {
         pageManager = PageManager(pagesContainer, pageIndicator, settingsManager) {
             refreshIconsDebounced()
         }
+        gridManager = GridManager(context, settingsManager)
+        itemRenderer = ItemRenderer(context, settingsManager)
 
         addDrawerHint()
-        post { pageManager.cleanupEmptyPages() }
+        post { pageManager.reindexItems() }
     }
 
     fun checkEdgeScrollLoop(x: Float) {
@@ -142,43 +147,12 @@ class HomeView(context: Context) : FrameLayout(context) {
     }
 
     fun updateViewPosition(item: HomeItem, view: View) {
-        val availW = width - paddingLeft - paddingRight
-        val availH = height - paddingTop - paddingBottom
-
-        val cellWidth = if (availW > 0) availW / GRID_COLUMNS else 0
-        val cellHeight = if (availH > 0) availH / GRID_ROWS else 0
-
-        if (cellWidth <= 0 || cellHeight <= 0) {
+        if (width <= 0 || height <= 0) {
             view.visibility = INVISIBLE
             post { updateViewPosition(item, view) }
             return
         }
-        view.visibility = VISIBLE
-
-        val lp: LayoutParams
-        if (item.type == HomeItem.Type.WIDGET || (item.type == HomeItem.Type.FOLDER && (item.spanX > 1.0f || item.spanY > 1.0f))) {
-            lp = LayoutParams((cellWidth * item.spanX).toInt(), (cellHeight * item.spanY).toInt())
-        } else {
-            val size = resources.getDimensionPixelSize(R.dimen.grid_icon_size)
-            lp = LayoutParams(size * 2, size * 2)
-        }
-        view.layoutParams = lp
-
-        if (item.type == HomeItem.Type.APP || (item.type == HomeItem.Type.FOLDER && item.spanX <= 1.0f && item.spanY <= 1.0f)) {
-            val offsetX = if (settingsManager.isFreeformHome) 0f else (cellWidth - lp.width) / 2f
-            val offsetY = if (settingsManager.isFreeformHome) 0f else (cellHeight - lp.height) / 2f
-            view.x = item.col * cellWidth + offsetX
-            view.y = item.row * cellHeight + offsetY
-        } else {
-            view.x = item.col * cellWidth
-            view.y = item.row * cellHeight
-        }
-
-        view.rotation = item.rotation
-        view.scaleX = item.scaleX
-        view.scaleY = item.scaleY
-        view.rotationX = item.tiltX
-        view.rotationY = item.tiltY
+        gridManager.updateViewPosition(item, view, width, height, paddingLeft, paddingTop, paddingRight, paddingBottom)
     }
 
     private var dragOffsetX = 0f
@@ -258,7 +232,7 @@ class HomeView(context: Context) : FrameLayout(context) {
             draggingView = null
             isEdgeScrolling = false
             edgeScrollHandler.removeCallbacks(edgeScrollRunnable)
-            pageManager.cleanupEmptyPages()
+            pageManager.reindexItems()
             if (model != null && allApps != null) {
                 refreshIcons(model!!, allApps!!)
             }
@@ -283,17 +257,17 @@ class HomeView(context: Context) : FrameLayout(context) {
         if (index < 0 || index >= oldPageCount || oldPageCount <= 1) return
 
         homeItems?.let { items ->
-            val mutableItems = items.toMutableList()
-            val iterator = mutableItems.iterator()
-            while (iterator.hasNext()) {
-                val item = iterator.next()
-                if (item.page == index) {
-                    iterator.remove()
-                } else if (item.page > index) {
-                    item.page--
+            if (items is MutableList) {
+                val iterator = items.iterator()
+                while (iterator.hasNext()) {
+                    val item = iterator.next()
+                    if (item.page == index) {
+                        iterator.remove()
+                    } else if (item.page > index) {
+                        item.page--
+                    }
                 }
             }
-            homeItems = mutableItems
         }
 
         pageManager.removePage(index) {
@@ -317,58 +291,21 @@ class HomeView(context: Context) : FrameLayout(context) {
             }
         }
         if (changed) {
-            pageManager.cleanupEmptyPages()
+            pageManager.reindexItems()
         }
     }
 
-    private fun isAreaOccupied(col: Int, row: Int, spanX: Int, spanY: Int, page: Int, exclude: HomeItem?): Boolean {
-        for (item in homeItems ?: return false) {
-            if (item === exclude || item.page != page) continue
-            val itemCol = Math.round(item.col)
-            val itemRow = Math.round(item.row)
-            val itemSpanX = Math.round(item.spanX)
-            val itemSpanY = Math.round(item.spanY)
-            if (col < itemCol + itemSpanX && col + spanX > itemCol &&
-                row < itemRow + itemSpanY && row + spanY > itemRow) {
-                return true
-            }
-        }
-        return false
+    fun isAreaOccupied(col: Int, row: Int, spanX: Int, spanY: Int, page: Int, exclude: HomeItem?): Boolean {
+        return gridManager.isAreaOccupied(col, row, spanX, spanY, page, exclude, homeItems ?: emptyList())
     }
 
-    private fun findNearestEmptySpot(item: HomeItem): Pair<Int, Int>? {
-        val spanX = Math.round(item.spanX)
-        val spanY = Math.round(item.spanY)
-        for (r in 0 until GRID_ROWS - spanY + 1) {
-            for (c in 0 until GRID_COLUMNS - spanX + 1) {
-                if (!isAreaOccupied(c, r, spanX, spanY, item.page, item)) {
-                    return Pair(c, r)
-                }
-            }
-        }
-        return null
+    fun findNearestEmptySpot(item: HomeItem): Pair<Int, Int>? {
+        return gridManager.findNearestEmptySpot(item, homeItems ?: emptyList())
     }
 
     private fun findCollision(draggedView: View): HomeItem? {
-        val draggedItem = draggedView.tag as? HomeItem ?: return null
-
         val currentPageLayout = pageManager.getPageAt(pageManager.getCurrentPage()) ?: return null
-        val centerX = draggedView.x + draggedView.width / 2f
-        val centerY = draggedView.y + draggedView.height / 2f
-
-        for (i in 0 until currentPageLayout.childCount) {
-            val child = currentPageLayout.getChildAt(i)
-            if (child === draggedView) continue
-
-            val targetItem = child.tag as? HomeItem ?: continue
-
-            if (centerX >= child.x && centerX <= child.x + child.width &&
-                centerY >= child.y && centerY <= child.y + child.height
-            ) {
-                return targetItem
-            }
-        }
-        return null
+        return gridManager.findCollision(draggedView, currentPageLayout)
     }
 
     private fun getRelativeCoords(v: View): FloatArray {
@@ -385,8 +322,8 @@ class HomeView(context: Context) : FrameLayout(context) {
         val availW = width - paddingLeft - paddingRight
         val availH = height - paddingTop - paddingBottom
 
-        val cellWidth = if (availW > 0) availW / GRID_COLUMNS else 1
-        val cellHeight = if (availH > 0) availH / GRID_ROWS else 1
+        val cellWidth = if (availW > 0) availW / GridManager.GRID_COLUMNS else 1
+        val cellHeight = if (availH > 0) availH / GridManager.GRID_ROWS else 1
 
         val coords = getRelativeCoords(v)
         val xInHome = coords[0] - paddingLeft
@@ -416,8 +353,8 @@ class HomeView(context: Context) : FrameLayout(context) {
             item.tiltX = v.rotationX
             item.tiltY = v.rotationY
         } else {
-            val targetCol = Math.max(0, Math.min(GRID_COLUMNS - item.spanX.toInt(), Math.round(xInHome / cellWidth.toFloat())))
-            val targetRow = Math.max(0, Math.min(GRID_ROWS - item.spanY.toInt(), Math.round(yInHome / cellHeight.toFloat())))
+            val targetCol = Math.max(0, Math.min(GridManager.GRID_COLUMNS - item.spanX.toInt(), Math.round(xInHome / cellWidth.toFloat())))
+            val targetRow = Math.max(0, Math.min(GridManager.GRID_ROWS - item.spanY.toInt(), Math.round(yInHome / cellHeight.toFloat())))
             if (isAreaOccupied(targetCol, targetRow, Math.round(item.spanX), Math.round(item.spanY), item.page, item)) {
                 val spot = findNearestEmptySpot(item)
                 if (spot != null) {
@@ -503,74 +440,10 @@ class HomeView(context: Context) : FrameLayout(context) {
         }
 
         val adaptiveColor = ThemeUtils.getAdaptiveColor(context, settingsManager, false)
-        val currentPage = pageManager.getCurrentPage()
         val allPages = pageManager.getAllPages()
 
-        if (currentPage in allPages.indices) {
-            refreshPageIcons(allPages[currentPage], model, appMap, targetIconSize, globalScale, hideLabels, adaptiveColor)
-        }
-
-        post {
-            for (i in allPages.indices) {
-                if (i == currentPage) continue
-                refreshPageIcons(allPages[i], model, appMap, targetIconSize, globalScale, hideLabels, adaptiveColor)
-            }
-        }
-    }
-
-    private fun refreshPageIcons(
-        page: FrameLayout, model: LauncherModel, appMap: Map<String, AppItem>,
-        targetIconSize: Int, globalScale: Float, hideLabels: Boolean, adaptiveColor: Int
-    ) {
-        for (i in 0 until page.childCount) {
-            val view = page.getChildAt(i)
-            val item = view.tag as? HomeItem
-            if (item == null || view !is ViewGroup) continue
-
-            if (item.type == HomeItem.Type.APP) {
-                val iv = view.findViewWithTag<ImageView>("item_icon")
-                val tv = view.findViewWithTag<TextView>("item_label")
-
-                if (iv != null) {
-                    val lp = iv.layoutParams
-                    if (lp.width != targetIconSize) {
-                        lp.width = targetIconSize
-                        lp.height = targetIconSize
-                        iv.layoutParams = lp
-                    }
-                }
-                if (tv != null) {
-                    tv.setTextColor(adaptiveColor)
-                    tv.textSize = 10 * globalScale
-                    tv.visibility = if (hideLabels) GONE else VISIBLE
-                }
-
-                val app = appMap[item.packageName]
-                if (iv != null && app != null) {
-                    model.loadIcon(app, object : LauncherModel.OnIconLoadedListener {
-                        override fun onIconLoaded(icon: android.graphics.Bitmap?) {
-                            if (icon != null) {
-                                iv.setImageBitmap(icon)
-                                tv?.text = app.label
-                            }
-                        }
-                    })
-                }
-            } else if (item.type == HomeItem.Type.FOLDER) {
-                val tv = view.findViewWithTag<TextView>("item_label")
-                if (tv != null) {
-                    tv.setTextColor(adaptiveColor)
-                    tv.textSize = 10 * globalScale
-                    tv.visibility = if (hideLabels) GONE else VISIBLE
-                    tv.text = if (item.folderName.isNullOrEmpty()) "" else item.folderName
-                }
-                if (context is MainActivity) {
-                    val grid = view.findViewWithTag<android.widget.GridLayout>("folder_grid")
-                    if (grid != null) {
-                        (context as MainActivity).refreshFolderPreview(item, grid)
-                    }
-                }
-            }
+        for (page in allPages) {
+            itemRenderer.refreshPageIcons(page, model, appMap, targetIconSize, globalScale, hideLabels, adaptiveColor)
         }
     }
 
@@ -583,8 +456,8 @@ class HomeView(context: Context) : FrameLayout(context) {
                     val item = v.tag as? HomeItem
                     if (item != null) {
                         if (!freeform) {
-                            item.col = Math.max(0, Math.min(GRID_COLUMNS - item.spanX.toInt(), Math.round(item.col))).toFloat()
-                            item.row = Math.max(0, Math.min(GRID_ROWS - item.spanY.toInt(), Math.round(item.row))).toFloat()
+                            item.col = Math.max(0, Math.min(GridManager.GRID_COLUMNS - item.spanX.toInt(), Math.round(item.col))).toFloat()
+                            item.row = Math.max(0, Math.min(GridManager.GRID_ROWS - item.spanY.toInt(), Math.round(item.row))).toFloat()
                             item.rotation = 0f
                             item.scaleX = 1.0f
                             item.scaleY = 1.0f
@@ -613,8 +486,6 @@ class HomeView(context: Context) : FrameLayout(context) {
     }
 
     companion object {
-        const val GRID_COLUMNS = 4
-        const val GRID_ROWS = 6
         private const val PAGE_SWITCH_COOLDOWN = 500L
         private const val HOLD_DELAY = 400L
         private const val EDGE_THRESHOLD = 0.12f

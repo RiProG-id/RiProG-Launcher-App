@@ -10,7 +10,6 @@
     <string name="menu_widgets">Widgets</string>
     <string name="menu_wallpaper">Wallpaper</string>
     <string name="menu_settings">Launcher Settings</string>
-    <string name="menu_layout">Layout Options</string>
     <string name="title_pick_app">Select App</string>
     <string name="apps_not_loaded">Apps are still loading&#8230;</string>
     <string name="title_select_wallpaper">Select Wallpaper</string>
@@ -18,12 +17,10 @@
     <string name="layout_add_page">Add Page</string>
     <string name="layout_remove_page">Remove Page</string>
     <string name="page_added">New page added</string>
-    <string name="remove_page_not_implemented">Page removal not supported</string>
     <string name="title_pick_widget">Select Widget</string>
     <string name="action_cancel">Cancel</string>
     <string name="drag_remove">Remove</string>
     <string name="drag_app_info">App Info</string>
-    <string name="drag_uninstall">Uninstall</string>
     <string name="widget_size_format">%1$dx%2$d</string>
     <string name="title_settings">Settings</string>
     <string name="title_about">About</string>

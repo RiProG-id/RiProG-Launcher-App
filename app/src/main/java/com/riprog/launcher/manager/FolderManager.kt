@@ -117,7 +117,7 @@ class FolderManager(
         val folderPadding = dpToPx(8)
         folderItem.folderItems?.let { items ->
             for (sub in items) {
-                val subView = activity.createAppView(sub, true) ?: continue
+                val subView = activity.itemRenderer.createAppView(sub, true, activity.getModel(), activity.allApps)
                 subView.layoutParams = GridLayout.LayoutParams().apply {
                     setMargins(folderPadding, folderPadding, folderPadding, folderPadding)
                 }
@@ -244,7 +244,10 @@ class FolderManager(
                 val v = page.getChildAt(j)
                 if (v.tag === folder) {
                     val grid = findGridLayout(v as ViewGroup)
-                    if (grid != null) activity.refreshFolderPreview(folder, grid)
+                    if (grid != null) {
+                        val hv = activity.getHomeView()
+                        activity.itemRenderer.refreshFolderPreview(folder, grid, activity.getModel(), activity.allApps, hv?.width ?: 0, hv?.height ?: 0)
+                    }
                     return
                 }
             }

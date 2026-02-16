@@ -11,11 +11,9 @@ import android.graphics.Typeface
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
-import android.text.TextUtils
 import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
-import android.view.inputmethod.InputMethodManager
 import android.widget.*
 import com.riprog.launcher.manager.FolderManager
 import com.riprog.launcher.manager.WidgetManager
@@ -24,9 +22,10 @@ import com.riprog.launcher.model.HomeItem
 import com.riprog.launcher.model.LauncherModel
 import com.riprog.launcher.receiver.AppInstallReceiver
 import com.riprog.launcher.ui.*
+import com.riprog.launcher.ui.home.GridManager
+import com.riprog.launcher.ui.home.ItemRenderer
 import com.riprog.launcher.utils.SettingsManager
 import com.riprog.launcher.utils.ThemeUtils
-import java.util.*
 
 class MainActivity : Activity(), MainLayout.Callback, AppInstallReceiver.Callback {
 
@@ -45,6 +44,7 @@ class MainActivity : Activity(), MainLayout.Callback, AppInstallReceiver.Callbac
     private var drawerView: DrawerView? = null
     lateinit var folderManager: FolderManager
     lateinit var widgetManager: WidgetManager
+    lateinit var itemRenderer: ItemRenderer
     var allApps = mutableListOf<AppItem>()
     private var currentTransformOverlay: TransformOverlay? = null
     private var transformingViewOriginalParent: ViewGroup? = null
@@ -89,7 +89,7 @@ class MainActivity : Activity(), MainLayout.Callback, AppInstallReceiver.Callbac
                 val currentPage = homeView?.getCurrentPage() ?: 0
                 val item = HomeItem.createApp(app.packageName, app.className, 0f, 0f, currentPage)
                 homeItems.add(item)
-                val view = createAppView(item, false)
+                val view = itemRenderer.createAppView(item, false, model, allApps)
                 homeView?.addItemView(item, view)
                 savePage(currentPage)
                 if (view != null) mainLayout?.startExternalDrag(view)
@@ -126,6 +126,7 @@ class MainActivity : Activity(), MainLayout.Callback, AppInstallReceiver.Callbac
 
         folderManager = FolderManager(this, settingsManager)
         widgetManager = WidgetManager(this, settingsManager, appWidgetManager, appWidgetHost)
+        itemRenderer = ItemRenderer(this, settingsManager)
 
         applyDynamicColors()
         loadApps()
@@ -274,166 +275,17 @@ class MainActivity : Activity(), MainLayout.Callback, AppInstallReceiver.Callbac
 
     fun renderHomeItem(item: HomeItem?) {
         if (item?.type == null) return
+        val hwWidth = homeView?.width ?: 0
+        val hwHeight = homeView?.height ?: 0
         val view: View? = when (item.type) {
-            HomeItem.Type.APP -> createAppView(item, false)
-            HomeItem.Type.FOLDER -> createFolderView(item, false)
+            HomeItem.Type.APP -> itemRenderer.createAppView(item, false, model, allApps)
+            HomeItem.Type.FOLDER -> itemRenderer.createFolderView(item, false, model, allApps, hwWidth, hwHeight)
             HomeItem.Type.WIDGET -> createWidgetView(item)
-            HomeItem.Type.CLOCK -> createClockView(item)
+            HomeItem.Type.CLOCK -> itemRenderer.createClockView()
             else -> null
         }
         if (view != null) {
             homeView?.addItemView(item, view)
-        }
-    }
-
-    fun createAppView(item: HomeItem, isOnGlass: Boolean): View? {
-        val container = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            gravity = Gravity.CENTER
-        }
-
-        val baseSize = resources.getDimensionPixelSize(R.dimen.grid_icon_size)
-        val scale = settingsManager.iconScale
-        val size = (baseSize * scale).toInt()
-
-        val iconView = ImageView(this).apply {
-            tag = "item_icon"
-            scaleType = ImageView.ScaleType.FIT_CENTER
-            layoutParams = LinearLayout.LayoutParams(size, size)
-        }
-
-        val labelView = TextView(this).apply {
-            tag = "item_label"
-            setTextColor(ThemeUtils.getAdaptiveColor(this@MainActivity, settingsManager, isOnGlass))
-            textSize = 10 * scale
-            gravity = Gravity.CENTER
-            maxLines = 1
-            ellipsize = TextUtils.TruncateAt.END
-        }
-
-        val app = findApp(item.packageName)
-        if (app != null) {
-            model?.loadIcon(app, object : LauncherModel.OnIconLoadedListener {
-                override fun onIconLoaded(icon: android.graphics.Bitmap?) {
-                    iconView.setImageBitmap(icon)
-                }
-            })
-            labelView.text = app.label
-        } else {
-            iconView.setImageResource(android.R.drawable.sym_def_app_icon)
-            labelView.text = "..."
-        }
-
-        container.addView(iconView)
-        container.addView(labelView)
-        if (settingsManager.isHideLabels) {
-            labelView.visibility = View.GONE
-        }
-        return container
-    }
-
-    private fun createFolderView(item: HomeItem, isOnGlass: Boolean): View? {
-        val container = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            gravity = Gravity.CENTER
-        }
-
-        val cellWidth = if ((homeView?.width ?: 0) > 0) homeView!!.width / HomeView.GRID_COLUMNS else 1
-        val cellHeight = if ((homeView?.height ?: 0) > 0) homeView!!.height / HomeView.GRID_ROWS else 1
-
-        val previewContainer = FrameLayout(this)
-        val scale = settingsManager.iconScale
-        val sizeW: Int
-        val sizeH: Int
-
-        if (item.spanX <= 1.0f && item.spanY <= 1.0f) {
-            val baseSize = resources.getDimensionPixelSize(R.dimen.grid_icon_size)
-            sizeW = (baseSize * scale).toInt()
-            sizeH = sizeW
-        } else {
-            sizeW = (cellWidth * item.spanX).toInt()
-            sizeH = (cellHeight * item.spanY).toInt()
-        }
-
-        previewContainer.layoutParams = LinearLayout.LayoutParams(sizeW, sizeH)
-        previewContainer.background = ThemeUtils.getGlassDrawable(this, settingsManager, 12f)
-        val padding = dpToPx(6)
-        previewContainer.setPadding(padding, padding, padding, padding)
-
-        val grid = GridLayout(this).apply {
-            tag = "folder_grid"
-            columnCount = 2
-            rowCount = 2
-        }
-        previewContainer.addView(grid, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
-
-        refreshFolderPreview(item, grid)
-
-        val labelView = TextView(this).apply {
-            tag = "item_label"
-            setTextColor(ThemeUtils.getAdaptiveColor(this@MainActivity, settingsManager, isOnGlass))
-            textSize = 10 * scale
-            gravity = Gravity.CENTER
-            maxLines = 1
-            ellipsize = TextUtils.TruncateAt.END
-            text = if (item.folderName.isNullOrEmpty()) "" else item.folderName
-        }
-
-        container.addView(previewContainer)
-        container.addView(labelView)
-        if (settingsManager.isHideLabels) {
-            labelView.visibility = View.GONE
-        }
-        return container
-    }
-
-    fun refreshFolderPreview(folder: HomeItem, grid: GridLayout) {
-        grid.removeAllViews()
-        val items = folder.folderItems ?: return
-        if (items.isEmpty()) return
-
-        val cellWidth = if ((homeView?.width ?: 0) > 0) homeView!!.width / HomeView.GRID_COLUMNS else 1
-        val cellHeight = if ((homeView?.height ?: 0) > 0) homeView!!.height / HomeView.GRID_ROWS else 1
-
-        val scale = settingsManager.iconScale
-        val isSmall = folder.spanX <= 1.0f && folder.spanY <= 1.0f
-        val folderW = if (isSmall) (resources.getDimensionPixelSize(R.dimen.grid_icon_size) * scale).toInt() else (cellWidth * folder.spanX).toInt()
-        val folderH = if (isSmall) folderW else (cellHeight * folder.spanY).toInt()
-
-        val padding = dpToPx(if (isSmall) 6 else 12)
-        val availableW = folderW - 2 * padding
-        val availableH = folderH - 2 * padding
-
-        var columns = if (isSmall) 2 else Math.max(2, Math.round(folder.spanX))
-        if (columns > 4) columns = 4
-
-        val iconsToShow = if (isSmall) Math.min(items.size, 4) else Math.min(items.size, columns * columns)
-
-        grid.columnCount = columns
-        grid.rowCount = Math.ceil(iconsToShow.toDouble() / columns).toInt()
-
-        var iconSize = Math.min(availableW / columns, if (grid.rowCount > 0) availableH / grid.rowCount else availableH)
-        val iconMargin = dpToPx(if (isSmall) 1 else 4)
-        iconSize -= 2 * iconMargin
-
-        for (i in 0 until iconsToShow) {
-            val sub = items[i]
-            val iv = ImageView(this).apply {
-                layoutParams = GridLayout.LayoutParams().apply {
-                    width = iconSize
-                    height = iconSize
-                    setMargins(iconMargin, iconMargin, iconMargin, iconMargin)
-                }
-                scaleType = ImageView.ScaleType.FIT_CENTER
-            }
-            findApp(sub.packageName)?.let { app ->
-                model?.loadIcon(app, object : LauncherModel.OnIconLoadedListener {
-                    override fun onIconLoaded(icon: android.graphics.Bitmap?) {
-                        iv.setImageBitmap(icon)
-                    }
-                })
-            }
-            grid.addView(iv)
         }
     }
 
@@ -458,8 +310,8 @@ class MainActivity : Activity(), MainLayout.Callback, AppInstallReceiver.Callbac
             val hostView = ah.createView(this, item.widgetId, info)
             hostView?.setAppWidget(item.widgetId, info)
             val density = resources.displayMetrics.density
-            val cellWidth = ((homeView?.width ?: 0) - (homeView?.paddingLeft ?: 0) - (homeView?.paddingRight ?: 0)) / HomeView.GRID_COLUMNS
-            val cellHeight = ((homeView?.height ?: 0) - (homeView?.paddingTop ?: 0) - (homeView?.paddingBottom ?: 0)) / HomeView.GRID_ROWS
+            val cellWidth = ((homeView?.width ?: 0) - (homeView?.paddingLeft ?: 0) - (homeView?.paddingRight ?: 0)) / GridManager.GRID_COLUMNS
+            val cellHeight = ((homeView?.height ?: 0) - (homeView?.paddingTop ?: 0) - (homeView?.paddingBottom ?: 0)) / GridManager.GRID_ROWS
             if (cellWidth > 0 && cellHeight > 0) {
                 val w = (cellWidth * item.spanX / density).toInt()
                 val h = (cellHeight * item.spanY / density).toInt()
@@ -467,8 +319,8 @@ class MainActivity : Activity(), MainLayout.Callback, AppInstallReceiver.Callbac
             } else {
                 hostView?.addOnLayoutChangeListener(object : View.OnLayoutChangeListener {
                     override fun onLayoutChange(v: View?, l: Int, t: Int, r: Int, b: Int, ol: Int, ot: Int, or: Int, ob: Int) {
-                        val cw = ((homeView?.width ?: 0) - (homeView?.paddingLeft ?: 0) - (homeView?.paddingRight ?: 0)) / HomeView.GRID_COLUMNS
-                        val ch = ((homeView?.height ?: 0) - (homeView?.paddingTop ?: 0) - (homeView?.paddingBottom ?: 0)) / HomeView.GRID_ROWS
+                        val cw = ((homeView?.width ?: 0) - (homeView?.paddingLeft ?: 0) - (homeView?.paddingRight ?: 0)) / GridManager.GRID_COLUMNS
+                        val ch = ((homeView?.height ?: 0) - (homeView?.paddingTop ?: 0) - (homeView?.paddingBottom ?: 0)) / GridManager.GRID_ROWS
                         if (cw > 0 && ch > 0) {
                             val w = (cw * item.spanX / density).toInt()
                             val h = (ch * item.spanY / density).toInt()
@@ -489,7 +341,7 @@ class MainActivity : Activity(), MainLayout.Callback, AppInstallReceiver.Callbac
         homeItems.remove(item)
         (v.parent as? ViewGroup)?.removeView(v)
         savePage(page)
-        homeView?.pageManager?.cleanupEmptyPages()
+        homeView?.pageManager?.reindexItems()
         homeView?.refreshIcons(model!!, allApps)
     }
 
@@ -523,43 +375,6 @@ class MainActivity : Activity(), MainLayout.Callback, AppInstallReceiver.Callbac
         }
     }
 
-    private fun createClockView(item: HomeItem): View {
-        val clockRoot = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            gravity = Gravity.CENTER
-        }
-
-        val tvTime = TextView(this).apply {
-            textSize = 64f
-            setTextColor(ThemeUtils.getAdaptiveColor(this@MainActivity, settingsManager, false))
-            typeface = Typeface.create("sans-serif-thin", Typeface.NORMAL)
-        }
-
-        val tvDate = TextView(this).apply {
-            textSize = 18f
-            val adaptiveDim = ThemeUtils.getAdaptiveColor(this@MainActivity, settingsManager, false) and 0xBBFFFFFF.toInt()
-            setTextColor(adaptiveDim)
-            gravity = Gravity.CENTER
-        }
-
-        clockRoot.addView(tvTime)
-        clockRoot.addView(tvDate)
-
-        val updateTask = object : Runnable {
-            override fun run() {
-                val cal = Calendar.getInstance()
-                tvTime.text = android.text.format.DateFormat.getTimeFormat(this@MainActivity).format(cal.time)
-                tvDate.text = android.text.format.DateFormat.getMediumDateFormat(this@MainActivity).format(cal.time)
-                tvTime.postDelayed(this, 10000)
-            }
-        }
-        tvTime.post(updateTask)
-        return clockRoot
-    }
-
-    private fun findApp(packageName: String?): AppItem? {
-        return allApps.find { it.packageName == packageName }
-    }
 
     override fun showHomeContextMenu(col: Float, row: Float, page: Int) {
         val optionsList = mutableListOf<String>()
@@ -696,7 +511,6 @@ class MainActivity : Activity(), MainLayout.Callback, AppInstallReceiver.Callbac
         super.onNewIntent(intent)
         setIntent(intent)
         mainLayout?.closeDrawer()
-        homeView?.scrollToPage(0)
     }
 
     override fun onBackPressed() {
@@ -728,8 +542,8 @@ class MainActivity : Activity(), MainLayout.Callback, AppInstallReceiver.Callbac
             }
         }
 
-        val cellWidth = transformingViewOriginalParent!!.width / HomeView.GRID_COLUMNS
-        val cellHeight = transformingViewOriginalParent!!.height / HomeView.GRID_ROWS
+        val cellWidth = transformingViewOriginalParent!!.width / GridManager.GRID_COLUMNS
+        val cellHeight = transformingViewOriginalParent!!.height / GridManager.GRID_ROWS
 
         if (isFreeform) {
             item.rotation = v.rotation
@@ -881,7 +695,7 @@ class MainActivity : Activity(), MainLayout.Callback, AppInstallReceiver.Callbac
             setOverlayBlur(false, true)
             transformingView = null
             transformingViewOriginalParent = null
-            homeView?.pageManager?.cleanupEmptyPages()
+            homeView?.pageManager?.reindexItems()
             homeView?.refreshIcons(model!!, allApps)
         }
     }
