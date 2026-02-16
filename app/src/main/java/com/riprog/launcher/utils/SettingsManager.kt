@@ -147,7 +147,12 @@ class SettingsManager(private val context: Context) {
     fun removePageData(index: Int, oldPageCount: Int) {
         prefs.edit().putInt("page_count", oldPageCount - 1).apply()
         val items = getHomeItems()
-        items.removeIf { it.page == index }
+        val iterator = items.iterator()
+        while (iterator.hasNext()) {
+            if (iterator.next().page == index) {
+                iterator.remove()
+            }
+        }
         for (item in items) {
             if (item.page > index) item.page--
         }
