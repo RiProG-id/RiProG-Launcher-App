@@ -65,7 +65,6 @@ class MainActivity : Activity(), MainLayout.Callback, AppInstallReceiver.Callbac
 
     private val debounceHandler = Handler(Looper.getMainLooper())
     private val saveStateRunnable = Runnable { saveHomeStateInternal() }
-    private val savePageRunnables = mutableMapOf<Int, Runnable>()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -87,7 +86,7 @@ class MainActivity : Activity(), MainLayout.Callback, AppInstallReceiver.Callbac
         drawerView?.setColumns(settingsManager.columns)
         drawerView?.setOnAppLongClickListener(object : DrawerView.OnAppLongClickListener {
             override fun onAppLongClick(app: AppItem) {
-                mainLayout?.closeDrawer()
+                mainLayout?.closeDrawerInstantly()
                 val currentPage = homeView?.getCurrentPage() ?: 0
                 val item = HomeItem.createApp(app.packageName, app.className, 0f, 0f, currentPage)
                 homeItems.add(item)
@@ -229,17 +228,7 @@ class MainActivity : Activity(), MainLayout.Callback, AppInstallReceiver.Callbac
     }
 
     fun savePage(index: Int) {
-        var r = savePageRunnables[index]
-        if (r == null) {
-            r = Runnable {
-                if (isStateRestored && index >= 0) {
-                    settingsManager.savePageItems(index, homeItems)
-                }
-            }
-            savePageRunnables[index] = r
-        }
-        debounceHandler.removeCallbacks(r)
-        debounceHandler.postDelayed(r, 500)
+        saveHomeState()
     }
 
     override fun isTransforming(): Boolean = currentTransformOverlay != null
@@ -709,6 +698,7 @@ class MainActivity : Activity(), MainLayout.Callback, AppInstallReceiver.Callbac
         homeView?.scrollToPage(0)
     }
 
+    @Deprecated("Deprecated in Java")
     override fun onBackPressed() {
         if (currentTransformOverlay != null) {
             closeTransformOverlay()
@@ -1034,5 +1024,9 @@ class MainActivity : Activity(), MainLayout.Callback, AppInstallReceiver.Callbac
 
     override fun closeDrawer() {
         mainLayout?.closeDrawer()
+    }
+
+    override fun closeDrawerInstantly() {
+        mainLayout?.closeDrawerInstantly()
     }
 }
