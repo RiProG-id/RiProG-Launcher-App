@@ -258,17 +258,7 @@ class SettingsManager(private val context: Context) {
         }
 
         for (i in 0 until pageCount) {
-            val json = prefs.getString("${KEY_HOME_ITEMS}_page_$i", null)
-            if (json != null) {
-                try {
-                    val array = JSONArray(json)
-                    for (j in 0 until array.length()) {
-                        val item = deserializeItem(array.getJSONObject(j))
-                        if (item != null) items.add(item)
-                    }
-                } catch (ignored: Exception) {
-                }
-            }
+            items.addAll(getPageItems(i))
         }
         return items
     }
