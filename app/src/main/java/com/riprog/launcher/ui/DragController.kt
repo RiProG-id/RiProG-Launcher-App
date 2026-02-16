@@ -84,7 +84,7 @@ class DragController(
         if (isExternal) {
             val iconSize = layout.resources.getDimensionPixelSize(R.dimen.grid_icon_size)
             v.x = x - iconSize
-            v.y = y - iconSize - dpToPx(24)
+            v.y = y - iconSize
         }
         callback.getHomeView()?.startDragging(v, x, y)
     }

@@ -87,20 +87,13 @@ class PageManager(
 
     fun scrollToPage(page: Int) {
         val n = pages.size
-        if (n <= 1) {
-            currentPage = 0
-            container.translationX = 0f
-            indicator.setCurrentPage(0)
-            return
-        }
-
         val width = container.width
         if (width <= 0) {
             container.post { scrollToPage(page) }
             return
         }
 
-        val targetPage = Math.max(0, Math.min(n - 1, page))
+        val targetPage = if (n > 0) Math.max(0, Math.min(n - 1, page)) else 0
         currentPage = targetPage
         val targetX = currentPage * width
         container.animate()

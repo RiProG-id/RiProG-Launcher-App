@@ -36,6 +36,7 @@ class MainLayout(context: Context, private val callback: Callback) : FrameLayout
         fun getCurrentPage(): Int
         fun openDrawer()
         fun closeDrawer()
+        fun closeDrawerInstantly()
     }
 
     private var dimView: View? = null
@@ -304,6 +305,20 @@ class MainLayout(context: Context, private val callback: Callback) : FrameLayout
             .start()
         callback.getHomeView()?.visibility = VISIBLE
         callback.getHomeView()?.animate()?.alpha(1f)?.setDuration(200)?.start()
+    }
+
+    fun closeDrawerInstantly() {
+        if (!isDrawerOpen) return
+        isDrawerOpen = false
+        val drawerView = callback.getDrawerView() ?: return
+        drawerView.animate().cancel()
+        drawerView.visibility = GONE
+        drawerView.alpha = 0f
+        drawerView.translationY = height / 4f
+        drawerView.onClose()
+        callback.getHomeView()?.visibility = VISIBLE
+        callback.getHomeView()?.alpha = 1f
+        System.gc()
     }
 
     fun startExternalDrag(v: View) {

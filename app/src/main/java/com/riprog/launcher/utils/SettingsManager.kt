@@ -98,18 +98,16 @@ class SettingsManager(private val context: Context) {
         defaultPromptCount += 1
     }
 
+    private fun getHomeFile(): File {
+        val dir = File(context.cacheDir, DiskCache.TYPE_LAYOUT)
+        if (!dir.exists()) dir.mkdirs()
+        return File(dir, "home_layout.json")
+    }
+
     private fun getPageFile(pageIndex: Int): File {
         val dir = File(context.cacheDir, DiskCache.TYPE_LAYOUT)
         if (!dir.exists()) dir.mkdirs()
-        val cacheFile = File(dir, "home_page_$pageIndex.json")
-
-        if (!cacheFile.exists()) {
-            val oldFile = File(context.filesDir, "home_page_$pageIndex.json")
-            if (oldFile.exists()) {
-                oldFile.renameTo(cacheFile)
-            }
-        }
-        return cacheFile
+        return File(dir, "home_page_$pageIndex.json")
     }
 
     private fun writeToFile(file: File, data: String) {
@@ -139,66 +137,36 @@ class SettingsManager(private val context: Context) {
     }
 
     fun savePageItems(pageIndex: Int, items: List<HomeItem>?) {
-        if (items == null) return
-        val array = JSONArray()
-        for (item in items) {
-            if (item.page == pageIndex) {
-                val obj = serializeItem(item)
-                if (obj != null) array.put(obj)
-            }
-        }
-        writeToFile(getPageFile(pageIndex), array.toString())
-
-        val currentCount = pageCount
-        if (pageIndex >= currentCount) {
-            savePageCount(pageIndex + 1)
-        }
+        saveHomeItems(items, pageCount)
     }
 
     fun getPageItems(pageIndex: Int): List<HomeItem> {
-        val items = mutableListOf<HomeItem>()
-        var json = readFromFile(getPageFile(pageIndex))
-
-        if (json == null) {
-            json = prefs.getString("${KEY_HOME_ITEMS}_page_$pageIndex", null)
-        }
-
-        if (json != null) {
-            try {
-                val array = JSONArray(json)
-                for (i in 0 until array.length()) {
-                    val item = deserializeItem(array.getJSONObject(i))
-                    if (item != null) items.add(item)
-                }
-            } catch (ignored: Exception) {
-            }
-        }
-        return items
+        return getHomeItems().filter { it.page == pageIndex }
     }
 
     fun removePageData(index: Int, oldPageCount: Int) {
-        for (i in index until oldPageCount - 1) {
-            val currentFile = getPageFile(i)
-            val nextFile = getPageFile(i + 1)
-            if (nextFile.exists()) {
-                nextFile.renameTo(currentFile)
-            } else {
-                currentFile.delete()
-            }
-            prefs.edit().remove("${KEY_HOME_ITEMS}_page_$i").apply()
-        }
-        getPageFile(oldPageCount - 1).delete()
-        prefs.edit().remove("${KEY_HOME_ITEMS}_page_${oldPageCount - 1}").apply()
-
         prefs.edit().putInt("page_count", oldPageCount - 1).apply()
+        val items = getHomeItems()
+        val iterator = items.iterator()
+        while (iterator.hasNext()) {
+            if (iterator.next().page == index) {
+                iterator.remove()
+            }
+        }
+        for (item in items) {
+            if (item.page > index) item.page--
+        }
+        saveHomeItems(items, oldPageCount - 1)
     }
 
     fun saveHomeItems(items: List<HomeItem>?, pageCount: Int) {
         if (items == null) return
-
-        for (i in 0 until pageCount) {
-            savePageItems(i, items)
+        val array = JSONArray()
+        for (item in items) {
+            val obj = serializeItem(item)
+            if (obj != null) array.put(obj)
         }
+        writeToFile(getHomeFile(), array.toString())
 
         prefs.edit()
             .putInt("page_count", pageCount)
@@ -240,10 +208,9 @@ class SettingsManager(private val context: Context) {
 
     fun getHomeItems(): MutableList<HomeItem> {
         val items = mutableListOf<HomeItem>()
-        val pageCount = prefs.getInt("page_count", 0)
-
-        if (pageCount == 0) {
-            val json = prefs.getString(KEY_HOME_ITEMS, null)
+        val homeFile = getHomeFile()
+        if (homeFile.exists()) {
+            val json = readFromFile(homeFile)
             if (json != null) {
                 try {
                     val array = JSONArray(json)
@@ -257,8 +224,44 @@ class SettingsManager(private val context: Context) {
             return items
         }
 
-        for (i in 0 until pageCount) {
-            items.addAll(getPageItems(i))
+        val pageCount = prefs.getInt("page_count", 0)
+        if (pageCount > 0) {
+            for (i in 0 until pageCount) {
+                val pageFile = getPageFile(i)
+                if (pageFile.exists()) {
+                    val json = readFromFile(pageFile)
+                    if (json != null) {
+                        try {
+                            val array = JSONArray(json)
+                            for (j in 0 until array.length()) {
+                                val item = deserializeItem(array.getJSONObject(j))
+                                if (item != null) {
+                                    item.page = i
+                                    items.add(item)
+                                }
+                            }
+                        } catch (ignored: Exception) {
+                        }
+                    }
+                }
+            }
+            if (items.isNotEmpty()) {
+                saveHomeItems(items, pageCount)
+            }
+            return items
+        }
+
+        val json = prefs.getString(KEY_HOME_ITEMS, null)
+        if (json != null) {
+            try {
+                val array = JSONArray(json)
+                for (i in 0 until array.length()) {
+                    val item = deserializeItem(array.getJSONObject(i))
+                    if (item != null) items.add(item)
+                }
+                saveHomeItems(items, 1)
+            } catch (ignored: Exception) {
+            }
         }
         return items
     }

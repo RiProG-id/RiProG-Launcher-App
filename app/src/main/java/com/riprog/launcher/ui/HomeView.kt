@@ -62,6 +62,8 @@ class HomeView(context: Context) : FrameLayout(context) {
 
     init {
         pagesContainer.orientation = LinearLayout.HORIZONTAL
+        pagesContainer.clipChildren = false
+        pagesContainer.clipToPadding = false
         addView(pagesContainer, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT))
 
         val indicatorParams = LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT)
@@ -252,7 +254,9 @@ class HomeView(context: Context) : FrameLayout(context) {
 
     fun endDragging() {
         draggingView?.let { v ->
-            v.animate().scaleX(1.0f).scaleY(1.0f).alpha(1.0f).setDuration(150).start()
+            v.scaleX = 1.0f
+            v.scaleY = 1.0f
+            v.alpha = 1.0f
             val item = v.tag as? HomeItem
             if (item != null) {
                 snapToGrid(item, v)
@@ -269,7 +273,9 @@ class HomeView(context: Context) : FrameLayout(context) {
 
     fun cancelDragging() {
         draggingView?.let { v ->
-            v.animate().scaleX(1.0f).scaleY(1.0f).alpha(1.0f).setDuration(150).start()
+            v.scaleX = 1.0f
+            v.scaleY = 1.0f
+            v.alpha = 1.0f
             val item = v.tag as? HomeItem
             if (item != null) {
                 addItemView(item, v)
@@ -512,18 +518,10 @@ class HomeView(context: Context) : FrameLayout(context) {
         }
 
         val adaptiveColor = ThemeUtils.getAdaptiveColor(context, settingsManager, false)
-        val currentPage = pageManager.getCurrentPage()
         val allPages = pageManager.getAllPages()
 
-        if (currentPage in allPages.indices) {
-            refreshPageIcons(allPages[currentPage], model, appMap, targetIconSize, globalScale, hideLabels, adaptiveColor)
-        }
-
-        post {
-            for (i in allPages.indices) {
-                if (i == currentPage) continue
-                refreshPageIcons(allPages[i], model, appMap, targetIconSize, globalScale, hideLabels, adaptiveColor)
-            }
+        for (page in allPages) {
+            refreshPageIcons(page, model, appMap, targetIconSize, globalScale, hideLabels, adaptiveColor)
         }
     }
 
