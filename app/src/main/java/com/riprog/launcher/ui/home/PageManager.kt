@@ -114,6 +114,9 @@ class PageManager(
                     currentPage = 0
                     indicator.setCurrentPage(0)
                     onPageChanged()
+                    indicator.animate().alpha(0.5f).setDuration(100).withEndAction {
+                        indicator.animate().alpha(1f).setDuration(100).start()
+                    }.start()
                 }.start()
             return
         } else if (page == -1 && currentPage == 0) {
@@ -130,6 +133,9 @@ class PageManager(
                     currentPage = n - 1
                     indicator.setCurrentPage(n - 1)
                     onPageChanged()
+                    indicator.animate().alpha(0.5f).setDuration(100).withEndAction {
+                        indicator.animate().alpha(1f).setDuration(100).start()
+                    }.start()
                 }.start()
             return
         }
@@ -146,6 +152,9 @@ class PageManager(
             }
             .start()
         indicator.setCurrentPage(currentPage)
+        indicator.animate().alpha(0.5f).setDuration(100).withEndAction {
+            indicator.animate().alpha(1f).setDuration(100).start()
+        }.start()
     }
 
     fun getCurrentPage(): Int = currentPage

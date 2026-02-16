@@ -54,6 +54,11 @@ class MainActivity : Activity(), MainLayout.Callback, AppInstallReceiver.Callbac
     private var homeItems = mutableListOf<HomeItem>()
     private var lastGridCol = 0f
     private var lastGridRow = 0f
+    private var pendingWidgetCol = 0f
+    private var pendingWidgetRow = 0f
+    private var pendingWidgetSpanX = 0f
+    private var pendingWidgetSpanY = 0f
+    private var pendingWidgetPage = 0
     private var isStateRestored = false
 
     private val debounceHandler = Handler(Looper.getMainLooper())
@@ -452,6 +457,27 @@ class MainActivity : Activity(), MainLayout.Callback, AppInstallReceiver.Callbac
         return try {
             val hostView = ah.createView(this, item.widgetId, info)
             hostView?.setAppWidget(item.widgetId, info)
+            val density = resources.displayMetrics.density
+            val cellWidth = ((homeView?.width ?: 0) - (homeView?.paddingLeft ?: 0) - (homeView?.paddingRight ?: 0)) / HomeView.GRID_COLUMNS
+            val cellHeight = ((homeView?.height ?: 0) - (homeView?.paddingTop ?: 0) - (homeView?.paddingBottom ?: 0)) / HomeView.GRID_ROWS
+            if (cellWidth > 0 && cellHeight > 0) {
+                val w = (cellWidth * item.spanX / density).toInt()
+                val h = (cellHeight * item.spanY / density).toInt()
+                hostView?.updateAppWidgetSize(null, w, h, w, h)
+            } else {
+                hostView?.addOnLayoutChangeListener(object : View.OnLayoutChangeListener {
+                    override fun onLayoutChange(v: View?, l: Int, t: Int, r: Int, b: Int, ol: Int, ot: Int, or: Int, ob: Int) {
+                        val cw = ((homeView?.width ?: 0) - (homeView?.paddingLeft ?: 0) - (homeView?.paddingRight ?: 0)) / HomeView.GRID_COLUMNS
+                        val ch = ((homeView?.height ?: 0) - (homeView?.paddingTop ?: 0) - (homeView?.paddingBottom ?: 0)) / HomeView.GRID_ROWS
+                        if (cw > 0 && ch > 0) {
+                            val w = (cw * item.spanX / density).toInt()
+                            val h = (ch * item.spanY / density).toInt()
+                            hostView?.updateAppWidgetSize(null, w, h, w, h)
+                            hostView?.removeOnLayoutChangeListener(this)
+                        }
+                    }
+                })
+            }
             hostView
         } catch (e: Exception) {
             null
@@ -900,22 +926,18 @@ class MainActivity : Activity(), MainLayout.Callback, AppInstallReceiver.Callbac
             homeView?.refreshIcons(model!!, allApps)
             return
         }
-        if (resultCode == RESULT_OK && data != null) {
+        if (resultCode == RESULT_OK) {
             if (requestCode == REQUEST_PICK_APPWIDGET) {
-                val appWidgetId = data.getIntExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, -1)
-                val lastGridCol = data.getFloatExtra("lastGridCol", 0f)
-                val lastGridRow = data.getFloatExtra("lastGridRow", 0f)
-                val spanX = data.getFloatExtra("spanX", 2f)
-                val spanY = data.getFloatExtra("spanY", 1f)
-                configureWidget(appWidgetId, lastGridCol, lastGridRow, spanX, spanY)
+                val appWidgetId = data?.getIntExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, -1) ?: -1
+                if (appWidgetId != -1) {
+                    configureWidget(appWidgetId, pendingWidgetCol, pendingWidgetRow, pendingWidgetSpanX, pendingWidgetSpanY)
+                }
             }
             else if (requestCode == REQUEST_CREATE_APPWIDGET) {
-                val appWidgetId = data.getIntExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, -1)
-                val lastGridCol = data.getFloatExtra("lastGridCol", 0f)
-                val lastGridRow = data.getFloatExtra("lastGridRow", 0f)
-                val spanX = data.getFloatExtra("spanX", 2f)
-                val spanY = data.getFloatExtra("spanY", 1f)
-                createWidgetAt(appWidgetId, lastGridCol, lastGridRow, spanX, spanY)
+                val appWidgetId = data?.getIntExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, -1) ?: -1
+                if (appWidgetId != -1) {
+                    createWidgetAt(appWidgetId, pendingWidgetCol, pendingWidgetRow, pendingWidgetSpanX, pendingWidgetSpanY, pendingWidgetPage)
+                }
             }
         }
     }
@@ -935,11 +957,20 @@ class MainActivity : Activity(), MainLayout.Callback, AppInstallReceiver.Callbac
         } else createWidgetAt(appWidgetId, lastGridCol, lastGridRow, spanX, spanY)
     }
 
-    fun createWidgetAt(appWidgetId: Int, col: Float, row: Float, spanX: Float, spanY: Float) {
-        val item = HomeItem.createWidget(appWidgetId, col, row, spanX, spanY, homeView?.getCurrentPage() ?: 0)
+    fun createWidgetAt(appWidgetId: Int, col: Float, row: Float, spanX: Float, spanY: Float, page: Int = -1) {
+        val targetPage = if (page >= 0) page else (homeView?.getCurrentPage() ?: 0)
+        val item = HomeItem.createWidget(appWidgetId, col, row, spanX, spanY, targetPage)
         homeItems.add(item)
         renderHomeItem(item)
         saveHomeState()
+    }
+
+    fun setPendingWidgetParams(col: Float, row: Float, spanX: Float, spanY: Float, page: Int) {
+        pendingWidgetCol = col
+        pendingWidgetRow = row
+        pendingWidgetSpanX = spanX
+        pendingWidgetSpanY = spanY
+        pendingWidgetPage = page
     }
 
     fun getAppName(packageName: String): String {

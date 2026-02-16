@@ -111,8 +111,14 @@ class WidgetManager(
                     itemsContainer.addView(card, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { bottomMargin = dpToPx(12) })
 
                     val preview = ImageView(activity).apply { scaleType = ImageView.ScaleType.FIT_CENTER }
-                    var sX = info.minWidth.toFloat() / (activity.resources.displayMetrics.widthPixels / HomeView.GRID_COLUMNS)
-                    var sY = info.minHeight.toFloat() / (activity.resources.displayMetrics.heightPixels / HomeView.GRID_ROWS)
+                    val density = activity.resources.displayMetrics.density
+                    val hv = activity.getHomeView()
+                    val availW = if (hv != null && hv.width > 0) hv.width - hv.paddingLeft - hv.paddingRight else activity.resources.displayMetrics.widthPixels
+                    val availH = if (hv != null && hv.height > 0) hv.height - hv.paddingTop - hv.paddingBottom else activity.resources.displayMetrics.heightPixels
+                    val cellWidth = availW / HomeView.GRID_COLUMNS
+                    val cellHeight = availH / HomeView.GRID_ROWS
+                    var sX = (info.minWidth * density) / cellWidth
+                    var sY = (info.minHeight * density) / cellHeight
                     if (!settingsManager.isFreeformHome) {
                         sX = Math.max(1f, Math.ceil(sX.toDouble()).toFloat())
                         sY = Math.max(1f, Math.ceil(sY.toDouble()).toFloat())
@@ -145,16 +151,14 @@ class WidgetManager(
                     card.setOnClickListener {
                         dialog.dismiss()
                         val appWidgetId = appWidgetHost!!.allocateAppWidgetId()
+                        val currentPage = activity.getHomeView()?.getCurrentPage() ?: 0
+                        activity.setPendingWidgetParams(lastGridCol, lastGridRow, spanX, spanY, currentPage)
                         if (am.bindAppWidgetIdIfAllowed(appWidgetId, info.provider)) {
-                            activity.createWidgetAt(appWidgetId, lastGridCol, lastGridRow, spanX, spanY)
+                            activity.createWidgetAt(appWidgetId, lastGridCol, lastGridRow, spanX, spanY, currentPage)
                         } else {
                             val intent = Intent(AppWidgetManager.ACTION_APPWIDGET_BIND).apply {
                                 putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, appWidgetId)
                                 putExtra(AppWidgetManager.EXTRA_APPWIDGET_PROVIDER, info.provider)
-                                putExtra("lastGridCol", lastGridCol)
-                                putExtra("lastGridRow", lastGridRow)
-                                putExtra("spanX", spanX)
-                                putExtra("spanY", spanY)
                             }
                             activity.startActivityForResult(intent, MainActivity.REQUEST_PICK_APPWIDGET)
                         }

@@ -165,11 +165,13 @@ class HomeView(context: Context) : FrameLayout(context) {
         view.layoutParams = lp
 
         if (item.type == HomeItem.Type.APP || (item.type == HomeItem.Type.FOLDER && item.spanX <= 1.0f && item.spanY <= 1.0f)) {
-            view.x = paddingLeft + item.col * cellWidth + (cellWidth - lp.width) / 2f
-            view.y = paddingTop + item.row * cellHeight + (cellHeight - lp.height) / 2f
+            val offsetX = if (settingsManager.isFreeformHome) 0f else (cellWidth - lp.width) / 2f
+            val offsetY = if (settingsManager.isFreeformHome) 0f else (cellHeight - lp.height) / 2f
+            view.x = item.col * cellWidth + offsetX
+            view.y = item.row * cellHeight + offsetY
         } else {
-            view.x = paddingLeft + item.col * cellWidth
-            view.y = paddingTop + item.row * cellHeight
+            view.x = item.col * cellWidth
+            view.y = item.row * cellHeight
         }
 
         view.rotation = item.rotation
@@ -613,9 +615,9 @@ class HomeView(context: Context) : FrameLayout(context) {
     companion object {
         const val GRID_COLUMNS = 4
         const val GRID_ROWS = 6
-        private const val PAGE_SWITCH_COOLDOWN = 1000L
-        private const val HOLD_DELAY = 1000L
-        private const val EDGE_THRESHOLD = 0.05f
+        private const val PAGE_SWITCH_COOLDOWN = 500L
+        private const val HOLD_DELAY = 400L
+        private const val EDGE_THRESHOLD = 0.12f
         private const val MIN_DRAG_DISTANCE_DP = 50
     }
 }
