@@ -18,6 +18,7 @@ import android.view.ViewGroup
 import android.view.inputmethod.InputMethodManager
 import android.widget.*
 import com.riprog.launcher.manager.FolderManager
+import com.riprog.launcher.manager.GridManager
 import com.riprog.launcher.manager.WidgetManager
 import com.riprog.launcher.model.AppItem
 import com.riprog.launcher.model.HomeItem
@@ -45,6 +46,7 @@ class MainActivity : Activity(), MainLayout.Callback, AppInstallReceiver.Callbac
     private var drawerView: DrawerView? = null
     lateinit var folderManager: FolderManager
     lateinit var widgetManager: WidgetManager
+    lateinit var gridManager: GridManager
     var allApps = mutableListOf<AppItem>()
     private var currentTransformOverlay: TransformOverlay? = null
     private var transformingViewOriginalParent: ViewGroup? = null
@@ -124,6 +126,7 @@ class MainActivity : Activity(), MainLayout.Callback, AppInstallReceiver.Callbac
         appWidgetHost = AppWidgetHost(this, APPWIDGET_HOST_ID)
         appWidgetHost?.startListening()
 
+        gridManager = GridManager(settingsManager)
         folderManager = FolderManager(this, settingsManager)
         widgetManager = WidgetManager(this, settingsManager, appWidgetManager, appWidgetHost)
 
@@ -338,8 +341,10 @@ class MainActivity : Activity(), MainLayout.Callback, AppInstallReceiver.Callbac
             gravity = Gravity.CENTER
         }
 
-        val cellWidth = if ((homeView?.width ?: 0) > 0) homeView!!.width / HomeView.GRID_COLUMNS else 1
-        val cellHeight = if ((homeView?.height ?: 0) > 0) homeView!!.height / HomeView.GRID_ROWS else 1
+        val hv = homeView
+        val gridM = hv?.gridManager ?: gridManager
+        val cellWidth = if ((hv?.width ?: 0) > 0) gridM.getCellWidth(hv!!.width) else 1
+        val cellHeight = if ((hv?.height ?: 0) > 0) gridM.getCellHeight(hv!!.height) else 1
 
         val previewContainer = FrameLayout(this)
         val scale = settingsManager.iconScale
@@ -392,8 +397,10 @@ class MainActivity : Activity(), MainLayout.Callback, AppInstallReceiver.Callbac
         val items = folder.folderItems ?: return
         if (items.isEmpty()) return
 
-        val cellWidth = if ((homeView?.width ?: 0) > 0) homeView!!.width / HomeView.GRID_COLUMNS else 1
-        val cellHeight = if ((homeView?.height ?: 0) > 0) homeView!!.height / HomeView.GRID_ROWS else 1
+        val hv = homeView
+        val gridM = hv?.gridManager ?: gridManager
+        val cellWidth = if ((hv?.width ?: 0) > 0) gridM.getCellWidth(hv!!.width) else 1
+        val cellHeight = if ((hv?.height ?: 0) > 0) gridM.getCellHeight(hv!!.height) else 1
 
         val scale = settingsManager.iconScale
         val isSmall = folder.spanX <= 1.0f && folder.spanY <= 1.0f
@@ -458,8 +465,10 @@ class MainActivity : Activity(), MainLayout.Callback, AppInstallReceiver.Callbac
             val hostView = ah.createView(this, item.widgetId, info)
             hostView?.setAppWidget(item.widgetId, info)
             val density = resources.displayMetrics.density
-            val cellWidth = ((homeView?.width ?: 0) - (homeView?.paddingLeft ?: 0) - (homeView?.paddingRight ?: 0)) / HomeView.GRID_COLUMNS
-            val cellHeight = ((homeView?.height ?: 0) - (homeView?.paddingTop ?: 0) - (homeView?.paddingBottom ?: 0)) / HomeView.GRID_ROWS
+            val hv = homeView
+            val grid = hv?.gridManager ?: gridManager
+            val cellWidth = ((hv?.width ?: 0) - (hv?.paddingLeft ?: 0) - (hv?.paddingRight ?: 0)) / grid.columns
+            val cellHeight = ((hv?.height ?: 0) - (hv?.paddingTop ?: 0) - (hv?.paddingBottom ?: 0)) / grid.rows
             if (cellWidth > 0 && cellHeight > 0) {
                 val w = (cellWidth * item.spanX / density).toInt()
                 val h = (cellHeight * item.spanY / density).toInt()
@@ -467,8 +476,9 @@ class MainActivity : Activity(), MainLayout.Callback, AppInstallReceiver.Callbac
             } else {
                 hostView?.addOnLayoutChangeListener(object : View.OnLayoutChangeListener {
                     override fun onLayoutChange(v: View?, l: Int, t: Int, r: Int, b: Int, ol: Int, ot: Int, or: Int, ob: Int) {
-                        val cw = ((homeView?.width ?: 0) - (homeView?.paddingLeft ?: 0) - (homeView?.paddingRight ?: 0)) / HomeView.GRID_COLUMNS
-                        val ch = ((homeView?.height ?: 0) - (homeView?.paddingTop ?: 0) - (homeView?.paddingBottom ?: 0)) / HomeView.GRID_ROWS
+                        val g = homeView?.gridManager ?: grid
+                        val cw = ((homeView?.width ?: 0) - (homeView?.paddingLeft ?: 0) - (homeView?.paddingRight ?: 0)) / g.columns
+                        val ch = ((homeView?.height ?: 0) - (homeView?.paddingTop ?: 0) - (homeView?.paddingBottom ?: 0)) / g.rows
                         if (cw > 0 && ch > 0) {
                             val w = (cw * item.spanX / density).toInt()
                             val h = (ch * item.spanY / density).toInt()
@@ -728,8 +738,8 @@ class MainActivity : Activity(), MainLayout.Callback, AppInstallReceiver.Callbac
             }
         }
 
-        val cellWidth = transformingViewOriginalParent!!.width / HomeView.GRID_COLUMNS
-        val cellHeight = transformingViewOriginalParent!!.height / HomeView.GRID_ROWS
+        val cellWidth = gridManager.getCellWidth(transformingViewOriginalParent!!.width)
+        val cellHeight = gridManager.getCellHeight(transformingViewOriginalParent!!.height)
 
         if (isFreeform) {
             item.rotation = v.rotation
@@ -952,9 +962,10 @@ class MainActivity : Activity(), MainLayout.Callback, AppInstallReceiver.Callbac
                 putExtra("lastGridRow", lastGridRow)
                 putExtra("spanX", spanX)
                 putExtra("spanY", spanY)
+                putExtra("page", pendingWidgetPage)
             }
             startActivityForResult(intent, REQUEST_CREATE_APPWIDGET)
-        } else createWidgetAt(appWidgetId, lastGridCol, lastGridRow, spanX, spanY)
+        } else createWidgetAt(appWidgetId, lastGridCol, lastGridRow, spanX, spanY, pendingWidgetPage)
     }
 
     fun createWidgetAt(appWidgetId: Int, col: Float, row: Float, spanX: Float, spanY: Float, page: Int = -1) {

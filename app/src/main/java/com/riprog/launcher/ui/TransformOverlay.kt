@@ -12,6 +12,7 @@ import android.view.ViewGroup
 import android.widget.FrameLayout
 import android.widget.LinearLayout
 import android.widget.TextView
+import com.riprog.launcher.manager.GridManager
 import com.riprog.launcher.model.HomeItem
 import com.riprog.launcher.utils.SettingsManager
 import com.riprog.launcher.utils.ThemeUtils
@@ -23,6 +24,7 @@ class TransformOverlay(
     private val onSaveListener: OnSaveListener?
 ) : FrameLayout(context) {
 
+    private val gridManager = GridManager(settingsManager)
     private val item: HomeItem = targetView.tag as HomeItem
     private val paint = Paint(Paint.ANTI_ALIAS_FLAG)
     private val handleSize: Float = dpToPx(12).toFloat()
@@ -393,8 +395,8 @@ class TransformOverlay(
             newY = Math.max(0f, Math.min(newY, (height - targetView.height).toFloat()))
 
             if (!isFreeform) {
-                val cellWidth = width / HomeView.GRID_COLUMNS
-                val cellHeight = height / HomeView.GRID_ROWS
+                val cellWidth = gridManager.getCellWidth(width)
+                val cellHeight = gridManager.getCellHeight(height)
                 if (cellWidth > 0 && cellHeight > 0) {
                     newX = Math.round(newX / cellWidth).toFloat() * cellWidth
                     newY = Math.round(newY / cellHeight).toFloat() * cellHeight
@@ -477,8 +479,8 @@ class TransformOverlay(
             }
 
             if (!isFreeform) {
-                val cellWidth = width / HomeView.GRID_COLUMNS
-                val cellHeight = height / HomeView.GRID_ROWS
+                val cellWidth = gridManager.getCellWidth(width)
+                val cellHeight = gridManager.getCellHeight(height)
                 if (cellWidth > 0 && cellHeight > 0) {
                     var targetW = newScaleX * (gestureInitialWidth / gestureInitialScaleX)
                     var targetH = newScaleY * (gestureInitialHeight / gestureInitialScaleY)
