@@ -761,7 +761,9 @@ class MainActivity : ComponentActivity(), MainLayout.Callback, AppInstallReceive
         }
         if (mainLayout?.isDrawerOpen == true) {
             mainLayout?.closeDrawer()
+            return
         }
+        super.onBackPressed()
     }
 
     private fun updateHomeItemFromTransform() {
