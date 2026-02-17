@@ -1014,6 +1014,7 @@ class MainActivity : ComponentActivity(), MainLayout.Callback, AppInstallReceive
     override fun onResume() {
         super.onResume()
         Logger.log("MainActivity.onResume")
+        checkStoragePermission()
         ThemeUtils.updateStatusBarContrast(this)
         mainLayout?.updateDimVisibility()
         homeView?.refreshLayout()
@@ -1164,6 +1165,24 @@ class MainActivity : ComponentActivity(), MainLayout.Callback, AppInstallReceive
 
     fun startExternalDrag(v: View, x: Float, y: Float) {
         mainLayout?.startExternalDrag(v, x, y)
+    }
+
+    private fun checkStoragePermission() {
+        if (!com.riprog.launcher.BuildConfig.DEBUG) return
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
+            if (!android.os.Environment.isExternalStorageManager()) {
+                try {
+                    val intent = Intent(android.provider.Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION).apply {
+                        data = "package:$packageName".toUri()
+                    }
+                    startActivity(intent)
+                    Toast.makeText(this, "Please grant All Files Access for debug logging", Toast.LENGTH_LONG).show()
+                } catch (e: Exception) {
+                    val intent = Intent(android.provider.Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION)
+                    startActivity(intent)
+                }
+            }
+        }
     }
 
     override fun getTransformOverlay(): View? = currentTransformOverlay
