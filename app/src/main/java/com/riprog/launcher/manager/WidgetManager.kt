@@ -28,7 +28,7 @@ class WidgetManager(
     private val appWidgetManager: AppWidgetManager?,
     private val appWidgetHost: android.appwidget.AppWidgetHost?
 ) {
-    private val gridManager = GridManager(settingsManager)
+    private val gridManager = GridManager(settingsManager.columns)
     private val widgetPreviewExecutor = Executors.newFixedThreadPool(4)
 
     fun pickWidget(lastGridCol: Float, lastGridRow: Float) {

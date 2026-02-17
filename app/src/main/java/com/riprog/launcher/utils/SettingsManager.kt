@@ -2,7 +2,12 @@ package com.riprog.launcher.utils
 
 import android.content.Context
 import android.content.SharedPreferences
+import com.riprog.launcher.data.local.datastore.SettingsDataStore
 import com.riprog.launcher.model.HomeItem
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.runBlocking
+import org.koin.core.component.KoinComponent
+import org.koin.core.component.inject
 import org.json.JSONArray
 import org.json.JSONException
 import org.json.JSONObject
@@ -12,90 +17,101 @@ import java.io.FileOutputStream
 import java.io.IOException
 import java.nio.charset.StandardCharsets
 
-class SettingsManager(private val context: Context) {
+class SettingsManager(private val context: Context, initialDataStore: SettingsDataStore? = null) : KoinComponent {
+    private val dataStore: SettingsDataStore by if (initialDataStore != null) lazy { initialDataStore } else inject()
     private val prefs: SharedPreferences = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
 
     var columns: Int
-        get() = prefs.getInt(KEY_COLUMNS, 4)
+        get() = runBlocking { dataStore.columns.first() }
         set(value) {
+            runBlocking { dataStore.setColumns(value) }
             prefs.edit().putInt(KEY_COLUMNS, value).apply()
         }
 
     var widgetId: Int
-        get() = prefs.getInt(KEY_WIDGET_ID, -1)
+        get() = runBlocking { dataStore.widgetId.first() }
         set(value) {
+            runBlocking { dataStore.setWidgetId(value) }
             prefs.edit().putInt(KEY_WIDGET_ID, value).apply()
         }
 
     var isFreeformHome: Boolean
-        get() = prefs.getBoolean(KEY_FREEFORM_HOME, false)
+        get() = runBlocking { dataStore.isFreeformHome.first() }
         set(value) {
+            runBlocking { dataStore.setFreeformHome(value) }
             prefs.edit().putBoolean(KEY_FREEFORM_HOME, value).apply()
         }
 
     var iconScale: Float
-        get() = prefs.getFloat(KEY_ICON_SCALE, 1.0f)
+        get() = runBlocking { dataStore.iconScale.first() }
         set(value) {
+            runBlocking { dataStore.setIconScale(value) }
             prefs.edit().putFloat(KEY_ICON_SCALE, value).apply()
         }
 
     var isHideLabels: Boolean
-        get() = prefs.getBoolean(KEY_HIDE_LABELS, false)
+        get() = runBlocking { dataStore.isHideLabels.first() }
         set(value) {
+            runBlocking { dataStore.setHideLabels(value) }
             prefs.edit().putBoolean(KEY_HIDE_LABELS, value).apply()
         }
 
     var isLiquidGlass: Boolean
-        get() = prefs.getBoolean(KEY_LIQUID_GLASS, true)
+        get() = runBlocking { dataStore.isLiquidGlass.first() }
         set(value) {
+            runBlocking { dataStore.setLiquidGlass(value) }
             prefs.edit().putBoolean(KEY_LIQUID_GLASS, value).apply()
         }
 
     var isDarkenWallpaper: Boolean
-        get() = prefs.getBoolean(KEY_DARKEN_WALLPAPER, true)
+        get() = runBlocking { dataStore.isDarkenWallpaper.first() }
         set(value) {
+            runBlocking { dataStore.setDarkenWallpaper(value) }
             prefs.edit().putBoolean(KEY_DARKEN_WALLPAPER, value).apply()
         }
 
     var themeMode: String?
-        get() = prefs.getString(KEY_THEME_MODE, "system")
+        get() = runBlocking { dataStore.themeMode.first() }
         set(value) {
+            if (value != null) runBlocking { dataStore.setThemeMode(value) }
             prefs.edit().putString(KEY_THEME_MODE, value).apply()
         }
 
     fun incrementUsage(packageName: String) {
+        runBlocking { dataStore.incrementUsage(packageName) }
         val current = prefs.getInt(KEY_USAGE_PREFIX + packageName, 0)
         prefs.edit().putInt(KEY_USAGE_PREFIX + packageName, current + 1).apply()
     }
 
     fun getUsage(packageName: String): Int {
-        return prefs.getInt(KEY_USAGE_PREFIX + packageName, 0)
+        return runBlocking { dataStore.getUsage(packageName).first() }
     }
 
     var drawerOpenCount: Int
-        get() = prefs.getInt(KEY_DRAWER_OPEN_COUNT, 0)
-        private set(value) {
-            prefs.edit().putInt(KEY_DRAWER_OPEN_COUNT, value).apply()
-        }
+        get() = runBlocking { dataStore.drawerOpenCount.first() }
+        private set(value) { }
 
     fun incrementDrawerOpenCount() {
-        drawerOpenCount += 1
+        runBlocking { dataStore.incrementDrawerOpenCount() }
+        val current = prefs.getInt(KEY_DRAWER_OPEN_COUNT, 0)
+        prefs.edit().putInt(KEY_DRAWER_OPEN_COUNT, current + 1).apply()
     }
 
     var lastDefaultPromptTimestamp: Long
-        get() = prefs.getLong(KEY_DEFAULT_PROMPT_TIMESTAMP, 0)
+        get() = runBlocking { dataStore.lastDefaultPromptTimestamp.first() }
         set(value) {
+            runBlocking { dataStore.setLastDefaultPromptTimestamp(value) }
             prefs.edit().putLong(KEY_DEFAULT_PROMPT_TIMESTAMP, value).apply()
         }
 
     var defaultPromptCount: Int
-        get() = prefs.getInt(KEY_DEFAULT_PROMPT_COUNT, 0)
-        private set(value) {
-            prefs.edit().putInt(KEY_DEFAULT_PROMPT_COUNT, value).apply()
-        }
+        get() = runBlocking { dataStore.defaultPromptCount.first() }
+        private set(value) { }
 
     fun incrementDefaultPromptCount() {
-        defaultPromptCount += 1
+        runBlocking { dataStore.incrementDefaultPromptCount() }
+        val current = prefs.getInt(KEY_DEFAULT_PROMPT_COUNT, 0)
+        prefs.edit().putInt(KEY_DEFAULT_PROMPT_COUNT, current + 1).apply()
     }
 
     private fun getHomeFile(): File {
@@ -133,6 +149,7 @@ class SettingsManager(private val context: Context) {
     }
 
     fun savePageCount(count: Int) {
+        runBlocking { dataStore.setPageCount(count) }
         prefs.edit().putInt("page_count", count).apply()
     }
 
@@ -145,7 +162,7 @@ class SettingsManager(private val context: Context) {
     }
 
     fun removePageData(index: Int, oldPageCount: Int) {
-        prefs.edit().putInt("page_count", oldPageCount - 1).apply()
+        savePageCount(oldPageCount - 1)
         val items = getHomeItems()
         val iterator = items.iterator()
         while (iterator.hasNext()) {

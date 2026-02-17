@@ -1,6 +1,6 @@
 package com.riprog.launcher
 
-import android.app.Activity
+import androidx.activity.ComponentActivity
 import android.appwidget.AppWidgetHost
 import android.appwidget.AppWidgetManager
 import android.content.Context
@@ -25,11 +25,17 @@ import com.riprog.launcher.model.HomeItem
 import com.riprog.launcher.model.LauncherModel
 import com.riprog.launcher.receiver.AppInstallReceiver
 import com.riprog.launcher.ui.*
+import com.riprog.launcher.ui.viewmodel.LauncherViewModel
 import com.riprog.launcher.utils.SettingsManager
 import com.riprog.launcher.utils.ThemeUtils
+import org.koin.android.ext.android.inject
+import org.koin.androidx.viewmodel.ext.android.viewModel
+import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.launch
 import java.util.*
 
-class MainActivity : Activity(), MainLayout.Callback, AppInstallReceiver.Callback {
+class MainActivity : ComponentActivity(), MainLayout.Callback, AppInstallReceiver.Callback {
 
     companion object {
         const val REQUEST_PICK_APPWIDGET = 1
@@ -37,8 +43,9 @@ class MainActivity : Activity(), MainLayout.Callback, AppInstallReceiver.Callbac
         private const val APPWIDGET_HOST_ID = 1024
     }
 
+    private val viewModel: LauncherViewModel by viewModel()
+    private val launcherSettingsManager: SettingsManager by inject()
     private var model: LauncherModel? = null
-    private lateinit var settingsManager: SettingsManager
     private var appWidgetHost: AppWidgetHost? = null
     private var appWidgetManager: AppWidgetManager? = null
     var mainLayout: MainLayout? = null
@@ -68,8 +75,12 @@ class MainActivity : Activity(), MainLayout.Callback, AppInstallReceiver.Callbac
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        settingsManager = SettingsManager(this)
-        applyThemeMode(settingsManager.themeMode)
+
+        lifecycleScope.launch {
+            viewModel.settings.themeMode.collectLatest { mode ->
+                applyThemeMode(mode)
+            }
+        }
 
         window.statusBarColor = Color.TRANSPARENT
         window.navigationBarColor = Color.TRANSPARENT
@@ -81,9 +92,9 @@ class MainActivity : Activity(), MainLayout.Callback, AppInstallReceiver.Callbac
         model = (application as LauncherApplication).model
 
         mainLayout = MainLayout(this, this)
-        homeView = HomeView(this)
+        homeView = HomeView(this, launcherSettingsManager)
         drawerView = DrawerView(this)
-        drawerView?.setColumns(settingsManager.columns)
+        drawerView?.setColumns(launcherSettingsManager.columns)
         drawerView?.setOnAppLongClickListener(object : DrawerView.OnAppLongClickListener {
             override fun onAppLongClick(app: AppItem) {
                 mainLayout?.closeDrawerInstantly()
@@ -125,18 +136,59 @@ class MainActivity : Activity(), MainLayout.Callback, AppInstallReceiver.Callbac
         appWidgetHost = AppWidgetHost(this, APPWIDGET_HOST_ID)
         appWidgetHost?.startListening()
 
-        gridManager = GridManager(settingsManager)
-        folderManager = FolderManager(this, settingsManager)
-        widgetManager = WidgetManager(this, settingsManager, appWidgetManager, appWidgetHost)
+        gridManager = GridManager()
+        folderManager = FolderManager(this, launcherSettingsManager)
+        widgetManager = WidgetManager(this, launcherSettingsManager, appWidgetManager, appWidgetHost)
 
         applyDynamicColors()
-        loadApps()
         registerAppInstallReceiver()
 
+        observeViewModel()
+
         homeView?.post {
-            restoreHomeState()
-            homeView?.setHomeItems(homeItems)
             showDefaultLauncherPrompt()
+        }
+    }
+
+    private fun observeViewModel() {
+        lifecycleScope.launch {
+            viewModel.homeItems.collectLatest { items ->
+                homeItems = items.toMutableList()
+                homeView?.setHomeItems(homeItems)
+                if (homeItems.isEmpty()) {
+                    setupDefaultHome()
+                } else {
+                    homeView?.clearAllItems()
+                    for (item in homeItems) {
+                        renderHomeItem(item)
+                    }
+                }
+                isStateRestored = true
+            }
+        }
+
+        lifecycleScope.launch {
+            viewModel.apps.collectLatest { apps ->
+                allApps = apps.toMutableList()
+                drawerView?.setApps(allApps, model)
+                homeView?.refreshIcons(model!!, allApps)
+            }
+        }
+
+        lifecycleScope.launch {
+            viewModel.settings.columns.collectLatest { cols ->
+                gridManager.columns = cols
+                homeView?.gridManager?.columns = cols
+                drawerView?.setColumns(cols)
+                homeView?.refreshLayout()
+            }
+        }
+
+        lifecycleScope.launch {
+            viewModel.settings.iconScale.collectLatest {
+                homeView?.refreshLayout()
+                homeView?.refreshIcons(model!!, allApps)
+            }
         }
     }
 
@@ -149,21 +201,21 @@ class MainActivity : Activity(), MainLayout.Callback, AppInstallReceiver.Callbac
     private fun showDefaultLauncherPrompt() {
         if (isDefaultLauncher()) return
 
-        val lastShown = settingsManager.lastDefaultPromptTimestamp
-        val count = settingsManager.defaultPromptCount
+        val lastShown = launcherSettingsManager.lastDefaultPromptTimestamp
+        val count = launcherSettingsManager.defaultPromptCount
 
         if (System.currentTimeMillis() - lastShown < 24 * 60 * 60 * 1000) return
         if (count >= 5) return
 
         val prompt = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            background = ThemeUtils.getGlassDrawable(this@MainActivity, settingsManager, 12f)
+            background = ThemeUtils.getGlassDrawable(this@MainActivity, launcherSettingsManager, 12f)
             setPadding(dpToPx(24), dpToPx(24), dpToPx(24), dpToPx(24))
             gravity = Gravity.CENTER
             elevation = dpToPx(8).toFloat()
         }
 
-        val adaptiveColor = ThemeUtils.getAdaptiveColor(this, settingsManager, true)
+        val adaptiveColor = ThemeUtils.getAdaptiveColor(this, launcherSettingsManager, true)
 
         val title = TextView(this).apply {
             setText(R.string.prompt_default_launcher_title)
@@ -211,8 +263,8 @@ class MainActivity : Activity(), MainLayout.Callback, AppInstallReceiver.Callbac
         val lp = FrameLayout.LayoutParams(dpToPx(300), ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.CENTER)
         mainLayout?.addView(prompt, lp)
 
-        settingsManager.lastDefaultPromptTimestamp = System.currentTimeMillis()
-        settingsManager.incrementDefaultPromptCount()
+        launcherSettingsManager.lastDefaultPromptTimestamp = System.currentTimeMillis()
+        launcherSettingsManager.incrementDefaultPromptCount()
     }
 
     override fun saveHomeState() {
@@ -222,8 +274,7 @@ class MainActivity : Activity(), MainLayout.Callback, AppInstallReceiver.Callbac
 
     private fun saveHomeStateInternal() {
         if (isStateRestored) {
-            val pageCount = homeView?.getPageCount() ?: 1
-            settingsManager.saveHomeItems(homeItems, pageCount)
+            viewModel.saveHomeItems(homeItems)
         }
     }
 
@@ -238,7 +289,7 @@ class MainActivity : Activity(), MainLayout.Callback, AppInstallReceiver.Callbac
     fun getModel(): LauncherModel? = model
 
     private fun restoreHomeState() {
-        homeItems = settingsManager.getHomeItems()
+        homeItems = launcherSettingsManager.getHomeItems()
         homeView?.setHomeItems(homeItems)
         if (homeItems.isEmpty()) {
             setupDefaultHome()
@@ -255,7 +306,7 @@ class MainActivity : Activity(), MainLayout.Callback, AppInstallReceiver.Callbac
     }
 
     fun setOverlayBlur(enabled: Boolean, isTransform: Boolean = false) {
-        if (!settingsManager.isLiquidGlass) return
+        if (!launcherSettingsManager.isLiquidGlass) return
         if (!isTransform) {
             homeView?.let { ThemeUtils.applyBlurIfSupported(it, enabled) }
         } else {
@@ -285,7 +336,7 @@ class MainActivity : Activity(), MainLayout.Callback, AppInstallReceiver.Callbac
         }
 
         val baseSize = resources.getDimensionPixelSize(R.dimen.grid_icon_size)
-        val scale = settingsManager.iconScale
+        val scale = launcherSettingsManager.iconScale
         val size = (baseSize * scale).toInt()
 
         val iconView = ImageView(this).apply {
@@ -296,7 +347,7 @@ class MainActivity : Activity(), MainLayout.Callback, AppInstallReceiver.Callbac
 
         val labelView = TextView(this).apply {
             tag = "item_label"
-            setTextColor(ThemeUtils.getAdaptiveColor(this@MainActivity, settingsManager, isOnGlass))
+            setTextColor(ThemeUtils.getAdaptiveColor(this@MainActivity, launcherSettingsManager, isOnGlass))
             textSize = 10 * scale
             gravity = Gravity.CENTER
             maxLines = 1
@@ -318,7 +369,7 @@ class MainActivity : Activity(), MainLayout.Callback, AppInstallReceiver.Callbac
 
         container.addView(iconView)
         container.addView(labelView)
-        if (settingsManager.isHideLabels) {
+        if (launcherSettingsManager.isHideLabels) {
             labelView.visibility = View.GONE
         }
         return container
@@ -336,7 +387,7 @@ class MainActivity : Activity(), MainLayout.Callback, AppInstallReceiver.Callbac
         val cellHeight = if ((hv?.height ?: 0) > 0) gridM.getCellHeight(hv!!.height) else 1
 
         val previewContainer = FrameLayout(this)
-        val scale = settingsManager.iconScale
+        val scale = launcherSettingsManager.iconScale
         val sizeW: Int
         val sizeH: Int
 
@@ -350,7 +401,7 @@ class MainActivity : Activity(), MainLayout.Callback, AppInstallReceiver.Callbac
         }
 
         previewContainer.layoutParams = LinearLayout.LayoutParams(sizeW, sizeH)
-        previewContainer.background = ThemeUtils.getGlassDrawable(this, settingsManager, 12f)
+        previewContainer.background = ThemeUtils.getGlassDrawable(this, launcherSettingsManager, 12f)
         val padding = dpToPx(6)
         previewContainer.setPadding(padding, padding, padding, padding)
 
@@ -365,7 +416,7 @@ class MainActivity : Activity(), MainLayout.Callback, AppInstallReceiver.Callbac
 
         val labelView = TextView(this).apply {
             tag = "item_label"
-            setTextColor(ThemeUtils.getAdaptiveColor(this@MainActivity, settingsManager, isOnGlass))
+            setTextColor(ThemeUtils.getAdaptiveColor(this@MainActivity, launcherSettingsManager, isOnGlass))
             textSize = 10 * scale
             gravity = Gravity.CENTER
             maxLines = 1
@@ -375,7 +426,7 @@ class MainActivity : Activity(), MainLayout.Callback, AppInstallReceiver.Callbac
 
         container.addView(previewContainer)
         container.addView(labelView)
-        if (settingsManager.isHideLabels) {
+        if (launcherSettingsManager.isHideLabels) {
             labelView.visibility = View.GONE
         }
         return container
@@ -391,7 +442,7 @@ class MainActivity : Activity(), MainLayout.Callback, AppInstallReceiver.Callbac
         val cellWidth = if ((hv?.width ?: 0) > 0) gridM.getCellWidth(hv!!.width) else 1
         val cellHeight = if ((hv?.height ?: 0) > 0) gridM.getCellHeight(hv!!.height) else 1
 
-        val scale = settingsManager.iconScale
+        val scale = launcherSettingsManager.iconScale
         val isSmall = folder.spanX <= 1.0f && folder.spanY <= 1.0f
         val folderW = if (isSmall) (resources.getDimensionPixelSize(R.dimen.grid_icon_size) * scale).toInt() else (cellWidth * folder.spanX).toInt()
         val folderH = if (isSmall) folderW else (cellHeight * folder.spanY).toInt()
@@ -530,13 +581,13 @@ class MainActivity : Activity(), MainLayout.Callback, AppInstallReceiver.Callbac
 
         val tvTime = TextView(this).apply {
             textSize = 64f
-            setTextColor(ThemeUtils.getAdaptiveColor(this@MainActivity, settingsManager, false))
+            setTextColor(ThemeUtils.getAdaptiveColor(this@MainActivity, launcherSettingsManager, false))
             typeface = Typeface.create("sans-serif-thin", Typeface.NORMAL)
         }
 
         val tvDate = TextView(this).apply {
             textSize = 18f
-            val adaptiveDim = ThemeUtils.getAdaptiveColor(this@MainActivity, settingsManager, false) and 0xBBFFFFFF.toInt()
+            val adaptiveDim = ThemeUtils.getAdaptiveColor(this@MainActivity, launcherSettingsManager, false) and 0xBBFFFFFF.toInt()
             setTextColor(adaptiveDim)
             gravity = Gravity.CENTER
         }
@@ -578,7 +629,7 @@ class MainActivity : Activity(), MainLayout.Callback, AppInstallReceiver.Callbac
             iconsList.add(R.drawable.ic_remove)
         }
 
-        val adaptiveColor = ThemeUtils.getAdaptiveColor(this, settingsManager, true)
+        val adaptiveColor = ThemeUtils.getAdaptiveColor(this, launcherSettingsManager, true)
         val adapter = object : ArrayAdapter<String>(this, android.R.layout.select_dialog_item, android.R.id.text1, optionsList) {
             override fun getView(position: Int, convertView: View?, parent: ViewGroup): View {
                 val view = super.getView(position, convertView, parent)
@@ -596,8 +647,8 @@ class MainActivity : Activity(), MainLayout.Callback, AppInstallReceiver.Callbac
             .setAdapter(adapter) { _, which ->
                 when (optionsList[which]) {
                     getString(R.string.menu_widgets) -> {
-                        val c = if (!settingsManager.isFreeformHome) Math.round(col).toFloat() else col
-                        val r = if (!settingsManager.isFreeformHome) Math.round(row).toFloat() else row
+                        val c = if (!launcherSettingsManager.isFreeformHome) Math.round(col).toFloat() else col
+                        val r = if (!launcherSettingsManager.isFreeformHome) Math.round(row).toFloat() else row
                         widgetManager.pickWidget(c, r)
                     }
                     getString(R.string.menu_wallpaper) -> openWallpaperPicker()
@@ -619,8 +670,8 @@ class MainActivity : Activity(), MainLayout.Callback, AppInstallReceiver.Callbac
             }.create()
         dialog.show()
         dialog.window?.let {
-            it.setBackgroundDrawable(ThemeUtils.getGlassDrawable(this, settingsManager))
-            ThemeUtils.applyWindowBlur(it, settingsManager.isLiquidGlass)
+            it.setBackgroundDrawable(ThemeUtils.getGlassDrawable(this, launcherSettingsManager))
+            ThemeUtils.applyWindowBlur(it, launcherSettingsManager.isLiquidGlass)
         }
     }
 
@@ -710,14 +761,16 @@ class MainActivity : Activity(), MainLayout.Callback, AppInstallReceiver.Callbac
         }
         if (mainLayout?.isDrawerOpen == true) {
             mainLayout?.closeDrawer()
+            return
         }
+        super.onBackPressed()
     }
 
     private fun updateHomeItemFromTransform() {
         val v = transformingView ?: return
         val parent = transformingViewOriginalParent ?: return
         val item = v.tag as HomeItem
-        val isFreeform = settingsManager.isFreeformHome
+        val isFreeform = launcherSettingsManager.isFreeformHome
 
         homeView?.let {
             item.page = it.getCurrentPage()
@@ -817,7 +870,7 @@ class MainActivity : Activity(), MainLayout.Callback, AppInstallReceiver.Callbac
         targetView.x = x
         targetView.y = y
 
-        currentTransformOverlay = TransformOverlay(this, targetView, settingsManager, object : TransformOverlay.OnSaveListener {
+        currentTransformOverlay = TransformOverlay(this, targetView, launcherSettingsManager, object : TransformOverlay.OnSaveListener {
             override fun onMove(x: Float, y: Float) {
                 homeView?.checkEdgeScrollLoopStart(x)
             }
@@ -1011,7 +1064,7 @@ class MainActivity : Activity(), MainLayout.Callback, AppInstallReceiver.Callbac
 
     override fun getHomeView(): HomeView? = homeView
     override fun getDrawerView(): DrawerView? = drawerView
-    override fun getSettingsManager(): SettingsManager = settingsManager
+    override fun getSettingsManager(): SettingsManager = launcherSettingsManager
     override fun getCurrentPage(): Int = homeView?.getCurrentPage() ?: 0
     override fun scrollToPage(page: Int) { homeView?.scrollToPage(page) }
 

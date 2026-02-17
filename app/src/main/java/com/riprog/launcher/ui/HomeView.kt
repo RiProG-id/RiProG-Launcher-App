@@ -23,12 +23,11 @@ import com.riprog.launcher.ui.home.PageManager
 import com.riprog.launcher.utils.SettingsManager
 import com.riprog.launcher.utils.ThemeUtils
 
-class HomeView(context: Context) : FrameLayout(context) {
+class HomeView(context: Context, private val settingsManager: SettingsManager) : FrameLayout(context) {
     val pagesContainer: LinearLayout = LinearLayout(context)
     private val pageIndicator: PageIndicator = PageIndicator(context)
     val pageManager: PageManager
-    private val settingsManager: SettingsManager = SettingsManager(context)
-    val gridManager: GridManager = GridManager(settingsManager)
+    val gridManager: GridManager = GridManager()
     private var homeItems: List<HomeItem>? = null
     private var accentColor = Color.WHITE
     private var model: LauncherModel? = null
@@ -494,6 +493,12 @@ class HomeView(context: Context) : FrameLayout(context) {
 
     fun setHomeItems(items: List<HomeItem>) {
         this.homeItems = items
+    }
+
+    fun clearAllItems() {
+        for (page in pageManager.getAllPages()) {
+            page.removeAllViews()
+        }
     }
 
     fun refreshIcons(model: LauncherModel, allApps: List<AppItem>) {
