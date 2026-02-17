@@ -84,15 +84,12 @@ class DragController(
         }
 
         if (isExternal) {
+            val iconSize = layout.resources.getDimensionPixelSize(R.dimen.grid_icon_size)
             val lp = v.layoutParams
-            if (lp != null && lp.width > 0 && lp.height > 0) {
-                v.x = x - lp.width / 2f
-                v.y = y - lp.height / 2f
-            } else {
-                val iconSize = layout.resources.getDimensionPixelSize(R.dimen.grid_icon_size)
-                v.x = x - iconSize
-                v.y = y - iconSize
-            }
+            val w = if (lp != null && lp.width > 0) lp.width else iconSize * 2
+            val h = if (lp != null && lp.height > 0) lp.height else iconSize * 2
+            v.x = x - w / 2f
+            v.y = y - h / 2f
         }
         callback.getHomeView()?.startDragging(v, x, y)
     }

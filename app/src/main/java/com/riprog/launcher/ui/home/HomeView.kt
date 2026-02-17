@@ -28,7 +28,7 @@ class HomeView(context: Context, private val settingsManager: LauncherPreference
     private val pageIndicator: PageIndicator = PageIndicator(context)
     val pageManager: PageManager
     val gridManager: GridManager = GridManager()
-    private var homeItems: List<HomeItem>? = null
+    private var homeItems: MutableList<HomeItem>? = null
     private var accentColor = Color.WHITE
     private var appLoader: AppLoader? = null
     private var allApps: List<AppItem>? = null
@@ -205,17 +205,27 @@ class HomeView(context: Context, private val settingsManager: LauncherPreference
         val rootPos = IntArray(2)
         root.getLocationOnScreen(rootPos)
 
-        dragOffsetX = x - vPos[0]
-        dragOffsetY = y - vPos[1]
+        if (v.parent != null) {
+            v.getLocationOnScreen(vPos)
+            dragOffsetX = x - vPos[0]
+            dragOffsetY = y - vPos[1]
+        } else {
+            vPos[0] = (rootPos[0] + v.x).toInt()
+            vPos[1] = (rootPos[1] + v.y).toInt()
+            dragOffsetX = x - vPos[0]
+            dragOffsetY = y - vPos[1]
+        }
 
         if (context is MainActivity) {
-            val absX = vPos[0] - rootPos[0]
-            val absY = vPos[1] - rootPos[1]
+            val absX = v.x
+            val absY = v.y
 
             (v.parent as? ViewGroup)?.removeView(v)
-            root.addView(v)
-            v.x = absX.toFloat()
-            v.y = absY.toFloat()
+            if (v.parent == null) {
+                root.addView(v)
+            }
+            v.x = absX
+            v.y = absY
         }
 
         v.animate().scaleX(1.1f).scaleY(1.1f).alpha(0.8f).setDuration(0).start()
@@ -290,8 +300,7 @@ class HomeView(context: Context, private val settingsManager: LauncherPreference
         if (index < 0 || index >= oldPageCount || oldPageCount <= 1) return
 
         homeItems?.let { items ->
-            val mutableItems = items.toMutableList()
-            val iterator = mutableItems.iterator()
+            val iterator = items.iterator()
             while (iterator.hasNext()) {
                 val item = iterator.next()
                 if (item.page == index) {
@@ -300,7 +309,6 @@ class HomeView(context: Context, private val settingsManager: LauncherPreference
                     item.page--
                 }
             }
-            homeItems = mutableItems
         }
 
         pageManager.removePage(index) {
@@ -418,6 +426,12 @@ class HomeView(context: Context, private val settingsManager: LauncherPreference
         val oldPage = initialPage
         item.page = pageManager.getCurrentPage()
 
+        if (oldPage == -1 && context is MainActivity) {
+            if (homeItems?.contains(item) == false) {
+                homeItems?.add(item)
+            }
+        }
+
         val target = findCollision(v)
         if (target != null && item.type == HomeItem.Type.APP) {
             if (target.type == HomeItem.Type.APP || target.type == HomeItem.Type.FOLDER) {
@@ -494,7 +508,7 @@ class HomeView(context: Context, private val settingsManager: LauncherPreference
     }
 
     fun setHomeItems(items: List<HomeItem>) {
-        this.homeItems = items
+        this.homeItems = items.toMutableList()
     }
 
     fun clearAllItems() {
@@ -612,6 +626,8 @@ class HomeView(context: Context, private val settingsManager: LauncherPreference
                     val item = v.tag as? HomeItem
                     if (item != null) {
                         if (!freeform) {
+                            item.spanX = Math.round(item.spanX).toFloat().coerceAtLeast(1f)
+                            item.spanY = Math.round(item.spanY).toFloat().coerceAtLeast(1f)
                             item.col = Math.max(0, Math.min(gridManager.columns - item.spanX.toInt(), Math.round(item.col))).toFloat()
                             item.row = Math.max(0, Math.min(gridManager.rows - item.spanY.toInt(), Math.round(item.row))).toFloat()
                             item.rotation = 0f

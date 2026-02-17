@@ -26,9 +26,11 @@ class PageManager(
     fun addPage(): Int {
         val page = FrameLayout(container.context)
         pages.add(page)
-        container.addView(page, LinearLayout.LayoutParams(
-            ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT
-        ))
+        val lp = LinearLayout.LayoutParams(
+            container.width.let { if (it > 0) it else ViewGroup.LayoutParams.MATCH_PARENT },
+            ViewGroup.LayoutParams.MATCH_PARENT
+        )
+        container.addView(page, lp)
         indicator.setPageCount(pages.size)
         indicator.setCurrentPage(currentPage)
         return pages.size - 1
@@ -37,9 +39,11 @@ class PageManager(
     fun addPageAtIndex(index: Int) {
         val page = FrameLayout(container.context)
         pages.add(index, page)
-        container.addView(page, index, LinearLayout.LayoutParams(
-            ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT
-        ))
+        val lp = LinearLayout.LayoutParams(
+            container.width.let { if (it > 0) it else ViewGroup.LayoutParams.MATCH_PARENT },
+            ViewGroup.LayoutParams.MATCH_PARENT
+        )
+        container.addView(page, index, lp)
 
         for (i in pages.indices) {
             val p = pages[i]
@@ -94,7 +98,21 @@ class PageManager(
 
         val targetPage = if (n > 0) Math.max(0, Math.min(n - 1, page)) else 0
         currentPage = targetPage
-        val targetX = if (n > 0) currentPage * (width / n) else 0
+
+        // Each page has exactly the same width as the container
+        val pageWidth = width
+        val targetX = currentPage * pageWidth
+
+        // Ensure all pages have the correct width in case it changed
+        for (i in 0 until container.childCount) {
+            val child = container.getChildAt(i)
+            val lp = child.layoutParams as LinearLayout.LayoutParams
+            if (lp.width != pageWidth) {
+                lp.width = pageWidth
+                child.layoutParams = lp
+            }
+        }
+
         container.animate()
             .translationX((-targetX).toFloat())
             .setDuration(300)

@@ -51,7 +51,7 @@ android {
     }
 
     tasks.withType(JavaCompile).configureEach {
-        options.compilerArgs << "-Xlint:all" << "-Xlint:-options" << "-Xlint:-processing"
+        options.compilerArgs << "-Xlint:all" << "-Xlint:-options" << "-Xlint:-processing" << "-Werror"
     }
 
     lint {
