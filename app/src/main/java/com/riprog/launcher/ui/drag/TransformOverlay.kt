@@ -3,6 +3,7 @@ package com.riprog.launcher.ui.drag
 import android.content.Context
 import android.graphics.Canvas
 import android.graphics.Color
+import android.annotation.SuppressLint
 import android.graphics.Paint
 import android.graphics.RectF
 import android.view.Gravity
@@ -12,11 +13,16 @@ import android.view.ViewGroup
 import android.widget.FrameLayout
 import android.widget.LinearLayout
 import android.widget.TextView
+import androidx.core.graphics.withRotation
+import androidx.core.graphics.withTranslation
+import androidx.core.view.isVisible
+import com.riprog.launcher.R
 import com.riprog.launcher.ui.home.manager.GridManager
 import com.riprog.launcher.data.model.HomeItem
 import com.riprog.launcher.data.local.prefs.LauncherPreferences
 import com.riprog.launcher.ui.common.ThemeUtils
 
+@SuppressLint("ViewConstructor")
 class TransformOverlay(
     context: Context,
     private val targetView: View,
@@ -107,7 +113,7 @@ class TransformOverlay(
 
             for (i in 0 until vg.childCount) {
                 val child = vg.getChildAt(i)
-                if (child.visibility == VISIBLE) {
+                if (child.isVisible) {
                     minX = Math.min(minX, child.x)
                     minY = Math.min(minY, child.y)
                     maxX = Math.max(maxX, child.x + child.width)
@@ -133,7 +139,7 @@ class TransformOverlay(
         container.setOnClickListener { }
 
         val btnRemove = TextView(context)
-        btnRemove.text = "Remove"
+        btnRemove.setText(R.string.action_remove)
         btnRemove.setPadding(dpToPx(8), dpToPx(8), dpToPx(8), dpToPx(8))
         btnRemove.setTextColor(adaptiveColor)
         btnRemove.textSize = 11f
@@ -143,7 +149,7 @@ class TransformOverlay(
         container.addView(btnRemove, LinearLayout.LayoutParams(0, LayoutParams.WRAP_CONTENT, 1.0f))
 
         val btnReset = TextView(context)
-        btnReset.text = "Reset"
+        btnReset.setText(R.string.action_reset)
         btnReset.setPadding(dpToPx(8), dpToPx(8), dpToPx(8), dpToPx(8))
         btnReset.setTextColor(adaptiveColor)
         btnReset.textSize = 11f
@@ -153,7 +159,7 @@ class TransformOverlay(
         container.addView(btnReset, LinearLayout.LayoutParams(0, LayoutParams.WRAP_CONTENT, 1.0f))
 
         val btnSave = TextView(context)
-        btnSave.text = "Save"
+        btnSave.setText(R.string.action_save)
         btnSave.setPadding(dpToPx(8), dpToPx(8), dpToPx(8), dpToPx(8))
         btnSave.setTextColor(adaptiveColor)
         btnSave.textSize = 11f
@@ -164,7 +170,7 @@ class TransformOverlay(
 
         if (item.type != HomeItem.Type.WIDGET && item.type != HomeItem.Type.FOLDER) {
             val btnInfo = TextView(context)
-            btnInfo.text = "App Info"
+            btnInfo.setText(R.string.action_app_info)
             btnInfo.setPadding(dpToPx(8), dpToPx(8), dpToPx(8), dpToPx(8))
             btnInfo.setTextColor(adaptiveColor)
             btnInfo.textSize = 11f
@@ -197,7 +203,6 @@ class TransformOverlay(
 
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
-        if (targetView == null) return
 
         val isFreeform = settingsManager.isFreeformHome
 
@@ -214,33 +219,31 @@ class TransformOverlay(
         val right = (bounds.right - targetView.pivotX) * sx
         val bottom = (bounds.bottom - targetView.pivotY) * sy
 
-        canvas.save()
-        canvas.translate(cx, cy)
-        canvas.rotate(r)
+        canvas.withTranslation(cx, cy) {
+            withRotation(r) {
+                val foregroundColor = ThemeUtils.getAdaptiveColor(context, settingsManager, false)
 
-        val foregroundColor = ThemeUtils.getAdaptiveColor(context, settingsManager, false)
+                paint.color = foregroundColor
+                paint.style = Paint.Style.STROKE
+                paint.strokeWidth = dpToPx(1).toFloat()
+                paint.alpha = 60
+                drawRect(left, top, right, bottom, paint)
 
-        paint.color = foregroundColor
-        paint.style = Paint.Style.STROKE
-        paint.strokeWidth = dpToPx(1).toFloat()
-        paint.alpha = 60
-        canvas.drawRect(left, top, right, bottom, paint)
+                val hs = handleSize / 2f
 
-        val hs = handleSize / 2f
+                if (isFreeform) {
+                    drawHandle(this, left, top, hs, true, foregroundColor)
+                    drawHandle(this, right, top, hs, true, foregroundColor)
+                    drawHandle(this, right, bottom, hs, true, foregroundColor)
+                    drawHandle(this, left, bottom, hs, true, foregroundColor)
 
-        if (isFreeform) {
-            drawHandle(canvas, left, top, hs, true, foregroundColor)
-            drawHandle(canvas, right, top, hs, true, foregroundColor)
-            drawHandle(canvas, right, bottom, hs, true, foregroundColor)
-            drawHandle(canvas, left, bottom, hs, true, foregroundColor)
-
-            paint.color = foregroundColor
-            paint.alpha = 100
-            canvas.drawLine((left + right) / 2f, top, (left + right) / 2f, top - rotationHandleDist, paint)
-            drawHandle(canvas, (left + right) / 2f, top - rotationHandleDist, hs * 1.1f, true, foregroundColor)
+                    paint.color = foregroundColor
+                    paint.alpha = 100
+                    drawLine((left + right) / 2f, top, (left + right) / 2f, top - rotationHandleDist, paint)
+                    drawHandle(this, (left + right) / 2f, top - rotationHandleDist, hs * 1.1f, true, foregroundColor)
+                }
+            }
         }
-
-        canvas.restore()
     }
 
     private fun drawHandle(canvas: Canvas, cx: Float, cy: Float, radius: Float, isPrimary: Boolean, foregroundColor: Int) {
@@ -256,12 +259,18 @@ class TransformOverlay(
         canvas.drawCircle(cx, cy, radius, paint)
     }
 
+    override fun performClick(): Boolean {
+        super.performClick()
+        return true
+    }
+
     override fun onTouchEvent(event: MotionEvent): Boolean {
         val x = event.x
         val y = event.y
 
         when (event.action) {
             MotionEvent.ACTION_DOWN -> {
+                performClick()
                 activeHandle = findHandle(x, y)
                 if (activeHandle == ACTION_MOVE) {
                     onSaveListener?.onMoveStart(x, y)
@@ -319,7 +328,7 @@ class TransformOverlay(
                     if (other != null && item.type == HomeItem.Type.APP) {
                         val otherItem = other.tag as? HomeItem
                         if (otherItem != null && (otherItem.type == HomeItem.Type.APP || otherItem.type == HomeItem.Type.FOLDER)) {
-                            onSaveListener?.onSave()
+                            onSaveListener.onSave()
                             activeHandle = -1
                             hasPassedThreshold = false
                             return true
@@ -332,7 +341,13 @@ class TransformOverlay(
                         val lp = targetView.layoutParams
                         val dw = (lp.width / resources.displayMetrics.density).toInt()
                         val dh = (lp.height / resources.displayMetrics.density).toInt()
-                        targetView.updateAppWidgetSize(null, dw, dh, dw, dh)
+                        val options = android.os.Bundle().apply {
+                            putInt(android.appwidget.AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH, dw)
+                            putInt(android.appwidget.AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT, dh)
+                            putInt(android.appwidget.AppWidgetManager.OPTION_APPWIDGET_MAX_WIDTH, dw)
+                            putInt(android.appwidget.AppWidgetManager.OPTION_APPWIDGET_MAX_HEIGHT, dh)
+                        }
+                        targetView.updateAppWidgetOptions(options)
                     }
                 }
                 activeHandle = -1

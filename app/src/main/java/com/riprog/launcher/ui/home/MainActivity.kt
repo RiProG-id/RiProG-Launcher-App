@@ -5,6 +5,13 @@ import com.riprog.launcher.LauncherApplication
 import com.riprog.launcher.R
 
 import androidx.activity.ComponentActivity
+import androidx.activity.OnBackPressedCallback
+import androidx.activity.enableEdgeToEdge
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.net.toUri
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
 import android.appwidget.AppWidgetHost
 import android.appwidget.AppWidgetManager
 import android.content.Context
@@ -76,23 +83,43 @@ class MainActivity : ComponentActivity(), MainLayout.Callback, AppInstallReceive
     private var pendingWidgetPage = 0
     private var isStateRestored = false
 
+    internal val widgetPickerLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+        if (result.resultCode == RESULT_OK) {
+            val data = result.data
+            val appWidgetId = data?.getIntExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, -1) ?: -1
+            if (appWidgetId != -1) {
+                configureWidget(appWidgetId, pendingWidgetCol, pendingWidgetRow, pendingWidgetSpanX, pendingWidgetSpanY)
+            }
+        }
+    }
+
+    private val widgetConfigLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+        if (result.resultCode == RESULT_OK) {
+            val data = result.data
+            val appWidgetId = data?.getIntExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, -1) ?: -1
+            if (appWidgetId != -1) {
+                createWidgetAt(appWidgetId, pendingWidgetCol, pendingWidgetRow, pendingWidgetSpanX, pendingWidgetSpanY, pendingWidgetPage)
+            }
+        }
+    }
+
+    private val settingsLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) {
+        loadApps()
+        homeView?.refreshLayout()
+        homeView?.refreshIcons(appLoader!!, allApps)
+    }
+
     private val debounceHandler = Handler(Looper.getMainLooper())
     private val saveStateRunnable = Runnable { saveHomeStateInternal() }
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        enableEdgeToEdge()
         super.onCreate(savedInstanceState)
 
         lifecycleScope.launch {
             viewModel.settings.themeMode.collectLatest { mode ->
                 applyThemeMode(mode)
             }
-        }
-
-        window.statusBarColor = Color.TRANSPARENT
-        window.navigationBarColor = Color.TRANSPARENT
-
-        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
-            window.setDecorFitsSystemWindows(false)
         }
 
         appLoader = (application as LauncherApplication).appLoader
@@ -118,22 +145,13 @@ class MainActivity : ComponentActivity(), MainLayout.Callback, AppInstallReceive
         mainLayout?.addView(drawerView)
         drawerView?.visibility = View.GONE
 
-        mainLayout?.setOnApplyWindowInsetsListener { _, insets ->
-            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
-                val bars = insets.getInsets(android.view.WindowInsets.Type.systemBars())
+        mainLayout?.let { layout ->
+            ViewCompat.setOnApplyWindowInsetsListener(layout) { _, insets ->
+                val bars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
                 drawerView?.setSystemInsets(bars.left, bars.top, bars.right, bars.bottom)
                 homeView?.setPadding(bars.left, bars.top, bars.right, bars.bottom)
-            } else {
-                drawerView?.setSystemInsets(
-                    insets.systemWindowInsetLeft, insets.systemWindowInsetTop,
-                    insets.systemWindowInsetRight, insets.systemWindowInsetBottom
-                )
-                homeView?.setPadding(
-                    insets.systemWindowInsetLeft, insets.systemWindowInsetTop,
-                    insets.systemWindowInsetRight, insets.systemWindowInsetBottom
-                )
+                insets
             }
-            insets
         }
 
         setContentView(mainLayout)
@@ -148,6 +166,26 @@ class MainActivity : ComponentActivity(), MainLayout.Callback, AppInstallReceive
 
         applyDynamicColors()
         registerAppInstallReceiver()
+
+        onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
+            override fun handleOnBackPressed() {
+                if (currentTransformOverlay != null) {
+                    closeTransformOverlay()
+                    return
+                }
+                if (folderManager.isFolderOpen()) {
+                    folderManager.closeFolder()
+                    return
+                }
+                if (mainLayout?.isDrawerOpen == true) {
+                    mainLayout?.closeDrawer()
+                    return
+                }
+                isEnabled = false
+                onBackPressedDispatcher.onBackPressed()
+                isEnabled = true
+            }
+        })
 
         observeViewModel()
 
@@ -508,8 +546,8 @@ class MainActivity : ComponentActivity(), MainLayout.Callback, AppInstallReceive
         val ah = appWidgetHost ?: return null
         val info = am.getAppWidgetInfo(item.widgetId) ?: return null
         return try {
-            val hostView = ah.createView(this, item.widgetId, info)
-            hostView?.setAppWidget(item.widgetId, info)
+            val hostView = ah.createView(this, item.widgetId, info) ?: return null
+            hostView.setAppWidget(item.widgetId, info)
             val density = resources.displayMetrics.density
             val hv = homeView
             val grid = hv?.gridManager ?: gridManager
@@ -518,9 +556,15 @@ class MainActivity : ComponentActivity(), MainLayout.Callback, AppInstallReceive
             if (cellWidth > 0 && cellHeight > 0) {
                 val w = (cellWidth * item.spanX / density).toInt()
                 val h = (cellHeight * item.spanY / density).toInt()
-                hostView?.updateAppWidgetSize(null, w, h, w, h)
+                val options = Bundle().apply {
+                    putInt(AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH, w)
+                    putInt(AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT, h)
+                    putInt(AppWidgetManager.OPTION_APPWIDGET_MAX_WIDTH, w)
+                    putInt(AppWidgetManager.OPTION_APPWIDGET_MAX_HEIGHT, h)
+                }
+                hostView.updateAppWidgetOptions(options)
             } else {
-                hostView?.addOnLayoutChangeListener(object : View.OnLayoutChangeListener {
+                hostView.addOnLayoutChangeListener(object : View.OnLayoutChangeListener {
                     override fun onLayoutChange(v: View?, l: Int, t: Int, r: Int, b: Int, ol: Int, ot: Int, or: Int, ob: Int) {
                         val g = homeView?.gridManager ?: grid
                         val cw = ((homeView?.width ?: 0) - (homeView?.paddingLeft ?: 0) - (homeView?.paddingRight ?: 0)) / g.columns
@@ -528,8 +572,14 @@ class MainActivity : ComponentActivity(), MainLayout.Callback, AppInstallReceive
                         if (cw > 0 && ch > 0) {
                             val w = (cw * item.spanX / density).toInt()
                             val h = (ch * item.spanY / density).toInt()
-                            hostView?.updateAppWidgetSize(null, w, h, w, h)
-                            hostView?.removeOnLayoutChangeListener(this)
+                            val options = Bundle().apply {
+                                putInt(AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH, w)
+                                putInt(AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT, h)
+                                putInt(AppWidgetManager.OPTION_APPWIDGET_MAX_WIDTH, w)
+                                putInt(AppWidgetManager.OPTION_APPWIDGET_MAX_HEIGHT, h)
+                            }
+                            hostView.updateAppWidgetOptions(options)
+                            hostView.removeOnLayoutChangeListener(this)
                         }
                     }
                 })
@@ -570,7 +620,7 @@ class MainActivity : ComponentActivity(), MainLayout.Callback, AppInstallReceive
         if (item.packageName.isNullOrEmpty()) return
         try {
             val intent = Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
-                data = android.net.Uri.parse("package:${item.packageName}")
+                data = "package:${item.packageName}".toUri()
                 addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             }
             startActivity(intent)
@@ -697,7 +747,7 @@ class MainActivity : ComponentActivity(), MainLayout.Callback, AppInstallReceive
 
     private fun openSettings() {
         try {
-            startActivityForResult(Intent(this, SettingsActivity::class.java), 100)
+            settingsLauncher.launch(Intent(this, SettingsActivity::class.java))
         } catch (e: Exception) {
             Toast.makeText(this, "Launcher settings could not be opened", Toast.LENGTH_SHORT).show()
         }
@@ -755,22 +805,6 @@ class MainActivity : ComponentActivity(), MainLayout.Callback, AppInstallReceive
         homeView?.scrollToPage(0)
     }
 
-    @Deprecated("Deprecated in Java")
-    override fun onBackPressed() {
-        if (currentTransformOverlay != null) {
-            closeTransformOverlay()
-            return
-        }
-        if (folderManager.isFolderOpen()) {
-            folderManager.closeFolder()
-            return
-        }
-        if (mainLayout?.isDrawerOpen == true) {
-            mainLayout?.closeDrawer()
-            return
-        }
-        super.onBackPressed()
-    }
 
     private fun updateHomeItemFromTransform() {
         val v = transformingView ?: return
@@ -853,16 +887,16 @@ class MainActivity : ComponentActivity(), MainLayout.Callback, AppInstallReceive
         }
     }
 
-    override fun showTransformOverlay(targetView: View) {
+    override fun showTransformOverlay(v: View) {
         if (currentTransformOverlay != null) return
         setOverlayBlur(true, true)
-        transformingView = targetView
-        transformingViewOriginalParent = targetView.parent as? ViewGroup
-        transformingViewOriginalIndex = transformingViewOriginalParent?.indexOfChild(targetView) ?: -1
+        transformingView = v
+        transformingViewOriginalParent = v.parent as? ViewGroup
+        transformingViewOriginalIndex = transformingViewOriginalParent?.indexOfChild(v) ?: -1
 
-        var x = targetView.x
-        var y = targetView.y
-        var p = targetView.parent
+        var x = v.x
+        var y = v.y
+        var p = v.parent
         while (p != null && p !== mainLayout) {
             if (p is View) {
                 x += p.x
@@ -871,17 +905,17 @@ class MainActivity : ComponentActivity(), MainLayout.Callback, AppInstallReceive
             p = p.parent
         }
 
-        transformingViewOriginalParent?.removeView(targetView)
-        mainLayout?.addView(targetView)
-        targetView.x = x
-        targetView.y = y
+        transformingViewOriginalParent?.removeView(v)
+        mainLayout?.addView(v)
+        v.x = x
+        v.y = y
 
-        currentTransformOverlay = TransformOverlay(this, targetView, preferences, object : TransformOverlay.OnSaveListener {
+        currentTransformOverlay = TransformOverlay(this, v, preferences, object : TransformOverlay.OnSaveListener {
             override fun onMove(x: Float, y: Float) {
                 homeView?.checkEdgeScrollLoopStart(x)
             }
             override fun onMoveStart(x: Float, y: Float) {
-                val item = targetView.tag as? HomeItem
+                val item = v.tag as? HomeItem
                 homeView?.setInitialDragState(x, item?.page ?: -1)
             }
             override fun onSave() {
@@ -893,12 +927,12 @@ class MainActivity : ComponentActivity(), MainLayout.Callback, AppInstallReceive
                 closeTransformOverlay()
             }
             override fun onRemove() {
-                removeHomeItem(targetView.tag as HomeItem, targetView)
+                removeHomeItem(v.tag as HomeItem, v)
                 transformingView = null
                 closeTransformOverlay()
             }
             override fun onAppInfo() {
-                showAppInfo(targetView.tag as HomeItem)
+                showAppInfo(v.tag as HomeItem)
             }
             override fun onCollision(otherView: View) {
                 updateHomeItemFromTransform()
@@ -988,30 +1022,6 @@ class MainActivity : ComponentActivity(), MainLayout.Callback, AppInstallReceive
         appInstallReceiver = null
     }
 
-    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
-        super.onActivityResult(requestCode, resultCode, data)
-        if (requestCode == 100) {
-            loadApps()
-            homeView?.refreshLayout()
-            homeView?.refreshIcons(appLoader!!, allApps)
-            return
-        }
-        if (resultCode == RESULT_OK) {
-            if (requestCode == REQUEST_PICK_APPWIDGET) {
-                val appWidgetId = data?.getIntExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, -1) ?: -1
-                if (appWidgetId != -1) {
-                    configureWidget(appWidgetId, pendingWidgetCol, pendingWidgetRow, pendingWidgetSpanX, pendingWidgetSpanY)
-                }
-            }
-            else if (requestCode == REQUEST_CREATE_APPWIDGET) {
-                val appWidgetId = data?.getIntExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, -1) ?: -1
-                if (appWidgetId != -1) {
-                    createWidgetAt(appWidgetId, pendingWidgetCol, pendingWidgetRow, pendingWidgetSpanX, pendingWidgetSpanY, pendingWidgetPage)
-                }
-            }
-        }
-    }
-
     private fun configureWidget(appWidgetId: Int, lastGridCol: Float, lastGridRow: Float, spanX: Float, spanY: Float) {
         val info = appWidgetManager?.getAppWidgetInfo(appWidgetId) ?: return
         if (info.configure != null) {
@@ -1024,7 +1034,7 @@ class MainActivity : ComponentActivity(), MainLayout.Callback, AppInstallReceive
                 putExtra("spanY", spanY)
                 putExtra("page", pendingWidgetPage)
             }
-            startActivityForResult(intent, REQUEST_CREATE_APPWIDGET)
+            widgetConfigLauncher.launch(intent)
         } else createWidgetAt(appWidgetId, lastGridCol, lastGridRow, spanX, spanY, pendingWidgetPage)
     }
 

@@ -1,5 +1,6 @@
 package com.riprog.launcher.ui.home.manager
 
+import android.annotation.SuppressLint
 import android.content.Context
 import android.graphics.Typeface
 import android.text.Editable
@@ -24,11 +25,17 @@ class FolderManager(
 ) {
     private var currentFolderOverlay: View? = null
 
+    @SuppressLint("ClickableViewAccessibility")
     fun openFolder(folderItem: HomeItem, folderView: View, homeItems: MutableList<HomeItem>, allApps: List<AppItem>, appLoader: AppLoader?) {
         if (currentFolderOverlay != null) closeFolder()
         activity.setOverlayBlur(true)
 
-        val container = FrameLayout(activity).apply {
+        val container = object : FrameLayout(activity) {
+            override fun performClick(): Boolean {
+                super.performClick()
+                return true
+            }
+        }.apply {
             setBackgroundColor(0x33000000)
             setOnClickListener { closeFolder() }
         }
@@ -37,7 +44,10 @@ class FolderManager(
             var startY = 0f
             override fun onTouch(v: View, event: MotionEvent): Boolean {
                 when (event.action) {
-                    MotionEvent.ACTION_DOWN -> startY = event.y
+                    MotionEvent.ACTION_DOWN -> {
+                        startY = event.y
+                        v.performClick()
+                    }
                     MotionEvent.ACTION_UP -> if (event.y - startY > dpToPx(100)) {
                         closeFolder()
                         return true
