@@ -287,13 +287,13 @@ class TransformOverlay(
                     onSaveListener?.onMoveStart(x, y)
                 }
                 if (activeHandle == ACTION_OUTSIDE) {
-                    if (onSaveListener != null) {
-                        val other = onSaveListener.findItemAt(x, y, targetView)
+                    onSaveListener?.let { listener ->
+                        val other = listener.findItemAt(x, y, targetView)
                         if (other != null) {
-                            onSaveListener.onCollision(other)
+                            listener.onCollision(other)
                             return true
                         }
-                        onSaveListener.onSave()
+                        listener.onSave()
                     }
                     return false
                 }
@@ -335,14 +335,16 @@ class TransformOverlay(
                 if (activeHandle == ACTION_MOVE) {
                     val midX = targetView.x + targetView.width / 2f
                     val midY = targetView.y + targetView.height / 2f
-                    val other = onSaveListener?.findItemAt(midX, midY, targetView)
-                    if (other != null && item.type == HomeItem.Type.APP) {
-                        val otherItem = other.tag as? HomeItem
-                        if (otherItem != null && (otherItem.type == HomeItem.Type.APP || otherItem.type == HomeItem.Type.FOLDER)) {
-                            onSaveListener.onSave()
-                            activeHandle = -1
-                            hasPassedThreshold = false
-                            return true
+                    onSaveListener?.let { listener ->
+                        val other = listener.findItemAt(midX, midY, targetView)
+                        if (other != null && item.type == HomeItem.Type.APP) {
+                            val otherItem = other.tag as? HomeItem
+                            if (otherItem != null && (otherItem.type == HomeItem.Type.APP || otherItem.type == HomeItem.Type.FOLDER)) {
+                                listener.onSave()
+                                activeHandle = -1
+                                hasPassedThreshold = false
+                                return true
+                            }
                         }
                     }
                 }
