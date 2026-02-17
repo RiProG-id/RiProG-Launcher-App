@@ -1,11 +1,11 @@
 package com.riprog.launcher
 
-import com.riprog.launcher.model.AppItem
-import com.riprog.launcher.model.LauncherModel
+import com.riprog.launcher.data.model.AppItem
+import com.riprog.launcher.data.repository.AppLoader
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
-class LauncherModelTest {
+class AppLoaderTest {
     @Test
     fun testFilterApps() {
         val apps = mutableListOf<AppItem>()
@@ -13,14 +13,14 @@ class LauncherModelTest {
         apps.add(AppItem("Settings", "com.android.settings", ""))
         apps.add(AppItem("Phone", "com.android.phone", ""))
 
-        var filtered = LauncherModel.filterApps(apps, "cam")
+        var filtered = AppLoader.filterApps(apps, "cam")
         assertEquals(1, filtered.size)
         assertEquals("Camera", filtered[0].label)
 
-        filtered = LauncherModel.filterApps(apps, "")
+        filtered = AppLoader.filterApps(apps, "")
         assertEquals(3, filtered.size)
 
-        filtered = LauncherModel.filterApps(apps, "xyz")
+        filtered = AppLoader.filterApps(apps, "xyz")
         assertEquals(0, filtered.size)
     }
 }

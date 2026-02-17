@@ -4,15 +4,13 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.FrameLayout
 import android.widget.LinearLayout
-import com.riprog.launcher.MainActivity
-import com.riprog.launcher.model.HomeItem
-import com.riprog.launcher.ui.PageIndicator
-import com.riprog.launcher.utils.SettingsManager
+import com.riprog.launcher.data.model.HomeItem
+import com.riprog.launcher.data.local.prefs.LauncherPreferences
 
 class PageManager(
     private val container: LinearLayout,
     private val indicator: PageIndicator,
-    private val settingsManager: SettingsManager,
+    private val settingsManager: LauncherPreferences,
     private val onPageChanged: () -> Unit
 ) {
     private val pages = mutableListOf<FrameLayout>()

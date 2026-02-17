@@ -1,9 +1,9 @@
-package com.riprog.launcher.utils
+package com.riprog.launcher.data.local.prefs
 
 import android.content.Context
 import android.content.SharedPreferences
 import com.riprog.launcher.data.local.datastore.SettingsDataStore
-import com.riprog.launcher.model.HomeItem
+import com.riprog.launcher.data.model.HomeItem
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import org.koin.core.component.KoinComponent
@@ -17,7 +17,7 @@ import java.io.FileOutputStream
 import java.io.IOException
 import java.nio.charset.StandardCharsets
 
-class SettingsManager(private val context: Context, initialDataStore: SettingsDataStore? = null) : KoinComponent {
+class LauncherPreferences(private val context: Context, initialDataStore: SettingsDataStore? = null) : KoinComponent {
     private val dataStore: SettingsDataStore by if (initialDataStore != null) lazy { initialDataStore } else inject()
     private val prefs: SharedPreferences = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
 

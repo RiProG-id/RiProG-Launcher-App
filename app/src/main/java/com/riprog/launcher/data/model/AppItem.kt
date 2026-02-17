@@ -1,4 +1,4 @@
-package com.riprog.launcher.model
+package com.riprog.launcher.data.model
 
 import android.content.ComponentName
 

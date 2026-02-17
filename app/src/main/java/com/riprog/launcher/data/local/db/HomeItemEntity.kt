@@ -2,7 +2,7 @@ package com.riprog.launcher.data.local.db
 
 import androidx.room.Entity
 import androidx.room.PrimaryKey
-import com.riprog.launcher.model.HomeItem
+import com.riprog.launcher.data.model.HomeItem
 
 @Entity(tableName = "home_items")
 data class HomeItemEntity(

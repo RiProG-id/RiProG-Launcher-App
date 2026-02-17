@@ -1,4 +1,4 @@
-package com.riprog.launcher.manager
+package com.riprog.launcher.ui.home.manager
 
 import android.app.AlertDialog
 import android.app.Dialog
@@ -14,17 +14,17 @@ import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
 import android.widget.*
-import com.riprog.launcher.MainActivity
+import com.riprog.launcher.ui.home.MainActivity
 import com.riprog.launcher.R
-import com.riprog.launcher.model.HomeItem
-import com.riprog.launcher.ui.HomeView
-import com.riprog.launcher.utils.SettingsManager
-import com.riprog.launcher.utils.ThemeUtils
+import com.riprog.launcher.data.model.HomeItem
+import com.riprog.launcher.ui.home.HomeView
+import com.riprog.launcher.data.local.prefs.LauncherPreferences
+import com.riprog.launcher.ui.common.ThemeUtils
 import java.util.concurrent.Executors
 
 class WidgetManager(
     private val activity: MainActivity,
-    private val settingsManager: SettingsManager,
+    private val settingsManager: LauncherPreferences,
     private val appWidgetManager: AppWidgetManager?,
     private val appWidgetHost: android.appwidget.AppWidgetHost?
 ) {

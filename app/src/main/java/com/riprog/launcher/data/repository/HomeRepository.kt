@@ -11,9 +11,9 @@ import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.drawable.BitmapDrawable
 import android.graphics.drawable.Drawable
-import com.riprog.launcher.model.AppItem
-import com.riprog.launcher.model.HomeItem
-import com.riprog.launcher.utils.SettingsManager
+import com.riprog.launcher.data.model.AppItem
+import com.riprog.launcher.data.model.HomeItem
+import com.riprog.launcher.data.local.prefs.LauncherPreferences
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
@@ -21,18 +21,18 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
 import java.util.Locale
 
-class LauncherRepository(
+class HomeRepository(
     private val context: Context,
-    private val homeItemDao: HomeItemDao,
-    private val settingsDataStore: SettingsDataStore
+    private val dao: HomeItemDao,
+    private val dataStore: SettingsDataStore
 ) {
     private val pm: PackageManager = context.packageManager
 
-    val topLevelItems: Flow<List<HomeItem>> = homeItemDao.getTopLevelItemsWithChildren().map { entities ->
+    val topLevelItems: Flow<List<HomeItem>> = dao.getTopLevelItemsWithChildren().map { entities ->
         entities.map { it.toHomeItem() }
     }
 
-    val settings = settingsDataStore
+    val settings = dataStore
 
     suspend fun checkAndMigrate() = withContext(Dispatchers.IO) {
         val isMigratedKey = "is_migrated_to_room_v2"
@@ -40,27 +40,27 @@ class LauncherRepository(
 
         if (prefs.getBoolean(isMigratedKey, false)) return@withContext
 
-        if (prefs.contains("columns")) settingsDataStore.setColumns(prefs.getInt("columns", 4))
-        if (prefs.contains("widget_id")) settingsDataStore.setWidgetId(prefs.getInt("widget_id", -1))
-        if (prefs.contains("freeform_home")) settingsDataStore.setFreeformHome(prefs.getBoolean("freeform_home", false))
-        if (prefs.contains("icon_scale")) settingsDataStore.setIconScale(prefs.getFloat("icon_scale", 1.0f))
-        if (prefs.contains("hide_labels")) settingsDataStore.setHideLabels(prefs.getBoolean("hide_labels", false))
-        if (prefs.contains("liquid_glass")) settingsDataStore.setLiquidGlass(prefs.getBoolean("liquid_glass", true))
-        if (prefs.contains("darken_wallpaper")) settingsDataStore.setDarkenWallpaper(prefs.getBoolean("darken_wallpaper", true))
-        if (prefs.contains("theme_mode")) settingsDataStore.setThemeMode(prefs.getString("theme_mode", "system") ?: "system")
-        if (prefs.contains("page_count")) settingsDataStore.setPageCount(prefs.getInt("page_count", 2))
+        if (prefs.contains("columns")) dataStore.setColumns(prefs.getInt("columns", 4))
+        if (prefs.contains("widget_id")) dataStore.setWidgetId(prefs.getInt("widget_id", -1))
+        if (prefs.contains("freeform_home")) dataStore.setFreeformHome(prefs.getBoolean("freeform_home", false))
+        if (prefs.contains("icon_scale")) dataStore.setIconScale(prefs.getFloat("icon_scale", 1.0f))
+        if (prefs.contains("hide_labels")) dataStore.setHideLabels(prefs.getBoolean("hide_labels", false))
+        if (prefs.contains("liquid_glass")) dataStore.setLiquidGlass(prefs.getBoolean("liquid_glass", true))
+        if (prefs.contains("darken_wallpaper")) dataStore.setDarkenWallpaper(prefs.getBoolean("darken_wallpaper", true))
+        if (prefs.contains("theme_mode")) dataStore.setThemeMode(prefs.getString("theme_mode", "system") ?: "system")
+        if (prefs.contains("page_count")) dataStore.setPageCount(prefs.getInt("page_count", 2))
 
         val allPrefs = prefs.all
         for ((key, value) in allPrefs) {
             if (key.startsWith("usage_") && value is Int) {
                 val pkg = key.substring("usage_".length)
                 for (i in 0 until value) {
-                    settingsDataStore.incrementUsage(pkg)
+                    dataStore.incrementUsage(pkg)
                 }
             }
         }
 
-        val legacySettings = SettingsManager(context)
+        val legacySettings = LauncherPreferences(context)
         val legacyItems = legacySettings.getHomeItems()
         if (legacyItems.isNotEmpty()) {
             saveHomeItems(legacyItems)
@@ -116,7 +116,7 @@ class LauncherRepository(
     }
 
     suspend fun saveHomeItems(items: List<HomeItem>) = withContext(Dispatchers.IO) {
-        homeItemDao.deleteAll()
+        dao.deleteAll()
         for (item in items) {
             saveHomeItem(item)
         }
@@ -124,22 +124,22 @@ class LauncherRepository(
 
     suspend fun saveHomeItem(item: HomeItem): Long = withContext(Dispatchers.IO) {
         val entity = item.toEntity()
-        val id = homeItemDao.insert(entity)
+        val id = dao.insert(entity)
         item.id = id
 
         if (item.type == HomeItem.Type.FOLDER && !item.folderItems.isNullOrEmpty()) {
             val children = item.folderItems!!.map { it.toEntity(parentId = id) }
-            homeItemDao.insertAll(children)
+            dao.insertAll(children)
         }
         id
     }
 
     suspend fun deleteHomeItem(item: HomeItem) = withContext(Dispatchers.IO) {
-        homeItemDao.deleteItemAndChildren(item.id)
+        dao.deleteItemAndChildren(item.id)
     }
 
     suspend fun deleteAllItems() = withContext(Dispatchers.IO) {
-        homeItemDao.deleteAll()
+        dao.deleteAll()
     }
 
     private fun HomeItemWithChildren.toHomeItem(): HomeItem {

@@ -1,4 +1,4 @@
-package com.riprog.launcher.manager
+package com.riprog.launcher.ui.home.manager
 
 class GridManager(var columns: Int = 4) {
 

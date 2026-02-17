@@ -1,4 +1,6 @@
-package com.riprog.launcher.ui
+package com.riprog.launcher.ui.drag
+
+import com.riprog.launcher.ui.home.MainLayout
 
 import android.content.Context
 import android.graphics.Color
@@ -11,8 +13,8 @@ import android.widget.FrameLayout
 import android.widget.ImageView
 import android.widget.LinearLayout
 import com.riprog.launcher.R
-import com.riprog.launcher.model.HomeItem
-import com.riprog.launcher.utils.ThemeUtils
+import com.riprog.launcher.data.model.HomeItem
+import com.riprog.launcher.ui.common.ThemeUtils
 
 class DragController(
     private val layout: MainLayout,

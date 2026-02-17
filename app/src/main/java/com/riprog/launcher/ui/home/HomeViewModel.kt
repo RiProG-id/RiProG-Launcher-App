@@ -1,19 +1,19 @@
-package com.riprog.launcher.ui.viewmodel
+package com.riprog.launcher.ui.home
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.riprog.launcher.data.repository.LauncherRepository
-import com.riprog.launcher.model.AppItem
-import com.riprog.launcher.model.HomeItem
+import com.riprog.launcher.data.repository.HomeRepository
+import com.riprog.launcher.data.model.AppItem
+import com.riprog.launcher.data.model.HomeItem
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
-class LauncherViewModel(private val repository: LauncherRepository) : ViewModel() {
+class HomeViewModel(private val repository: HomeRepository) : ViewModel() {
 
-    private val _apps = MutableStateFlow<List<AppItem>>(emptyList())
-    val apps: StateFlow<List<AppItem>> = _apps.asStateFlow()
+    private val _installedApps = MutableStateFlow<List<AppItem>>(emptyList())
+    val installedApps: StateFlow<List<AppItem>> = _installedApps.asStateFlow()
 
     val homeItems = repository.topLevelItems
     val settings = repository.settings
@@ -27,7 +27,7 @@ class LauncherViewModel(private val repository: LauncherRepository) : ViewModel(
 
     fun loadApps() {
         viewModelScope.launch {
-            _apps.value = repository.loadApps()
+            _installedApps.value = repository.loadApps()
         }
     }
 

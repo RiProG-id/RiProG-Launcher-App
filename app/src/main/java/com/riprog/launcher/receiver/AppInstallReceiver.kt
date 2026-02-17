@@ -3,11 +3,11 @@ package com.riprog.launcher.receiver
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
-import com.riprog.launcher.model.LauncherModel
+import com.riprog.launcher.data.repository.AppLoader
 
 class AppInstallReceiver(private val callback: Callback) : BroadcastReceiver() {
     interface Callback {
-        fun getLauncherModel(): LauncherModel?
+        fun getAppLoader(): AppLoader?
         fun removePackageItems(packageName: String)
         fun loadApps()
     }

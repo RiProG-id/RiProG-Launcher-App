@@ -1,4 +1,4 @@
-package com.riprog.launcher.ui
+package com.riprog.launcher.ui.drawer
 
 import android.content.Context
 import android.content.Intent
@@ -17,10 +17,10 @@ import android.widget.LinearLayout
 import android.widget.ListView
 import android.widget.TextView
 import com.riprog.launcher.R
-import com.riprog.launcher.model.AppItem
-import com.riprog.launcher.model.LauncherModel
-import com.riprog.launcher.utils.SettingsManager
-import com.riprog.launcher.utils.ThemeUtils
+import com.riprog.launcher.data.model.AppItem
+import com.riprog.launcher.data.repository.AppLoader
+import com.riprog.launcher.data.local.prefs.LauncherPreferences
+import com.riprog.launcher.ui.common.ThemeUtils
 import java.util.Locale
 
 class DrawerView(context: Context) : LinearLayout(context) {
@@ -38,8 +38,8 @@ class DrawerView(context: Context) : LinearLayout(context) {
     }
 
     private var filteredApps: List<AppItem> = mutableListOf()
-    private var model: LauncherModel? = null
-    private val settingsManager: SettingsManager = SettingsManager(context)
+    private var appLoader: AppLoader? = null
+    private val settingsManager: LauncherPreferences = LauncherPreferences(context)
     private val searchBar: EditText
     private val indexBar: IndexBar
 
@@ -140,9 +140,9 @@ class DrawerView(context: Context) : LinearLayout(context) {
         setupIndexBar()
     }
 
-    fun setApps(apps: List<AppItem>, model: LauncherModel?) {
+    fun setApps(apps: List<AppItem>, appLoader: AppLoader?) {
         this.allApps = apps
-        this.model = model
+        this.appLoader = appLoader
         sortAppsAlphabetically()
         filter(searchBar.text.toString())
     }
@@ -191,7 +191,7 @@ class DrawerView(context: Context) : LinearLayout(context) {
     }
 
     fun filter(query: String) {
-        filteredApps = LauncherModel.filterApps(allApps, query)
+        filteredApps = AppLoader.filterApps(allApps, query)
         adapter.notifyDataSetChanged()
     }
 
@@ -344,7 +344,7 @@ class DrawerView(context: Context) : LinearLayout(context) {
                     }
 
                     ivh.icon.setImageDrawable(null)
-                    model?.loadIcon(item, object : LauncherModel.OnIconLoadedListener {
+                    appLoader?.loadIcon(item, object : AppLoader.OnIconLoadedListener {
                         override fun onIconLoaded(icon: android.graphics.Bitmap?) {
                             if (icon != null) {
                                 ivh.icon.setImageBitmap(icon)
