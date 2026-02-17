@@ -24,7 +24,7 @@ class TransformOverlay(
     private val onSaveListener: OnSaveListener?
 ) : FrameLayout(context) {
 
-    private val gridManager = GridManager(settingsManager)
+    private val gridManager = GridManager(settingsManager.columns)
     private val item: HomeItem = targetView.tag as HomeItem
     private val paint = Paint(Paint.ANTI_ALIAS_FLAG)
     private val handleSize: Float = dpToPx(12).toFloat()

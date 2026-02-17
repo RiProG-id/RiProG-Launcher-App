@@ -7,11 +7,8 @@ import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.drawable.BitmapDrawable
 import android.graphics.drawable.Drawable
-import android.os.Handler
-import android.os.Looper
+import kotlinx.coroutines.*
 import java.util.Locale
-import java.util.concurrent.ExecutorService
-import java.util.concurrent.Executors
 
 class LauncherModel(context: Context) {
     interface OnAppsLoadedListener {
@@ -20,56 +17,53 @@ class LauncherModel(context: Context) {
 
     private val context: Context = context.applicationContext
     private val pm: PackageManager = context.packageManager
-    private val executor: ExecutorService = Executors.newSingleThreadExecutor()
-    private val mainHandler = Handler(Looper.getMainLooper())
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
 
     fun onTrimMemory(level: Int) {
     }
 
     fun shutdown() {
-        executor.shutdown()
+        scope.cancel()
     }
 
     @JvmOverloads
     fun loadApps(listener: OnAppsLoadedListener, forceRefresh: Boolean = false) {
-        executor.execute {
-            val mainIntent = Intent(Intent.ACTION_MAIN, null)
-            mainIntent.addCategory(Intent.CATEGORY_LAUNCHER)
-            val infos = pm.queryIntentActivities(mainIntent, 0)
+        scope.launch {
+            val apps = withContext(Dispatchers.IO) {
+                val mainIntent = Intent(Intent.ACTION_MAIN, null)
+                mainIntent.addCategory(Intent.CATEGORY_LAUNCHER)
+                val infos = pm.queryIntentActivities(mainIntent, 0)
 
-            val apps = mutableListOf<AppItem>()
-            val selfPackage = context.packageName
+                val appsList = mutableListOf<AppItem>()
+                val selfPackage = context.packageName
 
-            for (info in infos) {
-                if (info.activityInfo.packageName != selfPackage) {
-                    val item = AppItem(
-                        info.loadLabel(pm).toString(),
-                        info.activityInfo.packageName,
-                        info.activityInfo.name
-                    )
-                    apps.add(item)
+                for (info in infos) {
+                    if (info.activityInfo.packageName != selfPackage) {
+                        val item = AppItem(
+                            info.loadLabel(pm).toString(),
+                            info.activityInfo.packageName,
+                            info.activityInfo.name
+                        )
+                        appsList.add(item)
+                    }
                 }
+                appsList.sortedWith { a, b -> a.label.compareTo(b.label, ignoreCase = true) }
             }
-
-            apps.sortWith { a, b -> a.label.compareTo(b.label, ignoreCase = true) }
-
-            mainHandler.post { listener.onAppsLoaded(apps) }
+            listener.onAppsLoaded(apps)
         }
     }
 
     fun loadIcon(item: AppItem, listener: OnIconLoadedListener) {
-        executor.execute {
-            var bitmap: Bitmap? = null
-            try {
-                val drawable = pm.getApplicationIcon(item.packageName)
-                bitmap = drawableToBitmap(drawable)
-            } catch (ignored: PackageManager.NameNotFoundException) {
+        scope.launch {
+            val bitmap = withContext(Dispatchers.IO) {
+                try {
+                    val drawable = pm.getApplicationIcon(item.packageName)
+                    drawableToBitmap(drawable)
+                } catch (ignored: PackageManager.NameNotFoundException) {
+                    null
+                }
             }
-
-            val finalBitmap = bitmap
-            mainHandler.post {
-                listener.onIconLoaded(finalBitmap)
-            }
+            listener.onIconLoaded(bitmap)
         }
     }
 

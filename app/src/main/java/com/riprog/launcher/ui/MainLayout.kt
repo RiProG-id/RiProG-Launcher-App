@@ -68,7 +68,7 @@ class MainLayout(context: Context, private val callback: Callback) : FrameLayout
             }
         } else {
             val hv = callback.getHomeView()
-            val grid = hv?.gridManager ?: GridManager(callback.getSettingsManager())
+            val grid = hv?.gridManager ?: GridManager(callback.getSettingsManager().columns)
             val cellWidth = grid.getCellWidth(width)
             val cellHeight = grid.getCellHeight(height)
             val col = startX / if (cellWidth > 0) cellWidth.toFloat() else 1.0f

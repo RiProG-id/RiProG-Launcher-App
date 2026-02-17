@@ -1,11 +1,6 @@
 package com.riprog.launcher.manager
 
-import com.riprog.launcher.utils.SettingsManager
-
-class GridManager(private val settingsManager: SettingsManager) {
-
-    val columns: Int
-        get() = settingsManager.columns
+class GridManager(var columns: Int = 4) {
 
     val rows: Int
         get() = 6

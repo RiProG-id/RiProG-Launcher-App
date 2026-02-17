@@ -3,6 +3,7 @@ package com.riprog.launcher.model
 class HomeItem {
     enum class Type { APP, WIDGET, CLOCK, FOLDER }
 
+    var id: Long = 0
     var type: Type? = null
     var packageName: String? = null
     var className: String? = null
