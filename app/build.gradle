@@ -13,6 +13,7 @@ android {
         targetSdk 36
         versionCode 300
         versionName "3.0.0"
+        resConfigs "en"
     }
 
     signingConfigs {
@@ -26,9 +27,8 @@ android {
 
     buildTypes {
         release {
-            minifyEnabled true
-            shrinkResources true
-            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+            minifyEnabled false
+            shrinkResources false
             signingConfig signingConfigs.release
         }
         debug {

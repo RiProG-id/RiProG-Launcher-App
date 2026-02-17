@@ -65,6 +65,7 @@ class TransformOverlay(
         fun onCancel()
         fun onRemove()
         fun onAppInfo()
+        fun onUninstall()
         fun onCollision(otherView: View)
         fun findItemAt(x: Float, y: Float, exclude: View): View?
     }
@@ -178,6 +179,16 @@ class TransformOverlay(
             btnInfo.gravity = Gravity.CENTER
             btnInfo.setOnClickListener { onSaveListener?.onAppInfo() }
             container.addView(btnInfo, LinearLayout.LayoutParams(0, LayoutParams.WRAP_CONTENT, 1.0f))
+
+            val btnUninstall = TextView(context)
+            btnUninstall.setText(R.string.drag_uninstall)
+            btnUninstall.setPadding(dpToPx(8), dpToPx(8), dpToPx(8), dpToPx(8))
+            btnUninstall.setTextColor(adaptiveColor)
+            btnUninstall.textSize = 11f
+            btnUninstall.setTypeface(null, android.graphics.Typeface.BOLD)
+            btnUninstall.gravity = Gravity.CENTER
+            btnUninstall.setOnClickListener { onSaveListener?.onUninstall() }
+            container.addView(btnUninstall, LinearLayout.LayoutParams(0, LayoutParams.WRAP_CONTENT, 1.0f))
         }
 
         val lp = LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT)

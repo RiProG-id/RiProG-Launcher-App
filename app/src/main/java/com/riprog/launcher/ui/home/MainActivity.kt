@@ -934,6 +934,9 @@ class MainActivity : ComponentActivity(), MainLayout.Callback, AppInstallReceive
             override fun onAppInfo() {
                 showAppInfo(v.tag as HomeItem)
             }
+            override fun onUninstall() {
+                uninstallApp(v.tag as HomeItem)
+            }
             override fun onCollision(otherView: View) {
                 updateHomeItemFromTransform()
                 saveHomeState()
@@ -1058,6 +1061,19 @@ class MainActivity : ComponentActivity(), MainLayout.Callback, AppInstallReceive
         return try {
             packageManager.getApplicationLabel(packageManager.getApplicationInfo(packageName, 0)).toString()
         } catch (e: Exception) { packageName }
+    }
+
+    private fun uninstallApp(item: HomeItem) {
+        if (item.packageName.isNullOrEmpty()) return
+        try {
+            val intent = Intent(Intent.ACTION_DELETE).apply {
+                data = "package:${item.packageName}".toUri()
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            }
+            startActivity(intent)
+        } catch (e: Exception) {
+            Toast.makeText(this, getString(R.string.uninstall_failed, e.message), Toast.LENGTH_SHORT).show()
+        }
     }
 
     private fun applyThemeMode(mode: String?) {
