@@ -99,13 +99,13 @@ class SettingsManager(private val context: Context) {
     }
 
     private fun getHomeFile(): File {
-        val dir = File(context.cacheDir, DiskCache.TYPE_LAYOUT)
+        val dir = File(context.filesDir, "layout")
         if (!dir.exists()) dir.mkdirs()
         return File(dir, "home_layout.json")
     }
 
     private fun getPageFile(pageIndex: Int): File {
-        val dir = File(context.cacheDir, DiskCache.TYPE_LAYOUT)
+        val dir = File(context.filesDir, "layout")
         if (!dir.exists()) dir.mkdirs()
         return File(dir, "home_page_$pageIndex.json")
     }

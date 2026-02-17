@@ -16,14 +16,6 @@ class AppInstallReceiver(private val callback: Callback) : BroadcastReceiver() {
         val action = intent.action
         val data = intent.data ?: return
         val packageName = data.schemeSpecificPart ?: return
-        val model = callback.getLauncherModel()
-
-        model?.let {
-            it.invalidateAppListCache()
-            if (Intent.ACTION_PACKAGE_REPLACED == action) {
-                it.clearAppIconCache(packageName)
-            }
-        }
 
         if (Intent.ACTION_PACKAGE_REMOVED == action) {
             val isReplacing = intent.getBooleanExtra(Intent.EXTRA_REPLACING, false)
