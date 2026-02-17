@@ -2,6 +2,7 @@ package com.riprog.launcher.data.local.prefs
 
 import android.content.Context
 import android.content.SharedPreferences
+import androidx.core.content.edit
 import com.riprog.launcher.data.local.datastore.SettingsDataStore
 import com.riprog.launcher.data.model.HomeItem
 import kotlinx.coroutines.flow.first
@@ -25,62 +26,62 @@ class LauncherPreferences(private val context: Context, initialDataStore: Settin
         get() = runBlocking { dataStore.columns.first() }
         set(value) {
             runBlocking { dataStore.setColumns(value) }
-            prefs.edit().putInt(KEY_COLUMNS, value).apply()
+            prefs.edit { putInt(KEY_COLUMNS, value) }
         }
 
     var widgetId: Int
         get() = runBlocking { dataStore.widgetId.first() }
         set(value) {
             runBlocking { dataStore.setWidgetId(value) }
-            prefs.edit().putInt(KEY_WIDGET_ID, value).apply()
+            prefs.edit { putInt(KEY_WIDGET_ID, value) }
         }
 
     var isFreeformHome: Boolean
         get() = runBlocking { dataStore.isFreeformHome.first() }
         set(value) {
             runBlocking { dataStore.setFreeformHome(value) }
-            prefs.edit().putBoolean(KEY_FREEFORM_HOME, value).apply()
+            prefs.edit { putBoolean(KEY_FREEFORM_HOME, value) }
         }
 
     var iconScale: Float
         get() = runBlocking { dataStore.iconScale.first() }
         set(value) {
             runBlocking { dataStore.setIconScale(value) }
-            prefs.edit().putFloat(KEY_ICON_SCALE, value).apply()
+            prefs.edit { putFloat(KEY_ICON_SCALE, value) }
         }
 
     var isHideLabels: Boolean
         get() = runBlocking { dataStore.isHideLabels.first() }
         set(value) {
             runBlocking { dataStore.setHideLabels(value) }
-            prefs.edit().putBoolean(KEY_HIDE_LABELS, value).apply()
+            prefs.edit { putBoolean(KEY_HIDE_LABELS, value) }
         }
 
     var isLiquidGlass: Boolean
         get() = runBlocking { dataStore.isLiquidGlass.first() }
         set(value) {
             runBlocking { dataStore.setLiquidGlass(value) }
-            prefs.edit().putBoolean(KEY_LIQUID_GLASS, value).apply()
+            prefs.edit { putBoolean(KEY_LIQUID_GLASS, value) }
         }
 
     var isDarkenWallpaper: Boolean
         get() = runBlocking { dataStore.isDarkenWallpaper.first() }
         set(value) {
             runBlocking { dataStore.setDarkenWallpaper(value) }
-            prefs.edit().putBoolean(KEY_DARKEN_WALLPAPER, value).apply()
+            prefs.edit { putBoolean(KEY_DARKEN_WALLPAPER, value) }
         }
 
     var themeMode: String?
         get() = runBlocking { dataStore.themeMode.first() }
         set(value) {
             if (value != null) runBlocking { dataStore.setThemeMode(value) }
-            prefs.edit().putString(KEY_THEME_MODE, value).apply()
+            prefs.edit { putString(KEY_THEME_MODE, value) }
         }
 
     fun incrementUsage(packageName: String) {
         runBlocking { dataStore.incrementUsage(packageName) }
         val current = prefs.getInt(KEY_USAGE_PREFIX + packageName, 0)
-        prefs.edit().putInt(KEY_USAGE_PREFIX + packageName, current + 1).apply()
+        prefs.edit { putInt(KEY_USAGE_PREFIX + packageName, current + 1) }
     }
 
     fun getUsage(packageName: String): Int {
@@ -94,14 +95,14 @@ class LauncherPreferences(private val context: Context, initialDataStore: Settin
     fun incrementDrawerOpenCount() {
         runBlocking { dataStore.incrementDrawerOpenCount() }
         val current = prefs.getInt(KEY_DRAWER_OPEN_COUNT, 0)
-        prefs.edit().putInt(KEY_DRAWER_OPEN_COUNT, current + 1).apply()
+        prefs.edit { putInt(KEY_DRAWER_OPEN_COUNT, current + 1) }
     }
 
     var lastDefaultPromptTimestamp: Long
         get() = runBlocking { dataStore.lastDefaultPromptTimestamp.first() }
         set(value) {
             runBlocking { dataStore.setLastDefaultPromptTimestamp(value) }
-            prefs.edit().putLong(KEY_DEFAULT_PROMPT_TIMESTAMP, value).apply()
+            prefs.edit { putLong(KEY_DEFAULT_PROMPT_TIMESTAMP, value) }
         }
 
     var defaultPromptCount: Int
@@ -111,7 +112,7 @@ class LauncherPreferences(private val context: Context, initialDataStore: Settin
     fun incrementDefaultPromptCount() {
         runBlocking { dataStore.incrementDefaultPromptCount() }
         val current = prefs.getInt(KEY_DEFAULT_PROMPT_COUNT, 0)
-        prefs.edit().putInt(KEY_DEFAULT_PROMPT_COUNT, current + 1).apply()
+        prefs.edit { putInt(KEY_DEFAULT_PROMPT_COUNT, current + 1) }
     }
 
     private fun getHomeFile(): File {
@@ -150,7 +151,7 @@ class LauncherPreferences(private val context: Context, initialDataStore: Settin
 
     fun savePageCount(count: Int) {
         runBlocking { dataStore.setPageCount(count) }
-        prefs.edit().putInt("page_count", count).apply()
+        prefs.edit { putInt("page_count", count) }
     }
 
     fun savePageItems(pageIndex: Int, items: List<HomeItem>?) {
@@ -185,10 +186,10 @@ class LauncherPreferences(private val context: Context, initialDataStore: Settin
         }
         writeToFile(getHomeFile(), array.toString())
 
-        prefs.edit()
-            .putInt("page_count", pageCount)
-            .remove(KEY_HOME_ITEMS)
-            .apply()
+        prefs.edit {
+            putInt("page_count", pageCount)
+            remove(KEY_HOME_ITEMS)
+        }
     }
 
     private fun serializeItem(item: HomeItem): JSONObject? {

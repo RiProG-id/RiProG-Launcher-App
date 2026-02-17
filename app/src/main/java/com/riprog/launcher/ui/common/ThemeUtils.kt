@@ -10,7 +10,7 @@ import android.util.TypedValue
 import android.os.Build
 import android.view.View
 import android.view.Window
-import android.view.WindowInsetsController
+import androidx.core.view.WindowCompat
 import com.riprog.launcher.R
 
 object ThemeUtils {
@@ -90,32 +90,11 @@ object ThemeUtils {
 
     @JvmStatic
     fun updateStatusBarContrast(activity: android.app.Activity) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            val window = activity.window
-            val controller = window.insetsController
-            if (controller != null) {
-                val isNight = (activity.resources.configuration.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK) ==
-                        android.content.res.Configuration.UI_MODE_NIGHT_YES
-                if (isNight) {
-                    controller.setSystemBarsAppearance(0, WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS)
-                } else {
-                    controller.setSystemBarsAppearance(
-                        WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS,
-                        WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS
-                    )
-                }
-            }
-        } else {
-            var flags = activity.window.decorView.systemUiVisibility
-            val isNight = (activity.resources.configuration.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK) ==
-                    android.content.res.Configuration.UI_MODE_NIGHT_YES
-            flags = if (isNight) {
-                flags and View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR.inv()
-            } else {
-                flags or View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR
-            }
-            activity.window.decorView.systemUiVisibility = flags
-        }
+        val window = activity.window
+        val controller = WindowCompat.getInsetsController(window, window.decorView)
+        val isNight = (activity.resources.configuration.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK) ==
+                android.content.res.Configuration.UI_MODE_NIGHT_YES
+        controller.isAppearanceLightStatusBars = !isNight
     }
 
     private fun dpToPx(context: Context, dp: Float): Int {

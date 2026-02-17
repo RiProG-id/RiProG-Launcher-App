@@ -10,7 +10,7 @@ import com.riprog.launcher.ui.home.manager.FolderManager
 import com.riprog.launcher.ui.home.manager.GridManager
 import com.riprog.launcher.ui.home.manager.WidgetManager
 import org.koin.android.ext.koin.androidContext
-import org.koin.androidx.viewmodel.dsl.viewModel
+import org.koin.core.module.dsl.viewModelOf
 import org.koin.dsl.module
 
 val appModule = module {
@@ -28,5 +28,5 @@ val appModule = module {
 
     factory { GridManager() }
 
-    viewModel { HomeViewModel(get()) }
+    viewModelOf(::HomeViewModel)
 }

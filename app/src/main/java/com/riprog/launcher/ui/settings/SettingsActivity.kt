@@ -1,6 +1,7 @@
 package com.riprog.launcher.ui.settings
 
 import androidx.activity.ComponentActivity
+import androidx.activity.enableEdgeToEdge
 import android.app.UiModeManager
 import android.content.Context
 import android.content.res.ColorStateList
@@ -20,8 +21,11 @@ import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.SeekBar
-import android.widget.Switch
+import androidx.appcompat.widget.SwitchCompat
 import android.widget.TextView
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
 import com.riprog.launcher.R
 import com.riprog.launcher.ui.home.HomeViewModel
 import com.riprog.launcher.data.local.prefs.LauncherPreferences
@@ -43,6 +47,7 @@ class SettingsActivity : ComponentActivity() {
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        enableEdgeToEdge()
         super.onCreate(savedInstanceState)
         settingsManager = LauncherPreferences(this)
 
@@ -52,16 +57,8 @@ class SettingsActivity : ComponentActivity() {
             }
         }
 
-        val w = window
-        w.statusBarColor = Color.TRANSPARENT
-        w.navigationBarColor = Color.TRANSPARENT
-
-        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
-            w.setDecorFitsSystemWindows(false)
-        }
-
         if (settingsManager.isLiquidGlass) {
-            ThemeUtils.applyWindowBlur(w, true)
+            ThemeUtils.applyWindowBlur(window, true)
         }
 
         val rootContainer = FrameLayout(this)
@@ -79,23 +76,16 @@ class SettingsActivity : ComponentActivity() {
         closeBtn.setImageResource(android.R.drawable.ic_menu_close_clear_cancel)
         closeBtn.setColorFilter(ThemeUtils.getAdaptiveColor(this, settingsManager, true))
         closeBtn.alpha = 0.6f
-        val closeLp = FrameLayout.LayoutParams(dpToPx(48), dpToPx(48), Gravity.TOP or Gravity.RIGHT)
+        val closeLp = FrameLayout.LayoutParams(dpToPx(48), dpToPx(48), Gravity.TOP or Gravity.END)
         closeLp.topMargin = dpToPx(16)
-        closeLp.rightMargin = dpToPx(16)
+        closeLp.marginEnd = dpToPx(16)
         closeBtn.setOnClickListener { finish() }
         rootContainer.addView(closeBtn, closeLp)
 
-        rootContainer.setOnApplyWindowInsetsListener { v, insets ->
-            var top = 0
-            var bottom = 0
-            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
-                val systemInsets = insets.getInsets(android.view.WindowInsets.Type.systemBars())
-                top = systemInsets.top
-                bottom = systemInsets.bottom
-            } else {
-                top = insets.systemWindowInsetTop
-                bottom = insets.systemWindowInsetBottom
-            }
+        ViewCompat.setOnApplyWindowInsetsListener(rootContainer) { _, insets ->
+            val bars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
+            val top = bars.top
+            val bottom = bars.bottom
             root.setPadding(dpToPx(24), top + dpToPx(64), dpToPx(24), bottom + dpToPx(24))
 
             val lp = closeBtn.layoutParams as FrameLayout.LayoutParams
@@ -237,7 +227,7 @@ class SettingsActivity : ComponentActivity() {
         summaryView.setTextColor(adaptiveColor and 0xBBFFFFFF.toInt())
         textLayout.addView(summaryView)
 
-        val toggle = Switch(this)
+        val toggle = SwitchCompat(this)
         toggle.isChecked = isChecked
         toggle.isClickable = false
         item.addView(toggle)

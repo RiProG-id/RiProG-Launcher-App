@@ -9,6 +9,7 @@ import android.view.MotionEvent
 import android.view.View
 import android.view.ViewConfiguration
 import android.view.ViewGroup
+import android.annotation.SuppressLint
 import android.widget.FrameLayout
 import android.widget.ImageView
 import android.widget.LinearLayout
@@ -20,6 +21,7 @@ import com.riprog.launcher.data.model.HomeItem
 import com.riprog.launcher.data.local.prefs.LauncherPreferences
 import com.riprog.launcher.ui.common.ThemeUtils
 
+@SuppressLint("ViewConstructor")
 class MainLayout(context: Context, private val callback: Callback) : FrameLayout(context) {
     interface Callback {
         fun isTransforming(): Boolean
