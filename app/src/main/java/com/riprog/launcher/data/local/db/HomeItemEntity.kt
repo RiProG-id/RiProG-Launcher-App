@@ -17,7 +17,7 @@ data class HomeItemEntity(
     val page: Int = 0,
     val widgetId: Int = -1,
     val folderName: String? = null,
-    val parentId: Long = -1, // -1 means it's on a page, otherwise it's in a folder with this ID
+    val parentId: Long = -1,
     val rotation: Float = 0f,
     val scaleX: Float = 1.0f,
     val scaleY: Float = 1.0f,

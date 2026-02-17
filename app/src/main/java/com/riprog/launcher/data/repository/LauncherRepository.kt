@@ -40,7 +40,6 @@ class LauncherRepository(
 
         if (prefs.getBoolean(isMigratedKey, false)) return@withContext
 
-        // Migrate Settings to DataStore
         if (prefs.contains("columns")) settingsDataStore.setColumns(prefs.getInt("columns", 4))
         if (prefs.contains("widget_id")) settingsDataStore.setWidgetId(prefs.getInt("widget_id", -1))
         if (prefs.contains("freeform_home")) settingsDataStore.setFreeformHome(prefs.getBoolean("freeform_home", false))
@@ -51,19 +50,16 @@ class LauncherRepository(
         if (prefs.contains("theme_mode")) settingsDataStore.setThemeMode(prefs.getString("theme_mode", "system") ?: "system")
         if (prefs.contains("page_count")) settingsDataStore.setPageCount(prefs.getInt("page_count", 2))
 
-        // Migrate App Usage
         val allPrefs = prefs.all
         for ((key, value) in allPrefs) {
             if (key.startsWith("usage_") && value is Int) {
                 val pkg = key.substring("usage_".length)
-                // We use increment in a loop because our incrementUsage is additive
                 for (i in 0 until value) {
                     settingsDataStore.incrementUsage(pkg)
                 }
             }
         }
 
-        // Migrate Home Items
         val legacySettings = SettingsManager(context)
         val legacyItems = legacySettings.getHomeItems()
         if (legacyItems.isNotEmpty()) {
@@ -131,7 +127,6 @@ class LauncherRepository(
         val id = homeItemDao.insert(entity)
         item.id = id
 
-        // If it's a folder, save its children
         if (item.type == HomeItem.Type.FOLDER && !item.folderItems.isNullOrEmpty()) {
             val children = item.folderItems!!.map { it.toEntity(parentId = id) }
             homeItemDao.insertAll(children)
@@ -147,7 +142,6 @@ class LauncherRepository(
         homeItemDao.deleteAll()
     }
 
-    // Extension functions for conversion
     private fun HomeItemWithChildren.toHomeItem(): HomeItem {
         val homeItem = HomeItem()
         homeItem.id = item.id

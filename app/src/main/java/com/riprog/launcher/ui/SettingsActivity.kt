@@ -131,17 +131,10 @@ class SettingsActivity : ComponentActivity() {
 
         lifecycleScope.launch {
             viewModel.settings.isFreeformHome.collectLatest { isFreeform ->
-                // Note: We might need a way to update the existing view instead of adding it again
-                // but since this is onCreate, we just need the initial value.
-                // However, we want reactive updates. For now, let's just use the current value from flow.
             }
         }
 
-        // To keep it simple and 1:1 for now, I'll use the flow's first value or a simpler approach.
-        // Actually, I should refactor addToggleSetting to take a Flow or similar.
 
-        // Re-reading the requirement: 1:1 preservation of behavior.
-        // The current code adds settings once in onCreate.
 
         lifecycleScope.launch {
             val isFreeform = viewModel.settings.isFreeformHome.first()
