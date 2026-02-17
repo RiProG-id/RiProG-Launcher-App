@@ -2,13 +2,13 @@ package com.riprog.launcher
 
 import android.app.Application
 import com.riprog.launcher.di.appModule
-import com.riprog.launcher.model.LauncherModel
+import com.riprog.launcher.data.repository.AppLoader
 import org.koin.android.ext.koin.androidContext
 import org.koin.android.ext.koin.androidLogger
 import org.koin.core.context.startKoin
 
 class LauncherApplication : Application() {
-    var model: LauncherModel? = null
+    var appLoader: AppLoader? = null
         private set
 
     override fun onCreate() {
@@ -18,16 +18,16 @@ class LauncherApplication : Application() {
             androidContext(this@LauncherApplication)
             modules(appModule)
         }
-        model = LauncherModel(this)
+        appLoader = AppLoader(this)
     }
 
     override fun onTrimMemory(level: Int) {
         super.onTrimMemory(level)
-        model?.onTrimMemory(level)
+        appLoader?.onTrimMemory(level)
     }
 
     override fun onTerminate() {
         super.onTerminate()
-        model?.shutdown()
+        appLoader?.shutdown()
     }
 }

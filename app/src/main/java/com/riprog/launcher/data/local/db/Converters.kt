@@ -1,7 +1,7 @@
 package com.riprog.launcher.data.local.db
 
 import androidx.room.TypeConverter
-import com.riprog.launcher.model.HomeItem
+import com.riprog.launcher.data.model.HomeItem
 
 class Converters {
     @TypeConverter

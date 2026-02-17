@@ -1,4 +1,4 @@
-package com.riprog.launcher.ui
+package com.riprog.launcher.ui.home
 
 import android.content.Context
 import android.graphics.Color
@@ -13,10 +13,12 @@ import android.widget.FrameLayout
 import android.widget.ImageView
 import android.widget.LinearLayout
 import com.riprog.launcher.R
-import com.riprog.launcher.manager.GridManager
-import com.riprog.launcher.model.HomeItem
-import com.riprog.launcher.utils.SettingsManager
-import com.riprog.launcher.utils.ThemeUtils
+import com.riprog.launcher.ui.home.manager.GridManager
+import com.riprog.launcher.ui.drawer.DrawerView
+import com.riprog.launcher.ui.drag.DragController
+import com.riprog.launcher.data.model.HomeItem
+import com.riprog.launcher.data.local.prefs.LauncherPreferences
+import com.riprog.launcher.ui.common.ThemeUtils
 
 class MainLayout(context: Context, private val callback: Callback) : FrameLayout(context) {
     interface Callback {
@@ -24,7 +26,7 @@ class MainLayout(context: Context, private val callback: Callback) : FrameLayout
         fun isFolderOpen(): Boolean
         fun getHomeView(): HomeView?
         fun getDrawerView(): DrawerView?
-        fun getSettingsManager(): SettingsManager
+        fun getSettingsManager(): LauncherPreferences
         fun showHomeContextMenu(col: Float, row: Float, page: Int)
         fun showTransformOverlay(v: View)
         fun startTransformDirectMove(v: View, x: Float, y: Float)

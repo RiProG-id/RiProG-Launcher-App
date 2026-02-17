@@ -1,4 +1,5 @@
-package com.riprog.launcher.model
+package com.riprog.launcher.data.repository
+import com.riprog.launcher.data.model.AppItem
 
 import android.content.Context
 import android.content.Intent
@@ -10,7 +11,7 @@ import android.graphics.drawable.Drawable
 import kotlinx.coroutines.*
 import java.util.Locale
 
-class LauncherModel(context: Context) {
+class AppLoader(context: Context) {
     interface OnAppsLoadedListener {
         fun onAppsLoaded(apps: List<AppItem>)
     }

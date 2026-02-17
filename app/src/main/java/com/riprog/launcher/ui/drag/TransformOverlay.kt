@@ -1,4 +1,4 @@
-package com.riprog.launcher.ui
+package com.riprog.launcher.ui.drag
 
 import android.content.Context
 import android.graphics.Canvas
@@ -12,15 +12,15 @@ import android.view.ViewGroup
 import android.widget.FrameLayout
 import android.widget.LinearLayout
 import android.widget.TextView
-import com.riprog.launcher.manager.GridManager
-import com.riprog.launcher.model.HomeItem
-import com.riprog.launcher.utils.SettingsManager
-import com.riprog.launcher.utils.ThemeUtils
+import com.riprog.launcher.ui.home.manager.GridManager
+import com.riprog.launcher.data.model.HomeItem
+import com.riprog.launcher.data.local.prefs.LauncherPreferences
+import com.riprog.launcher.ui.common.ThemeUtils
 
 class TransformOverlay(
     context: Context,
     private val targetView: View,
-    private val settingsManager: SettingsManager,
+    private val settingsManager: LauncherPreferences,
     private val onSaveListener: OnSaveListener?
 ) : FrameLayout(context) {
 

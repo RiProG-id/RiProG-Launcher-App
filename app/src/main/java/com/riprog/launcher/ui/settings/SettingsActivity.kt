@@ -1,4 +1,4 @@
-package com.riprog.launcher.ui
+package com.riprog.launcher.ui.settings
 
 import androidx.activity.ComponentActivity
 import android.app.UiModeManager
@@ -23,9 +23,9 @@ import android.widget.SeekBar
 import android.widget.Switch
 import android.widget.TextView
 import com.riprog.launcher.R
-import com.riprog.launcher.ui.viewmodel.LauncherViewModel
-import com.riprog.launcher.utils.SettingsManager
-import com.riprog.launcher.utils.ThemeUtils
+import com.riprog.launcher.ui.home.HomeViewModel
+import com.riprog.launcher.data.local.prefs.LauncherPreferences
+import com.riprog.launcher.ui.common.ThemeUtils
 import org.koin.androidx.viewmodel.ext.android.viewModel
 import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.flow.collectLatest
@@ -34,8 +34,8 @@ import kotlinx.coroutines.launch
 
 class SettingsActivity : ComponentActivity() {
 
-    private val viewModel: LauncherViewModel by viewModel()
-    private lateinit var settingsManager: SettingsManager
+    private val viewModel: HomeViewModel by viewModel()
+    private lateinit var settingsManager: LauncherPreferences
 
     override fun onResume() {
         super.onResume()
@@ -44,7 +44,7 @@ class SettingsActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        settingsManager = SettingsManager(this)
+        settingsManager = LauncherPreferences(this)
 
         lifecycleScope.launch {
             viewModel.settings.themeMode.collectLatest { mode ->

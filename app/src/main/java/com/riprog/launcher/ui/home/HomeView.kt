@@ -1,4 +1,4 @@
-package com.riprog.launcher.ui
+package com.riprog.launcher.ui.home
 
 import android.content.Context
 import android.graphics.Color
@@ -13,24 +13,22 @@ import android.widget.FrameLayout
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
-import com.riprog.launcher.MainActivity
 import com.riprog.launcher.R
-import com.riprog.launcher.manager.GridManager
-import com.riprog.launcher.model.AppItem
-import com.riprog.launcher.model.HomeItem
-import com.riprog.launcher.model.LauncherModel
-import com.riprog.launcher.ui.home.PageManager
-import com.riprog.launcher.utils.SettingsManager
-import com.riprog.launcher.utils.ThemeUtils
+import com.riprog.launcher.ui.home.manager.GridManager
+import com.riprog.launcher.data.model.AppItem
+import com.riprog.launcher.data.model.HomeItem
+import com.riprog.launcher.data.repository.AppLoader
+import com.riprog.launcher.data.local.prefs.LauncherPreferences
+import com.riprog.launcher.ui.common.ThemeUtils
 
-class HomeView(context: Context, private val settingsManager: SettingsManager) : FrameLayout(context) {
+class HomeView(context: Context, private val settingsManager: LauncherPreferences) : FrameLayout(context) {
     val pagesContainer: LinearLayout = LinearLayout(context)
     private val pageIndicator: PageIndicator = PageIndicator(context)
     val pageManager: PageManager
     val gridManager: GridManager = GridManager()
     private var homeItems: List<HomeItem>? = null
     private var accentColor = Color.WHITE
-    private var model: LauncherModel? = null
+    private var appLoader: AppLoader? = null
     private var allApps: List<AppItem>? = null
 
     private val tempMatrix = Matrix()
@@ -264,8 +262,8 @@ class HomeView(context: Context, private val settingsManager: SettingsManager) :
             isEdgeScrolling = false
             edgeScrollHandler.removeCallbacks(edgeScrollRunnable)
             pageManager.cleanupEmptyPages()
-            if (model != null && allApps != null) {
-                refreshIcons(model!!, allApps!!)
+            if (appLoader != null && allApps != null) {
+                refreshIcons(appLoader!!, allApps!!)
             }
         }
     }
@@ -481,8 +479,8 @@ class HomeView(context: Context, private val settingsManager: SettingsManager) :
     fun getPageCount(): Int = pageManager.getPageCount()
 
     private val refreshIconsRunnable = Runnable {
-        if (model != null && allApps != null) {
-            refreshIconsInternal(model!!, allApps!!)
+        if (appLoader != null && allApps != null) {
+            refreshIconsInternal(appLoader!!, allApps!!)
         }
     }
 
@@ -501,8 +499,8 @@ class HomeView(context: Context, private val settingsManager: SettingsManager) :
         }
     }
 
-    fun refreshIcons(model: LauncherModel, allApps: List<AppItem>) {
-        this.model = model
+    fun refreshIcons(appLoader: AppLoader, allApps: List<AppItem>) {
+        this.appLoader = appLoader
         this.allApps = allApps
         refreshIconsDebounced()
     }
@@ -526,7 +524,7 @@ class HomeView(context: Context, private val settingsManager: SettingsManager) :
         return null
     }
 
-    private fun refreshIconsInternal(model: LauncherModel, allApps: List<AppItem>) {
+    private fun refreshIconsInternal(appLoader: AppLoader, allApps: List<AppItem>) {
         val globalScale = if (settingsManager.isFreeformHome) 1.0f else settingsManager.iconScale
         val baseSize = resources.getDimensionPixelSize(R.dimen.grid_icon_size)
         val targetIconSize = (baseSize * globalScale).toInt()
@@ -541,12 +539,12 @@ class HomeView(context: Context, private val settingsManager: SettingsManager) :
         val allPages = pageManager.getAllPages()
 
         for (page in allPages) {
-            refreshPageIcons(page, model, appMap, targetIconSize, globalScale, hideLabels, adaptiveColor)
+            refreshPageIcons(page, appLoader, appMap, targetIconSize, globalScale, hideLabels, adaptiveColor)
         }
     }
 
     private fun refreshPageIcons(
-        page: FrameLayout, model: LauncherModel, appMap: Map<String, AppItem>,
+        page: FrameLayout, appLoader: AppLoader, appMap: Map<String, AppItem>,
         targetIconSize: Int, globalScale: Float, hideLabels: Boolean, adaptiveColor: Int
     ) {
         for (i in 0 until page.childCount) {
@@ -574,7 +572,7 @@ class HomeView(context: Context, private val settingsManager: SettingsManager) :
 
                 val app = appMap[item.packageName]
                 if (iv != null && app != null) {
-                    model.loadIcon(app, object : LauncherModel.OnIconLoadedListener {
+                    appLoader.loadIcon(app, object : AppLoader.OnIconLoadedListener {
                         override fun onIconLoaded(icon: android.graphics.Bitmap?) {
                             if (icon != null) {
                                 iv.setImageBitmap(icon)

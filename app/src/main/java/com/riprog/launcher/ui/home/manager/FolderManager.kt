@@ -1,4 +1,4 @@
-package com.riprog.launcher.manager
+package com.riprog.launcher.ui.home.manager
 
 import android.content.Context
 import android.graphics.Typeface
@@ -11,20 +11,20 @@ import android.view.ViewGroup
 import android.view.inputmethod.EditorInfo
 import android.view.inputmethod.InputMethodManager
 import android.widget.*
-import com.riprog.launcher.MainActivity
-import com.riprog.launcher.model.AppItem
-import com.riprog.launcher.model.HomeItem
-import com.riprog.launcher.model.LauncherModel
-import com.riprog.launcher.utils.SettingsManager
-import com.riprog.launcher.utils.ThemeUtils
+import com.riprog.launcher.ui.home.MainActivity
+import com.riprog.launcher.data.model.AppItem
+import com.riprog.launcher.data.model.HomeItem
+import com.riprog.launcher.data.repository.AppLoader
+import com.riprog.launcher.data.local.prefs.LauncherPreferences
+import com.riprog.launcher.ui.common.ThemeUtils
 
 class FolderManager(
     private val activity: MainActivity,
-    private val settingsManager: SettingsManager
+    private val settingsManager: LauncherPreferences
 ) {
     private var currentFolderOverlay: View? = null
 
-    fun openFolder(folderItem: HomeItem, folderView: View, homeItems: MutableList<HomeItem>, allApps: List<AppItem>, model: LauncherModel?) {
+    fun openFolder(folderItem: HomeItem, folderView: View, homeItems: MutableList<HomeItem>, allApps: List<AppItem>, appLoader: AppLoader?) {
         if (currentFolderOverlay != null) closeFolder()
         activity.setOverlayBlur(true)
 
@@ -103,7 +103,7 @@ class FolderManager(
                 val imm = activity.getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
                 imm.hideSoftInputFromWindow(v.windowToken, 0)
                 activity.saveHomeState()
-                activity.getHomeView()?.refreshIcons(model!!, allApps)
+                activity.getHomeView()?.refreshIcons(appLoader!!, allApps)
                 true
             } else false
         }

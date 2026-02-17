@@ -1,4 +1,4 @@
-package com.riprog.launcher.ui
+package com.riprog.launcher.ui.home
 
 import android.content.Context
 import android.graphics.Color

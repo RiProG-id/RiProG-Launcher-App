@@ -1,4 +1,6 @@
-package com.riprog.launcher.utils
+package com.riprog.launcher.ui.common
+
+import com.riprog.launcher.data.local.prefs.LauncherPreferences
 
 import android.content.Context
 import android.graphics.Color
@@ -14,7 +16,7 @@ import com.riprog.launcher.R
 object ThemeUtils {
     @JvmStatic
     @JvmOverloads
-    fun getGlassDrawable(context: Context, settingsManager: SettingsManager, cornerRadiusDp: Float = 28f): Drawable {
+    fun getGlassDrawable(context: Context, settingsManager: LauncherPreferences, cornerRadiusDp: Float = 28f): Drawable {
         val isLiquidGlass = settingsManager.isLiquidGlass
         val isNight = (context.resources.configuration.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK) ==
                 android.content.res.Configuration.UI_MODE_NIGHT_YES
@@ -45,7 +47,7 @@ object ThemeUtils {
     }
 
     @JvmStatic
-    fun getAdaptiveColor(context: Context, settingsManager: SettingsManager, isOnGlass: Boolean): Int {
+    fun getAdaptiveColor(context: Context, settingsManager: LauncherPreferences, isOnGlass: Boolean): Int {
         val isNight = (context.resources.configuration.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK) ==
                 android.content.res.Configuration.UI_MODE_NIGHT_YES
 

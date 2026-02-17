@@ -1,4 +1,4 @@
-package com.riprog.launcher.model
+package com.riprog.launcher.data.model
 
 class HomeItem {
     enum class Type { APP, WIDGET, CLOCK, FOLDER }
