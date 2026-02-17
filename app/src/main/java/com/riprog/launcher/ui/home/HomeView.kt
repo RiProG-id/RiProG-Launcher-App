@@ -12,6 +12,7 @@ import android.view.ViewGroup
 import android.widget.FrameLayout
 import android.widget.ImageView
 import android.widget.LinearLayout
+import android.annotation.SuppressLint
 import android.widget.TextView
 import com.riprog.launcher.R
 import com.riprog.launcher.ui.home.manager.GridManager
@@ -21,6 +22,7 @@ import com.riprog.launcher.data.repository.AppLoader
 import com.riprog.launcher.data.local.prefs.LauncherPreferences
 import com.riprog.launcher.ui.common.ThemeUtils
 
+@SuppressLint("ViewConstructor")
 class HomeView(context: Context, private val settingsManager: LauncherPreferences) : FrameLayout(context) {
     val pagesContainer: LinearLayout = LinearLayout(context)
     private val pageIndicator: PageIndicator = PageIndicator(context)

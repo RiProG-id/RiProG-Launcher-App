@@ -8,8 +8,10 @@ import android.content.Context
 import android.content.Intent
 import android.graphics.Color
 import android.graphics.Typeface
-import android.graphics.drawable.ColorDrawable
+import androidx.core.graphics.drawable.toDrawable
 import android.graphics.drawable.GradientDrawable
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
 import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
@@ -44,7 +46,7 @@ class WidgetManager(
 
         val dialog = Dialog(activity, android.R.style.Theme_DeviceDefault_NoActionBar_Fullscreen)
         dialog.window?.let {
-            it.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
+            it.setBackgroundDrawable(Color.TRANSPARENT.toDrawable())
             ThemeUtils.applyWindowBlur(it, settingsManager.isLiquidGlass)
         }
 
@@ -147,7 +149,7 @@ class WidgetManager(
 
                     val textLayout = LinearLayout(activity).apply { orientation = LinearLayout.VERTICAL }
                     textLayout.addView(TextView(activity).apply {
-                        text = info.label
+                        text = info.loadLabel(activity.packageManager)
                         setTextColor(adaptiveColor)
                         textSize = 16f
                         setTypeface(null, Typeface.BOLD)
@@ -171,7 +173,7 @@ class WidgetManager(
                                 putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, appWidgetId)
                                 putExtra(AppWidgetManager.EXTRA_APPWIDGET_PROVIDER, info.provider)
                             }
-                            activity.startActivityForResult(intent, MainActivity.REQUEST_PICK_APPWIDGET)
+                            activity.widgetPickerLauncher.launch(intent)
                         }
                     }
                 }
@@ -184,11 +186,12 @@ class WidgetManager(
             alpha = 0.6f
             setOnClickListener { dialog.dismiss() }
         }
-        root.addView(closeBtn, FrameLayout.LayoutParams(dpToPx(48), dpToPx(48), Gravity.TOP or Gravity.RIGHT).apply { topMargin = dpToPx(16); rightMargin = dpToPx(16) })
+        root.addView(closeBtn, FrameLayout.LayoutParams(dpToPx(48), dpToPx(48), Gravity.TOP or Gravity.END).apply { topMargin = dpToPx(16); marginEnd = dpToPx(16) })
 
-        root.setOnApplyWindowInsetsListener { _, insets ->
-            val top = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) insets.getInsets(android.view.WindowInsets.Type.systemBars()).top else insets.systemWindowInsetTop
-            val bottom = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) insets.getInsets(android.view.WindowInsets.Type.systemBars()).bottom else insets.systemWindowInsetBottom
+        ViewCompat.setOnApplyWindowInsetsListener(root) { _, insets ->
+            val bars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
+            val top = bars.top
+            val bottom = bars.bottom
             container.setPadding(dpToPx(24), top + dpToPx(64), dpToPx(24), bottom + dpToPx(24))
             val clp = closeBtn.layoutParams as FrameLayout.LayoutParams
             clp.topMargin = top + dpToPx(16)

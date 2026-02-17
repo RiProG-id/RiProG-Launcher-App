@@ -20,6 +20,9 @@
     <string name="page_added">New page added</string>
     <string name="remove_page_not_implemented">Page removal not supported</string>
     <string name="title_pick_widget">Select Widget</string>
+    <string name="action_reset">Reset</string>
+    <string name="action_save">Save</string>
+    <string name="action_app_info">App Info</string>
     <string name="action_cancel">Cancel</string>
     <string name="drag_remove">Remove</string>
     <string name="drag_app_info">App Info</string>

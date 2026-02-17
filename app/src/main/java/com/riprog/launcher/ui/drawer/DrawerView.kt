@@ -16,6 +16,8 @@ import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.ListView
 import android.widget.TextView
+import androidx.appcompat.content.res.AppCompatResources
+import androidx.core.view.isEmpty
 import com.riprog.launcher.R
 import com.riprog.launcher.data.model.AppItem
 import com.riprog.launcher.data.repository.AppLoader
@@ -64,7 +66,7 @@ class DrawerView(context: Context) : LinearLayout(context) {
 
         listView = ListView(context)
         listView.divider = null
-        listView.selector = context.getDrawable(android.R.color.transparent)
+        listView.selector = AppCompatResources.getDrawable(context, android.R.color.transparent)
         listView.isVerticalScrollBarEnabled = false
         contentFrame.addView(listView, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
 
@@ -182,7 +184,7 @@ class DrawerView(context: Context) : LinearLayout(context) {
     }
 
     fun isAtTop(): Boolean {
-        if (listView.childCount == 0) return true
+        if (listView.isEmpty()) return true
         return listView.firstVisiblePosition == 0 && listView.getChildAt(0).top >= 0
     }
 
