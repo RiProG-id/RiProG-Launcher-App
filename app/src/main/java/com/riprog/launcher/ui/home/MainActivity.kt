@@ -133,7 +133,6 @@ class MainActivity : ComponentActivity(), MainLayout.Callback, AppInstallReceive
                 mainLayout?.closeDrawerInstantly()
                 val currentPage = homeView?.getCurrentPage() ?: 0
                 val item = HomeItem.createApp(app.packageName, app.className, 0f, 0f, currentPage)
-                // Don't add to homeItems yet to avoid misplaced objects if drag is canceled
                 val view = createAppView(item, false)
                 if (view != null) {
                     view.tag = item
@@ -204,10 +203,7 @@ class MainActivity : ComponentActivity(), MainLayout.Callback, AppInstallReceive
                 if (homeItems.isEmpty()) {
                     setupDefaultHome()
                 } else {
-                    // Avoid full clear and re-render if we are in the middle of a transformation or drag
-                    // This prevents duplicate objects and "permanent overlays"
                     if (isTransforming() || (drawerView?.visibility == View.GONE && homeView?.getCurrentPage() != -1)) {
-                        // Incremental update: render items that don't have views yet
                         for (item in homeItems) {
                             renderHomeItem(item)
                         }
@@ -373,7 +369,6 @@ class MainActivity : ComponentActivity(), MainLayout.Callback, AppInstallReceive
     fun renderHomeItem(item: HomeItem?) {
         if (item?.type == null) return
 
-        // Check if a view already exists for this item to avoid duplicates
         val existingView = homeView?.findViewForItem(item)
         if (existingView != null) {
             homeView?.updateViewPosition(item, existingView)
@@ -1066,7 +1061,6 @@ class MainActivity : ComponentActivity(), MainLayout.Callback, AppInstallReceive
         val targetPage = if (page >= 0) page else (homeView?.getCurrentPage() ?: 0)
         val item = HomeItem.createWidget(appWidgetId, col, row, spanX, spanY, targetPage)
 
-        // Requirement: The widget should automatically snap into a valid placement position.
         if (!preferences.isFreeformHome && homeView != null) {
             val hv = homeView!!
             if (hv.isAreaOccupied(item.col.toInt(), item.row.toInt(), Math.round(item.spanX), Math.round(item.spanY), item.page, item)) {
@@ -1075,7 +1069,6 @@ class MainActivity : ComponentActivity(), MainLayout.Callback, AppInstallReceive
                     item.col = spot.first.toFloat()
                     item.row = spot.second.toFloat()
                 } else {
-                    // If current page is full, add to a new page
                     val newPage = hv.addPage()
                     item.page = newPage
                     item.col = 0f

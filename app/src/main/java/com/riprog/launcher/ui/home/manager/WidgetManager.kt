@@ -169,7 +169,6 @@ class WidgetManager(
                         val appWidgetId = appWidgetHost!!.allocateAppWidgetId()
                         val currentPage = activity.getHomeView()?.getCurrentPage() ?: 0
 
-                        // Requirement: The first widget added must spawn at the center of the home area.
                         val hasOtherWidgets = activity.homeItems.any { it.type == HomeItem.Type.WIDGET }
 
                         var targetCol = lastGridCol

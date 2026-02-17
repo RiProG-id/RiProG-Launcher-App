@@ -82,7 +82,6 @@ class SettingsActivity : ComponentActivity() {
 
             val adaptiveColor = ThemeUtils.getAdaptiveColor(this@SettingsActivity, settingsManager, true)
 
-            // Setup Header/Title
             val closeBtn = ImageView(this@SettingsActivity).apply {
                 setImageResource(android.R.drawable.ic_menu_close_clear_cancel)
                 setColorFilter(adaptiveColor)
@@ -120,7 +119,6 @@ class SettingsActivity : ComponentActivity() {
             })
             root.addView(titleLayout)
 
-            // Appearance Category
             addCategoryHeader(root, getString(R.string.category_appearance), R.drawable.ic_wallpaper)
             addThemeSetting(root, themeMode)
             addToggleSetting(root, R.string.setting_liquid_glass, R.string.setting_liquid_glass_summary,
@@ -136,14 +134,12 @@ class SettingsActivity : ComponentActivity() {
             val initialScale = viewModel.settings.iconScale.first()
             addScaleSetting(root, initialScale)
 
-            // Home Screen Category
             addCategoryHeader(root, getString(R.string.category_home), R.drawable.ic_layout)
             addToggleSetting(root, R.string.setting_freeform, R.string.setting_freeform_summary,
                 isFreeform) { isChecked -> lifecycleScope.launch { viewModel.settings.setFreeformHome(isChecked) } }
             addToggleSetting(root, R.string.setting_hide_labels, R.string.setting_hide_labels_summary,
                 isHideLabels) { isChecked -> lifecycleScope.launch { viewModel.settings.setHideLabels(isChecked) } }
 
-            // About Category
             addCategoryHeader(root, getString(R.string.category_about), R.drawable.ic_info)
             root.addView(TextView(this@SettingsActivity).apply {
                 setText(R.string.about_content)

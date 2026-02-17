@@ -33,7 +33,6 @@ class PageManager(
         )
         container.addView(page, lp)
 
-        // If width was 0, we need to ensure it gets updated as soon as the container is laid out
         if (containerWidth <= 0) {
             container.post {
                 val currentWidth = container.width
@@ -129,11 +128,9 @@ class PageManager(
         val targetPage = if (n > 0) Math.max(0, Math.min(n - 1, page)) else 0
         currentPage = targetPage
 
-        // Each page has exactly the same width as the container
         val pageWidth = width
         val targetX = currentPage * pageWidth
 
-        // Ensure all pages have the correct width in case it changed
         for (i in 0 until container.childCount) {
             val child = container.getChildAt(i)
             val lp = child.layoutParams as LinearLayout.LayoutParams

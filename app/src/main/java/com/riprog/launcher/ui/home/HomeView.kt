@@ -210,8 +210,6 @@ class HomeView(context: Context, private val settingsManager: LauncherPreference
             dragOffsetX = x - vPos[0]
             dragOffsetY = y - vPos[1]
         } else {
-            // For views not yet attached, x and y are assumed to be relative to the touch root (MainLayout)
-            // which is usually at rootPos.
             vPos[0] = (rootPos[0] + v.x).toInt()
             vPos[1] = (rootPos[1] + v.y).toInt()
             dragOffsetX = x - vPos[0]
