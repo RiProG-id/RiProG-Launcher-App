@@ -231,6 +231,16 @@ class DrawerView(context: Context) : LinearLayout(context) {
         adapter.notifyDataSetChanged()
     }
 
+    fun refreshTheme() {
+        background = ThemeUtils.getGlassDrawable(context, settingsManager)
+        val adaptiveColor = ThemeUtils.getAdaptiveColor(context, settingsManager, true)
+        searchBar.setTextColor(adaptiveColor)
+        searchBar.setHintTextColor(adaptiveColor and 0x80FFFFFF.toInt())
+        searchBar.compoundDrawables[0]?.setTint(adaptiveColor and 0x80FFFFFF.toInt())
+        setupIndexBar()
+        adapter.notifyDataSetChanged()
+    }
+
     private fun dpToPx(dp: Int): Int {
         return android.util.TypedValue.applyDimension(
             android.util.TypedValue.COMPLEX_UNIT_DIP, dp.toFloat(), resources.displayMetrics

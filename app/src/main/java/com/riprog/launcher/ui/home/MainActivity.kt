@@ -232,6 +232,34 @@ class MainActivity : ComponentActivity(), MainLayout.Callback, AppInstallReceive
             viewModel.settings.iconScale.collectLatest {
                 homeView?.refreshLayout()
                 homeView?.refreshIcons(appLoader!!, allApps)
+                drawerView?.refreshTheme()
+            }
+        }
+
+        lifecycleScope.launch {
+            viewModel.settings.isFreeformHome.collectLatest {
+                homeView?.refreshLayout()
+            }
+        }
+
+        lifecycleScope.launch {
+            viewModel.settings.isHideLabels.collectLatest {
+                homeView?.refreshIcons(appLoader!!, allApps)
+            }
+        }
+
+        lifecycleScope.launch {
+            viewModel.settings.isLiquidGlass.collectLatest {
+                homeView?.refreshIcons(appLoader!!, allApps)
+                drawerView?.refreshTheme()
+            }
+        }
+
+        lifecycleScope.launch {
+            viewModel.settings.isDarkenWallpaper.collectLatest {
+                mainLayout?.updateDimVisibility()
+                homeView?.refreshIcons(appLoader!!, allApps)
+                drawerView?.refreshTheme()
             }
         }
     }
@@ -1055,6 +1083,67 @@ class MainActivity : ComponentActivity(), MainLayout.Callback, AppInstallReceive
         pendingWidgetSpanX = spanX
         pendingWidgetSpanY = spanY
         pendingWidgetPage = page
+    }
+
+    fun startNewWidgetDrag(info: android.appwidget.AppWidgetProviderInfo, spanX: Float, spanY: Float) {
+        val am = appWidgetManager ?: return
+        val ah = appWidgetHost ?: return
+        val appWidgetId = ah.allocateAppWidgetId()
+        val currentPage = homeView?.getCurrentPage() ?: 0
+
+        val bound = am.bindAppWidgetIdIfAllowed(appWidgetId, info.provider)
+        val item = HomeItem.createWidget(appWidgetId, 0f, 0f, spanX, spanY, currentPage)
+        item.packageName = info.provider.packageName
+        item.className = info.provider.className
+        homeItems.add(item)
+
+        val view = if (bound) {
+            createWidgetView(item)
+        } else {
+            createWidgetPlaceholderView(info, spanX, spanY)
+        }
+
+        if (view != null) {
+            view.tag = item
+
+            val hv = homeView
+            val grid = hv?.gridManager ?: gridManager
+            val availW = if (hv != null && hv.width > 0) hv.width - hv.paddingLeft - hv.paddingRight else resources.displayMetrics.widthPixels
+            val availH = if (hv != null && hv.height > 0) hv.height - hv.paddingTop - hv.paddingBottom else resources.displayMetrics.heightPixels
+            val cellWidth = grid.getCellWidth(availW)
+            val cellHeight = grid.getCellHeight(availH)
+
+            val w = (cellWidth * spanX).toInt()
+            val h = (cellHeight * spanY).toInt()
+
+            mainLayout?.addView(view, FrameLayout.LayoutParams(w, h))
+            mainLayout?.startExternalDrag(view)
+        }
+    }
+
+    private fun createWidgetPlaceholderView(info: android.appwidget.AppWidgetProviderInfo, spanX: Float, spanY: Float): View {
+        val frame = FrameLayout(this)
+        frame.background = ThemeUtils.getGlassDrawable(this, preferences, 12f)
+        val iv = ImageView(this)
+        try {
+            iv.setImageDrawable(info.loadPreviewImage(this, 0) ?: info.loadIcon(this, 0))
+        } catch (e: Exception) {
+            iv.setImageResource(R.drawable.ic_widgets)
+        }
+        frame.addView(iv, FrameLayout.LayoutParams(dpToPx(48), dpToPx(48), Gravity.CENTER))
+
+        val hv = homeView
+        val grid = hv?.gridManager ?: gridManager
+        val availW = if (hv != null && hv.width > 0) hv.width - hv.paddingLeft - hv.paddingRight else resources.displayMetrics.widthPixels
+        val availH = if (hv != null && hv.height > 0) hv.height - hv.paddingTop - hv.paddingBottom else resources.displayMetrics.heightPixels
+        val cellWidth = grid.getCellWidth(availW)
+        val cellHeight = grid.getCellHeight(availH)
+
+        frame.layoutParams = ViewGroup.LayoutParams(
+            (cellWidth * spanX).toInt().coerceAtLeast(dpToPx(100)),
+            (cellHeight * spanY).toInt().coerceAtLeast(dpToPx(100))
+        )
+        return frame
     }
 
     fun getAppName(packageName: String): String {

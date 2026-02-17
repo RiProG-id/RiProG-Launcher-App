@@ -162,19 +162,13 @@ class WidgetManager(
                     card.addView(textLayout)
 
                     card.setOnClickListener {
+                        Toast.makeText(activity, "Long press to drag widget", Toast.LENGTH_SHORT).show()
+                    }
+
+                    card.setOnLongClickListener {
                         dialog.dismiss()
-                        val appWidgetId = appWidgetHost!!.allocateAppWidgetId()
-                        val currentPage = activity.getHomeView()?.getCurrentPage() ?: 0
-                        activity.setPendingWidgetParams(lastGridCol, lastGridRow, spanX, spanY, currentPage)
-                        if (am.bindAppWidgetIdIfAllowed(appWidgetId, info.provider)) {
-                            activity.createWidgetAt(appWidgetId, lastGridCol, lastGridRow, spanX, spanY, currentPage)
-                        } else {
-                            val intent = Intent(AppWidgetManager.ACTION_APPWIDGET_BIND).apply {
-                                putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, appWidgetId)
-                                putExtra(AppWidgetManager.EXTRA_APPWIDGET_PROVIDER, info.provider)
-                            }
-                            activity.widgetPickerLauncher.launch(intent)
-                        }
+                        activity.startNewWidgetDrag(info, spanX, spanY)
+                        true
                     }
                 }
             }

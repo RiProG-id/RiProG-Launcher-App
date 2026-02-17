@@ -31,6 +31,7 @@ class PageManager(
         ))
         indicator.setPageCount(pages.size)
         indicator.setCurrentPage(currentPage)
+        settingsManager.savePageCount(pages.size)
         return pages.size - 1
     }
 
@@ -51,6 +52,7 @@ class PageManager(
         }
         indicator.setPageCount(pages.size)
         indicator.setCurrentPage(currentPage)
+        settingsManager.savePageCount(pages.size)
     }
 
     fun removePage(index: Int, onItemsRemoved: (List<HomeItem>) -> Unit) {
@@ -72,6 +74,11 @@ class PageManager(
     }
 
     fun cleanupEmptyPages() {
+        while (pages.size > 1 && pages.last().childCount == 0) {
+            val lastPage = pages.removeAt(pages.size - 1)
+            container.removeView(lastPage)
+        }
+
         for (i in pages.indices) {
             val p = pages[i]
             for (j in 0 until p.childCount) {
@@ -81,7 +88,9 @@ class PageManager(
             }
         }
         indicator.setPageCount(pages.size)
+        if (currentPage >= pages.size) currentPage = pages.size - 1
         indicator.setCurrentPage(currentPage)
+        settingsManager.savePageCount(pages.size)
     }
 
     fun scrollToPage(page: Int) {

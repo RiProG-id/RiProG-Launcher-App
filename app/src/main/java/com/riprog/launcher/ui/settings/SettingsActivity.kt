@@ -119,43 +119,30 @@ class SettingsActivity : ComponentActivity() {
 
         addCategoryHeader(root, getString(R.string.category_home), R.drawable.ic_layout)
 
-        lifecycleScope.launch {
-            viewModel.settings.isFreeformHome.collectLatest { isFreeform ->
-            }
+        addToggleSetting(root, R.string.setting_freeform, R.string.setting_freeform_summary,
+            viewModel.settings.isFreeformHome) { isChecked ->
+            lifecycleScope.launch { viewModel.settings.setFreeformHome(isChecked) }
         }
 
-
-
-        lifecycleScope.launch {
-            val isFreeform = viewModel.settings.isFreeformHome.first()
-            addToggleSetting(root, R.string.setting_freeform, R.string.setting_freeform_summary,
-                isFreeform) { isChecked -> lifecycleScope.launch { viewModel.settings.setFreeformHome(isChecked) } }
-        }
-
-        lifecycleScope.launch {
-            val isHideLabels = viewModel.settings.isHideLabels.first()
-            addToggleSetting(root, R.string.setting_hide_labels, R.string.setting_hide_labels_summary,
-                isHideLabels) { isChecked -> lifecycleScope.launch { viewModel.settings.setHideLabels(isChecked) } }
+        addToggleSetting(root, R.string.setting_hide_labels, R.string.setting_hide_labels_summary,
+            viewModel.settings.isHideLabels) { isChecked ->
+            lifecycleScope.launch { viewModel.settings.setHideLabels(isChecked) }
         }
 
         addCategoryHeader(root, getString(R.string.category_appearance), R.drawable.ic_wallpaper)
         addThemeSetting(root)
 
-        lifecycleScope.launch {
-            val isLiquidGlass = viewModel.settings.isLiquidGlass.first()
-            addToggleSetting(root, R.string.setting_liquid_glass, R.string.setting_liquid_glass_summary,
-                isLiquidGlass) { isChecked ->
-                lifecycleScope.launch {
-                    viewModel.settings.setLiquidGlass(isChecked)
-                    recreate()
-                }
+        addToggleSetting(root, R.string.setting_liquid_glass, R.string.setting_liquid_glass_summary,
+            viewModel.settings.isLiquidGlass) { isChecked ->
+            lifecycleScope.launch {
+                viewModel.settings.setLiquidGlass(isChecked)
+                recreate()
             }
         }
 
-        lifecycleScope.launch {
-            val isDarkenWallpaper = viewModel.settings.isDarkenWallpaper.first()
-            addToggleSetting(root, R.string.setting_darken_wallpaper, R.string.setting_darken_wallpaper_summary,
-                isDarkenWallpaper) { isChecked -> lifecycleScope.launch { viewModel.settings.setDarkenWallpaper(isChecked) } }
+        addToggleSetting(root, R.string.setting_darken_wallpaper, R.string.setting_darken_wallpaper_summary,
+            viewModel.settings.isDarkenWallpaper) { isChecked ->
+            lifecycleScope.launch { viewModel.settings.setDarkenWallpaper(isChecked) }
         }
 
         addScaleSetting(root)
@@ -201,7 +188,7 @@ class SettingsActivity : ComponentActivity() {
         parent.addView(layout)
     }
 
-    private fun addToggleSetting(parent: LinearLayout, titleRes: Int, summaryRes: Int, isChecked: Boolean, listener: (Boolean) -> Unit) {
+    private fun addToggleSetting(parent: LinearLayout, titleRes: Int, summaryRes: Int, flow: kotlinx.coroutines.flow.Flow<Boolean>, listener: (Boolean) -> Unit) {
         val item = LinearLayout(this)
         item.orientation = LinearLayout.HORIZONTAL
         item.gravity = Gravity.CENTER_VERTICAL
@@ -228,7 +215,13 @@ class SettingsActivity : ComponentActivity() {
         textLayout.addView(summaryView)
 
         val toggle = SwitchCompat(this)
-        toggle.isChecked = isChecked
+        lifecycleScope.launch {
+            flow.collectLatest { isChecked ->
+                if (toggle.isChecked != isChecked) {
+                    toggle.isChecked = isChecked
+                }
+            }
+        }
         toggle.isClickable = false
         item.addView(toggle)
 
@@ -318,13 +311,27 @@ class SettingsActivity : ComponentActivity() {
         item.isFocusable = true
 
         val radius = dpToPx(12).toFloat()
+        val isNight = (resources.configuration.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK) == android.content.res.Configuration.UI_MODE_NIGHT_YES
+
+        val shape = GradientDrawable()
+        val baseColor = if (settingsManager.isLiquidGlass) {
+            if (isNight) 0x26FFFFFF else 0x1A000000
+        } else {
+            if (isNight) 0x1AFFFFFF else 0x0D000000
+        }
+        shape.setColor(baseColor)
+        shape.cornerRadius = radius
+        if (settingsManager.isLiquidGlass) {
+            shape.setStroke(dpToPx(1), 0x20FFFFFF)
+        }
+
         val mask = GradientDrawable()
         mask.setColor(Color.BLACK)
         mask.cornerRadius = radius
 
         item.background = RippleDrawable(
             ColorStateList.valueOf(getColor(R.color.search_background)),
-            null,
+            shape,
             mask
         )
     }
