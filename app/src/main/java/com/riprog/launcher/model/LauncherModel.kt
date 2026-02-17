@@ -24,7 +24,6 @@ class LauncherModel(context: Context) {
     private val mainHandler = Handler(Looper.getMainLooper())
 
     fun onTrimMemory(level: Int) {
-        // Caches removed
     }
 
     fun shutdown() {
