@@ -300,8 +300,7 @@ class HomeView(context: Context, private val settingsManager: LauncherPreference
         if (index < 0 || index >= oldPageCount || oldPageCount <= 1) return
 
         homeItems?.let { items ->
-            val mutableItems = items.toMutableList()
-            val iterator = mutableItems.iterator()
+            val iterator = items.iterator()
             while (iterator.hasNext()) {
                 val item = iterator.next()
                 if (item.page == index) {
@@ -310,7 +309,6 @@ class HomeView(context: Context, private val settingsManager: LauncherPreference
                     item.page--
                 }
             }
-            homeItems = mutableItems
         }
 
         pageManager.removePage(index) {
