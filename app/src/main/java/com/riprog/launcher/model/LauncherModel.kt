@@ -9,10 +9,6 @@ import android.graphics.drawable.BitmapDrawable
 import android.graphics.drawable.Drawable
 import android.os.Handler
 import android.os.Looper
-import android.util.LruCache
-import com.riprog.launcher.utils.DiskCache
-import org.json.JSONArray
-import org.json.JSONObject
 import java.util.Locale
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
@@ -26,31 +22,8 @@ class LauncherModel(context: Context) {
     private val pm: PackageManager = context.packageManager
     private val executor: ExecutorService = Executors.newSingleThreadExecutor()
     private val mainHandler = Handler(Looper.getMainLooper())
-    private val iconCache: LruCache<String, Bitmap>
-    private val pendingListeners: MutableMap<String, MutableList<OnIconLoadedListener>> = mutableMapOf()
-    private val diskCache: DiskCache = DiskCache(this.context)
-
-    init {
-        val cacheSize = 4 * 1024
-        iconCache = object : LruCache<String, Bitmap>(cacheSize) {
-            override fun sizeOf(key: String, bitmap: Bitmap): Int {
-                return bitmap.byteCount / 1024
-            }
-        }
-    }
 
     fun onTrimMemory(level: Int) {
-        if (level >= android.content.ComponentCallbacks2.TRIM_MEMORY_UI_HIDDEN) {
-            iconCache.trimToSize(iconCache.size() / 2)
-        }
-        if (level >= android.content.ComponentCallbacks2.TRIM_MEMORY_MODERATE) {
-            iconCache.evictAll()
-            diskCache.performCleanup()
-            System.gc()
-        } else if (level >= android.content.ComponentCallbacks2.TRIM_MEMORY_BACKGROUND) {
-            iconCache.evictAll()
-            System.gc()
-        }
     }
 
     fun shutdown() {
@@ -60,17 +33,6 @@ class LauncherModel(context: Context) {
     @JvmOverloads
     fun loadApps(listener: OnAppsLoadedListener, forceRefresh: Boolean = false) {
         executor.execute {
-            if (!forceRefresh) {
-                val cached = diskCache.loadData(DiskCache.TYPE_METADATA, "app_list")
-                if (cached != null) {
-                    val apps = deserializeAppList(cached)
-                    if (apps.isNotEmpty()) {
-                        mainHandler.post { listener.onAppsLoaded(apps) }
-                        return@execute
-                    }
-                }
-            }
-
             val mainIntent = Intent(Intent.ACTION_MAIN, null)
             mainIntent.addCategory(Intent.CATEGORY_LAUNCHER)
             val infos = pm.queryIntentActivities(mainIntent, 0)
@@ -90,116 +52,23 @@ class LauncherModel(context: Context) {
             }
 
             apps.sortWith { a, b -> a.label.compareTo(b.label, ignoreCase = true) }
-            diskCache.saveData(key = "app_list", data = serializeAppList(apps), type = DiskCache.TYPE_METADATA)
 
             mainHandler.post { listener.onAppsLoaded(apps) }
-
-            val finalApps = apps
-            Thread {
-                for (i in 0 until Math.min(20, finalApps.size)) {
-                    val app = finalApps[i]
-                    if (diskCache.loadIcon(key = app.packageName) == null) {
-                        try {
-                            val drawable = pm.getApplicationIcon(app.packageName)
-                            val bitmap = drawableToBitmap(drawable)
-                            if (bitmap != null) {
-                                diskCache.saveIcon(key = app.packageName, bitmap = bitmap)
-                            }
-                        } catch (ignored: Exception) {
-                        }
-                    }
-                }
-            }.start()
         }
-    }
-
-    private fun serializeAppList(apps: List<AppItem>): String {
-        return try {
-            val array = JSONArray()
-            for (app in apps) {
-                val obj = JSONObject()
-                obj.put("l", app.label)
-                obj.put("p", app.packageName)
-                obj.put("c", app.className)
-                array.put(obj)
-            }
-            array.toString()
-        } catch (e: Exception) {
-            "[]"
-        }
-    }
-
-    private fun deserializeAppList(json: String): List<AppItem> {
-        val apps = mutableListOf<AppItem>()
-        try {
-            val array = JSONArray(json)
-            for (i in 0 until array.length()) {
-                val obj = array.getJSONObject(i)
-                apps.add(AppItem(obj.getString("l"), obj.getString("p"), obj.getString("c")))
-            }
-        } catch (ignored: Exception) {
-        }
-        return apps
-    }
-
-    fun invalidateAppListCache() {
-        diskCache.invalidateData(key = "app_list")
-    }
-
-    fun clearAppIconCache(packageName: String?) {
-        if (packageName == null) return
-        iconCache.remove(packageName)
-        diskCache.removeIcon(packageName)
     }
 
     fun loadIcon(item: AppItem, listener: OnIconLoadedListener) {
-        synchronized(pendingListeners) {
-            val cached = iconCache.get(item.packageName)
-            if (cached != null) {
-                listener.onIconLoaded(cached)
-                return
-            }
-
-            val listeners = pendingListeners[item.packageName]
-            if (listeners != null) {
-                listeners.add(listener)
-                return
-            }
-
-            val newListeners = mutableListOf<OnIconLoadedListener>()
-            newListeners.add(listener)
-            pendingListeners[item.packageName] = newListeners
-        }
-
         executor.execute {
-            var bitmap = diskCache.loadIcon(key = item.packageName)
-
-            if (bitmap == null) {
-                try {
-                    val drawable = pm.getApplicationIcon(item.packageName)
-                    bitmap = drawableToBitmap(drawable)
-                    if (bitmap != null) {
-                        diskCache.saveIcon(key = item.packageName, bitmap = bitmap)
-                    }
-                } catch (ignored: PackageManager.NameNotFoundException) {
-                }
-            }
-
-            if (bitmap != null) {
-                iconCache.put(item.packageName, bitmap)
+            var bitmap: Bitmap? = null
+            try {
+                val drawable = pm.getApplicationIcon(item.packageName)
+                bitmap = drawableToBitmap(drawable)
+            } catch (ignored: PackageManager.NameNotFoundException) {
             }
 
             val finalBitmap = bitmap
             mainHandler.post {
-                val listeners: MutableList<OnIconLoadedListener>?
-                synchronized(pendingListeners) {
-                    listeners = pendingListeners.remove(item.packageName)
-                }
-                if (listeners != null) {
-                    for (l in listeners) {
-                        l.onIconLoaded(finalBitmap)
-                    }
-                }
+                listener.onIconLoaded(finalBitmap)
             }
         }
     }
