@@ -36,6 +36,7 @@ class HomeView(context: Context, private val settingsManager: LauncherPreference
     private val tempMatrix = Matrix()
 
     private var draggingView: View? = null
+    private var isExternalDrag = false
     private var lastX = 0f
     private var lastY = 0f
     private var initialPage = -1
@@ -187,8 +188,9 @@ class HomeView(context: Context, private val settingsManager: LauncherPreference
     private var dragOffsetX = 0f
     private var dragOffsetY = 0f
 
-    fun startDragging(v: View, x: Float, y: Float) {
+    fun startDragging(v: View, x: Float, y: Float, isExternal: Boolean = false) {
         draggingView = v
+        this.isExternalDrag = isExternal
         lastX = x
         lastY = y
         initialDragX = x
@@ -280,6 +282,12 @@ class HomeView(context: Context, private val settingsManager: LauncherPreference
                 addItemView(item, v)
             }
         }
+        draggingView = null
+        isEdgeScrolling = false
+        edgeScrollHandler.removeCallbacks(edgeScrollRunnable)
+    }
+
+    fun clearDraggingView() {
         draggingView = null
         isEdgeScrolling = false
         edgeScrollHandler.removeCallbacks(edgeScrollRunnable)
@@ -464,7 +472,12 @@ class HomeView(context: Context, private val settingsManager: LauncherPreference
             item.tiltY = 0f
         }
 
-        addItemView(item, v)
+        if (isExternalDrag && context is MainActivity) {
+            (v.parent as? ViewGroup)?.removeView(v)
+            (context as MainActivity).renderHomeItem(item)
+        } else {
+            addItemView(item, v)
+        }
 
         if (context is MainActivity) {
             if (oldPage != -1 && oldPage != item.page) {

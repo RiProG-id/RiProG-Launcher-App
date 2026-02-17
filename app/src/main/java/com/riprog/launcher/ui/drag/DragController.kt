@@ -79,6 +79,19 @@ class DragController(
         dragOverlay?.let {
             val isApp = item?.type == HomeItem.Type.APP
             ivAppInfo?.visibility = if (isApp) View.VISIBLE else View.GONE
+
+            val lp = it.layoutParams as FrameLayout.LayoutParams
+            val random = java.util.Random()
+            lp.gravity = Gravity.TOP or when (random.nextInt(3)) {
+                0 -> Gravity.START
+                1 -> Gravity.CENTER_HORIZONTAL
+                else -> Gravity.END
+            }
+            val margin = dpToPx(16)
+            lp.leftMargin = if (lp.gravity and Gravity.START == Gravity.START) margin else 0
+            lp.rightMargin = if (lp.gravity and Gravity.END == Gravity.END) margin else 0
+            it.layoutParams = lp
+
             it.visibility = View.VISIBLE
             it.bringToFront()
         }
@@ -94,7 +107,7 @@ class DragController(
                 v.y = y - iconSize
             }
         }
-        callback.getHomeView()?.startDragging(v, x, y)
+        callback.getHomeView()?.startDragging(v, x, y, isExternal)
     }
 
     fun handleDrag(event: MotionEvent) {
@@ -119,16 +132,18 @@ class DragController(
                     val isApp = ivAppInfo?.visibility == View.VISIBLE
                     if (!isApp) {
                         callback.removeHomeItem(tag, touchedView!!)
+                        resetDragState(false)
                     } else {
                         if (event.rawX < rect.left + rect.width() / 2f) {
                             callback.removeHomeItem(tag, touchedView!!)
+                            resetDragState(false)
                         } else {
                             callback.showAppInfo(tag)
                             revertPosition(tag, touchedView!!)
+                            resetDragState(false)
                         }
                     }
                 }
-                resetDragState()
                 return true
             }
         }
@@ -138,14 +153,18 @@ class DragController(
         return true
     }
 
-    fun resetDragState() {
+    fun resetDragState(cancel: Boolean = true) {
         isDragging = false
         dragOverlay?.let {
             it.visibility = View.GONE
             ivRemove?.setBackgroundColor(Color.TRANSPARENT)
             ivAppInfo?.setBackgroundColor(Color.TRANSPARENT)
         }
-        callback.getHomeView()?.cancelDragging()
+        if (cancel) {
+            callback.getHomeView()?.cancelDragging()
+        } else {
+            callback.getHomeView()?.clearDraggingView()
+        }
     }
 
     private fun updateDragHighlight(rawX: Float, rawY: Float) {

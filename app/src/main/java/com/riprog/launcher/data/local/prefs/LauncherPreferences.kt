@@ -285,7 +285,7 @@ class LauncherPreferences(private val context: Context, initialDataStore: Settin
     }
 
     val pageCount: Int
-        get() = prefs.getInt("page_count", 2)
+        get() = runBlocking { dataStore.pageCount.first() }
 
     private fun deserializeItem(obj: JSONObject): HomeItem? {
         if (!obj.has("type")) return null
