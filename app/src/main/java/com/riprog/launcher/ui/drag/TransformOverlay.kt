@@ -184,16 +184,6 @@ class TransformOverlay(
             btnInfo.gravity = Gravity.CENTER
             btnInfo.setOnClickListener { onSaveListener?.onAppInfo() }
             container.addView(btnInfo, LinearLayout.LayoutParams(0, LayoutParams.WRAP_CONTENT, 1.0f))
-
-            val btnUninstall = TextView(context)
-            btnUninstall.setText(R.string.drag_uninstall)
-            btnUninstall.setPadding(dpToPx(8), dpToPx(8), dpToPx(8), dpToPx(8))
-            btnUninstall.setTextColor(adaptiveColor)
-            btnUninstall.textSize = 11f
-            btnUninstall.setTypeface(null, android.graphics.Typeface.BOLD)
-            btnUninstall.gravity = Gravity.CENTER
-            btnUninstall.setOnClickListener { onSaveListener?.onUninstall() }
-            container.addView(btnUninstall, LinearLayout.LayoutParams(0, LayoutParams.WRAP_CONTENT, 1.0f))
         }
 
         val lp = LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT)
@@ -252,6 +242,15 @@ class TransformOverlay(
                     drawHandle(this, right, top, hs, true, foregroundColor)
                     drawHandle(this, right, bottom, hs, true, foregroundColor)
                     drawHandle(this, left, bottom, hs, true, foregroundColor)
+
+                    if (canResizeVertical) {
+                        drawHandle(this, (left + right) / 2f, top, hs * 0.8f, false, foregroundColor)
+                        drawHandle(this, (left + right) / 2f, bottom, hs * 0.8f, false, foregroundColor)
+                    }
+                    if (canResizeHorizontal) {
+                        drawHandle(this, left, (top + bottom) / 2f, hs * 0.8f, false, foregroundColor)
+                        drawHandle(this, right, (top + bottom) / 2f, hs * 0.8f, false, foregroundColor)
+                    }
 
                     paint.color = foregroundColor
                     paint.alpha = 100
@@ -402,11 +401,21 @@ class TransformOverlay(
             dist(rx, ry, (left + right) / 2f, top - rotationHandleDist) < hs
         ) return HANDLE_ROTATE
 
-        if (isFreeform && canResizeHorizontal && canResizeVertical) {
-            if (dist(rx, ry, left, top) < hs) return HANDLE_TOP_LEFT
-            if (dist(rx, ry, right, top) < hs) return HANDLE_TOP_RIGHT
-            if (dist(rx, ry, right, bottom) < hs) return HANDLE_BOTTOM_RIGHT
-            if (dist(rx, ry, left, bottom) < hs) return HANDLE_BOTTOM_LEFT
+        if (isFreeform) {
+            if (canResizeHorizontal && canResizeVertical) {
+                if (dist(rx, ry, left, top) < hs) return HANDLE_TOP_LEFT
+                if (dist(rx, ry, right, top) < hs) return HANDLE_TOP_RIGHT
+                if (dist(rx, ry, right, bottom) < hs) return HANDLE_BOTTOM_RIGHT
+                if (dist(rx, ry, left, bottom) < hs) return HANDLE_BOTTOM_LEFT
+            }
+            if (canResizeVertical) {
+                if (dist(rx, ry, (left + right) / 2f, top) < hs) return HANDLE_TOP
+                if (dist(rx, ry, (left + right) / 2f, bottom) < hs) return HANDLE_BOTTOM
+            }
+            if (canResizeHorizontal) {
+                if (dist(rx, ry, left, (top + bottom) / 2f) < hs) return HANDLE_LEFT
+                if (dist(rx, ry, right, (top + bottom) / 2f) < hs) return HANDLE_RIGHT
+            }
         }
 
         if (rx in left..right && ry in top..bottom) return ACTION_MOVE
@@ -462,24 +471,35 @@ class TransformOverlay(
             var newScaleY = sy
 
             if (isFreeform) {
-                val initialDist = dist(initialTouchX, initialTouchY, cx, cy)
-                val currDist = dist(tx, ty, cx, cy)
-                if (initialDist > 0) {
-                    var factor = currDist / initialDist
-
-                    val minFactor = 0.2f / Math.min(sx, sy)
-                    val maxFactor = 5.0f / Math.max(sx, sy)
-                    factor = Math.max(minFactor, Math.min(maxFactor, factor))
-
-                    if (gestureInitialWidth > 0 && gestureInitialHeight > 0) {
-                        val maxSX = Math.min(2 * cx, 2 * (width - cx)) * sx / gestureInitialWidth.toFloat()
-                        val maxSY = Math.min(2 * cy, 2 * (height - cy)) * sy / gestureInitialHeight.toFloat()
-                        val boundFactor = Math.min(maxSX / sx, maxSY / sy)
-                        factor = Math.min(factor, boundFactor)
+                when (activeHandle) {
+                    HANDLE_TOP_LEFT, HANDLE_TOP_RIGHT, HANDLE_BOTTOM_LEFT, HANDLE_BOTTOM_RIGHT -> {
+                        val initialDist = dist(initialTouchX, initialTouchY, cx, cy)
+                        val currDist = dist(tx, ty, cx, cy)
+                        if (initialDist > 0) {
+                            var factor = currDist / initialDist
+                            val minFactor = 0.2f / Math.min(sx, sy)
+                            val maxFactor = 5.0f / Math.max(sx, sy)
+                            factor = Math.max(minFactor, Math.min(maxFactor, factor))
+                            newScaleX = sx * factor
+                            newScaleY = sy * factor
+                        }
                     }
-
-                    newScaleX = sx * factor
-                    newScaleY = sy * factor
+                    HANDLE_TOP, HANDLE_BOTTOM -> {
+                        val initialDistY = Math.abs(initialTouchY - cy)
+                        val currDistY = Math.abs(ty - cy)
+                        if (initialDistY > 0) {
+                            val factor = currDistY / initialDistY
+                            newScaleY = Math.max(0.2f, Math.min(5.0f, sy * factor))
+                        }
+                    }
+                    HANDLE_LEFT, HANDLE_RIGHT -> {
+                        val initialDistX = Math.abs(initialTouchX - cx)
+                        val currDistX = Math.abs(tx - cx)
+                        if (initialDistX > 0) {
+                            val factor = currDistX / initialDistX
+                            newScaleX = Math.max(0.2f, Math.min(5.0f, sx * factor))
+                        }
+                    }
                 }
             } else {
                 when (activeHandle) {

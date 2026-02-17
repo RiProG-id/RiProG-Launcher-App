@@ -133,11 +133,12 @@ class MainActivity : ComponentActivity(), MainLayout.Callback, AppInstallReceive
                 mainLayout?.closeDrawerInstantly()
                 val currentPage = homeView?.getCurrentPage() ?: 0
                 val item = HomeItem.createApp(app.packageName, app.className, 0f, 0f, currentPage)
-                homeItems.add(item)
+                // Don't add to homeItems yet to avoid misplaced objects if drag is canceled
                 val view = createAppView(item, false)
-                homeView?.addItemView(item, view)
-                savePage(currentPage)
-                if (view != null) mainLayout?.startExternalDrag(view)
+                if (view != null) {
+                    view.tag = item
+                    mainLayout?.startExternalDrag(view)
+                }
             }
         })
 

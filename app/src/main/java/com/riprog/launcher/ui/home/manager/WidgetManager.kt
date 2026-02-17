@@ -133,8 +133,11 @@ class WidgetManager(
                     }
 
                     if (!settingsManager.isFreeformHome) {
-                        sX = Math.round(sX).coerceAtLeast(1).toFloat()
-                        sY = Math.round(sY).coerceAtLeast(1).toFloat()
+                        sX = Math.round(sX).coerceAtLeast(1).coerceAtMost(grid.columns).toFloat()
+                        sY = Math.round(sY).coerceAtLeast(1).coerceAtMost(grid.rows).toFloat()
+                    } else {
+                        sX = sX.coerceAtMost(grid.columns.toFloat())
+                        sY = sY.coerceAtMost(grid.rows.toFloat())
                     }
                     val spanX = sX
                     val spanY = sY
@@ -165,9 +168,17 @@ class WidgetManager(
                         dialog.dismiss()
                         val appWidgetId = appWidgetHost!!.allocateAppWidgetId()
                         val currentPage = activity.getHomeView()?.getCurrentPage() ?: 0
-                        activity.setPendingWidgetParams(lastGridCol, lastGridRow, spanX, spanY, currentPage)
+
+                        val finalCol = if (!settingsManager.isFreeformHome) {
+                            Math.max(0f, Math.min(grid.columns - spanX, lastGridCol))
+                        } else lastGridCol
+                        val finalRow = if (!settingsManager.isFreeformHome) {
+                            Math.max(0f, Math.min(grid.rows - spanY, lastGridRow))
+                        } else lastGridRow
+
+                        activity.setPendingWidgetParams(finalCol, finalRow, spanX, spanY, currentPage)
                         if (am.bindAppWidgetIdIfAllowed(appWidgetId, info.provider)) {
-                            activity.createWidgetAt(appWidgetId, lastGridCol, lastGridRow, spanX, spanY, currentPage)
+                            activity.createWidgetAt(appWidgetId, finalCol, finalRow, spanX, spanY, currentPage)
                         } else {
                             val intent = Intent(AppWidgetManager.ACTION_APPWIDGET_BIND).apply {
                                 putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, appWidgetId)
