@@ -155,7 +155,7 @@ class WidgetManager(
                         setTypeface(null, Typeface.BOLD)
                     })
                     textLayout.addView(TextView(activity).apply {
-                        text = activity.getString(R.string.widget_size_format, Math.ceil(spanX.toDouble()).toInt(), Math.ceil(spanY.toDouble()).toInt())
+                        text = activity.getString(R.string.widget_size_format, Math.round(spanX), Math.round(spanY))
                         textSize = 12f
                         setTextColor(secondaryColor)
                     })

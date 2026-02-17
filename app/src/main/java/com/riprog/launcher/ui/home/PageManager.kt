@@ -94,7 +94,7 @@ class PageManager(
 
         val targetPage = if (n > 0) Math.max(0, Math.min(n - 1, page)) else 0
         currentPage = targetPage
-        val targetX = currentPage * width
+        val targetX = if (n > 0) currentPage * (width / n) else 0
         container.animate()
             .translationX((-targetX).toFloat())
             .setDuration(300)

@@ -133,13 +133,17 @@ class HomeView(context: Context, private val settingsManager: LauncherPreference
             pageManager.addPage()
         }
         val parent = view.parent as? ViewGroup
-        parent?.removeView(view)
+        if (parent != null && parent !== pageManager.getPageAt(item.page)) {
+            parent.removeView(view)
+        }
 
         val page = pageManager.getPageAt(item.page)
         if (page != null) {
             view.tag = item
-            view.visibility = INVISIBLE
-            page.addView(view)
+            if (view.parent == null) {
+                view.visibility = INVISIBLE
+                page.addView(view)
+            }
             updateViewPosition(item, view)
         }
     }
@@ -197,25 +201,21 @@ class HomeView(context: Context, private val settingsManager: LauncherPreference
 
         val vPos = IntArray(2)
         v.getLocationOnScreen(vPos)
+        val root = v.rootView.findViewById<ViewGroup>(android.R.id.content)
+        val rootPos = IntArray(2)
+        root.getLocationOnScreen(rootPos)
+
         dragOffsetX = x - vPos[0]
         dragOffsetY = y - vPos[1]
 
         if (context is MainActivity) {
-            val root = v.rootView.findViewById<ViewGroup>(android.R.id.content)
-
-            var absX = v.x
-            var absY = v.y
-            var p = v.parent
-            while (p != null && p is View && p !== root) {
-                absX += p.x
-                absY += p.y
-                p = p.parent
-            }
+            val absX = vPos[0] - rootPos[0]
+            val absY = vPos[1] - rootPos[1]
 
             (v.parent as? ViewGroup)?.removeView(v)
             root.addView(v)
-            v.x = absX
-            v.y = absY
+            v.x = absX.toFloat()
+            v.y = absY.toFloat()
         }
 
         v.animate().scaleX(1.1f).scaleY(1.1f).alpha(0.8f).setDuration(0).start()
@@ -439,9 +439,11 @@ class HomeView(context: Context, private val settingsManager: LauncherPreference
             item.tiltX = v.rotationX
             item.tiltY = v.rotationY
         } else {
+            item.spanX = Math.round(item.spanX).toFloat().coerceAtLeast(1f)
+            item.spanY = Math.round(item.spanY).toFloat().coerceAtLeast(1f)
             val targetCol = Math.max(0, Math.min(gridManager.columns - item.spanX.toInt(), Math.round(xInHome / cellWidth.toFloat())))
             val targetRow = Math.max(0, Math.min(gridManager.rows - item.spanY.toInt(), Math.round(yInHome / cellHeight.toFloat())))
-            if (isAreaOccupied(targetCol, targetRow, Math.round(item.spanX), Math.round(item.spanY), item.page, item)) {
+            if (isAreaOccupied(targetCol, targetRow, item.spanX.toInt(), item.spanY.toInt(), item.page, item)) {
                 val spot = findFirstEmptySpotGlobally(item)
                 if (spot != null) {
                     item.col = spot.first.toFloat()
@@ -642,7 +644,7 @@ class HomeView(context: Context, private val settingsManager: LauncherPreference
     companion object {
         private const val PAGE_SWITCH_COOLDOWN = 500L
         private const val HOLD_DELAY = 400L
-        private const val EDGE_THRESHOLD = 0.12f
+        private const val EDGE_THRESHOLD = 0.08f
         private const val MIN_DRAG_DISTANCE_DP = 50
     }
 }

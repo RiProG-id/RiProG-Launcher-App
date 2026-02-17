@@ -273,7 +273,7 @@ class MainActivity : ComponentActivity(), MainLayout.Callback, AppInstallReceive
             setText(R.string.prompt_default_launcher_message)
             setPadding(0, dpToPx(8), 0, dpToPx(16))
             gravity = Gravity.CENTER
-            setTextColor(adaptiveColor and 0xBBFFFFFF.toInt())
+            setTextColor(adaptiveColor or 0xCC000000.toInt())
         }
         prompt.addView(message)
 
@@ -643,8 +643,9 @@ class MainActivity : ComponentActivity(), MainLayout.Callback, AppInstallReceive
 
         val tvDate = TextView(this).apply {
             textSize = 18f
-            val adaptiveDim = ThemeUtils.getAdaptiveColor(this@MainActivity, preferences, false) and 0xBBFFFFFF.toInt()
+            val adaptiveDim = ThemeUtils.getAdaptiveColor(this@MainActivity, preferences, false)
             setTextColor(adaptiveDim)
+            alpha = 0.8f
             gravity = Gravity.CENTER
         }
 
@@ -692,8 +693,9 @@ class MainActivity : ComponentActivity(), MainLayout.Callback, AppInstallReceive
                 val tv = view.findViewById<TextView>(android.R.id.text1)
                 tv.setCompoundDrawablesWithIntrinsicBounds(iconsList[position], 0, 0, 0)
                 tv.compoundDrawablePadding = dpToPx(16)
-                tv.setTextColor(adaptiveColor)
-                tv.compoundDrawables[0]?.setTint(adaptiveColor)
+                tv.setTextColor(adaptiveColor or 0xFF000000.toInt())
+                tv.compoundDrawables[0]?.setTint(adaptiveColor or 0xFF000000.toInt())
+                tv.alpha = 1.0f
                 return view
             }
         }

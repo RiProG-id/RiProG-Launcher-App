@@ -111,7 +111,7 @@ class DragController(
             it.getLocationOnScreen(outPos)
             val rect = android.graphics.Rect(outPos[0], outPos[1], outPos[0] + it.width, outPos[1] + it.height)
             val hitRect = android.graphics.Rect(rect)
-            hitRect.inset(-touchSlop * 4, -touchSlop * 4)
+            hitRect.inset(-touchSlop * 6, -touchSlop * 6)
 
             if (touchedView != null && hitRect.contains(event.rawX.toInt(), event.rawY.toInt())) {
                 val tag = touchedView!!.tag as? HomeItem
@@ -162,7 +162,7 @@ class DragController(
             ivAppInfo?.setBackgroundColor(Color.TRANSPARENT)
 
             val hitRect = android.graphics.Rect(rect)
-            hitRect.inset(-touchSlop * 4, -touchSlop * 4)
+            hitRect.inset(-touchSlop * 6, -touchSlop * 6)
 
             if (hitRect.contains(rawX.toInt(), rawY.toInt())) {
                 if (!isApp) {

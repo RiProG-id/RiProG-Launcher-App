@@ -117,27 +117,6 @@ class SettingsActivity : ComponentActivity() {
         titleLayout.addView(title)
         root.addView(titleLayout)
 
-        addCategoryHeader(root, getString(R.string.category_home), R.drawable.ic_layout)
-
-        lifecycleScope.launch {
-            viewModel.settings.isFreeformHome.collectLatest { isFreeform ->
-            }
-        }
-
-
-
-        lifecycleScope.launch {
-            val isFreeform = viewModel.settings.isFreeformHome.first()
-            addToggleSetting(root, R.string.setting_freeform, R.string.setting_freeform_summary,
-                isFreeform) { isChecked -> lifecycleScope.launch { viewModel.settings.setFreeformHome(isChecked) } }
-        }
-
-        lifecycleScope.launch {
-            val isHideLabels = viewModel.settings.isHideLabels.first()
-            addToggleSetting(root, R.string.setting_hide_labels, R.string.setting_hide_labels_summary,
-                isHideLabels) { isChecked -> lifecycleScope.launch { viewModel.settings.setHideLabels(isChecked) } }
-        }
-
         addCategoryHeader(root, getString(R.string.category_appearance), R.drawable.ic_wallpaper)
         addThemeSetting(root)
 
@@ -160,11 +139,25 @@ class SettingsActivity : ComponentActivity() {
 
         addScaleSetting(root)
 
+        addCategoryHeader(root, getString(R.string.category_home), R.drawable.ic_layout)
+
+        lifecycleScope.launch {
+            val isFreeform = viewModel.settings.isFreeformHome.first()
+            addToggleSetting(root, R.string.setting_freeform, R.string.setting_freeform_summary,
+                isFreeform) { isChecked -> lifecycleScope.launch { viewModel.settings.setFreeformHome(isChecked) } }
+        }
+
+        lifecycleScope.launch {
+            val isHideLabels = viewModel.settings.isHideLabels.first()
+            addToggleSetting(root, R.string.setting_hide_labels, R.string.setting_hide_labels_summary,
+                isHideLabels) { isChecked -> lifecycleScope.launch { viewModel.settings.setHideLabels(isChecked) } }
+        }
+
         addCategoryHeader(root, getString(R.string.category_about), R.drawable.ic_info)
 
         val aboutContent = TextView(this)
         aboutContent.setText(R.string.about_content)
-        aboutContent.setTextColor(adaptiveColor and 0xBBFFFFFF.toInt())
+        aboutContent.setTextColor(adaptiveColor)
         aboutContent.textSize = 14f
         aboutContent.setPadding(dpToPx(16), 0, dpToPx(16), dpToPx(32))
         Linkify.addLinks(aboutContent, Linkify.WEB_URLS)

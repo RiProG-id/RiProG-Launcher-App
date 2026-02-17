@@ -47,6 +47,7 @@ class TransformOverlay(
     private var gestureInitialWidth = 0
     private var gestureInitialHeight = 0
     private var gestureInitialBounds: RectF? = null
+    private var cachedContentBounds: RectF = RectF()
     private var hasPassedThreshold = false
     private var activeHandle = -1
     private var canResizeHorizontal = true
@@ -78,8 +79,39 @@ class TransformOverlay(
                 canResizeVertical = (info.resizeMode and android.appwidget.AppWidgetProviderInfo.RESIZE_VERTICAL) != 0
             }
         }
+        updateContentBounds()
         setWillNotDraw(false)
         setupButtons()
+    }
+
+    private fun updateContentBounds() {
+        if (targetView !is ViewGroup) {
+            cachedContentBounds.set(0f, 0f, targetView.width.toFloat(), targetView.height.toFloat())
+            return
+        }
+        val vg = targetView
+        var minX = Float.MAX_VALUE
+        var minY = Float.MAX_VALUE
+        var maxX = Float.MIN_VALUE
+        var maxY = Float.MIN_VALUE
+        var hasVisibleChildren = false
+
+        for (i in 0 until vg.childCount) {
+            val child = vg.getChildAt(i)
+            if (child.isVisible) {
+                minX = Math.min(minX, child.x)
+                minY = Math.min(minY, child.y)
+                maxX = Math.max(maxX, child.x + child.width)
+                maxY = Math.max(maxY, child.y + child.height)
+                hasVisibleChildren = true
+            }
+        }
+
+        if (!hasVisibleChildren) {
+            cachedContentBounds.set(0f, 0f, targetView.width.toFloat(), targetView.height.toFloat())
+        } else {
+            cachedContentBounds.set(minX, minY, maxX, maxY)
+        }
     }
 
     fun startDirectMove(x: Float, y: Float) {
@@ -95,39 +127,12 @@ class TransformOverlay(
         gestureInitialY = targetView.y
         gestureInitialWidth = targetView.width
         gestureInitialHeight = targetView.height
-        gestureInitialBounds = contentBounds
+        updateContentBounds()
+        gestureInitialBounds = RectF(cachedContentBounds)
         hasPassedThreshold = true
         invalidate()
     }
 
-    private val contentBounds: RectF
-        get() {
-            if (targetView !is ViewGroup) {
-                return RectF(0f, 0f, targetView.width.toFloat(), targetView.height.toFloat())
-            }
-            val vg = targetView
-            var minX = Float.MAX_VALUE
-            var minY = Float.MAX_VALUE
-            var maxX = Float.MIN_VALUE
-            var maxY = Float.MIN_VALUE
-            var hasVisibleChildren = false
-
-            for (i in 0 until vg.childCount) {
-                val child = vg.getChildAt(i)
-                if (child.isVisible) {
-                    minX = Math.min(minX, child.x)
-                    minY = Math.min(minY, child.y)
-                    maxX = Math.max(maxX, child.x + child.width)
-                    maxY = Math.max(maxY, child.y + child.height)
-                    hasVisibleChildren = true
-                }
-            }
-
-            if (!hasVisibleChildren) {
-                return RectF(0f, 0f, targetView.width.toFloat(), targetView.height.toFloat())
-            }
-            return RectF(minX, minY, maxX, maxY)
-        }
 
     private fun setupButtons() {
         val adaptiveColor = ThemeUtils.getAdaptiveColor(context, settingsManager, true)
@@ -224,7 +229,7 @@ class TransformOverlay(
         val cx = targetView.x + targetView.pivotX
         val cy = targetView.y + targetView.pivotY
 
-        val bounds = if (activeHandle != -1 && gestureInitialBounds != null) gestureInitialBounds!! else contentBounds
+        val bounds = if (activeHandle != -1 && gestureInitialBounds != null) gestureInitialBounds!! else cachedContentBounds
         val left = (bounds.left - targetView.pivotX) * sx
         val top = (bounds.top - targetView.pivotY) * sy
         val right = (bounds.right - targetView.pivotX) * sx
@@ -282,6 +287,7 @@ class TransformOverlay(
         when (event.action) {
             MotionEvent.ACTION_DOWN -> {
                 performClick()
+                updateContentBounds()
                 activeHandle = findHandle(x, y)
                 if (activeHandle == ACTION_MOVE) {
                     onSaveListener?.onMoveStart(x, y)
@@ -307,7 +313,7 @@ class TransformOverlay(
                 gestureInitialY = targetView.y
                 gestureInitialWidth = targetView.width
                 gestureInitialHeight = targetView.height
-                gestureInitialBounds = contentBounds
+                gestureInitialBounds = RectF(cachedContentBounds)
                 hasPassedThreshold = false
                 return activeHandle != -1
             }
@@ -383,7 +389,7 @@ class TransformOverlay(
         val rx = (Math.cos(angle) * (tx - cx) - Math.sin(angle) * (ty - cy)).toFloat()
         val ry = (Math.sin(angle) * (tx - cx) + Math.cos(angle) * (ty - cy)).toFloat()
 
-        val bounds = contentBounds
+        val bounds = cachedContentBounds
 
         val left = (bounds.left - targetView.pivotX) * sx
         val top = (bounds.top - targetView.pivotY) * sy
@@ -448,7 +454,7 @@ class TransformOverlay(
             val rx = (Math.cos(rotAngle) * (tx - cx) - Math.sin(rotAngle) * (ty - cy)).toFloat()
             val ry = (Math.sin(rotAngle) * (tx - cx) + Math.cos(rotAngle) * (ty - cy)).toFloat()
 
-            val bounds = gestureInitialBounds ?: contentBounds
+            val bounds = gestureInitialBounds ?: cachedContentBounds
             val halfContentW = bounds.width() / 2f
             val halfContentH = bounds.height() / 2f
 
