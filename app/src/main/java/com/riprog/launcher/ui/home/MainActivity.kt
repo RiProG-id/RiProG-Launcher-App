@@ -73,7 +73,7 @@ class MainActivity : ComponentActivity(), MainLayout.Callback, AppInstallReceive
     private var transformingViewOriginalIndex: Int = -1
     private var transformingView: View? = null
     private var appInstallReceiver: AppInstallReceiver? = null
-    private var homeItems = mutableListOf<HomeItem>()
+    internal var homeItems = mutableListOf<HomeItem>()
     private var lastGridCol = 0f
     private var lastGridRow = 0f
     private var pendingWidgetCol = 0f
@@ -198,14 +198,24 @@ class MainActivity : ComponentActivity(), MainLayout.Callback, AppInstallReceive
     private fun observeViewModel() {
         lifecycleScope.launch {
             viewModel.homeItems.collectLatest { items ->
+                val oldItems = homeItems.toList()
                 homeItems = items.toMutableList()
                 homeView?.setHomeItems(homeItems)
                 if (homeItems.isEmpty()) {
                     setupDefaultHome()
                 } else {
-                    homeView?.clearAllItems()
-                    for (item in homeItems) {
-                        renderHomeItem(item)
+                    // Avoid full clear and re-render if we are in the middle of a transformation or drag
+                    // This prevents duplicate objects and "permanent overlays"
+                    if (isTransforming() || (drawerView?.visibility == View.GONE && homeView?.getCurrentPage() != -1)) {
+                        // Incremental update: render items that don't have views yet
+                        for (item in homeItems) {
+                            renderHomeItem(item)
+                        }
+                    } else {
+                        homeView?.clearAllItems()
+                        for (item in homeItems) {
+                            renderHomeItem(item)
+                        }
                     }
                 }
                 isStateRestored = true
@@ -362,6 +372,14 @@ class MainActivity : ComponentActivity(), MainLayout.Callback, AppInstallReceive
 
     fun renderHomeItem(item: HomeItem?) {
         if (item?.type == null) return
+
+        // Check if a view already exists for this item to avoid duplicates
+        val existingView = homeView?.findViewForItem(item)
+        if (existingView != null) {
+            homeView?.updateViewPosition(item, existingView)
+            return
+        }
+
         val view: View? = when (item.type) {
             HomeItem.Type.APP -> createAppView(item, false)
             HomeItem.Type.FOLDER -> createFolderView(item, false)
@@ -1047,6 +1065,25 @@ class MainActivity : ComponentActivity(), MainLayout.Callback, AppInstallReceive
     fun createWidgetAt(appWidgetId: Int, col: Float, row: Float, spanX: Float, spanY: Float, page: Int = -1) {
         val targetPage = if (page >= 0) page else (homeView?.getCurrentPage() ?: 0)
         val item = HomeItem.createWidget(appWidgetId, col, row, spanX, spanY, targetPage)
+
+        // Requirement: The widget should automatically snap into a valid placement position.
+        if (!preferences.isFreeformHome && homeView != null) {
+            val hv = homeView!!
+            if (hv.isAreaOccupied(item.col.toInt(), item.row.toInt(), Math.round(item.spanX), Math.round(item.spanY), item.page, item)) {
+                val spot = hv.findNearestEmptySpot(item, item.page)
+                if (spot != null) {
+                    item.col = spot.first.toFloat()
+                    item.row = spot.second.toFloat()
+                } else {
+                    // If current page is full, add to a new page
+                    val newPage = hv.addPage()
+                    item.page = newPage
+                    item.col = 0f
+                    item.row = 0f
+                }
+            }
+        }
+
         homeItems.add(item)
         renderHomeItem(item)
         saveHomeState()

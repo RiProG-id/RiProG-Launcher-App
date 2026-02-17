@@ -26,11 +26,27 @@ class PageManager(
     fun addPage(): Int {
         val page = FrameLayout(container.context)
         pages.add(page)
+        val containerWidth = container.width
         val lp = LinearLayout.LayoutParams(
-            container.width.let { if (it > 0) it else ViewGroup.LayoutParams.MATCH_PARENT },
+            if (containerWidth > 0) containerWidth else ViewGroup.LayoutParams.MATCH_PARENT,
             ViewGroup.LayoutParams.MATCH_PARENT
         )
         container.addView(page, lp)
+
+        // If width was 0, we need to ensure it gets updated as soon as the container is laid out
+        if (containerWidth <= 0) {
+            container.post {
+                val currentWidth = container.width
+                if (currentWidth > 0) {
+                    val pageLp = page.layoutParams as LinearLayout.LayoutParams
+                    if (pageLp.width != currentWidth) {
+                        pageLp.width = currentWidth
+                        page.layoutParams = pageLp
+                    }
+                }
+            }
+        }
+
         indicator.setPageCount(pages.size)
         indicator.setCurrentPage(currentPage)
         return pages.size - 1
@@ -39,11 +55,25 @@ class PageManager(
     fun addPageAtIndex(index: Int) {
         val page = FrameLayout(container.context)
         pages.add(index, page)
+        val containerWidth = container.width
         val lp = LinearLayout.LayoutParams(
-            container.width.let { if (it > 0) it else ViewGroup.LayoutParams.MATCH_PARENT },
+            if (containerWidth > 0) containerWidth else ViewGroup.LayoutParams.MATCH_PARENT,
             ViewGroup.LayoutParams.MATCH_PARENT
         )
         container.addView(page, index, lp)
+
+        if (containerWidth <= 0) {
+            container.post {
+                val currentWidth = container.width
+                if (currentWidth > 0) {
+                    val pageLp = page.layoutParams as LinearLayout.LayoutParams
+                    if (pageLp.width != currentWidth) {
+                        pageLp.width = currentWidth
+                        page.layoutParams = pageLp
+                    }
+                }
+            }
+        }
 
         for (i in pages.indices) {
             val p = pages[i]

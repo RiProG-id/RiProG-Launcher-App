@@ -74,8 +74,9 @@ class SettingsActivity : ComponentActivity() {
             val isHideLabels = viewModel.settings.isHideLabels.first()
             val themeMode = viewModel.settings.themeMode.first()
 
-            if (isLiquidGlass) {
-                ThemeUtils.applyWindowBlur(window, true)
+            val currentWindow = window
+            if (isLiquidGlass && currentWindow != null) {
+                ThemeUtils.applyWindowBlur(currentWindow, true)
             }
             rootContainer.background = ThemeUtils.getGlassDrawable(this@SettingsActivity, settingsManager, 0f)
 
@@ -283,10 +284,14 @@ class SettingsActivity : ComponentActivity() {
     private fun applyThemeMode(mode: String?) {
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
             val uiModeManager = getSystemService(Context.UI_MODE_SERVICE) as UiModeManager
-            var nightMode = UiModeManager.MODE_NIGHT_AUTO
-            if ("light" == mode) nightMode = UiModeManager.MODE_NIGHT_NO
-            else if ("dark" == mode) nightMode = UiModeManager.MODE_NIGHT_YES
-            uiModeManager.setApplicationNightMode(nightMode)
+            val nightMode = when (mode) {
+                "light" -> UiModeManager.MODE_NIGHT_NO
+                "dark" -> UiModeManager.MODE_NIGHT_YES
+                else -> UiModeManager.MODE_NIGHT_AUTO
+            }
+            if (uiModeManager.nightMode != nightMode) {
+                uiModeManager.setApplicationNightMode(nightMode)
+            }
         }
     }
 

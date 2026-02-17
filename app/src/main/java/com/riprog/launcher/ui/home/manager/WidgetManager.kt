@@ -169,12 +169,23 @@ class WidgetManager(
                         val appWidgetId = appWidgetHost!!.allocateAppWidgetId()
                         val currentPage = activity.getHomeView()?.getCurrentPage() ?: 0
 
+                        // Requirement: The first widget added must spawn at the center of the home area.
+                        val hasOtherWidgets = activity.homeItems.any { it.type == HomeItem.Type.WIDGET }
+
+                        var targetCol = lastGridCol
+                        var targetRow = lastGridRow
+
+                        if (!hasOtherWidgets) {
+                            targetCol = (grid.columns - spanX) / 2f
+                            targetRow = (grid.rows - spanY) / 2f
+                        }
+
                         val finalCol = if (!settingsManager.isFreeformHome) {
-                            Math.max(0f, Math.min(grid.columns - spanX, lastGridCol))
-                        } else lastGridCol
+                            Math.max(0f, Math.min(grid.columns - spanX, targetCol))
+                        } else targetCol
                         val finalRow = if (!settingsManager.isFreeformHome) {
-                            Math.max(0f, Math.min(grid.rows - spanY, lastGridRow))
-                        } else lastGridRow
+                            Math.max(0f, Math.min(grid.rows - spanY, targetRow))
+                        } else targetRow
 
                         activity.setPendingWidgetParams(finalCol, finalRow, spanX, spanY, currentPage)
                         if (am.bindAppWidgetIdIfAllowed(appWidgetId, info.provider)) {
