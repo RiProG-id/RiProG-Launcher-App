@@ -38,6 +38,10 @@ android {
         }
     }
 
+    buildFeatures {
+        buildConfig = true
+    }
+
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_21
         targetCompatibility = JavaVersion.VERSION_21
@@ -66,6 +70,7 @@ dependencies {
 
     implementation "org.jetbrains.kotlinx:kotlinx-coroutines-android:1.10.2"
 
+    implementation "androidx.appcompat:appcompat:1.7.0"
     implementation "androidx.activity:activity-ktx:1.12.4"
     implementation "androidx.lifecycle:lifecycle-viewmodel-ktx:2.10.0"
     implementation "androidx.lifecycle:lifecycle-runtime-ktx:2.10.0"

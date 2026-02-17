@@ -333,6 +333,10 @@ class MainLayout(context: Context, private val callback: Callback) : FrameLayout
         dragController.startDrag(v, startX, startY, true)
     }
 
+    fun startExternalDrag(v: View, x: Float, y: Float) {
+        dragController.startDrag(v, x, y, true)
+    }
+
     private fun dpToPx(dp: Int): Int {
         return android.util.TypedValue.applyDimension(
             android.util.TypedValue.COMPLEX_UNIT_DIP, dp.toFloat(), resources.displayMetrics

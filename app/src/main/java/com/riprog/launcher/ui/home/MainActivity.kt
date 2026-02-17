@@ -41,6 +41,7 @@ import com.riprog.launcher.ui.drag.TransformOverlay
 import com.riprog.launcher.ui.settings.SettingsActivity
 import com.riprog.launcher.data.local.prefs.LauncherPreferences
 import com.riprog.launcher.ui.common.ThemeUtils
+import com.riprog.launcher.util.Logger
 import org.koin.android.ext.android.inject
 import org.koin.androidx.viewmodel.ext.android.viewModel
 import androidx.lifecycle.lifecycleScope
@@ -115,6 +116,7 @@ class MainActivity : ComponentActivity(), MainLayout.Callback, AppInstallReceive
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
+        Logger.log("MainActivity.onCreate")
 
         lifecycleScope.launch {
             viewModel.settings.themeMode.collectLatest { mode ->
@@ -1011,6 +1013,7 @@ class MainActivity : ComponentActivity(), MainLayout.Callback, AppInstallReceive
 
     override fun onResume() {
         super.onResume()
+        Logger.log("MainActivity.onResume")
         ThemeUtils.updateStatusBarContrast(this)
         mainLayout?.updateDimVisibility()
         homeView?.refreshLayout()
@@ -1157,6 +1160,10 @@ class MainActivity : ComponentActivity(), MainLayout.Callback, AppInstallReceive
 
     override fun closeDrawerInstantly() {
         mainLayout?.closeDrawerInstantly()
+    }
+
+    fun startExternalDrag(v: View, x: Float, y: Float) {
+        mainLayout?.startExternalDrag(v, x, y)
     }
 
     override fun getTransformOverlay(): View? = currentTransformOverlay

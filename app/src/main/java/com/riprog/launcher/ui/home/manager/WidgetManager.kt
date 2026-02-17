@@ -6,6 +6,7 @@ import android.appwidget.AppWidgetManager
 import android.appwidget.AppWidgetProviderInfo
 import android.content.Context
 import android.content.Intent
+import android.view.MotionEvent
 import android.graphics.Color
 import android.graphics.Typeface
 import androidx.core.graphics.drawable.toDrawable
@@ -164,8 +165,21 @@ class WidgetManager(
                     })
                     card.addView(textLayout)
 
+                    var lastTouchX = 0f
+                    var lastTouchY = 0f
+                    card.setOnTouchListener { _, event ->
+                        if (event.action == MotionEvent.ACTION_DOWN) {
+                            lastTouchX = event.rawX
+                            lastTouchY = event.rawY
+                        }
+                        false
+                    }
+
                     card.setOnClickListener {
-                        dialog.dismiss()
+                        Toast.makeText(activity, "Long-press and drag to add widget to home screen", Toast.LENGTH_SHORT).show()
+                    }
+
+                    card.setOnLongClickListener {
                         val appWidgetId = appWidgetHost!!.allocateAppWidgetId()
                         val currentPage = activity.getHomeView()?.getCurrentPage() ?: 0
 
@@ -186,16 +200,26 @@ class WidgetManager(
                             Math.max(0f, Math.min(grid.rows - spanY, targetRow))
                         } else targetRow
 
-                        activity.setPendingWidgetParams(finalCol, finalRow, spanX, spanY, currentPage)
-                        if (am.bindAppWidgetIdIfAllowed(appWidgetId, info.provider)) {
-                            activity.createWidgetAt(appWidgetId, finalCol, finalRow, spanX, spanY, currentPage)
-                        } else {
-                            val intent = Intent(AppWidgetManager.ACTION_APPWIDGET_BIND).apply {
-                                putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, appWidgetId)
-                                putExtra(AppWidgetManager.EXTRA_APPWIDGET_PROVIDER, info.provider)
+                        val canBind = am.bindAppWidgetIdIfAllowed(appWidgetId, info.provider)
+
+                        activity.runOnUiThread {
+                            dialog.dismiss()
+                            if (canBind) {
+                                val item = HomeItem.createWidget(appWidgetId, finalCol, finalRow, spanX, spanY, currentPage)
+                                val hostView = appWidgetHost.createView(activity, appWidgetId, info)
+                                hostView.setAppWidget(appWidgetId, info)
+                                hostView.tag = item
+                                activity.startExternalDrag(hostView, lastTouchX, lastTouchY)
+                            } else {
+                                activity.setPendingWidgetParams(finalCol, finalRow, spanX, spanY, currentPage)
+                                val intent = Intent(AppWidgetManager.ACTION_APPWIDGET_BIND).apply {
+                                    putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, appWidgetId)
+                                    putExtra(AppWidgetManager.EXTRA_APPWIDGET_PROVIDER, info.provider)
+                                }
+                                activity.widgetPickerLauncher.launch(intent)
                             }
-                            activity.widgetPickerLauncher.launch(intent)
                         }
+                        true
                     }
                 }
             }

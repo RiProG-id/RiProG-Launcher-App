@@ -4,6 +4,7 @@ import android.content.Context
 import android.graphics.Color
 import android.graphics.Matrix
 import android.graphics.RectF
+import android.graphics.drawable.GradientDrawable
 import android.os.Handler
 import android.os.Looper
 import android.view.Gravity
@@ -75,7 +76,26 @@ class HomeView(context: Context, private val settingsManager: LauncherPreference
         }
 
         addDrawerHint()
+        addSwipeIndicator()
         post { pageManager.cleanupEmptyPages() }
+    }
+
+    private fun addSwipeIndicator() {
+        val indicator = View(context).apply {
+            val w = dpToPx(36)
+            val h = dpToPx(4)
+            layoutParams = LayoutParams(w, h).apply {
+                gravity = Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL
+                bottomMargin = dpToPx(8)
+            }
+            val gd = GradientDrawable()
+            val adaptive = ThemeUtils.getAdaptiveColor(context, settingsManager, false)
+            gd.setColor(adaptive)
+            gd.cornerRadius = h / 2f
+            background = gd
+            alpha = 0.3f
+        }
+        addView(indicator)
     }
 
     fun checkEdgeScrollLoop(x: Float) {
@@ -200,10 +220,10 @@ class HomeView(context: Context, private val settingsManager: LauncherPreference
         if (item != null) initialPage = item.page
 
         val vPos = IntArray(2)
-        v.getLocationOnScreen(vPos)
-        val root = v.rootView.findViewById<ViewGroup>(android.R.id.content)
+        val root = (context as? android.app.Activity)?.findViewById<ViewGroup>(android.R.id.content)
+            ?: (v.rootView as? ViewGroup)
         val rootPos = IntArray(2)
-        root.getLocationOnScreen(rootPos)
+        root?.getLocationOnScreen(rootPos)
 
         if (v.parent != null) {
             v.getLocationOnScreen(vPos)
@@ -228,7 +248,7 @@ class HomeView(context: Context, private val settingsManager: LauncherPreference
 
             (v.parent as? ViewGroup)?.removeView(v)
             if (v.parent == null) {
-                root.addView(v, newLp)
+                root?.addView(v, newLp)
             } else {
                 v.layoutParams = newLp
             }
