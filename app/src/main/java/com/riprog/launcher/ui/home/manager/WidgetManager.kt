@@ -3,6 +3,7 @@ package com.riprog.launcher.ui.home.manager
 import android.app.AlertDialog
 import android.app.Dialog
 import android.appwidget.AppWidgetManager
+import android.annotation.SuppressLint
 import android.appwidget.AppWidgetProviderInfo
 import android.content.Context
 import android.content.Intent
@@ -167,6 +168,7 @@ class WidgetManager(
 
                     var lastTouchX = 0f
                     var lastTouchY = 0f
+                    @SuppressLint("ClickableViewAccessibility")
                     card.setOnTouchListener { _, event ->
                         if (event.action == MotionEvent.ACTION_DOWN) {
                             lastTouchX = event.rawX

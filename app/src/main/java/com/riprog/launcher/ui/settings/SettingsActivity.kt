@@ -22,6 +22,7 @@ import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.SeekBar
 import android.widget.Switch
+import android.annotation.SuppressLint
 import android.widget.TextView
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowCompat
@@ -179,6 +180,7 @@ class SettingsActivity : ComponentActivity() {
         parent.addView(layout)
     }
 
+    @SuppressLint("UseSwitchCompatOrMaterialCode")
     private fun addToggleSetting(parent: LinearLayout, titleRes: Int, summaryRes: Int, isChecked: Boolean, listener: (Boolean) -> Unit) {
         val item = LinearLayout(this)
         item.orientation = LinearLayout.HORIZONTAL
