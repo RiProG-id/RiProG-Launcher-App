@@ -27,6 +27,12 @@ public class SettingsActivity extends Activity {
     private SettingsManager settingsManager;
 
     @Override
+    protected void attachBaseContext(Context newBase) {
+        SettingsManager sm = new SettingsManager(newBase);
+        super.attachBaseContext(ThemeMechanism.applyThemeToContext(newBase, sm.getThemeMode()));
+    }
+
+    @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         settingsManager = new SettingsManager(this);

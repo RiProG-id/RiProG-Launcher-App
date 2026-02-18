@@ -157,6 +157,10 @@ public class MainLayout extends FrameLayout {
                 float dx = ev.getX() - startX;
                 float dy = ev.getY() - startY;
 
+                if (activity.getFreeformInteraction().isTransforming()) {
+                    return false;
+                }
+
                 if (dy < -touchSlop && Math.abs(dy) > Math.abs(dx)) {
                     longPressHandler.removeCallbacks(longPressRunnable);
                     return true;

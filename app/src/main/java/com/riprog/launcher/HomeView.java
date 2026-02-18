@@ -51,15 +51,11 @@ public class HomeView extends FrameLayout implements PageActionCallback {
                     if (currentPage > 0) {
                         scrollToPage(currentPage - 1);
                         edgeHoldStart = 0;
-                    } else {
-                        handleEdgePageCreation();
                     }
                 } else if (lastX > getWidth() * 0.95f) {
                     if (currentPage < pages.size() - 1) {
                         scrollToPage(currentPage + 1);
                         edgeHoldStart = 0;
-                    } else {
-                        handleEdgePageCreation();
                     }
                 } else {
                     edgeHoldStart = 0;
@@ -71,22 +67,6 @@ public class HomeView extends FrameLayout implements PageActionCallback {
             }
         }
     };
-
-    private void handleEdgePageCreation() {
-        if (edgeHoldStart == 0) {
-            edgeHoldStart = System.currentTimeMillis();
-        } else if (System.currentTimeMillis() - edgeHoldStart > 1000) {
-            if (lastX < getWidth() * 0.05f && currentPage == 0) {
-
-                addPageAtIndex(0);
-                scrollToPage(0);
-            } else if (lastX > getWidth() * 0.95f && currentPage == pages.size() - 1) {
-                addPage();
-                scrollToPage(pages.size() - 1);
-            }
-            edgeHoldStart = 0;
-        }
-    }
 
     public void addPageAtIndex(int index) {
         FrameLayout page = new FrameLayout(getContext());
@@ -174,10 +154,6 @@ public class HomeView extends FrameLayout implements PageActionCallback {
         updateViewPosition(item, view);
         view.setTag(item);
         page.addView(view);
-
-        if (settingsManager.isLiquidGlass()) {
-            ThemeUtils.applyBlurIfSupported(view, true);
-        }
     }
 
     public void updateViewPosition(HomeItem item, View view) {
@@ -252,44 +228,12 @@ public class HomeView extends FrameLayout implements PageActionCallback {
             isEdgeScrolling = false;
             edgeHoldStart = 0;
             edgeScrollHandler.removeCallbacks(edgeScrollRunnable);
-            cleanupEmptyPages();
             if (model != null && allApps != null) {
                 refreshIcons(model, allApps);
             }
         }
     }
 
-    public void cleanupEmptyPages() {
-        if (pages.size() <= 1) return;
-        boolean changed = false;
-        for (int i = pages.size() - 1; i >= 0; i--) {
-            if (pages.get(i).getChildCount() == 0) {
-                removePage(i);
-                changed = true;
-            }
-        }
-        if (changed) {
-
-            for (int i = 0; i < pages.size(); i++) {
-                FrameLayout p = pages.get(i);
-                for (int j = 0; j < p.getChildCount(); j++) {
-                    View v = p.getChildAt(j);
-                    HomeItem item = (HomeItem) v.getTag();
-                    if (item != null) item.page = i;
-                }
-            }
-            if (currentPage >= pages.size()) {
-                currentPage = pages.size() - 1;
-            }
-            scrollToPage(currentPage);
-            pageIndicator.setPageCount(pages.size());
-            pageIndicator.setCurrentPage(currentPage);
-
-            if (getContext() instanceof MainActivity) {
-                ((MainActivity) getContext()).saveHomeState();
-            }
-        }
-    }
 
     @Override
     public void onAddPage() {
