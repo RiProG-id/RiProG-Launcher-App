@@ -642,6 +642,22 @@ public class MainActivity extends Activity {
         }
     }
 
+    public void spawnWidget(AppWidgetProviderInfo info, int spanX, int spanY) {
+        int appWidgetId = appWidgetHost.allocateAppWidgetId();
+        boolean allowed = appWidgetManager.bindAppWidgetIdIfAllowed(appWidgetId, info.provider);
+        if (allowed) {
+            HomeItem item = HomeItem.createWidget(appWidgetId, lastGridCol, lastGridRow, spanX, spanY, homeView.getCurrentPage());
+            homeItems.add(item);
+            renderHomeItem(item);
+            saveHomeState();
+        } else {
+            Intent intent = new Intent(AppWidgetManager.ACTION_APPWIDGET_BIND);
+            intent.putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, appWidgetId);
+            intent.putExtra(AppWidgetManager.EXTRA_APPWIDGET_PROVIDER, info.provider);
+            startActivityForResult(intent, REQUEST_PICK_APPWIDGET);
+        }
+    }
+
     public void startNewWidgetDrag(AppWidgetProviderInfo info, int spanX, int spanY) {
         int appWidgetId = appWidgetHost.allocateAppWidgetId();
         boolean allowed = appWidgetManager.bindAppWidgetIdIfAllowed(appWidgetId, info.provider);
@@ -673,6 +689,11 @@ public class MainActivity extends Activity {
     public DrawerView getDrawerView() { return drawerView; }
     public FreeformInteraction getFreeformInteraction() { return freeformInteraction; }
     public void handleItemClick(View v) { mainLayout.handleItemClick(v); }
+
+    public void handleAppLaunch(String packageName) {
+        Intent intent = getPackageManager().getLaunchIntentForPackage(packageName);
+        if (intent != null) startActivity(intent);
+    }
 
     private int dpToPx(int dp) {
         return (int) android.util.TypedValue.applyDimension(

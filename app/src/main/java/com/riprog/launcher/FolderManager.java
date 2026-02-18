@@ -36,13 +36,13 @@ public class FolderManager {
     @SuppressLint("ClickableViewAccessibility")
     public void openFolder(HomeItem folderItem, View folderView, List<HomeItem> homeItems, List<AppItem> allApps) {
         if (currentFolderOverlay != null) closeFolder();
-
         ThemeUtils.applyWindowBlur(activity.getWindow(), true);
 
         FrameLayout container = new FrameLayout(activity) {
             @Override
             public boolean performClick() {
-                return super.performClick();
+                super.performClick();
+                return true;
             }
         };
         container.setBackgroundColor(0x33000000);
@@ -144,8 +144,7 @@ public class FolderManager {
                 subView.setLayoutParams(glp);
                 subView.setTag(sub);
                 subView.setOnClickListener(v -> {
-                    Intent launchIntent = activity.getPackageManager().getLaunchIntentForPackage(sub.packageName);
-                    if (launchIntent != null) activity.startActivity(launchIntent);
+                    activity.handleAppLaunch(sub.packageName);
                     closeFolder();
                 });
                 subView.setOnLongClickListener(v -> {
@@ -182,15 +181,21 @@ public class FolderManager {
     }
 
     public void mergeToFolder(HomeItem target, HomeItem dragged, List<HomeItem> homeItems) {
+        int targetPage = target.page;
         homeItems.remove(dragged);
         homeItems.remove(target);
 
-        HomeItem folder = HomeItem.createFolder("", target.col, target.row, target.page);
+        HomeItem folder = HomeItem.createFolder("", target.col, target.row, targetPage);
         folder.folderItems.add(target);
         folder.folderItems.add(dragged);
+        folder.rotation = 0f;
+        folder.scale = 1.0f;
+        folder.tiltX = 0f;
+        folder.tiltY = 0f;
         homeItems.add(folder);
 
-        activity.homeView.refreshIcons(activity.model, activity.allApps);
+        activity.homeView.removeItemView(target);
+        activity.homeView.removeItemView(dragged);
         activity.renderHomeItem(folder);
         activity.saveHomeState();
     }
@@ -198,6 +203,8 @@ public class FolderManager {
     public void addToFolder(HomeItem folder, HomeItem dragged, List<HomeItem> homeItems) {
         homeItems.remove(dragged);
         folder.folderItems.add(dragged);
+
+        activity.homeView.removeItemView(dragged);
         refreshFolderIconsOnHome(folder);
         activity.saveHomeState();
     }
@@ -211,9 +218,13 @@ public class FolderManager {
             lastItem.col = folder.col;
             lastItem.row = folder.row;
             lastItem.page = page;
+            lastItem.rotation = folder.rotation;
+            lastItem.scale = folder.scale;
+            lastItem.tiltX = folder.tiltX;
+            lastItem.tiltY = folder.tiltY;
             homeItems.add(lastItem);
 
-            removeFolderView(folder);
+            activity.homeView.removeItemView(folder);
             activity.renderHomeItem(lastItem);
         } else {
             refreshFolderIconsOnHome(folder);
@@ -221,19 +232,6 @@ public class FolderManager {
         activity.saveHomeState();
     }
 
-    private void removeFolderView(HomeItem folder) {
-        ViewGroup pagesContainer = (ViewGroup) activity.homeView.getChildAt(0);
-        for (int i = 0; i < pagesContainer.getChildCount(); i++) {
-            ViewGroup page = (ViewGroup) pagesContainer.getChildAt(i);
-            for (int j = 0; j < page.getChildCount(); j++) {
-                View v = page.getChildAt(j);
-                if (v.getTag() == folder) {
-                    page.removeView(v);
-                    return;
-                }
-            }
-        }
-    }
 
     public void refreshFolderIconsOnHome(HomeItem folder) {
         ViewGroup pagesContainer = (ViewGroup) activity.homeView.getChildAt(0);
