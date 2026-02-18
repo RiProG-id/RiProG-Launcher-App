@@ -1,4 +1,4 @@
-# RiProG Launcher v2.3.1
+# RiProG Launcher
 
 RiProG Launcher is an ultra-lightweight, high-performance Android launcher designed for simplicity, speed, and a distraction-free user experience.
 

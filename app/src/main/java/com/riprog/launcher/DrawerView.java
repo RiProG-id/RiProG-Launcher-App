@@ -57,19 +57,21 @@ public class DrawerView extends LinearLayout {
         super(context);
         settingsManager = new SettingsManager(context);
         setOrientation(VERTICAL);
-        setBackgroundResource(R.drawable.glass_bg);
+        setBackground(ThemeUtils.getGlassDrawable(context, settingsManager, 0f));
         setPadding(0, dpToPx(48), 0, 0);
+
+        int adaptiveColor = ThemeUtils.getAdaptiveColor(context, settingsManager, true);
 
         searchBar = new EditText(context);
         searchBar.setHint(R.string.search_hint);
-        searchBar.setHintTextColor(context.getColor(R.color.foreground_dim));
-        searchBar.setTextColor(context.getColor(R.color.foreground));
+        searchBar.setHintTextColor(adaptiveColor & 0x80FFFFFF);
+        searchBar.setTextColor(adaptiveColor);
         searchBar.setBackgroundColor(context.getColor(R.color.search_background));
         searchBar.setPadding(dpToPx(16), dpToPx(12), dpToPx(16), dpToPx(12));
         searchBar.setCompoundDrawablesWithIntrinsicBounds(R.drawable.ic_search, 0, 0, 0);
         searchBar.setCompoundDrawablePadding(dpToPx(12));
         if (searchBar.getCompoundDrawables()[0] != null) {
-            searchBar.getCompoundDrawables()[0].setTint(context.getColor(R.color.foreground_dim));
+            searchBar.getCompoundDrawables()[0].setTint(adaptiveColor & 0x80FFFFFF);
         }
         searchBar.setSingleLine(true);
         searchBar.setGravity(Gravity.CENTER_VERTICAL);
@@ -152,6 +154,7 @@ public class DrawerView extends LinearLayout {
 
     private void setupIndexBar() {
         indexBar.removeAllViews();
+        int adaptiveColor = ThemeUtils.getAdaptiveColor(getContext(), settingsManager, true);
         String[] alphabet = "#ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
         for (String letter : alphabet) {
             if (letter.isEmpty()) continue;
@@ -159,7 +162,7 @@ public class DrawerView extends LinearLayout {
             tv.setText(letter);
             tv.setTextSize(10);
             tv.setGravity(Gravity.CENTER);
-            tv.setTextColor(getContext().getColor(R.color.foreground_dim));
+            tv.setTextColor(adaptiveColor & 0x80FFFFFF);
             tv.setPadding(0, dpToPx(2), 0, dpToPx(2));
             indexBar.addView(tv);
         }
@@ -233,8 +236,9 @@ public class DrawerView extends LinearLayout {
                 int size = (int) (baseSize * scale);
                 itemLayout.addView(icon, new LinearLayout.LayoutParams(size, size));
 
+                int adaptiveColor = ThemeUtils.getAdaptiveColor(getContext(), settingsManager, true);
                 TextView label = new TextView(getContext());
-                label.setTextColor(getContext().getColor(R.color.foreground_dim));
+                label.setTextColor(adaptiveColor);
                 label.setTextSize(10 * scale);
                 label.setGravity(Gravity.CENTER);
                 label.setMaxLines(1);
