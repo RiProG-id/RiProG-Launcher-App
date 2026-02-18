@@ -42,7 +42,7 @@ public class WidgetPicker {
         this.appWidgetHost = appWidgetHost;
     }
 
-    public void pickWidget() {
+    public void pickWidget(float lastGridCol, float lastGridRow) {
         if (appWidgetManager == null) return;
         List<AppWidgetProviderInfo> providers = appWidgetManager.getInstalledProviders();
         if (providers == null) return;
@@ -72,26 +72,6 @@ public class WidgetPicker {
 
         int adaptiveColor = ThemeUtils.getAdaptiveColor(activity, settingsManager, true);
         int secondaryColor = (adaptiveColor & 0x00FFFFFF) | 0x80000000;
-
-        LinearLayout titleLayout = new LinearLayout(activity);
-        titleLayout.setOrientation(LinearLayout.HORIZONTAL);
-        titleLayout.setGravity(Gravity.CENTER_VERTICAL);
-        titleLayout.setPadding(ThemeUtils.dpToPx(activity, 24), ThemeUtils.dpToPx(activity, 64), ThemeUtils.dpToPx(activity, 24), ThemeUtils.dpToPx(activity, 32));
-
-        ImageView titleIcon = new ImageView(activity);
-        titleIcon.setImageResource(R.drawable.ic_widgets);
-        titleIcon.setColorFilter(adaptiveColor);
-        LinearLayout.LayoutParams iconLp = new LinearLayout.LayoutParams(ThemeUtils.dpToPx(activity, 32), ThemeUtils.dpToPx(activity, 32));
-        iconLp.rightMargin = ThemeUtils.dpToPx(activity, 16);
-        titleLayout.addView(titleIcon, iconLp);
-
-        TextView title = new TextView(activity);
-        title.setText(R.string.title_pick_widget);
-        title.setTextSize(32f);
-        title.setTypeface(Typeface.create("sans-serif-light", Typeface.NORMAL));
-        title.setTextColor(adaptiveColor);
-        titleLayout.addView(title);
-        container.addView(titleLayout);
 
         ScrollView scrollView = new ScrollView(activity);
         scrollView.setVerticalScrollBarEnabled(false);
@@ -170,13 +150,20 @@ public class WidgetPicker {
                 card.addView(textLayout);
 
                 card.setOnClickListener(v -> {
-                    Toast.makeText(activity, "Long press to drag widget", Toast.LENGTH_SHORT).show();
-                });
-
-                card.setOnLongClickListener(v -> {
                     dialog.dismiss();
-                    activity.startNewWidgetDrag(info, spanX, spanY);
-                    return true;
+                    int appWidgetId = appWidgetHost.allocateAppWidgetId();
+                    boolean allowed = appWidgetManager.bindAppWidgetIdIfAllowed(appWidgetId, info.provider);
+                    if (allowed) {
+                        HomeItem homeItem = HomeItem.createWidget(appWidgetId, lastGridCol, lastGridRow, spanX, spanY, activity.getHomeView().getCurrentPage());
+                        activity.getHomeItems().add(homeItem);
+                        activity.renderHomeItem(homeItem);
+                        activity.saveHomeState();
+                    } else {
+                        Intent intent = new Intent(AppWidgetManager.ACTION_APPWIDGET_BIND);
+                        intent.putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, appWidgetId);
+                        intent.putExtra(AppWidgetManager.EXTRA_APPWIDGET_PROVIDER, info.provider);
+                        activity.startActivityForResult(intent, 1); // REQUEST_PICK_APPWIDGET
+                    }
                 });
             }
         }

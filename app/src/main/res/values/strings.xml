@@ -21,7 +21,7 @@
     <string name="layout_add_page">Add Page</string>
     <string name="layout_remove_page">Remove Page</string>
     <string name="page_added">Page added</string>
-    <string name="remove_page_not_implemented">Remove page not implemented yet</string>
+    <string name="page_removed">Page removed</string>
     <string name="title_pick_widget">🧩 Pick Widget</string>
     <string name="action_cancel">Cancel</string>
     <string name="drag_remove">REMOVE</string>

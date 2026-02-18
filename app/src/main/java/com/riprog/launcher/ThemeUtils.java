@@ -140,7 +140,11 @@ public class ThemeUtils {
         ));
     }
 
+    public static float dpToPxf(Context context, float dp) {
+        return TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, dp, context.getResources().getDisplayMetrics());
+    }
+
     public static int dpToPx(Context context, float dp) {
-        return (int) TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, dp, context.getResources().getDisplayMetrics());
+        return (int) dpToPxf(context, dp);
     }
 }

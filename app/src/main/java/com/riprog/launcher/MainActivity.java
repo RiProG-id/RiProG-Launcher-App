@@ -55,6 +55,9 @@ public class MainActivity extends Activity {
     private FolderUI folderUI;
     private FolderManager folderManager;
     private TransformOverlay transformOverlay;
+    private View transformingView;
+    private ViewGroup transformingViewOriginalParent;
+    private int transformingViewOriginalIndex;
     private WidgetPicker widgetPicker;
     private AppInstallReceiver appInstallReceiver;
     private List<HomeItem> homeItems = new ArrayList<>();
@@ -304,8 +307,21 @@ public class MainActivity extends Activity {
 
     private void enterFreeformEdit(View v) {
         if (transformOverlay != null) {
-            mainLayout.removeView(transformOverlay);
+            exitFreeformEdit();
         }
+
+        transformingView = v;
+        transformingViewOriginalParent = (ViewGroup) v.getParent();
+        transformingViewOriginalIndex = transformingViewOriginalParent.indexOfChild(v);
+
+        // Calculate absolute position relative to mainLayout
+        float absX = v.getX();
+        float absY = v.getY() + ThemeUtils.dpToPxf(this, 48); // Page offset
+
+        transformingViewOriginalParent.removeView(v);
+        mainLayout.addView(v);
+        v.setX(absX);
+        v.setY(absY);
 
         transformOverlay = new TransformOverlay(this, v, settingsManager, new TransformOverlay.OnSaveListener() {
             @Override public void onMove(float x, float y) {}
@@ -321,6 +337,7 @@ public class MainActivity extends Activity {
                             HomeItem folder = folderManager.createFolder(item1, item2, item2.page, item2.col, item2.row);
                             homeItems.add(folder);
                             renderHomeItem(folder);
+                            transformingView = null;
                         } else if (item2.type == HomeItem.Type.FOLDER) {
                             removeHomeItem(item1, v);
                             removeHomeItem(item2, other);
@@ -328,6 +345,7 @@ public class MainActivity extends Activity {
                             item2.folderItems.add(item1);
                             homeItems.add(item2);
                             renderHomeItem(item2);
+                            transformingView = null;
                         }
                     }
                 }
@@ -359,6 +377,22 @@ public class MainActivity extends Activity {
         if (transformOverlay != null) {
             mainLayout.removeView(transformOverlay);
             transformOverlay = null;
+
+            if (transformingView != null && transformingViewOriginalParent != null) {
+                mainLayout.removeView(transformingView);
+                HomeItem item = (HomeItem) transformingView.getTag();
+                if (item != null) {
+                    item.col = transformingView.getX() / (float) (homeView.getWidth() / HomeView.GRID_COLUMNS);
+                    item.row = (transformingView.getY() - ThemeUtils.dpToPxf(this, 48)) / (float) (homeView.getHeight() / HomeView.GRID_ROWS);
+                    item.rotation = transformingView.getRotation();
+                    item.scale = transformingView.getScaleX();
+                    item.tiltX = transformingView.getRotationX();
+                    item.tiltY = transformingView.getRotationY();
+                }
+                homeView.addItemView(item, transformingView);
+            }
+            transformingView = null;
+            transformingViewOriginalParent = null;
             saveHomeState();
         }
     }
@@ -491,9 +525,7 @@ public class MainActivity extends Activity {
                     homeView.addPage();
                     Toast.makeText(this, R.string.page_added, Toast.LENGTH_SHORT).show();
                 } else if (selected.equals(getString(R.string.layout_remove_page))) {
-                    if (homeView.getPageCount() > 1) {
-                        homeView.removePage(homeView.getPageCount() - 1);
-                    }
+                    removePage();
                 } else if (selected.equals(getString(R.string.menu_settings))) {
                     openSettings();
                 }
@@ -665,29 +697,10 @@ public class MainActivity extends Activity {
 
     public void pickWidget() {
         if (widgetPicker != null) {
-            widgetPicker.pickWidget();
+            widgetPicker.pickWidget(lastGridCol, lastGridRow);
         }
     }
 
-    public void startNewWidgetDrag(AppWidgetProviderInfo info, int spanX, int spanY) {
-        int appWidgetId = appWidgetHost.allocateAppWidgetId();
-        boolean allowed = appWidgetManager.bindAppWidgetIdIfAllowed(appWidgetId, info.provider);
-        if (allowed) {
-            HomeItem item = HomeItem.createWidget(appWidgetId, 0, 0, spanX, spanY, homeView.getCurrentPage());
-            homeItems.add(item);
-            View view = createWidgetView(item);
-            if (view != null) {
-                homeView.addItemView(item, view);
-                saveHomeState();
-                mainLayout.startExternalDrag(view);
-            }
-        } else {
-            Intent intent = new Intent(AppWidgetManager.ACTION_APPWIDGET_BIND);
-            intent.putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, appWidgetId);
-            intent.putExtra(AppWidgetManager.EXTRA_APPWIDGET_PROVIDER, info.provider);
-            startActivityForResult(intent, REQUEST_PICK_APPWIDGET);
-        }
-    }
 
     public HomeView getHomeView() {
         return homeView;
@@ -699,6 +712,29 @@ public class MainActivity extends Activity {
 
     public List<HomeItem> getHomeItems() {
         return homeItems;
+    }
+
+    private void removePage() {
+        if (homeView.getPageCount() > 1) {
+            int currentPage = homeView.getCurrentPage();
+            homeView.removePage(currentPage);
+            // Remove items on that page and shift others
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.N) {
+                homeItems.removeIf(item -> item.page == currentPage);
+            } else {
+                java.util.Iterator<HomeItem> it = homeItems.iterator();
+                while (it.hasNext()) {
+                    if (it.next().page == currentPage) it.remove();
+                }
+            }
+            for (HomeItem item : homeItems) {
+                if (item.page > currentPage) {
+                    item.page--;
+                }
+            }
+            saveHomeState();
+            Toast.makeText(this, R.string.page_removed, Toast.LENGTH_SHORT).show();
+        }
     }
 
     public String getAppName(String packageName) {
