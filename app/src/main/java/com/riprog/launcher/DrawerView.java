@@ -57,19 +57,20 @@ public class DrawerView extends LinearLayout {
         super(context);
         settingsManager = new SettingsManager(context);
         setOrientation(VERTICAL);
-        setBackgroundResource(R.drawable.glass_bg);
+        setBackground(ThemeUtils.getGlassDrawable(context, settingsManager, 0f));
         setPadding(0, dpToPx(48), 0, 0);
 
         searchBar = new EditText(context);
         searchBar.setHint(R.string.search_hint);
-        searchBar.setHintTextColor(context.getColor(R.color.foreground_dim));
-        searchBar.setTextColor(context.getColor(R.color.foreground));
+        int adaptiveColor = ThemeUtils.getAdaptiveColor(context, settingsManager, true);
+        searchBar.setHintTextColor(adaptiveColor & 0x80FFFFFF);
+        searchBar.setTextColor(adaptiveColor);
         searchBar.setBackgroundColor(context.getColor(R.color.search_background));
         searchBar.setPadding(dpToPx(16), dpToPx(12), dpToPx(16), dpToPx(12));
         searchBar.setCompoundDrawablesWithIntrinsicBounds(R.drawable.ic_search, 0, 0, 0);
         searchBar.setCompoundDrawablePadding(dpToPx(12));
         if (searchBar.getCompoundDrawables()[0] != null) {
-            searchBar.getCompoundDrawables()[0].setTint(context.getColor(R.color.foreground_dim));
+            searchBar.getCompoundDrawables()[0].setTint(adaptiveColor & 0x80FFFFFF);
         }
         searchBar.setSingleLine(true);
         searchBar.setGravity(Gravity.CENTER_VERTICAL);
@@ -234,7 +235,7 @@ public class DrawerView extends LinearLayout {
                 itemLayout.addView(icon, new LinearLayout.LayoutParams(size, size));
 
                 TextView label = new TextView(getContext());
-                label.setTextColor(getContext().getColor(R.color.foreground_dim));
+                label.setTextColor(ThemeUtils.getAdaptiveColor(getContext(), settingsManager, true));
                 label.setTextSize(10 * scale);
                 label.setGravity(Gravity.CENTER);
                 label.setMaxLines(1);

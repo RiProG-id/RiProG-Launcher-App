@@ -394,6 +394,7 @@ public class HomeView extends FrameLayout {
                         }
                         if (tv != null) {
                             tv.setTextSize(10 * scale);
+                            tv.setTextColor(ThemeUtils.getAdaptiveColor(getContext(), settingsManager, false));
                             tv.setVisibility(settingsManager.isHideLabels() ? View.GONE : View.VISIBLE);
                         }
 
