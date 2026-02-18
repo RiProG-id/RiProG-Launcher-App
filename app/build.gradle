@@ -33,6 +33,7 @@ android {
         debug {
             minifyEnabled false
             shrinkResources false
+            signingConfig signingConfigs.release
         }
     }
 
@@ -45,5 +46,6 @@ android {
 }
 
 dependencies {
+    implementation 'androidx.core:core:1.13.1'
     testImplementation 'junit:junit:4.13.2'
 }
