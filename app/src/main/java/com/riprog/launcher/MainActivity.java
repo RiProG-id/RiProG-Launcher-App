@@ -96,6 +96,10 @@ public class MainActivity extends Activity {
             mainLayout.startExternalDrag(view);
         });
 
+        appWidgetManager = AppWidgetManager.getInstance(this);
+        appWidgetHost = new AppWidgetHost(this, APPWIDGET_HOST_ID);
+        appWidgetHost.startListening();
+
         autoDimmingBackground = new AutoDimmingBackground(this, mainLayout, settingsManager);
         folderUI = new FolderUI(this, settingsManager);
         folderManager = new FolderManager(this, settingsManager, model);
@@ -105,10 +109,6 @@ public class MainActivity extends Activity {
         drawerView.setVisibility(View.GONE);
 
         setContentView(mainLayout);
-
-        appWidgetManager = AppWidgetManager.getInstance(this);
-        appWidgetHost = new AppWidgetHost(this, APPWIDGET_HOST_ID);
-        appWidgetHost.startListening();
 
         applyDynamicColors();
         loadApps();
@@ -211,7 +211,7 @@ public class MainActivity extends Activity {
         saveHomeState();
     }
 
-    private void renderHomeItem(HomeItem item) {
+    public void renderHomeItem(HomeItem item) {
         if (item == null) return;
         View view = null;
         switch (item.type) {
@@ -342,10 +342,6 @@ public class MainActivity extends Activity {
                 HomeItem item = (HomeItem) v.getTag();
                 showAppInfo(item);
             }
-            @Override public void onUninstall() {
-                HomeItem item = (HomeItem) v.getTag();
-                uninstallApp(item.packageName);
-            }
             @Override public void onCollision(View otherView) {
                 handleItemClick(otherView);
             }
@@ -364,16 +360,6 @@ public class MainActivity extends Activity {
             mainLayout.removeView(transformOverlay);
             transformOverlay = null;
             saveHomeState();
-        }
-    }
-
-    private void uninstallApp(String packageName) {
-        try {
-            Intent intent = new Intent(Intent.ACTION_DELETE);
-            intent.setData(android.net.Uri.parse("package:" + packageName));
-            startActivity(intent);
-        } catch (Exception e) {
-            Toast.makeText(this, getString(R.string.uninstall_failed, e.getMessage()), Toast.LENGTH_SHORT).show();
         }
     }
 
@@ -405,7 +391,7 @@ public class MainActivity extends Activity {
         }
     }
 
-    private View createFolderView(HomeItem item) {
+    public View createFolderView(HomeItem item) {
         int cellWidth = homeView.getWidth() / HomeView.GRID_COLUMNS;
         int cellHeight = homeView.getHeight() / HomeView.GRID_ROWS;
         if (cellWidth == 0 || cellHeight == 0) {
@@ -456,20 +442,32 @@ public class MainActivity extends Activity {
     }
 
     private void showHomeContextMenu(float col, float row, int page) {
-        String[] options = {
-                getString(R.string.menu_widgets),
-                getString(R.string.menu_wallpaper),
-                getString(R.string.menu_layout),
-                getString(R.string.menu_settings)
-        };
-        int[] icons = {R.drawable.ic_widgets, R.drawable.ic_wallpaper, R.drawable.ic_layout, R.drawable.ic_settings};
+        List<String> optionsList = new ArrayList<>();
+        List<Integer> iconsList = new ArrayList<>();
 
-        ArrayAdapter<String> adapter = new ArrayAdapter<String>(this, android.R.layout.select_dialog_item, android.R.id.text1, options) {
+        optionsList.add(getString(R.string.menu_widgets));
+        iconsList.add(R.drawable.ic_widgets);
+
+        optionsList.add(getString(R.string.menu_wallpaper));
+        iconsList.add(R.drawable.ic_wallpaper);
+
+        optionsList.add(getString(R.string.layout_add_page));
+        iconsList.add(R.drawable.ic_layout);
+
+        if (homeView.getPageCount() > 1) {
+            optionsList.add(getString(R.string.layout_remove_page));
+            iconsList.add(R.drawable.ic_remove);
+        }
+
+        optionsList.add(getString(R.string.menu_settings));
+        iconsList.add(R.drawable.ic_settings);
+
+        ArrayAdapter<String> adapter = new ArrayAdapter<String>(this, android.R.layout.select_dialog_item, android.R.id.text1, optionsList) {
             @Override
             public View getView(int position, View convertView, ViewGroup parent) {
                 View view = super.getView(position, convertView, parent);
                 TextView tv = view.findViewById(android.R.id.text1);
-                tv.setCompoundDrawablesWithIntrinsicBounds(icons[position], 0, 0, 0);
+                tv.setCompoundDrawablesWithIntrinsicBounds(iconsList.get(position), 0, 0, 0);
                 tv.setCompoundDrawablePadding(dpToPx(16));
                 int adaptiveColor = ThemeUtils.getAdaptiveColor(MainActivity.this, settingsManager, true);
                 tv.setTextColor(adaptiveColor);
@@ -482,15 +480,22 @@ public class MainActivity extends Activity {
         AlertDialog dialog = new AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert)
             .setTitle(R.string.title_home_menu)
             .setAdapter(adapter, (d, which) -> {
-                switch (which) {
-                    case 0:
-                        lastGridCol = col;
-                        lastGridRow = row;
-                        pickWidget();
-                        break;
-                    case 1: openWallpaperPicker(); break;
-                    case 2: showPageMenu(); break;
-                    case 3: openSettings(); break;
+                String selected = optionsList.get(which);
+                if (selected.equals(getString(R.string.menu_widgets))) {
+                    lastGridCol = col;
+                    lastGridRow = row;
+                    pickWidget();
+                } else if (selected.equals(getString(R.string.menu_wallpaper))) {
+                    openWallpaperPicker();
+                } else if (selected.equals(getString(R.string.layout_add_page))) {
+                    homeView.addPage();
+                    Toast.makeText(this, R.string.page_added, Toast.LENGTH_SHORT).show();
+                } else if (selected.equals(getString(R.string.layout_remove_page))) {
+                    if (homeView.getPageCount() > 1) {
+                        homeView.removePage(homeView.getPageCount() - 1);
+                    }
+                } else if (selected.equals(getString(R.string.menu_settings))) {
+                    openSettings();
                 }
             }).create();
         dialog.show();
@@ -540,22 +545,6 @@ public class MainActivity extends Activity {
         }
     }
 
-    private void showPageMenu() {
-        new PageMenuUI(this, settingsManager, new PageMenuUI.PageActionCallback() {
-            @Override public void onAddPage() {
-                homeView.addPage();
-                Toast.makeText(MainActivity.this, R.string.page_added, Toast.LENGTH_SHORT).show();
-            }
-            @Override public void onRemovePage() {
-                if (homeView.getPageCount() > 1) {
-                    homeView.removePage(homeView.getPageCount() - 1);
-                }
-            }
-            @Override public int getPageCount() {
-                return homeView.getPageCount();
-            }
-        }).showPageMenu();
-    }
 
     private void openSettings() {
         Intent intent = new Intent(this, SettingsActivity.class);
@@ -704,6 +693,14 @@ public class MainActivity extends Activity {
         return homeView;
     }
 
+    public FolderManager getFolderManager() {
+        return folderManager;
+    }
+
+    public List<HomeItem> getHomeItems() {
+        return homeItems;
+    }
+
     public String getAppName(String packageName) {
         try {
             return getPackageManager().getApplicationLabel(getPackageManager().getApplicationInfo(packageName, 0)).toString();
@@ -753,9 +750,6 @@ public class MainActivity extends Activity {
         private int origPage;
         private boolean isExternalDrag = false;
 
-        private float lastDist, lastAngle;
-        private float baseScale, baseRotation, baseTiltX, baseTiltY;
-        private float startX3, startY3;
 
         private final Runnable longPressRunnable = new Runnable() {
             @Override
@@ -824,21 +818,6 @@ public class MainActivity extends Activity {
             FrameLayout.LayoutParams lp = new FrameLayout.LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT, Gravity.TOP | Gravity.CENTER_HORIZONTAL);
             lp.topMargin = dpToPx(48);
             addView(dragOverlay, lp);
-        }
-
-        private float spacing(MotionEvent event) {
-            if (event.getPointerCount() < 2) return 0;
-            float x = event.getX(0) - event.getX(1);
-            float y = event.getY(0) - event.getY(1);
-            return (float) Math.sqrt(x * x + y * y);
-        }
-
-        private float angle(MotionEvent event) {
-            if (event.getPointerCount() < 2) return 0;
-            double delta_x = (event.getX(0) - event.getX(1));
-            double delta_y = (event.getY(0) - event.getY(1));
-            double radians = Math.atan2(delta_y, delta_x);
-            return (float) Math.toDegrees(radians);
         }
 
         @Override
@@ -929,47 +908,13 @@ public class MainActivity extends Activity {
                 case MotionEvent.ACTION_DOWN:
                     return true;
 
-                case MotionEvent.ACTION_POINTER_DOWN:
-                    if (isDragging && settingsManager.isFreeformHome()) {
-                        if (event.getPointerCount() == 2) {
-                            lastDist = spacing(event);
-                            lastAngle = angle(event);
-                            baseScale = touchedView.getScaleX();
-                            baseRotation = touchedView.getRotation();
-                        } else if (event.getPointerCount() == 3) {
-                            startX3 = event.getX(2);
-                            startY3 = event.getY(2);
-                            baseTiltX = touchedView.getRotationX();
-                            baseTiltY = touchedView.getRotationY();
-                        }
-                    }
-                    return true;
-
                 case MotionEvent.ACTION_MOVE:
                     float dx = event.getX() - startX;
                     float dy = event.getY() - startY;
 
                     if (isDragging) {
-                        if (settingsManager.isFreeformHome() && event.getPointerCount() > 1) {
-                            if (event.getPointerCount() == 2) {
-                                float newDist = spacing(event);
-                                if (newDist > 10f) {
-                                    float scaleFactor = newDist / lastDist;
-                                    touchedView.setScaleX(baseScale * scaleFactor);
-                                    touchedView.setScaleY(baseScale * scaleFactor);
-                                }
-                                float newAngle = angle(event);
-                                touchedView.setRotation(baseRotation + (newAngle - lastAngle));
-                            } else if (event.getPointerCount() == 3) {
-                                float mdx = event.getX(2) - startX3;
-                                float mdy = event.getY(2) - startY3;
-                                touchedView.setRotationX(baseTiltX + mdy / 5f);
-                                touchedView.setRotationY(baseTiltY - mdx / 5f);
-                            }
-                        } else {
-                            homeView.handleDrag(event.getX(), event.getY());
-                            updateDragHighlight(event.getX(), event.getY());
-                        }
+                        homeView.handleDrag(event.getX(), event.getY());
+                        updateDragHighlight(event.getX(), event.getY());
                         return true;
                     }
 

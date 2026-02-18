@@ -55,7 +55,6 @@ public class TransformOverlay extends FrameLayout {
         void onSave(View collisionView);
         void onRemove();
         void onAppInfo();
-        void onUninstall();
         void onCollision(View otherView);
         View findItemAt(float x, float y, View exclude);
     }
@@ -159,10 +158,6 @@ public class TransformOverlay extends FrameLayout {
             TextView btnInfo = createButton(R.string.action_app_info, adaptiveColor);
             btnInfo.setOnClickListener(v -> { if (onSaveListener != null) onSaveListener.onAppInfo(); });
             container.addView(btnInfo, new LinearLayout.LayoutParams(0, LayoutParams.WRAP_CONTENT, 1.0f));
-
-            TextView btnUninstall = createButton(R.string.drag_uninstall, adaptiveColor);
-            btnUninstall.setOnClickListener(v -> { if (onSaveListener != null) onSaveListener.onUninstall(); });
-            container.addView(btnUninstall, new LinearLayout.LayoutParams(0, LayoutParams.WRAP_CONTENT, 1.0f));
         }
 
         LayoutParams lp = new LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT);
