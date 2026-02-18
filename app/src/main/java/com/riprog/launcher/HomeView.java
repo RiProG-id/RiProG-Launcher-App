@@ -42,7 +42,6 @@ public class HomeView extends FrameLayout implements PageActionCallback {
     private float lastX, lastY;
     private final Handler edgeScrollHandler = new Handler();
     private boolean isEdgeScrolling = false;
-    private long edgeHoldStart = 0;
     private final Runnable edgeScrollRunnable = new Runnable() {
         @Override
         public void run() {
@@ -50,42 +49,18 @@ public class HomeView extends FrameLayout implements PageActionCallback {
                 if (lastX < getWidth() * 0.05f) {
                     if (currentPage > 0) {
                         scrollToPage(currentPage - 1);
-                        edgeHoldStart = 0;
                     }
                 } else if (lastX > getWidth() * 0.95f) {
                     if (currentPage < pages.size() - 1) {
                         scrollToPage(currentPage + 1);
-                        edgeHoldStart = 0;
                     }
-                } else {
-                    edgeHoldStart = 0;
                 }
                 edgeScrollHandler.postDelayed(this, 400);
             } else {
                 isEdgeScrolling = false;
-                edgeHoldStart = 0;
             }
         }
     };
-
-    public void addPageAtIndex(int index) {
-        FrameLayout page = new FrameLayout(getContext());
-        pages.add(index, page);
-        pagesContainer.addView(page, index, new LinearLayout.LayoutParams(
-                LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT));
-
-
-        for (int i = 0; i < pages.size(); i++) {
-            FrameLayout p = pages.get(i);
-            for (int j = 0; j < p.getChildCount(); j++) {
-                View v = p.getChildAt(j);
-                HomeItem item = (HomeItem) v.getTag();
-                if (item != null) item.page = i;
-            }
-        }
-        pageIndicator.setPageCount(pages.size());
-        pageIndicator.setCurrentPage(currentPage);
-    }
 
     public HomeView(Context context) {
         super(context);
@@ -226,7 +201,6 @@ public class HomeView extends FrameLayout implements PageActionCallback {
             }
             draggingView = null;
             isEdgeScrolling = false;
-            edgeHoldStart = 0;
             edgeScrollHandler.removeCallbacks(edgeScrollRunnable);
             if (model != null && allApps != null) {
                 refreshIcons(model, allApps);
