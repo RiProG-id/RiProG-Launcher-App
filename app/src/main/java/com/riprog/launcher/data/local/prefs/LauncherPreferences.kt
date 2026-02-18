@@ -23,18 +23,18 @@ class LauncherPreferences(private val context: Context, initialDataStore: Settin
     private val prefs: SharedPreferences = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
     private val scope = CoroutineScope(Dispatchers.Main + SupervisorJob())
 
-    private var _columns = 4
-    private var _widgetId = -1
-    private var _isFreeformHome = false
-    private var _iconScale = 1.0f
-    private var _isHideLabels = false
-    private var _isLiquidGlass = true
-    private var _isDarkenWallpaper = true
-    private var _themeMode = "system"
-    private var _drawerOpenCount = 0
-    private var _lastDefaultPromptTimestamp = 0L
-    private var _defaultPromptCount = 0
-    private var _pageCount = 2
+    private var _columns = prefs.getInt(KEY_COLUMNS, 4)
+    private var _widgetId = prefs.getInt(KEY_WIDGET_ID, -1)
+    private var _isFreeformHome = prefs.getBoolean(KEY_FREEFORM_HOME, false)
+    private var _iconScale = prefs.getFloat(KEY_ICON_SCALE, 1.0f)
+    private var _isHideLabels = prefs.getBoolean(KEY_HIDE_LABELS, false)
+    private var _isLiquidGlass = prefs.getBoolean(KEY_LIQUID_GLASS, true)
+    private var _isDarkenWallpaper = prefs.getBoolean(KEY_DARKEN_WALLPAPER, true)
+    private var _themeMode = prefs.getString(KEY_THEME_MODE, "system") ?: "system"
+    private var _drawerOpenCount = prefs.getInt(KEY_DRAWER_OPEN_COUNT, 0)
+    private var _lastDefaultPromptTimestamp = prefs.getLong(KEY_DEFAULT_PROMPT_TIMESTAMP, 0L)
+    private var _defaultPromptCount = prefs.getInt(KEY_DEFAULT_PROMPT_COUNT, 0)
+    private var _pageCount = prefs.getInt(KEY_PAGE_COUNT, 2)
 
     init {
         scope.launch {
@@ -197,7 +197,7 @@ class LauncherPreferences(private val context: Context, initialDataStore: Settin
     fun savePageCount(count: Int) {
         _pageCount = count
         scope.launch { dataStore.setPageCount(count) }
-        prefs.edit { putInt("page_count", count) }
+        prefs.edit { putInt(KEY_PAGE_COUNT, count) }
     }
 
     fun savePageItems(pageIndex: Int, items: List<HomeItem>?) {
@@ -233,7 +233,7 @@ class LauncherPreferences(private val context: Context, initialDataStore: Settin
         writeToFile(getHomeFile(), array.toString())
 
         prefs.edit {
-            putInt("page_count", pageCount)
+            putInt(KEY_PAGE_COUNT, pageCount)
             remove(KEY_HOME_ITEMS)
         }
     }
@@ -288,7 +288,7 @@ class LauncherPreferences(private val context: Context, initialDataStore: Settin
             return items
         }
 
-        val pageCount = prefs.getInt("page_count", 0)
+        val pageCount = prefs.getInt(KEY_PAGE_COUNT, 0)
         if (pageCount > 0) {
             for (i in 0 until pageCount) {
                 val pageFile = getPageFile(i)
@@ -403,5 +403,6 @@ class LauncherPreferences(private val context: Context, initialDataStore: Settin
         private const val KEY_DRAWER_OPEN_COUNT = "drawer_open_count"
         private const val KEY_DEFAULT_PROMPT_TIMESTAMP = "default_prompt_ts"
         private const val KEY_DEFAULT_PROMPT_COUNT = "default_prompt_count"
+        private const val KEY_PAGE_COUNT = "page_count"
     }
 }

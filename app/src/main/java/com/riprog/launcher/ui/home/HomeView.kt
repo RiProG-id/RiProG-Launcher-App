@@ -154,7 +154,10 @@ class HomeView(context: Context, private val settingsManager: LauncherPreference
 
         if (cellWidth <= 0 || cellHeight <= 0) {
             view.visibility = INVISIBLE
-            post { updateViewPosition(item, view) }
+            post {
+                updateViewPosition(item, view)
+                view.visibility = VISIBLE
+            }
             return
         }
         view.visibility = VISIBLE
@@ -208,7 +211,7 @@ class HomeView(context: Context, private val settingsManager: LauncherPreference
         }
 
         if (context is MainActivity) {
-            val root = v.rootView.findViewById<ViewGroup>(android.R.id.content)
+            val root = (context as MainActivity).findViewById<ViewGroup>(android.R.id.content) ?: return
 
             var absX = v.x
             var absY = v.y

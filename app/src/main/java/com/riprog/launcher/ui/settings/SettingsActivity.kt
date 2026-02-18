@@ -21,7 +21,7 @@ import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.SeekBar
-import androidx.appcompat.widget.SwitchCompat
+import android.widget.Switch
 import android.widget.TextView
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowCompat
@@ -188,6 +188,7 @@ class SettingsActivity : ComponentActivity() {
         parent.addView(layout)
     }
 
+    @android.annotation.SuppressLint("UseSwitchCompatOrMaterialCode")
     private fun addToggleSetting(parent: LinearLayout, titleRes: Int, summaryRes: Int, flow: kotlinx.coroutines.flow.Flow<Boolean>, listener: (Boolean) -> Unit) {
         val item = LinearLayout(this)
         item.orientation = LinearLayout.HORIZONTAL
@@ -214,7 +215,7 @@ class SettingsActivity : ComponentActivity() {
         summaryView.setTextColor(adaptiveColor and 0xBBFFFFFF.toInt())
         textLayout.addView(summaryView)
 
-        val toggle = SwitchCompat(this)
+        val toggle = Switch(this)
         lifecycleScope.launch {
             flow.collectLatest { isChecked ->
                 if (toggle.isChecked != isChecked) {

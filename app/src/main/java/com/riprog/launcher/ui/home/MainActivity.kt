@@ -348,7 +348,7 @@ class MainActivity : ComponentActivity(), MainLayout.Callback, AppInstallReceive
     }
 
     private fun saveHomeStateInternal() {
-        if (isStateRestored) {
+        if (isStateRestored && homeItems.isNotEmpty()) {
             viewModel.saveHomeItems(homeItems)
         }
     }

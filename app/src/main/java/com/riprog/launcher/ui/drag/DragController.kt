@@ -119,37 +119,43 @@ class DragController(
     fun onActionUp(event: MotionEvent): Boolean {
         if (!isDragging) return false
 
-        dragOverlay?.let {
-            val outPos = IntArray(2)
-            it.getLocationOnScreen(outPos)
-            val rect = android.graphics.Rect(outPos[0], outPos[1], outPos[0] + it.width, outPos[1] + it.height)
-            val hitRect = android.graphics.Rect(rect)
-            hitRect.inset(-touchSlop * 4, -touchSlop * 4)
+        try {
+            dragOverlay?.let {
+                if (it.visibility != View.VISIBLE) return@let
+                val outPos = IntArray(2)
+                it.getLocationOnScreen(outPos)
+                val rect = android.graphics.Rect(outPos[0], outPos[1], outPos[0] + it.width, outPos[1] + it.height)
+                val hitRect = android.graphics.Rect(rect)
+                hitRect.inset(-touchSlop * 4, -touchSlop * 4)
 
-            if (touchedView != null && hitRect.contains(event.rawX.toInt(), event.rawY.toInt())) {
-                val tag = touchedView!!.tag as? HomeItem
-                if (tag != null) {
-                    val isApp = ivAppInfo?.visibility == View.VISIBLE
-                    if (!isApp) {
-                        callback.removeHomeItem(tag, touchedView!!)
-                        resetDragState(false)
-                    } else {
-                        if (event.rawX < rect.left + rect.width() / 2f) {
+                if (touchedView != null && hitRect.contains(event.rawX.toInt(), event.rawY.toInt())) {
+                    val tag = touchedView!!.tag as? HomeItem
+                    if (tag != null) {
+                        val isApp = ivAppInfo?.visibility == View.VISIBLE
+                        if (!isApp) {
                             callback.removeHomeItem(tag, touchedView!!)
                             resetDragState(false)
                         } else {
-                            callback.showAppInfo(tag)
-                            revertPosition(tag, touchedView!!)
-                            resetDragState(false)
+                            if (event.rawX < rect.left + rect.width() / 2f) {
+                                callback.removeHomeItem(tag, touchedView!!)
+                                resetDragState(false)
+                            } else {
+                                callback.showAppInfo(tag)
+                                revertPosition(tag, touchedView!!)
+                                resetDragState(false)
+                            }
                         }
                     }
+                    return true
                 }
-                return true
             }
-        }
 
-        callback.getHomeView()?.endDragging()
-        resetDragState()
+            callback.getHomeView()?.endDragging()
+        } catch (e: Exception) {
+            callback.getHomeView()?.cancelDragging()
+        } finally {
+            if (isDragging) resetDragState()
+        }
         return true
     }
 
@@ -170,7 +176,6 @@ class DragController(
     private fun updateDragHighlight(rawX: Float, rawY: Float) {
         dragOverlay?.let {
             if (it.visibility != View.VISIBLE) return@let
-            it.bringToFront()
 
             val outPos = IntArray(2)
             it.getLocationOnScreen(outPos)
