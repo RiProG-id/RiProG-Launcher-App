@@ -142,19 +142,11 @@ public class WidgetManager {
                     ImageView preview = new ImageView(activity);
                     preview.setScaleType(ImageView.ScaleType.FIT_CENTER);
                     float density = activity.getResources().getDisplayMetrics().density;
+                    int widthPx = activity.getResources().getDisplayMetrics().widthPixels;
+                    int heightPx = activity.getResources().getDisplayMetrics().heightPixels;
 
-                    int cellWidth = gridManager.getCellWidth(activity.homeView.getWidth() > 0 ? activity.homeView.getWidth() : activity.getResources().getDisplayMetrics().widthPixels);
-                    int cellHeight = gridManager.getCellHeight(activity.homeView.getHeight() > 0 ? activity.homeView.getHeight() : activity.getResources().getDisplayMetrics().heightPixels);
-
-                    float sX = gridManager.calculateSpanX(info.minWidth * density, cellWidth);
-                    float sY = gridManager.calculateSpanY(info.minHeight * density, cellHeight);
-
-                    if (!settingsManager.isFreeformHome()) {
-                        sX = Math.max(1, Math.round(sX));
-                        sY = Math.max(1, Math.round(sY));
-                    }
-                    final float spanX = sX;
-                    final float spanY = sY;
+                    final float spanX = Math.max(1, Math.round((info.minWidth * density) / (widthPx / (float) HomeView.GRID_COLUMNS)));
+                    final float spanY = Math.max(1, Math.round((info.minHeight * density) / (heightPx / (float) HomeView.GRID_ROWS)));
 
                     widgetPreviewExecutor.execute(() -> {
                         try {
@@ -185,11 +177,9 @@ public class WidgetManager {
                     size.setTextColor(secondaryColor);
                     textLayout.addView(size);
 
-                    card.setOnClickListener(v -> Toast.makeText(activity, "Long press to drag widget", Toast.LENGTH_SHORT).show());
-                    card.setOnLongClickListener(v -> {
+                    card.setOnClickListener(v -> {
                         dialog.dismiss();
-                        activity.startNewWidgetDrag(info, (int)spanX, (int)spanY);
-                        return true;
+                        activity.spawnWidget(info, (int) spanX, (int) spanY);
                     });
                 }
             }

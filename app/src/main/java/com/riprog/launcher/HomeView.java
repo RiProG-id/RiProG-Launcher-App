@@ -234,6 +234,18 @@ public class HomeView extends FrameLayout implements PageActionCallback {
         }
     }
 
+    public void removeItemView(HomeItem item) {
+        if (item == null) return;
+        for (FrameLayout page : pages) {
+            for (int i = page.getChildCount() - 1; i >= 0; i--) {
+                View child = page.getChildAt(i);
+                if (child.getTag() == item) {
+                    page.removeView(child);
+                }
+            }
+        }
+    }
+
 
     @Override
     public void onAddPage() {
@@ -272,6 +284,19 @@ public class HomeView extends FrameLayout implements PageActionCallback {
             }
         }
         pageIndicator.setPageCount(pages.size());
+    }
+
+    public void removeItemsByPackage(String packageName) {
+        if (packageName == null) return;
+        for (FrameLayout page : pages) {
+            for (int i = page.getChildCount() - 1; i >= 0; i--) {
+                View child = page.getChildAt(i);
+                HomeItem item = (HomeItem) child.getTag();
+                if (item != null && packageName.equals(item.packageName)) {
+                    page.removeView(child);
+                }
+            }
+        }
     }
 
     public void cancelDragging() {
