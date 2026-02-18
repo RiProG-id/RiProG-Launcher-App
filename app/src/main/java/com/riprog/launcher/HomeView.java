@@ -51,11 +51,15 @@ public class HomeView extends FrameLayout implements PageActionCallback {
                     if (currentPage > 0) {
                         scrollToPage(currentPage - 1);
                         edgeHoldStart = 0;
+                    } else {
+                        handleEdgePageCreation();
                     }
                 } else if (lastX > getWidth() * 0.95f) {
                     if (currentPage < pages.size() - 1) {
                         scrollToPage(currentPage + 1);
                         edgeHoldStart = 0;
+                    } else {
+                        handleEdgePageCreation();
                     }
                 } else {
                     edgeHoldStart = 0;
@@ -70,9 +74,11 @@ public class HomeView extends FrameLayout implements PageActionCallback {
 
     public void addPageAtIndex(int index) {
         FrameLayout page = new FrameLayout(getContext());
+        page.setClipChildren(false);
+        page.setClipToPadding(false);
         pages.add(index, page);
         pagesContainer.addView(page, index, new LinearLayout.LayoutParams(
-                LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT));
+                getPageWidth(), LayoutParams.MATCH_PARENT));
 
 
         for (int i = 0; i < pages.size(); i++) {
@@ -91,10 +97,15 @@ public class HomeView extends FrameLayout implements PageActionCallback {
         super(context);
         settingsManager = new SettingsManager(context);
 
+        setClipChildren(false);
+        setClipToPadding(false);
+
         pagesContainer = new LinearLayout(context);
         pagesContainer.setOrientation(LinearLayout.HORIZONTAL);
         pagesContainer.setPadding(0, dpToPx(48), 0, 0);
-        addView(pagesContainer, new LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT));
+        pagesContainer.setClipChildren(false);
+        pagesContainer.setClipToPadding(false);
+        addView(pagesContainer, new LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.MATCH_PARENT));
 
         pageIndicator = new PageIndicator(context);
         LayoutParams indicatorParams = new LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT);
@@ -134,11 +145,28 @@ public class HomeView extends FrameLayout implements PageActionCallback {
 
     public void addPage() {
         FrameLayout page = new FrameLayout(getContext());
+        page.setClipChildren(false);
+        page.setClipToPadding(false);
         pages.add(page);
         pagesContainer.addView(page, new LinearLayout.LayoutParams(
-                LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT));
+                getPageWidth(), LayoutParams.MATCH_PARENT));
         pageIndicator.setPageCount(pages.size());
         pageIndicator.setCurrentPage(currentPage);
+    }
+
+    private void handleEdgePageCreation() {
+        if (edgeHoldStart == 0) {
+            edgeHoldStart = System.currentTimeMillis();
+        } else if (System.currentTimeMillis() - edgeHoldStart > 1000) {
+            if (lastX < getWidth() * 0.05f && currentPage == 0) {
+                addPageAtIndex(0);
+                scrollToPage(0);
+            } else if (lastX > getWidth() * 0.95f && currentPage == pages.size() - 1) {
+                addPage();
+                scrollToPage(pages.size() - 1);
+            }
+            edgeHoldStart = 0;
+        }
     }
 
     public void addItemView(HomeItem item, View view) {
@@ -158,9 +186,9 @@ public class HomeView extends FrameLayout implements PageActionCallback {
 
     public void updateViewPosition(HomeItem item, View view) {
         int cellWidth = getWidth() / GRID_COLUMNS;
-        int cellHeight = getHeight() / GRID_ROWS;
+        int cellHeight = (getHeight() - dpToPx(48)) / GRID_ROWS;
 
-        if (cellWidth == 0 || cellHeight == 0) {
+        if (cellWidth == 0 || cellHeight <= 0) {
             post(() -> updateViewPosition(item, view));
             return;
         }
@@ -189,6 +217,21 @@ public class HomeView extends FrameLayout implements PageActionCallback {
         draggingView = v;
         lastX = x;
         lastY = y;
+
+        if (v.getParent() != this) {
+            float absX = v.getX();
+            float absY = v.getY();
+            View p = (View) v.getParent();
+            if (p != null) {
+                absX += p.getLeft() + pagesContainer.getTranslationX();
+                absY += p.getTop() + pagesContainer.getTranslationY();
+                ((ViewGroup) p).removeView(v);
+            }
+            addView(v);
+            v.setX(absX);
+            v.setY(absY);
+        }
+
         v.animate().scaleX(1.1f).scaleY(1.1f).alpha(0.8f).setDuration(150).start();
         v.performHapticFeedback(android.view.HapticFeedbackConstants.LONG_PRESS);
     }
@@ -222,6 +265,16 @@ public class HomeView extends FrameLayout implements PageActionCallback {
             draggingView.animate().scaleX(1.0f).scaleY(1.0f).alpha(1.0f).setDuration(150).start();
             HomeItem item = (HomeItem) draggingView.getTag();
             if (item != null) {
+                float absX = draggingView.getX();
+                float absY = draggingView.getY();
+
+                item.page = currentPage;
+                removeView(draggingView);
+                addItemView(item, draggingView);
+
+                draggingView.setX(absX - (pages.get(currentPage).getLeft() + pagesContainer.getTranslationX()));
+                draggingView.setY(absY - (pages.get(currentPage).getTop() + pagesContainer.getTranslationY()));
+
                 snapToGrid(item, draggingView);
             }
             draggingView = null;
@@ -307,7 +360,7 @@ public class HomeView extends FrameLayout implements PageActionCallback {
 
     private void snapToGrid(HomeItem item, View v) {
         int cellWidth = getWidth() / GRID_COLUMNS;
-        int cellHeight = getHeight() / GRID_ROWS;
+        int cellHeight = (getHeight() - dpToPx(48)) / GRID_ROWS;
 
         if (getContext() instanceof MainActivity) {
             MainActivity activity = (MainActivity) getContext();
@@ -506,6 +559,12 @@ public class HomeView extends FrameLayout implements PageActionCallback {
     public void setAccentColor(int color) {
         this.accentColor = color;
         pageIndicator.setAccentColor(color);
+    }
+
+    private int getPageWidth() {
+        int w = getWidth();
+        if (w == 0) w = getResources().getDisplayMetrics().widthPixels;
+        return w;
     }
 
     private int dpToPx(int dp) {
