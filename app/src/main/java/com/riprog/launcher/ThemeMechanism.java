@@ -3,6 +3,7 @@ package com.riprog.launcher;
 import android.app.UiModeManager;
 import android.content.Context;
 import android.content.res.ColorStateList;
+import android.content.res.Configuration;
 import android.graphics.Color;
 import android.graphics.drawable.GradientDrawable;
 import android.graphics.drawable.RippleDrawable;
@@ -22,6 +23,24 @@ public class ThemeMechanism {
             if (uiModeManager.getNightMode() != nightMode) {
                 uiModeManager.setApplicationNightMode(nightMode);
             }
+        }
+    }
+
+    public static Context applyThemeToContext(Context base, String mode) {
+        if ("system".equals(mode)) return base;
+
+        Configuration config = new Configuration(base.getResources().getConfiguration());
+        if ("light".equals(mode)) {
+            config.uiMode = (config.uiMode & ~Configuration.UI_MODE_NIGHT_MASK) | Configuration.UI_MODE_NIGHT_NO;
+        } else if ("dark".equals(mode)) {
+            config.uiMode = (config.uiMode & ~Configuration.UI_MODE_NIGHT_MASK) | Configuration.UI_MODE_NIGHT_YES;
+        }
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR1) {
+            return base.createConfigurationContext(config);
+        } else {
+            base.getResources().updateConfiguration(config, base.getResources().getDisplayMetrics());
+            return base;
         }
     }
 
