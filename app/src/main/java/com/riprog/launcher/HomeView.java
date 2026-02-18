@@ -48,45 +48,16 @@ public class HomeView extends FrameLayout {
         public void run() {
             if (draggingView != null) {
                 if (lastX < getWidth() * 0.05f) {
-                    if (currentPage > 0) {
-                        scrollToPage(currentPage - 1);
-                        edgeHoldStart = 0;
-                    } else {
-                        handleEdgePageCreation();
-                    }
+                    scrollToPage(currentPage - 1);
                 } else if (lastX > getWidth() * 0.95f) {
-                    if (currentPage < pages.size() - 1) {
-                        scrollToPage(currentPage + 1);
-                        edgeHoldStart = 0;
-                    } else {
-                        handleEdgePageCreation();
-                    }
-                } else {
-                    edgeHoldStart = 0;
+                    scrollToPage(currentPage + 1);
                 }
-                edgeScrollHandler.postDelayed(this, 400);
+                edgeScrollHandler.postDelayed(this, 600);
             } else {
                 isEdgeScrolling = false;
-                edgeHoldStart = 0;
             }
         }
     };
-
-    private void handleEdgePageCreation() {
-        if (edgeHoldStart == 0) {
-            edgeHoldStart = System.currentTimeMillis();
-        } else if (System.currentTimeMillis() - edgeHoldStart > 1000) {
-            if (lastX < getWidth() * 0.05f && currentPage == 0) {
-
-                addPageAtIndex(0);
-                scrollToPage(0);
-            } else if (lastX > getWidth() * 0.95f && currentPage == pages.size() - 1) {
-                addPage();
-                scrollToPage(pages.size() - 1);
-            }
-            edgeHoldStart = 0;
-        }
-    }
 
     public void addPageAtIndex(int index) {
         FrameLayout page = new FrameLayout(getContext());
@@ -153,12 +124,21 @@ public class HomeView extends FrameLayout {
     }
 
     public void addPage() {
+        addPage(false);
+    }
+
+    public void addPage(boolean scroll) {
         FrameLayout page = new FrameLayout(getContext());
         pages.add(page);
         pagesContainer.addView(page, new LinearLayout.LayoutParams(
                 LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT));
         pageIndicator.setPageCount(pages.size());
-        pageIndicator.setCurrentPage(currentPage);
+
+        if (scroll && getWidth() > 0) {
+            scrollToPage(pages.size() - 1);
+        } else {
+            pageIndicator.setCurrentPage(currentPage);
+        }
     }
 
     public void addItemView(HomeItem item, View view) {
@@ -166,6 +146,7 @@ public class HomeView extends FrameLayout {
         while (item.page >= pages.size()) {
             addPage();
         }
+        removeViewForItem(item);
         if (view.getParent() instanceof ViewGroup) {
             ((ViewGroup) view.getParent()).removeView(view);
         }
@@ -174,6 +155,18 @@ public class HomeView extends FrameLayout {
         updateViewPosition(item, view);
         view.setTag(item);
         page.addView(view);
+    }
+
+    private void removeViewForItem(HomeItem item) {
+        for (FrameLayout page : pages) {
+            for (int i = 0; i < page.getChildCount(); i++) {
+                View v = page.getChildAt(i);
+                if (v.getTag() == item) {
+                    page.removeView(v);
+                    return;
+                }
+            }
+        }
     }
 
     public void updateViewPosition(HomeItem item, View view) {
@@ -246,9 +239,7 @@ public class HomeView extends FrameLayout {
             }
             draggingView = null;
             isEdgeScrolling = false;
-            edgeHoldStart = 0;
             edgeScrollHandler.removeCallbacks(edgeScrollRunnable);
-            cleanupEmptyPages();
             if (model != null && allApps != null) {
                 refreshIcons(model, allApps);
             }
@@ -256,41 +247,22 @@ public class HomeView extends FrameLayout {
     }
 
     public void cleanupEmptyPages() {
-        if (pages.size() <= 1) return;
-        boolean changed = false;
-        for (int i = pages.size() - 1; i >= 0; i--) {
-            if (pages.get(i).getChildCount() == 0) {
-                removePage(i);
-                changed = true;
-            }
-        }
-        if (changed) {
-
-            for (int i = 0; i < pages.size(); i++) {
-                FrameLayout p = pages.get(i);
-                for (int j = 0; j < p.getChildCount(); j++) {
-                    View v = p.getChildAt(j);
-                    HomeItem item = (HomeItem) v.getTag();
-                    if (item != null) item.page = i;
-                }
-            }
-            if (currentPage >= pages.size()) {
-                currentPage = pages.size() - 1;
-            }
-            scrollToPage(currentPage);
-            pageIndicator.setPageCount(pages.size());
-            pageIndicator.setCurrentPage(currentPage);
-
-            if (getContext() instanceof MainActivity) {
-                ((MainActivity) getContext()).saveHomeState();
-            }
-        }
+        // Disabled per requirements
     }
 
     public void removePage(int index) {
         if (index < 0 || index >= pages.size()) return;
+        if (pages.size() <= 1) return; // Keep at least one page
+
         FrameLayout page = pages.remove(index);
         pagesContainer.removeView(page);
+
+        if (currentPage >= pages.size()) {
+            currentPage = pages.size() - 1;
+        }
+
+        pageIndicator.setPageCount(pages.size());
+        scrollToPage(currentPage);
     }
 
     public void cancelDragging() {
@@ -311,8 +283,36 @@ public class HomeView extends FrameLayout {
             item.tiltX = v.getRotationX();
             item.tiltY = v.getRotationY();
         } else {
-            item.col = Math.max(0, Math.min(GRID_COLUMNS - item.spanX, Math.round(v.getX() / (float) cellWidth)));
-            item.row = Math.max(0, Math.min(GRID_ROWS - item.spanY, Math.round(v.getY() / (float) cellHeight)));
+            float targetCol = Math.max(0, Math.min(GRID_COLUMNS - item.spanX, Math.round(v.getX() / (float) cellWidth)));
+            float targetRow = Math.max(0, Math.min(GRID_ROWS - item.spanY, Math.round(v.getY() / (float) cellHeight)));
+
+            // Check for collision for folder creation
+            View other = findViewAt(targetCol, targetRow, item.page, v);
+            if (other != null && item.type == HomeItem.Type.APP) {
+                HomeItem otherItem = (HomeItem) other.getTag();
+                if (otherItem != null && (otherItem.type == HomeItem.Type.APP || otherItem.type == HomeItem.Type.FOLDER)) {
+                    if (getContext() instanceof MainActivity) {
+                        MainActivity activity = (MainActivity) getContext();
+                        if (otherItem.type == HomeItem.Type.APP) {
+                            activity.removeHomeItem(item, v);
+                            activity.removeHomeItem(otherItem, other);
+                            HomeItem folder = activity.getFolderManager().createFolder(item, otherItem, item.page, targetCol, targetRow);
+                            activity.getHomeItems().add(folder);
+                            activity.renderHomeItem(folder);
+                        } else {
+                            activity.removeHomeItem(item, v);
+                            if (otherItem.folderItems == null) otherItem.folderItems = new ArrayList<>();
+                            otherItem.folderItems.add(item);
+                            activity.renderHomeItem(otherItem);
+                        }
+                        activity.saveHomeState();
+                        return;
+                    }
+                }
+            }
+
+            item.col = targetCol;
+            item.row = targetRow;
             item.rotation = 0;
             item.scale = 1.0f;
             item.tiltX = 0;
@@ -330,13 +330,30 @@ public class HomeView extends FrameLayout {
         }
     }
 
+    private View findViewAt(float col, float row, int page, View exclude) {
+        if (page >= pages.size()) return null;
+        FrameLayout p = pages.get(page);
+        for (int i = 0; i < p.getChildCount(); i++) {
+            View v = p.getChildAt(i);
+            if (v == exclude) continue;
+            HomeItem item = (HomeItem) v.getTag();
+            if (item != null && Math.round(item.col) == Math.round(col) && Math.round(item.row) == Math.round(row)) {
+                return v;
+            }
+        }
+        return null;
+    }
+
     public void swipePages(float dx) {
 
 
     }
 
     public void scrollToPage(int page) {
-        if (page < 0 || page >= pages.size()) return;
+        if (pages.isEmpty()) return;
+        if (page < 0) page = 0;
+        if (page >= pages.size()) page = pages.size() - 1;
+
         currentPage = page;
         int targetX = page * getWidth();
         pagesContainer.animate()
@@ -394,6 +411,7 @@ public class HomeView extends FrameLayout {
                         }
                         if (tv != null) {
                             tv.setTextSize(10 * scale);
+                            tv.setTextColor(ThemeUtils.getAdaptiveColor(getContext(), settingsManager, false));
                             tv.setVisibility(settingsManager.isHideLabels() ? View.GONE : View.VISIBLE);
                         }
 

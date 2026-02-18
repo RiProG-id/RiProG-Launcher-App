@@ -18,6 +18,8 @@ public class SettingsManager {
     private static final String KEY_ICON_SCALE = "icon_scale";
     private static final String KEY_THEME_MODE = "theme_mode";
     private static final String KEY_HIDE_LABELS = "hide_labels";
+    private static final String KEY_LIQUID_GLASS = "liquid_glass";
+    private static final String KEY_DARKEN_WALLPAPER = "darken_wallpaper";
     private static final String KEY_DRAWER_OPEN_COUNT = "drawer_open_count";
     private static final String KEY_DEFAULT_PROMPT_TIMESTAMP = "default_prompt_ts";
     private static final String KEY_DEFAULT_PROMPT_COUNT = "default_prompt_count";
@@ -66,6 +68,22 @@ public class SettingsManager {
 
     public void setHideLabels(boolean hide) {
         prefs.edit().putBoolean(KEY_HIDE_LABELS, hide).apply();
+    }
+
+    public boolean isLiquidGlass() {
+        return prefs.getBoolean(KEY_LIQUID_GLASS, false);
+    }
+
+    public void setLiquidGlass(boolean enabled) {
+        prefs.edit().putBoolean(KEY_LIQUID_GLASS, enabled).apply();
+    }
+
+    public boolean isDarkenWallpaper() {
+        return prefs.getBoolean(KEY_DARKEN_WALLPAPER, false);
+    }
+
+    public void setDarkenWallpaper(boolean enabled) {
+        prefs.edit().putBoolean(KEY_DARKEN_WALLPAPER, enabled).apply();
     }
 
     public String getThemeMode() {
@@ -127,6 +145,19 @@ public class SettingsManager {
                 obj.put("scale", (double) item.scale);
                 obj.put("tiltX", (double) item.tiltX);
                 obj.put("tiltY", (double) item.tiltY);
+                if (item.type == HomeItem.Type.FOLDER) {
+                    obj.put("folderName", item.folderName);
+                    JSONArray folderItems = new JSONArray();
+                    if (item.folderItems != null) {
+                        for (HomeItem subItem : item.folderItems) {
+                            JSONObject subObj = new JSONObject();
+                            subObj.put("packageName", subItem.packageName);
+                            subObj.put("className", subItem.className);
+                            folderItems.put(subObj);
+                        }
+                    }
+                    obj.put("folderItems", folderItems);
+                }
                 array.put(obj);
             } catch (JSONException ignored) {}
         }
@@ -170,6 +201,21 @@ public class SettingsManager {
                 item.scale = (float) obj.optDouble("scale", 1.0);
                 item.tiltX = (float) obj.optDouble("tiltX", 0.0);
                 item.tiltY = (float) obj.optDouble("tiltY", 0.0);
+                if (item.type == HomeItem.Type.FOLDER) {
+                    item.folderName = obj.optString("folderName", "");
+                    item.folderItems = new ArrayList<>();
+                    JSONArray folderItems = obj.optJSONArray("folderItems");
+                    if (folderItems != null) {
+                        for (int j = 0; j < folderItems.length(); j++) {
+                            JSONObject subObj = folderItems.getJSONObject(j);
+                            HomeItem subItem = new HomeItem();
+                            subItem.type = HomeItem.Type.APP;
+                            subItem.packageName = subObj.optString("packageName", "");
+                            subItem.className = subObj.optString("className", "");
+                            item.folderItems.add(subItem);
+                        }
+                    }
+                }
                 items.add(item);
             }
         } catch (Exception ignored) {}
