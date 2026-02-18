@@ -358,7 +358,6 @@ public class MainActivity extends Activity {
         }
         saveHomeState();
         if (homeView != null) {
-            homeView.cleanupEmptyPages();
             homeView.refreshIcons(model, allApps);
         }
     }

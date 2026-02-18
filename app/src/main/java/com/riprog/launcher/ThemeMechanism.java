@@ -1,8 +1,8 @@
 package com.riprog.launcher;
 
-import android.app.UiModeManager;
 import android.content.Context;
 import android.content.res.ColorStateList;
+import androidx.appcompat.app.AppCompatDelegate;
 import android.graphics.Color;
 import android.graphics.drawable.GradientDrawable;
 import android.graphics.drawable.RippleDrawable;
@@ -13,15 +13,12 @@ import android.widget.LinearLayout;
 public class ThemeMechanism {
 
     public static void applyThemeMode(Context context, String mode) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            UiModeManager uiModeManager = (UiModeManager) context.getSystemService(Context.UI_MODE_SERVICE);
-            int nightMode = UiModeManager.MODE_NIGHT_AUTO;
-            if ("light".equals(mode)) nightMode = UiModeManager.MODE_NIGHT_NO;
-            else if ("dark".equals(mode)) nightMode = UiModeManager.MODE_NIGHT_YES;
+        int nightMode = AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM;
+        if ("light".equals(mode)) nightMode = AppCompatDelegate.MODE_NIGHT_NO;
+        else if ("dark".equals(mode)) nightMode = AppCompatDelegate.MODE_NIGHT_YES;
 
-            if (uiModeManager.getNightMode() != nightMode) {
-                uiModeManager.setApplicationNightMode(nightMode);
-            }
+        if (AppCompatDelegate.getDefaultNightMode() != nightMode) {
+            AppCompatDelegate.setDefaultNightMode(nightMode);
         }
     }
 
