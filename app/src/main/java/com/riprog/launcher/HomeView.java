@@ -35,6 +35,7 @@ public class HomeView extends FrameLayout {
     private final SettingsManager settingsManager;
     private int currentPage = 0;
     private int accentColor = Color.WHITE;
+    private long edgeHoldStart = 0;
     private LauncherModel model;
     private List<AppItem> allApps;
 
@@ -42,22 +43,49 @@ public class HomeView extends FrameLayout {
     private float lastX, lastY;
     private final Handler edgeScrollHandler = new Handler();
     private boolean isEdgeScrolling = false;
-    private long edgeHoldStart = 0;
     private final Runnable edgeScrollRunnable = new Runnable() {
         @Override
         public void run() {
             if (draggingView != null) {
                 if (lastX < getWidth() * 0.05f) {
-                    scrollToPage(currentPage - 1);
+                    if (currentPage > 0) {
+                        scrollToPage(currentPage - 1);
+                        edgeHoldStart = 0;
+                    } else {
+                        handleEdgePageCreation();
+                    }
                 } else if (lastX > getWidth() * 0.95f) {
-                    scrollToPage(currentPage + 1);
+                    if (currentPage < pages.size() - 1) {
+                        scrollToPage(currentPage + 1);
+                        edgeHoldStart = 0;
+                    } else {
+                        handleEdgePageCreation();
+                    }
+                } else {
+                    edgeHoldStart = 0;
                 }
-                edgeScrollHandler.postDelayed(this, 600);
+                edgeScrollHandler.postDelayed(this, 400);
             } else {
                 isEdgeScrolling = false;
+                edgeHoldStart = 0;
             }
         }
     };
+
+    private void handleEdgePageCreation() {
+        if (edgeHoldStart == 0) {
+            edgeHoldStart = System.currentTimeMillis();
+        } else if (System.currentTimeMillis() - edgeHoldStart > 1000) {
+            if (lastX < getWidth() * 0.05f && currentPage == 0) {
+                addPageAtIndex(0);
+                scrollToPage(0);
+            } else if (lastX > getWidth() * 0.95f && currentPage == pages.size() - 1) {
+                addPage();
+                scrollToPage(pages.size() - 1);
+            }
+            edgeHoldStart = 0;
+        }
+    }
 
     public void addPageAtIndex(int index) {
         FrameLayout page = new FrameLayout(getContext());
@@ -157,13 +185,33 @@ public class HomeView extends FrameLayout {
         page.addView(view);
     }
 
-    private void removeViewForItem(HomeItem item) {
+    public void removeViewForItem(HomeItem item) {
         for (FrameLayout page : pages) {
             for (int i = 0; i < page.getChildCount(); i++) {
                 View v = page.getChildAt(i);
                 if (v.getTag() == item) {
                     page.removeView(v);
                     return;
+                }
+            }
+        }
+    }
+
+    public void updateFolderPreview(HomeItem folder) {
+        removeViewForItem(folder);
+        if (getContext() instanceof MainActivity) {
+            addItemView(folder, ((MainActivity) getContext()).createFolderView(folder));
+        }
+    }
+
+    public void removeItemsByPackage(String packageName) {
+        if (packageName == null) return;
+        for (FrameLayout page : pages) {
+            for (int i = page.getChildCount() - 1; i >= 0; i--) {
+                View v = page.getChildAt(i);
+                HomeItem item = (HomeItem) v.getTag();
+                if (item != null && packageName.equals(item.packageName)) {
+                    page.removeView(v);
                 }
             }
         }
@@ -275,6 +323,9 @@ public class HomeView extends FrameLayout {
         int cellWidth = getWidth() / GRID_COLUMNS;
         int cellHeight = getHeight() / GRID_ROWS;
 
+        int oldPage = item.page;
+        item.page = currentPage;
+
         if (settingsManager.isFreeformHome()) {
             item.col = v.getX() / (float) cellWidth;
             item.row = v.getY() / (float) cellHeight;
@@ -282,6 +333,10 @@ public class HomeView extends FrameLayout {
             item.scale = v.getScaleX();
             item.tiltX = v.getRotationX();
             item.tiltY = v.getRotationY();
+
+            if (oldPage != item.page) {
+                addItemView(item, v);
+            }
         } else {
             float targetCol = Math.max(0, Math.min(GRID_COLUMNS - item.spanX, Math.round(v.getX() / (float) cellWidth)));
             float targetRow = Math.max(0, Math.min(GRID_ROWS - item.spanY, Math.round(v.getY() / (float) cellHeight)));
@@ -317,6 +372,10 @@ public class HomeView extends FrameLayout {
             item.scale = 1.0f;
             item.tiltX = 0;
             item.tiltY = 0;
+
+            if (oldPage != item.page) {
+                addItemView(item, v);
+            }
 
             v.animate()
                     .x(item.col * cellWidth)

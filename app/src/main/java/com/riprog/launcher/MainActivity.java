@@ -215,25 +215,25 @@ public class MainActivity extends Activity {
     }
 
     public void renderHomeItem(HomeItem item) {
-        if (item == null) return;
-        View view = null;
-        switch (item.type) {
-            case APP:
-                view = createAppView(item);
-                break;
-            case WIDGET:
-                view = createWidgetView(item);
-                break;
-            case CLOCK:
-                view = createClockView(item);
-                break;
-            case FOLDER:
-                view = createFolderView(item);
-                break;
-        }
+        View view = renderHomeItemForFolder(item);
         if (view != null) {
             homeView.addItemView(item, view);
         }
+    }
+
+    public View renderHomeItemForFolder(HomeItem item) {
+        if (item == null) return null;
+        switch (item.type) {
+            case APP:
+                return createAppView(item);
+            case WIDGET:
+                return createWidgetView(item);
+            case CLOCK:
+                return createClockView(item);
+            case FOLDER:
+                return createFolderView(item);
+        }
+        return null;
     }
 
     private View createAppView(HomeItem item) {
@@ -360,6 +360,11 @@ public class MainActivity extends Activity {
                 HomeItem item = (HomeItem) v.getTag();
                 showAppInfo(item);
             }
+            @Override public void onUninstall() {
+                HomeItem item = (HomeItem) v.getTag();
+                uninstallApp(item);
+                exitFreeformEdit();
+            }
             @Override public void onCollision(View otherView) {
                 handleItemClick(otherView);
             }
@@ -406,10 +411,7 @@ public class MainActivity extends Activity {
         } else if (item.type == HomeItem.Type.WIDGET) {
             showWidgetOptions(item, v);
         } else if (item.type == HomeItem.Type.FOLDER) {
-            folderManager.showFolder(item, () -> {
-                homeView.addItemView(item, createFolderView(item));
-                saveHomeState();
-            });
+            folderManager.openFolder(item, v, homeItems, allApps, model);
         }
     }
 
@@ -422,6 +424,41 @@ public class MainActivity extends Activity {
             startActivity(intent);
         } catch (Exception e) {
             Toast.makeText(this, getString(R.string.app_info_failed), Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    private void uninstallApp(HomeItem item) {
+        if (item == null || item.packageName == null || item.packageName.isEmpty()) return;
+        try {
+            Intent intent = new Intent(Intent.ACTION_DELETE);
+            intent.setData(android.net.Uri.parse("package:" + item.packageName));
+            startActivity(intent);
+        } catch (Exception e) {
+            Toast.makeText(this, getString(R.string.uninstall_failed, e.getMessage()), Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    public void startNewWidgetDrag(AppWidgetProviderInfo info, float spanX, float spanY) {
+        int appWidgetId = appWidgetHost.allocateAppWidgetId();
+        boolean allowed = appWidgetManager.bindAppWidgetIdIfAllowed(appWidgetId, info.provider);
+        if (allowed) {
+            HomeItem item = HomeItem.createWidget(appWidgetId, 0, 0, (int) spanX, (int) spanY, homeView.getCurrentPage());
+            View view = createWidgetView(item);
+            if (view != null) {
+                view.setTag(item);
+                mainLayout.startExternalDrag(view);
+            }
+        } else {
+            Intent intent = new Intent(AppWidgetManager.ACTION_APPWIDGET_BIND);
+            intent.putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, appWidgetId);
+            intent.putExtra(AppWidgetManager.EXTRA_APPWIDGET_PROVIDER, info.provider);
+            startActivityForResult(intent, REQUEST_PICK_APPWIDGET);
+        }
+    }
+
+    public void setOverlayBlur(boolean enabled) {
+        if (settingsManager.isLiquidGlass()) {
+            ThemeUtils.applyWindowBlur(getWindow(), enabled);
         }
     }
 
@@ -712,6 +749,14 @@ public class MainActivity extends Activity {
 
     public List<HomeItem> getHomeItems() {
         return homeItems;
+    }
+
+    public List<AppItem> getAllApps() {
+        return allApps;
+    }
+
+    public LauncherModel getModel() {
+        return model;
     }
 
     private void removePage() {

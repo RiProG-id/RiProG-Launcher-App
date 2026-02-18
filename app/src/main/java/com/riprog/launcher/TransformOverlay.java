@@ -26,8 +26,6 @@ public class TransformOverlay extends FrameLayout {
     private final Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final float handleSize;
     private final float rotationHandleDist;
-    private float offsetX = 0f;
-    private float offsetY = 0f;
 
     private float lastTouchX = 0f;
     private float lastTouchY = 0f;
@@ -57,6 +55,7 @@ public class TransformOverlay extends FrameLayout {
         void onSave(View collisionView);
         void onRemove();
         void onAppInfo();
+        void onUninstall();
         void onCollision(View otherView);
         View findItemAt(float x, float y, View exclude);
     }
@@ -161,6 +160,10 @@ public class TransformOverlay extends FrameLayout {
             TextView btnInfo = createButton(R.string.action_app_info, adaptiveColor);
             btnInfo.setOnClickListener(v -> { if (onSaveListener != null) onSaveListener.onAppInfo(); });
             container.addView(btnInfo, new LinearLayout.LayoutParams(0, LayoutParams.WRAP_CONTENT, 1.0f));
+
+            TextView btnUninstall = createButton(R.string.drag_uninstall, adaptiveColor);
+            btnUninstall.setOnClickListener(v -> { if (onSaveListener != null) onSaveListener.onUninstall(); });
+            container.addView(btnUninstall, new LinearLayout.LayoutParams(0, LayoutParams.WRAP_CONTENT, 1.0f));
         }
 
         LayoutParams lp = new LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT);
@@ -206,8 +209,8 @@ public class TransformOverlay extends FrameLayout {
         float sy = targetView.getScaleY();
         float r = isFreeform ? targetView.getRotation() : 0f;
 
-        float cx = targetView.getX() + targetView.getPivotX() + offsetX;
-        float cy = targetView.getY() + targetView.getPivotY() + offsetY;
+        float cx = targetView.getX() + targetView.getPivotX();
+        float cy = targetView.getY() + targetView.getPivotY();
 
         RectF bounds = (activeHandle != -1 && gestureInitialBounds != null) ? gestureInitialBounds : getContentBounds();
         float left = (bounds.left - targetView.getPivotX()) * sx;
@@ -302,7 +305,7 @@ public class TransformOverlay extends FrameLayout {
             case MotionEvent.ACTION_MOVE:
                 if (activeHandle != -1) {
                     if (!hasPassedThreshold) {
-                float threshold = ThemeUtils.dpToPxf(getContext(), MOVE_THRESHOLD_DP);
+                        float threshold = ThemeUtils.dpToPxf(getContext(), MOVE_THRESHOLD_DP);
                         if (dist(x, y, initialTouchX, initialTouchY) > threshold) {
                             hasPassedThreshold = true;
                         }
@@ -359,8 +362,8 @@ public class TransformOverlay extends FrameLayout {
         float sx = targetView.getScaleX();
         float sy = targetView.getScaleY();
 
-        float cx = targetView.getX() + targetView.getPivotX() + offsetX;
-        float cy = targetView.getY() + targetView.getPivotY() + offsetY;
+        float cx = targetView.getX() + targetView.getPivotX();
+        float cy = targetView.getY() + targetView.getPivotY();
 
         double angle = isFreeform ? Math.toRadians(-targetView.getRotation()) : 0.0;
         float rx = (float) (Math.cos(angle) * (tx - cx) - Math.sin(angle) * (ty - cy));
@@ -395,15 +398,15 @@ public class TransformOverlay extends FrameLayout {
         boolean isFreeform = settingsManager.isFreeformHome();
         float sx = gestureInitialScaleX;
         float sy = gestureInitialScaleY;
-        float cx = gestureInitialX + targetView.getPivotX() + offsetX;
-        float cy = gestureInitialY + targetView.getPivotY() + offsetY;
+        float cx = gestureInitialX + targetView.getPivotX();
+        float cy = gestureInitialY + targetView.getPivotY();
 
         if (activeHandle == ACTION_MOVE) {
             float newX = gestureInitialX + (tx - initialTouchX);
             float newY = gestureInitialY + (ty - initialTouchY);
 
-            newX = Math.max(0f, Math.min(newX, (getWidth() - targetView.getWidth() - offsetX)));
-            newY = Math.max(0f, Math.min(newY, (getHeight() - targetView.getHeight() - offsetY)));
+            newX = Math.max(0f, Math.min(newX, (getWidth() - targetView.getWidth())));
+            newY = Math.max(0f, Math.min(newY, (getHeight() - targetView.getHeight())));
 
             if (!isFreeform) {
                 int cellWidth = getWidth() / HomeView.GRID_COLUMNS;

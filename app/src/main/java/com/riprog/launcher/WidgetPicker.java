@@ -150,20 +150,13 @@ public class WidgetPicker {
                 card.addView(textLayout);
 
                 card.setOnClickListener(v -> {
+                    Toast.makeText(activity, "Long press to drag widget", Toast.LENGTH_SHORT).show();
+                });
+
+                card.setOnLongClickListener(v -> {
                     dialog.dismiss();
-                    int appWidgetId = appWidgetHost.allocateAppWidgetId();
-                    boolean allowed = appWidgetManager.bindAppWidgetIdIfAllowed(appWidgetId, info.provider);
-                    if (allowed) {
-                        HomeItem homeItem = HomeItem.createWidget(appWidgetId, lastGridCol, lastGridRow, spanX, spanY, activity.getHomeView().getCurrentPage());
-                        activity.getHomeItems().add(homeItem);
-                        activity.renderHomeItem(homeItem);
-                        activity.saveHomeState();
-                    } else {
-                        Intent intent = new Intent(AppWidgetManager.ACTION_APPWIDGET_BIND);
-                        intent.putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, appWidgetId);
-                        intent.putExtra(AppWidgetManager.EXTRA_APPWIDGET_PROVIDER, info.provider);
-                        activity.startActivityForResult(intent, 1); // REQUEST_PICK_APPWIDGET
-                    }
+                    activity.startNewWidgetDrag(info, spanX, spanY);
+                    return true;
                 });
             }
         }
