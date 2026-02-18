@@ -522,7 +522,7 @@ public class MainActivity extends Activity {
                 } else if (selected.equals(getString(R.string.menu_wallpaper))) {
                     openWallpaperPicker();
                 } else if (selected.equals(getString(R.string.layout_add_page))) {
-                    homeView.addPage();
+                    homeView.addPage(true);
                     Toast.makeText(this, R.string.page_added, Toast.LENGTH_SHORT).show();
                 } else if (selected.equals(getString(R.string.layout_remove_page))) {
                     removePage();

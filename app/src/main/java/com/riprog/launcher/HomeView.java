@@ -124,12 +124,21 @@ public class HomeView extends FrameLayout {
     }
 
     public void addPage() {
+        addPage(false);
+    }
+
+    public void addPage(boolean scroll) {
         FrameLayout page = new FrameLayout(getContext());
         pages.add(page);
         pagesContainer.addView(page, new LinearLayout.LayoutParams(
                 LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT));
         pageIndicator.setPageCount(pages.size());
-        pageIndicator.setCurrentPage(currentPage);
+
+        if (scroll && getWidth() > 0) {
+            scrollToPage(pages.size() - 1);
+        } else {
+            pageIndicator.setCurrentPage(currentPage);
+        }
     }
 
     public void addItemView(HomeItem item, View view) {
@@ -243,8 +252,17 @@ public class HomeView extends FrameLayout {
 
     public void removePage(int index) {
         if (index < 0 || index >= pages.size()) return;
+        if (pages.size() <= 1) return; // Keep at least one page
+
         FrameLayout page = pages.remove(index);
         pagesContainer.removeView(page);
+
+        if (currentPage >= pages.size()) {
+            currentPage = pages.size() - 1;
+        }
+
+        pageIndicator.setPageCount(pages.size());
+        scrollToPage(currentPage);
     }
 
     public void cancelDragging() {
@@ -333,8 +351,8 @@ public class HomeView extends FrameLayout {
 
     public void scrollToPage(int page) {
         if (pages.isEmpty()) return;
-        if (page < 0) page = pages.size() - 1;
-        if (page >= pages.size()) page = 0;
+        if (page < 0) page = 0;
+        if (page >= pages.size()) page = pages.size() - 1;
 
         currentPage = page;
         int targetX = page * getWidth();
