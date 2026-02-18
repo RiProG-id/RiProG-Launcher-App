@@ -37,6 +37,7 @@ import com.riprog.launcher.data.repository.AppLoader
 import com.riprog.launcher.receiver.AppInstallReceiver
 import com.riprog.launcher.ui.drawer.DrawerView
 import com.riprog.launcher.ui.drag.DragController
+import com.riprog.launcher.ui.common.Logger
 import com.riprog.launcher.ui.drag.TransformOverlay
 import com.riprog.launcher.ui.settings.SettingsActivity
 import com.riprog.launcher.data.local.prefs.LauncherPreferences
@@ -115,6 +116,7 @@ class MainActivity : ComponentActivity(), MainLayout.Callback, AppInstallReceive
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
+        Logger.d("MainActivity onCreate")
 
         lifecycleScope.launch {
             viewModel.settings.themeMode.collectLatest { mode ->
@@ -126,18 +128,19 @@ class MainActivity : ComponentActivity(), MainLayout.Callback, AppInstallReceive
 
         mainLayout = MainLayout(this, this)
         homeView = HomeView(this, preferences)
-        drawerView = DrawerView(this)
+        drawerView = DrawerView(this, preferences)
         drawerView?.setColumns(preferences.columns)
         drawerView?.setOnAppLongClickListener(object : DrawerView.OnAppLongClickListener {
             override fun onAppLongClick(app: AppItem) {
                 mainLayout?.closeDrawerInstantly()
-                val currentPage = homeView?.getCurrentPage() ?: 0
-                val item = HomeItem.createApp(app.packageName, app.className, 0f, 0f, currentPage)
-                homeItems.add(item)
+                val item = HomeItem.createApp(app.packageName, app.className, 0f, 0f, homeView?.getCurrentPage() ?: 0)
                 val view = createAppView(item, false)
-                homeView?.addItemView(item, view)
-                savePage(currentPage)
-                if (view != null) mainLayout?.startExternalDrag(view)
+                if (view != null) {
+                    view.tag = item
+                    val size = resources.getDimensionPixelSize(R.dimen.grid_icon_size)
+                    view.layoutParams = FrameLayout.LayoutParams(size * 2, size * 2)
+                    mainLayout?.startExternalDrag(view)
+                }
             }
         })
 
@@ -1072,6 +1075,11 @@ class MainActivity : ComponentActivity(), MainLayout.Callback, AppInstallReceive
     fun createWidgetAt(appWidgetId: Int, col: Float, row: Float, spanX: Float, spanY: Float, page: Int = -1) {
         val targetPage = if (page >= 0) page else (homeView?.getCurrentPage() ?: 0)
         val item = HomeItem.createWidget(appWidgetId, col, row, spanX, spanY, targetPage)
+        onExternalItemDropped(item)
+    }
+
+    fun onExternalItemDropped(item: HomeItem) {
+        Logger.d("External item dropped: ${item.packageName}")
         homeItems.add(item)
         renderHomeItem(item)
         saveHomeState()
@@ -1095,7 +1103,6 @@ class MainActivity : ComponentActivity(), MainLayout.Callback, AppInstallReceive
         val item = HomeItem.createWidget(appWidgetId, 0f, 0f, spanX, spanY, currentPage)
         item.packageName = info.provider.packageName
         item.className = info.provider.className
-        homeItems.add(item)
 
         val view = if (bound) {
             createWidgetView(item)

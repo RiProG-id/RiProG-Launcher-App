@@ -25,7 +25,7 @@ import com.riprog.launcher.data.local.prefs.LauncherPreferences
 import com.riprog.launcher.ui.common.ThemeUtils
 import java.util.Locale
 
-class DrawerView(context: Context) : LinearLayout(context) {
+class DrawerView(context: Context, private val settingsManager: LauncherPreferences) : LinearLayout(context) {
     private val listView: ListView
     private val adapter: AppRowAdapter
     private var longClickListener: OnAppLongClickListener? = null
@@ -41,7 +41,6 @@ class DrawerView(context: Context) : LinearLayout(context) {
 
     private var filteredApps: List<AppItem> = mutableListOf()
     private var appLoader: AppLoader? = null
-    private val settingsManager: LauncherPreferences = LauncherPreferences(context)
     private val searchBar: EditText
     private val indexBar: IndexBar
 

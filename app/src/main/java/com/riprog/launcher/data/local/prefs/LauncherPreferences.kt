@@ -5,8 +5,8 @@ import android.content.SharedPreferences
 import androidx.core.content.edit
 import com.riprog.launcher.data.local.datastore.SettingsDataStore
 import com.riprog.launcher.data.model.HomeItem
+import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.runBlocking
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
 import org.json.JSONArray
@@ -21,96 +21,141 @@ import java.nio.charset.StandardCharsets
 class LauncherPreferences(private val context: Context, initialDataStore: SettingsDataStore? = null) : KoinComponent {
     private val dataStore: SettingsDataStore by if (initialDataStore != null) lazy { initialDataStore } else inject()
     private val prefs: SharedPreferences = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+    private val scope = CoroutineScope(Dispatchers.Main + SupervisorJob())
+
+    private var _columns = 4
+    private var _widgetId = -1
+    private var _isFreeformHome = false
+    private var _iconScale = 1.0f
+    private var _isHideLabels = false
+    private var _isLiquidGlass = true
+    private var _isDarkenWallpaper = true
+    private var _themeMode = "system"
+    private var _drawerOpenCount = 0
+    private var _lastDefaultPromptTimestamp = 0L
+    private var _defaultPromptCount = 0
+    private var _pageCount = 2
+
+    init {
+        scope.launch {
+            launch { dataStore.columns.collect { _columns = it } }
+            launch { dataStore.widgetId.collect { _widgetId = it } }
+            launch { dataStore.isFreeformHome.collect { _isFreeformHome = it } }
+            launch { dataStore.iconScale.collect { _iconScale = it } }
+            launch { dataStore.isHideLabels.collect { _isHideLabels = it } }
+            launch { dataStore.isLiquidGlass.collect { _isLiquidGlass = it } }
+            launch { dataStore.isDarkenWallpaper.collect { _isDarkenWallpaper = it } }
+            launch { dataStore.themeMode.collect { _themeMode = it } }
+            launch { dataStore.drawerOpenCount.collect { _drawerOpenCount = it } }
+            launch { dataStore.lastDefaultPromptTimestamp.collect { _lastDefaultPromptTimestamp = it } }
+            launch { dataStore.defaultPromptCount.collect { _defaultPromptCount = it } }
+            launch { dataStore.pageCount.collect { _pageCount = it } }
+        }
+    }
 
     var columns: Int
-        get() = runBlocking { dataStore.columns.first() }
+        get() = _columns
         set(value) {
-            runBlocking { dataStore.setColumns(value) }
+            _columns = value
+            scope.launch { dataStore.setColumns(value) }
             prefs.edit { putInt(KEY_COLUMNS, value) }
         }
 
     var widgetId: Int
-        get() = runBlocking { dataStore.widgetId.first() }
+        get() = _widgetId
         set(value) {
-            runBlocking { dataStore.setWidgetId(value) }
+            _widgetId = value
+            scope.launch { dataStore.setWidgetId(value) }
             prefs.edit { putInt(KEY_WIDGET_ID, value) }
         }
 
     var isFreeformHome: Boolean
-        get() = runBlocking { dataStore.isFreeformHome.first() }
+        get() = _isFreeformHome
         set(value) {
-            runBlocking { dataStore.setFreeformHome(value) }
+            _isFreeformHome = value
+            scope.launch { dataStore.setFreeformHome(value) }
             prefs.edit { putBoolean(KEY_FREEFORM_HOME, value) }
         }
 
     var iconScale: Float
-        get() = runBlocking { dataStore.iconScale.first() }
+        get() = _iconScale
         set(value) {
-            runBlocking { dataStore.setIconScale(value) }
+            _iconScale = value
+            scope.launch { dataStore.setIconScale(value) }
             prefs.edit { putFloat(KEY_ICON_SCALE, value) }
         }
 
     var isHideLabels: Boolean
-        get() = runBlocking { dataStore.isHideLabels.first() }
+        get() = _isHideLabels
         set(value) {
-            runBlocking { dataStore.setHideLabels(value) }
+            _isHideLabels = value
+            scope.launch { dataStore.setHideLabels(value) }
             prefs.edit { putBoolean(KEY_HIDE_LABELS, value) }
         }
 
     var isLiquidGlass: Boolean
-        get() = runBlocking { dataStore.isLiquidGlass.first() }
+        get() = _isLiquidGlass
         set(value) {
-            runBlocking { dataStore.setLiquidGlass(value) }
+            _isLiquidGlass = value
+            scope.launch { dataStore.setLiquidGlass(value) }
             prefs.edit { putBoolean(KEY_LIQUID_GLASS, value) }
         }
 
     var isDarkenWallpaper: Boolean
-        get() = runBlocking { dataStore.isDarkenWallpaper.first() }
+        get() = _isDarkenWallpaper
         set(value) {
-            runBlocking { dataStore.setDarkenWallpaper(value) }
+            _isDarkenWallpaper = value
+            scope.launch { dataStore.setDarkenWallpaper(value) }
             prefs.edit { putBoolean(KEY_DARKEN_WALLPAPER, value) }
         }
 
     var themeMode: String?
-        get() = runBlocking { dataStore.themeMode.first() }
+        get() = _themeMode
         set(value) {
-            if (value != null) runBlocking { dataStore.setThemeMode(value) }
+            if (value != null) {
+                _themeMode = value
+                scope.launch { dataStore.setThemeMode(value) }
+            }
             prefs.edit { putString(KEY_THEME_MODE, value) }
         }
 
     fun incrementUsage(packageName: String) {
-        runBlocking { dataStore.incrementUsage(packageName) }
+        scope.launch { dataStore.incrementUsage(packageName) }
         val current = prefs.getInt(KEY_USAGE_PREFIX + packageName, 0)
         prefs.edit { putInt(KEY_USAGE_PREFIX + packageName, current + 1) }
     }
 
     fun getUsage(packageName: String): Int {
-        return runBlocking { dataStore.getUsage(packageName).first() }
+        // This one is harder because it's dynamic.
+        // For simplicity and since usage is not critical, we can use the prefs value or a separate cache.
+        // But the requirement is to remove runBlocking.
+        return prefs.getInt(KEY_USAGE_PREFIX + packageName, 0)
     }
 
     var drawerOpenCount: Int
-        get() = runBlocking { dataStore.drawerOpenCount.first() }
+        get() = _drawerOpenCount
         private set(value) { }
 
     fun incrementDrawerOpenCount() {
-        runBlocking { dataStore.incrementDrawerOpenCount() }
+        scope.launch { dataStore.incrementDrawerOpenCount() }
         val current = prefs.getInt(KEY_DRAWER_OPEN_COUNT, 0)
         prefs.edit { putInt(KEY_DRAWER_OPEN_COUNT, current + 1) }
     }
 
     var lastDefaultPromptTimestamp: Long
-        get() = runBlocking { dataStore.lastDefaultPromptTimestamp.first() }
+        get() = _lastDefaultPromptTimestamp
         set(value) {
-            runBlocking { dataStore.setLastDefaultPromptTimestamp(value) }
+            _lastDefaultPromptTimestamp = value
+            scope.launch { dataStore.setLastDefaultPromptTimestamp(value) }
             prefs.edit { putLong(KEY_DEFAULT_PROMPT_TIMESTAMP, value) }
         }
 
     var defaultPromptCount: Int
-        get() = runBlocking { dataStore.defaultPromptCount.first() }
+        get() = _defaultPromptCount
         private set(value) { }
 
     fun incrementDefaultPromptCount() {
-        runBlocking { dataStore.incrementDefaultPromptCount() }
+        scope.launch { dataStore.incrementDefaultPromptCount() }
         val current = prefs.getInt(KEY_DEFAULT_PROMPT_COUNT, 0)
         prefs.edit { putInt(KEY_DEFAULT_PROMPT_COUNT, current + 1) }
     }
@@ -150,7 +195,8 @@ class LauncherPreferences(private val context: Context, initialDataStore: Settin
     }
 
     fun savePageCount(count: Int) {
-        runBlocking { dataStore.setPageCount(count) }
+        _pageCount = count
+        scope.launch { dataStore.setPageCount(count) }
         prefs.edit { putInt("page_count", count) }
     }
 
@@ -285,7 +331,7 @@ class LauncherPreferences(private val context: Context, initialDataStore: Settin
     }
 
     val pageCount: Int
-        get() = runBlocking { dataStore.pageCount.first() }
+        get() = _pageCount
 
     private fun deserializeItem(obj: JSONObject): HomeItem? {
         if (!obj.has("type")) return null
@@ -336,6 +382,10 @@ class LauncherPreferences(private val context: Context, initialDataStore: Settin
             }
         }
         return item
+    }
+
+    fun onDestroy() {
+        scope.cancel()
     }
 
     companion object {

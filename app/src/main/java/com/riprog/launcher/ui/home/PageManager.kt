@@ -75,7 +75,9 @@ class PageManager(
 
     fun cleanupEmptyPages() {
         while (pages.size > 1 && pages.last().childCount == 0) {
-            val lastPage = pages.removeAt(pages.size - 1)
+            val lastPageIndex = pages.size - 1
+            if (lastPageIndex == currentPage) break
+            val lastPage = pages.removeAt(lastPageIndex)
             container.removeView(lastPage)
         }
 
