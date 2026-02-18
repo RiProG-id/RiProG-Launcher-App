@@ -4,6 +4,7 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.FrameLayout
 import android.widget.LinearLayout
+import androidx.core.view.isEmpty
 import com.riprog.launcher.data.model.HomeItem
 import com.riprog.launcher.data.local.prefs.LauncherPreferences
 
@@ -74,8 +75,10 @@ class PageManager(
     }
 
     fun cleanupEmptyPages() {
-        while (pages.size > 1 && pages.last().childCount == 0) {
-            val lastPage = pages.removeAt(pages.size - 1)
+        while (pages.size > 1 && pages.last().isEmpty()) {
+            val lastPageIndex = pages.size - 1
+            if (lastPageIndex == currentPage) break
+            val lastPage = pages.removeAt(lastPageIndex)
             container.removeView(lastPage)
         }
 

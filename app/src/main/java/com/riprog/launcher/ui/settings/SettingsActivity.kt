@@ -30,6 +30,7 @@ import com.riprog.launcher.R
 import com.riprog.launcher.ui.home.HomeViewModel
 import com.riprog.launcher.data.local.prefs.LauncherPreferences
 import com.riprog.launcher.ui.common.ThemeUtils
+import org.koin.android.ext.android.inject
 import org.koin.androidx.viewmodel.ext.android.viewModel
 import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.flow.collectLatest
@@ -39,7 +40,7 @@ import kotlinx.coroutines.launch
 class SettingsActivity : ComponentActivity() {
 
     private val viewModel: HomeViewModel by viewModel()
-    private lateinit var settingsManager: LauncherPreferences
+    private val settingsManager: LauncherPreferences by inject()
 
     override fun onResume() {
         super.onResume()
@@ -49,7 +50,6 @@ class SettingsActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
-        settingsManager = LauncherPreferences(this)
 
         lifecycleScope.launch {
             viewModel.settings.themeMode.collectLatest { mode ->

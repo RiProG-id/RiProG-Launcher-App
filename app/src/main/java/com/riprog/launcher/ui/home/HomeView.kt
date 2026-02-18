@@ -197,10 +197,15 @@ class HomeView(context: Context, private val settingsManager: LauncherPreference
         val item = v.tag as? HomeItem
         if (item != null) initialPage = item.page
 
-        val vPos = IntArray(2)
-        v.getLocationOnScreen(vPos)
-        dragOffsetX = x - vPos[0]
-        dragOffsetY = y - vPos[1]
+        if (isExternal && v.layoutParams != null && v.layoutParams.width > 0) {
+            dragOffsetX = v.layoutParams.width / 2f
+            dragOffsetY = v.layoutParams.height / 2f
+        } else {
+            val vPos = IntArray(2)
+            v.getLocationOnScreen(vPos)
+            dragOffsetX = x - vPos[0]
+            dragOffsetY = y - vPos[1]
+        }
 
         if (context is MainActivity) {
             val root = v.rootView.findViewById<ViewGroup>(android.R.id.content)
@@ -474,7 +479,7 @@ class HomeView(context: Context, private val settingsManager: LauncherPreference
 
         if (isExternalDrag && context is MainActivity) {
             (v.parent as? ViewGroup)?.removeView(v)
-            (context as MainActivity).renderHomeItem(item)
+            (context as MainActivity).onExternalItemDropped(item)
         } else {
             addItemView(item, v)
         }

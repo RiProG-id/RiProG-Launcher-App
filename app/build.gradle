@@ -16,6 +16,10 @@ android {
         resConfigs "en"
     }
 
+    buildFeatures {
+        buildConfig true
+    }
+
     signingConfigs {
         release {
             storeFile file('release.keystore')
