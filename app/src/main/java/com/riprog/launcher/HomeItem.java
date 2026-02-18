@@ -1,11 +1,16 @@
 package com.riprog.launcher;
 
+import java.util.ArrayList;
+import java.util.List;
+
 public class HomeItem {
-    public enum Type { APP, WIDGET, CLOCK }
+    public enum Type { APP, WIDGET, CLOCK, FOLDER }
 
     public Type type;
     public String packageName;
     public String className;
+    public String folderName;
+    public List<HomeItem> folderItems = new ArrayList<>();
     public float row;
     public float col;
     public int spanX = 1;
@@ -53,6 +58,18 @@ public class HomeItem {
         item.row = row;
         item.spanX = spanX;
         item.spanY = spanY;
+        item.page = page;
+        return item;
+    }
+
+    public static HomeItem createFolder(String name, float col, float row, int page) {
+        HomeItem item = new HomeItem();
+        item.type = Type.FOLDER;
+        item.folderName = name;
+        item.col = col;
+        item.row = row;
+        item.spanX = 1;
+        item.spanY = 1;
         item.page = page;
         return item;
     }

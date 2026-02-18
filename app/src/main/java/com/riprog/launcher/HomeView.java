@@ -25,7 +25,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-public class HomeView extends FrameLayout {
+public class HomeView extends FrameLayout implements PageActionCallback {
     public static final int GRID_COLUMNS = 4;
     public static final int GRID_ROWS = 6;
 
@@ -174,6 +174,10 @@ public class HomeView extends FrameLayout {
         updateViewPosition(item, view);
         view.setTag(item);
         page.addView(view);
+
+        if (settingsManager.isLiquidGlass()) {
+            ThemeUtils.applyBlurIfSupported(view, true);
+        }
     }
 
     public void updateViewPosition(HomeItem item, View view) {
@@ -287,10 +291,43 @@ public class HomeView extends FrameLayout {
         }
     }
 
+    @Override
+    public void onAddPage() {
+        addPage();
+        scrollToPage(pages.size() - 1);
+        if (getContext() instanceof MainActivity) {
+            ((MainActivity) getContext()).saveHomeState();
+        }
+    }
+
+    @Override
+    public void onRemovePage() {
+        if (pages.size() <= 1) return;
+        int index = currentPage;
+        removePage(index);
+        if (currentPage >= pages.size()) {
+            currentPage = pages.size() - 1;
+        }
+        scrollToPage(currentPage);
+        if (getContext() instanceof MainActivity) {
+            ((MainActivity) getContext()).saveHomeState();
+        }
+    }
+
     public void removePage(int index) {
         if (index < 0 || index >= pages.size()) return;
         FrameLayout page = pages.remove(index);
         pagesContainer.removeView(page);
+
+        for (int i = 0; i < pages.size(); i++) {
+            FrameLayout p = pages.get(i);
+            for (int j = 0; j < p.getChildCount(); j++) {
+                View v = p.getChildAt(j);
+                HomeItem item = (HomeItem) v.getTag();
+                if (item != null) item.page = i;
+            }
+        }
+        pageIndicator.setPageCount(pages.size());
     }
 
     public void cancelDragging() {
@@ -302,6 +339,37 @@ public class HomeView extends FrameLayout {
     private void snapToGrid(HomeItem item, View v) {
         int cellWidth = getWidth() / GRID_COLUMNS;
         int cellHeight = getHeight() / GRID_ROWS;
+
+        if (getContext() instanceof MainActivity) {
+            MainActivity activity = (MainActivity) getContext();
+            float midX = v.getX() + v.getWidth() / 2f;
+            float midY = v.getY() + v.getHeight() / 2f;
+
+            View otherView = null;
+            FrameLayout currentPageLayout = pages.get(currentPage);
+            for (int i = 0; i < currentPageLayout.getChildCount(); i++) {
+                View child = currentPageLayout.getChildAt(i);
+                if (child == v) continue;
+                if (midX >= child.getX() && midX <= child.getX() + child.getWidth() &&
+                    midY >= child.getY() && midY <= child.getY() + child.getHeight()) {
+                    otherView = child;
+                    break;
+                }
+            }
+
+            if (otherView != null && item.type == HomeItem.Type.APP) {
+                HomeItem otherItem = (HomeItem) otherView.getTag();
+                if (otherItem != null) {
+                    if (otherItem.type == HomeItem.Type.APP) {
+                        activity.folderManager.mergeToFolder(otherItem, item, activity.homeItems);
+                        return;
+                    } else if (otherItem.type == HomeItem.Type.FOLDER) {
+                        activity.folderManager.addToFolder(otherItem, item, activity.homeItems);
+                        return;
+                    }
+                }
+            }
+        }
 
         if (settingsManager.isFreeformHome()) {
             item.col = v.getX() / (float) cellWidth;
