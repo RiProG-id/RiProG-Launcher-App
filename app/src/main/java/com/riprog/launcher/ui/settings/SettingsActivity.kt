@@ -30,6 +30,7 @@ import com.riprog.launcher.R
 import com.riprog.launcher.ui.home.HomeViewModel
 import com.riprog.launcher.data.local.prefs.LauncherPreferences
 import com.riprog.launcher.ui.common.ThemeUtils
+import com.riprog.launcher.ui.common.ThemeMechanism
 import org.koin.android.ext.android.inject
 import org.koin.androidx.viewmodel.ext.android.viewModel
 import androidx.lifecycle.lifecycleScope
@@ -298,43 +299,11 @@ class SettingsActivity : ComponentActivity() {
     }
 
     private fun applyThemeMode(mode: String?) {
-        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
-            val uiModeManager = getSystemService(Context.UI_MODE_SERVICE) as UiModeManager
-            var nightMode = UiModeManager.MODE_NIGHT_AUTO
-            if ("light" == mode) nightMode = UiModeManager.MODE_NIGHT_NO
-            else if ("dark" == mode) nightMode = UiModeManager.MODE_NIGHT_YES
-            uiModeManager.setApplicationNightMode(nightMode)
-        }
+        ThemeMechanism.applyThemeMode(this, mode)
     }
 
     private fun applySettingItemStyle(item: LinearLayout) {
-        item.isClickable = true
-        item.isFocusable = true
-
-        val radius = dpToPx(12).toFloat()
-        val isNight = (resources.configuration.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK) == android.content.res.Configuration.UI_MODE_NIGHT_YES
-
-        val shape = GradientDrawable()
-        val baseColor = if (settingsManager.isLiquidGlass) {
-            if (isNight) 0x26FFFFFF else 0x1A000000
-        } else {
-            if (isNight) 0x1AFFFFFF else 0x0D000000
-        }
-        shape.setColor(baseColor)
-        shape.cornerRadius = radius
-        if (settingsManager.isLiquidGlass) {
-            shape.setStroke(dpToPx(1), 0x20FFFFFF)
-        }
-
-        val mask = GradientDrawable()
-        mask.setColor(Color.BLACK)
-        mask.cornerRadius = radius
-
-        item.background = RippleDrawable(
-            ColorStateList.valueOf(getColor(R.color.search_background)),
-            shape,
-            mask
-        )
+        ThemeMechanism.applySettingItemStyle(this, item, settingsManager)
     }
 
     private fun addScaleSetting(parent: LinearLayout) {

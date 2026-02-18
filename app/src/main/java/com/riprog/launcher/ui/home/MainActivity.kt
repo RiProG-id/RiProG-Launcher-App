@@ -39,9 +39,12 @@ import com.riprog.launcher.ui.drawer.DrawerView
 import com.riprog.launcher.ui.drag.DragController
 import com.riprog.launcher.ui.common.Logger
 import com.riprog.launcher.ui.drag.TransformOverlay
+import com.riprog.launcher.ui.drag.FreeformInteraction
+import com.riprog.launcher.ui.home.manager.FolderUI
 import com.riprog.launcher.ui.settings.SettingsActivity
 import com.riprog.launcher.data.local.prefs.LauncherPreferences
 import com.riprog.launcher.ui.common.ThemeUtils
+import com.riprog.launcher.ui.common.ThemeMechanism
 import org.koin.android.ext.android.inject
 import org.koin.androidx.viewmodel.ext.android.viewModel
 import androidx.lifecycle.lifecycleScope
@@ -66,13 +69,12 @@ class MainActivity : ComponentActivity(), MainLayout.Callback, AppInstallReceive
     private var homeView: HomeView? = null
     private var drawerView: DrawerView? = null
     lateinit var folderManager: FolderManager
+    lateinit var folderUI: FolderUI
     lateinit var widgetManager: WidgetManager
     lateinit var gridManager: GridManager
+    private lateinit var autoDimming: AutoDimmingBackground
+    private lateinit var freeformInteraction: FreeformInteraction
     var allApps = mutableListOf<AppItem>()
-    private var currentTransformOverlay: TransformOverlay? = null
-    private var transformingViewOriginalParent: ViewGroup? = null
-    private var transformingViewOriginalIndex: Int = -1
-    private var transformingView: View? = null
     private var appInstallReceiver: AppInstallReceiver? = null
     private var homeItems = mutableListOf<HomeItem>()
     private var lastGridCol = 0f
@@ -165,15 +167,29 @@ class MainActivity : ComponentActivity(), MainLayout.Callback, AppInstallReceive
 
         gridManager = GridManager()
         folderManager = FolderManager(this, preferences)
+        folderUI = FolderUI(this, preferences)
         widgetManager = WidgetManager(this, preferences, appWidgetManager, appWidgetHost)
+        autoDimming = AutoDimmingBackground(this, mainLayout!!, preferences)
+        freeformInteraction = FreeformInteraction(this, mainLayout!!, preferences, object : FreeformInteraction.InteractionCallback {
+            override fun onSaveState() = saveHomeState()
+            override fun onRemoveItem(item: HomeItem, view: View) = removeHomeItem(item, view)
+            override fun onShowAppInfo(item: HomeItem) = showAppInfo(item)
+            override fun onEdgeScroll(x: Float) { homeView?.checkEdgeScrollLoopStart(x) }
+            override fun onDragStart(x: Float, page: Int) { homeView?.setInitialDragState(x, page) }
+            override fun onCollision(otherView: View) = showTransformOverlay(otherView)
+            override fun findItemAt(x: Float, y: Float, exclude: View): View? = findHomeItemAtRoot(x, y, exclude)
+            override fun onUninstallItem(item: HomeItem) = uninstallApp(item)
+            override fun onUpdateHomeItemFromTransform(v: View) = updateHomeItemFromTransform(v)
+            override fun onUpdateViewPosition(item: HomeItem, v: View) { homeView?.updateViewPosition(item, v) }
+        })
 
         applyDynamicColors()
         registerAppInstallReceiver()
 
         onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
             override fun handleOnBackPressed() {
-                if (currentTransformOverlay != null) {
-                    closeTransformOverlay()
+                if (freeformInteraction.isTransforming()) {
+                    freeformInteraction.closeTransformOverlay()
                     return
                 }
                 if (folderManager.isFolderOpen()) {
@@ -260,7 +276,7 @@ class MainActivity : ComponentActivity(), MainLayout.Callback, AppInstallReceive
 
         lifecycleScope.launch {
             viewModel.settings.isDarkenWallpaper.collectLatest {
-                mainLayout?.updateDimVisibility()
+                autoDimming.updateDimVisibility()
                 homeView?.refreshIcons(appLoader!!, allApps)
                 drawerView?.refreshTheme()
             }
@@ -357,7 +373,7 @@ class MainActivity : ComponentActivity(), MainLayout.Callback, AppInstallReceive
         saveHomeState()
     }
 
-    override fun isTransforming(): Boolean = currentTransformOverlay != null
+    override fun isTransforming(): Boolean = freeformInteraction.isTransforming()
 
     override fun isFolderOpen(): Boolean = folderManager.isFolderOpen()
 
@@ -451,59 +467,15 @@ class MainActivity : ComponentActivity(), MainLayout.Callback, AppInstallReceive
     }
 
     private fun createFolderView(item: HomeItem, isOnGlass: Boolean): View? {
-        val container = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            gravity = Gravity.CENTER
-        }
-
         val hv = homeView
         val gridM = hv?.gridManager ?: gridManager
         val cellWidth = if ((hv?.width ?: 0) > 0) gridM.getCellWidth(hv!!.width) else 1
         val cellHeight = if ((hv?.height ?: 0) > 0) gridM.getCellHeight(hv!!.height) else 1
 
-        val previewContainer = FrameLayout(this)
-        val scale = preferences.iconScale
-        val sizeW: Int
-        val sizeH: Int
+        val container = folderUI.createFolderView(item, isOnGlass, cellWidth, cellHeight)
+        val grid = container.findViewWithTag<GridLayout>("folder_grid")
+        if (grid != null) refreshFolderPreview(item, grid)
 
-        if (item.spanX <= 1.0f && item.spanY <= 1.0f) {
-            val baseSize = resources.getDimensionPixelSize(R.dimen.grid_icon_size)
-            sizeW = (baseSize * scale).toInt()
-            sizeH = sizeW
-        } else {
-            sizeW = (cellWidth * item.spanX).toInt()
-            sizeH = (cellHeight * item.spanY).toInt()
-        }
-
-        previewContainer.layoutParams = LinearLayout.LayoutParams(sizeW, sizeH)
-        previewContainer.background = ThemeUtils.getGlassDrawable(this, preferences, 12f)
-        val padding = dpToPx(6)
-        previewContainer.setPadding(padding, padding, padding, padding)
-
-        val grid = GridLayout(this).apply {
-            tag = "folder_grid"
-            columnCount = 2
-            rowCount = 2
-        }
-        previewContainer.addView(grid, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
-
-        refreshFolderPreview(item, grid)
-
-        val labelView = TextView(this).apply {
-            tag = "item_label"
-            setTextColor(ThemeUtils.getAdaptiveColor(this@MainActivity, preferences, isOnGlass))
-            textSize = 10 * scale
-            gravity = Gravity.CENTER
-            maxLines = 1
-            ellipsize = TextUtils.TruncateAt.END
-            text = if (item.folderName.isNullOrEmpty()) "" else item.folderName
-        }
-
-        container.addView(previewContainer)
-        container.addView(labelView)
-        if (preferences.isHideLabels) {
-            labelView.visibility = View.GONE
-        }
         return container
     }
 
@@ -699,67 +671,30 @@ class MainActivity : ComponentActivity(), MainLayout.Callback, AppInstallReceive
     }
 
     override fun showHomeContextMenu(col: Float, row: Float, page: Int) {
-        val optionsList = mutableListOf<String>()
-        val iconsList = mutableListOf<Int>()
-
-        optionsList.add(getString(R.string.menu_widgets))
-        iconsList.add(R.drawable.ic_widgets)
-        optionsList.add(getString(R.string.menu_wallpaper))
-        iconsList.add(R.drawable.ic_wallpaper)
-        optionsList.add(getString(R.string.menu_settings))
-        iconsList.add(R.drawable.ic_settings)
-        optionsList.add(getString(R.string.layout_add_page))
-        iconsList.add(R.drawable.ic_layout)
-
-        if (homeView?.getPageCount() ?: 0 > 1) {
-            optionsList.add(getString(R.string.layout_remove_page))
-            iconsList.add(R.drawable.ic_remove)
-        }
-
-        val adaptiveColor = ThemeUtils.getAdaptiveColor(this, preferences, true)
-        val adapter = object : ArrayAdapter<String>(this, android.R.layout.select_dialog_item, android.R.id.text1, optionsList) {
-            override fun getView(position: Int, convertView: View?, parent: ViewGroup): View {
-                val view = super.getView(position, convertView, parent)
-                val tv = view.findViewById<TextView>(android.R.id.text1)
-                tv.setCompoundDrawablesWithIntrinsicBounds(iconsList[position], 0, 0, 0)
-                tv.compoundDrawablePadding = dpToPx(16)
-                tv.setTextColor(adaptiveColor)
-                tv.compoundDrawables[0]?.setTint(adaptiveColor)
-                return view
+        val menu = PageMenuUI(this, preferences, object : PageMenuUI.PageActionCallback {
+            override fun onAddPage() {
+                homeView?.addPage()
+                saveHomeState()
+                Toast.makeText(this@MainActivity, R.string.page_added, Toast.LENGTH_SHORT).show()
             }
-        }
-
-        val dialog = android.app.AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert)
-            .setTitle(R.string.title_home_menu)
-            .setAdapter(adapter) { _, which ->
-                when (optionsList[which]) {
-                    getString(R.string.menu_widgets) -> {
-                        val c = if (!preferences.isFreeformHome) Math.round(col).toFloat() else col
-                        val r = if (!preferences.isFreeformHome) Math.round(row).toFloat() else row
-                        widgetManager.pickWidget(c, r)
-                    }
-                    getString(R.string.menu_wallpaper) -> openWallpaperPicker()
-                    getString(R.string.menu_settings) -> openSettings()
-                    getString(R.string.layout_add_page) -> {
-                        homeView?.addPage()
+            override fun onRemovePage() {
+                homeView?.let {
+                    if (it.getPageCount() > 1) {
+                        it.removePage(it.getCurrentPage())
                         saveHomeState()
-                        Toast.makeText(this, R.string.page_added, Toast.LENGTH_SHORT).show()
-                    }
-                    getString(R.string.layout_remove_page) -> {
-                        homeView?.let {
-                            if (it.getPageCount() > 1) {
-                                it.removePage(it.getCurrentPage())
-                                saveHomeState()
-                            }
-                        }
                     }
                 }
-            }.create()
-        dialog.show()
-        dialog.window?.let {
-            it.setBackgroundDrawable(ThemeUtils.getGlassDrawable(this, preferences))
-            ThemeUtils.applyWindowBlur(it, preferences.isLiquidGlass)
-        }
+            }
+            override fun onOpenWidgets() {
+                val c = if (!preferences.isFreeformHome) Math.round(col).toFloat() else col
+                val r = if (!preferences.isFreeformHome) Math.round(row).toFloat() else row
+                widgetManager.pickWidget(c, r)
+            }
+            override fun onOpenWallpaper() = openWallpaperPicker()
+            override fun onOpenSettings() = openSettings()
+            override fun getPageCount(): Int = homeView?.getPageCount() ?: 0
+        })
+        menu.showPageMenu()
     }
 
     private fun openWallpaperPicker() {
@@ -785,13 +720,9 @@ class MainActivity : ComponentActivity(), MainLayout.Callback, AppInstallReceive
     }
 
     private fun applyDynamicColors() {
-        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
-            try {
-                val accentColor = resources.getColor(android.R.color.system_accent1_400, theme)
-                homeView?.setAccentColor(accentColor)
-                drawerView?.setAccentColor(accentColor)
-            } catch (ignored: Exception) {
-            }
+        ThemeMechanism.getSystemAccentColor(this)?.let { accentColor ->
+            homeView?.setAccentColor(accentColor)
+            drawerView?.setAccentColor(accentColor)
         }
     }
 
@@ -837,23 +768,20 @@ class MainActivity : ComponentActivity(), MainLayout.Callback, AppInstallReceive
     }
 
 
-    private fun updateHomeItemFromTransform() {
-        val v = transformingView ?: return
-        val parent = transformingViewOriginalParent ?: return
+    private fun updateHomeItemFromTransform(v: View) {
         val item = v.tag as HomeItem
         val isFreeform = preferences.isFreeformHome
 
-        homeView?.let {
+        val parent = homeView?.let {
             item.page = it.getCurrentPage()
             val pagesContainer = it.pagesContainer
             if (item.page < pagesContainer.childCount) {
-                transformingViewOriginalParent = pagesContainer.getChildAt(item.page) as? ViewGroup
-                transformingViewOriginalIndex = -1
-            }
-        }
+                pagesContainer.getChildAt(item.page) as? ViewGroup
+            } else null
+        } ?: return
 
-        val cellWidth = gridManager.getCellWidth(transformingViewOriginalParent!!.width)
-        val cellHeight = gridManager.getCellHeight(transformingViewOriginalParent!!.height)
+        val cellWidth = gridManager.getCellWidth(parent.width)
+        val cellHeight = gridManager.getCellHeight(parent.height)
 
         if (isFreeform) {
             item.rotation = v.rotation
@@ -876,7 +804,7 @@ class MainActivity : ComponentActivity(), MainLayout.Callback, AppInstallReceive
         }
 
         val pagePos = IntArray(2)
-        transformingViewOriginalParent!!.getLocationOnScreen(pagePos)
+        parent.getLocationOnScreen(pagePos)
         val rootPos = IntArray(2)
         mainLayout?.getLocationOnScreen(rootPos)
 
@@ -906,12 +834,10 @@ class MainActivity : ComponentActivity(), MainLayout.Callback, AppInstallReceive
                 if (target.type == HomeItem.Type.APP) {
                     mainLayout?.removeView(v)
                     mergeToFolder(target, item)
-                    transformingView = null
                     return
                 } else if (target.type == HomeItem.Type.FOLDER) {
                     mainLayout?.removeView(v)
                     addToFolder(target, item)
-                    transformingView = null
                     return
                 }
             }
@@ -919,70 +845,12 @@ class MainActivity : ComponentActivity(), MainLayout.Callback, AppInstallReceive
     }
 
     override fun showTransformOverlay(v: View) {
-        if (currentTransformOverlay != null) return
         setOverlayBlur(true, true)
-        transformingView = v
-        transformingViewOriginalParent = v.parent as? ViewGroup
-        transformingViewOriginalIndex = transformingViewOriginalParent?.indexOfChild(v) ?: -1
-
-        var x = v.x
-        var y = v.y
-        var p = v.parent
-        while (p != null && p !== mainLayout) {
-            if (p is View) {
-                x += p.x
-                y += p.y
-            }
-            p = p.parent
-        }
-
-        transformingViewOriginalParent?.removeView(v)
-        mainLayout?.addView(v)
-        v.x = x
-        v.y = y
-
-        currentTransformOverlay = TransformOverlay(this, v, preferences, object : TransformOverlay.OnSaveListener {
-            override fun onMove(x: Float, y: Float) {
-                homeView?.checkEdgeScrollLoopStart(x)
-            }
-            override fun onMoveStart(x: Float, y: Float) {
-                val item = v.tag as? HomeItem
-                homeView?.setInitialDragState(x, item?.page ?: -1)
-            }
-            override fun onSave() {
-                updateHomeItemFromTransform()
-                saveHomeState()
-                closeTransformOverlay()
-            }
-            override fun onCancel() {
-                closeTransformOverlay()
-            }
-            override fun onRemove() {
-                removeHomeItem(v.tag as HomeItem, v)
-                transformingView = null
-                closeTransformOverlay()
-            }
-            override fun onAppInfo() {
-                showAppInfo(v.tag as HomeItem)
-            }
-            override fun onUninstall() {
-                uninstallApp(v.tag as HomeItem)
-            }
-            override fun onCollision(otherView: View) {
-                updateHomeItemFromTransform()
-                saveHomeState()
-                closeTransformOverlay()
-                showTransformOverlay(otherView)
-            }
-            override fun findItemAt(x: Float, y: Float, exclude: View): View? {
-                return findHomeItemAtRoot(x, y, exclude)
-            }
-        })
-        mainLayout?.addView(currentTransformOverlay, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
+        freeformInteraction.showTransformOverlay(v)
     }
 
     override fun startTransformDirectMove(v: View, x: Float, y: Float) {
-        currentTransformOverlay?.startDirectMove(x, y)
+        freeformInteraction.startDirectMove(x, y)
     }
 
     private fun findHomeItemAtRoot(x: Float, y: Float, exclude: View): View? {
@@ -1007,27 +875,16 @@ class MainActivity : ComponentActivity(), MainLayout.Callback, AppInstallReceive
     }
 
     private fun closeTransformOverlay() {
-        currentTransformOverlay?.let {
-            mainLayout?.removeView(it)
-            currentTransformOverlay = null
-
-            if (transformingView != null && transformingViewOriginalParent != null) {
-                mainLayout?.removeView(transformingView)
-                transformingViewOriginalParent?.addView(transformingView, transformingViewOriginalIndex)
-                homeView?.updateViewPosition(transformingView?.tag as HomeItem, transformingView!!)
-            }
-            setOverlayBlur(false, true)
-            transformingView = null
-            transformingViewOriginalParent = null
-            homeView?.pageManager?.cleanupEmptyPages()
-            homeView?.refreshIcons(appLoader!!, allApps)
-        }
+        freeformInteraction.closeTransformOverlay()
+        setOverlayBlur(false, true)
+        homeView?.pageManager?.cleanupEmptyPages()
+        homeView?.refreshIcons(appLoader!!, allApps)
     }
 
     override fun onResume() {
         super.onResume()
         ThemeUtils.updateStatusBarContrast(this)
-        mainLayout?.updateDimVisibility()
+        autoDimming.updateDimVisibility()
         homeView?.refreshLayout()
         homeView?.refreshIcons(appLoader!!, allApps)
     }
@@ -1173,15 +1030,7 @@ class MainActivity : ComponentActivity(), MainLayout.Callback, AppInstallReceive
     }
 
     private fun applyThemeMode(mode: String?) {
-        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
-            val uiModeManager = getSystemService(Context.UI_MODE_SERVICE) as android.app.UiModeManager
-            val nightMode = when (mode) {
-                "light" -> android.app.UiModeManager.MODE_NIGHT_NO
-                "dark" -> android.app.UiModeManager.MODE_NIGHT_YES
-                else -> android.app.UiModeManager.MODE_NIGHT_AUTO
-            }
-            if (uiModeManager.nightMode != nightMode) uiModeManager.setApplicationNightMode(nightMode)
-        }
+        ThemeMechanism.applyThemeMode(this, mode)
     }
 
     private fun dpToPx(dp: Int): Int {
@@ -1222,5 +1071,5 @@ class MainActivity : ComponentActivity(), MainLayout.Callback, AppInstallReceive
         mainLayout?.closeDrawerInstantly()
     }
 
-    override fun getTransformOverlay(): View? = currentTransformOverlay
+    override fun getTransformOverlay(): View? = freeformInteraction.getOverlay()
 }

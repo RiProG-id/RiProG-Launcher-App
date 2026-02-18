@@ -44,7 +44,6 @@ class MainLayout(context: Context, private val callback: Callback) : FrameLayout
         fun getTransformOverlay(): View?
     }
 
-    private var dimView: View? = null
     var isDrawerOpen = false
         private set
     private var startX = 0f
@@ -82,25 +81,6 @@ class MainLayout(context: Context, private val callback: Callback) : FrameLayout
     }
 
     init {
-        setupDimView()
-    }
-
-    private fun setupDimView() {
-        dimView = View(context)
-        dimView!!.setBackgroundColor(Color.BLACK)
-        dimView!!.alpha = 0.3f
-        dimView!!.visibility = GONE
-        addView(dimView, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT))
-    }
-
-    fun updateDimVisibility() {
-        val isNight = (resources.configuration.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK) ==
-                android.content.res.Configuration.UI_MODE_NIGHT_YES
-        if (isNight && callback.getSettingsManager().isDarkenWallpaper) {
-            dimView!!.visibility = VISIBLE
-        } else {
-            dimView!!.visibility = GONE
-        }
     }
 
     override fun performClick(): Boolean {
