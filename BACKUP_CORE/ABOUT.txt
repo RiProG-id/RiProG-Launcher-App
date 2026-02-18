@@ -1,0 +1,28 @@
+RiProG Launcher
+
+An ultra-lightweight, high-performance Android launcher designed for simplicity and speed.
+
+CORE FEATURES
+• Minimal RAM & CPU Footprint
+• Premium Liquid Glass UI Aesthetic
+• Efficient App Drawer with Search
+• Alphabetical Quick Navigation Bar
+• Advanced Widget Selection UI
+• Precision Freeform Layout Support
+• Seamless Icon & Label Scaling
+• Full Material Design Theme Integration
+
+PROJECT RESOURCES
+GitHub: https://github.com/RiProG-id/RiProG-Launcher-App
+Telegram: https://t.me/RiOpSo
+Telegram Group: https://t.me/RiOpSoDisc
+
+SUPPORT DEVELOPMENT
+PayPal: https://paypal.me/RiProG
+Sociabuzz: https://sociabuzz.com/riprog/tribe
+Dana / GoPay: 0831-4095-0951
+Bank Jago: 503442488516
+
+FREE SUPPORT
+Safelinku: https://sfl.gl/NTX6
+Arahlink: https://arahlink.id/WAUR
