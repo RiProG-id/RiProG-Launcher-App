@@ -22,9 +22,11 @@ import com.riprog.launcher.R
 import com.riprog.launcher.data.model.AppItem
 import com.riprog.launcher.data.repository.AppLoader
 import com.riprog.launcher.data.local.prefs.LauncherPreferences
+import android.annotation.SuppressLint
 import com.riprog.launcher.ui.common.ThemeUtils
 import java.util.Locale
 
+@SuppressLint("ViewConstructor")
 class DrawerView(context: Context, private val settingsManager: LauncherPreferences) : LinearLayout(context) {
     private val listView: ListView
     private val adapter: AppRowAdapter
