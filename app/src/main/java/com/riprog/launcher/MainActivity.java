@@ -235,7 +235,7 @@ public class MainActivity extends Activity {
                 view = createClockView(item);
                 break;
             case FOLDER:
-                view = folderUI.createFolderView(item, true, homeView.getWidth() / HomeView.GRID_COLUMNS, homeView.getHeight() / HomeView.GRID_ROWS);
+                view = folderUI.createFolderView(item, true, homeView.getWidth() / HomeView.GRID_COLUMNS, (homeView.getHeight() - dpToPx(48)) / HomeView.GRID_ROWS);
                 break;
         }
         if (view != null) {

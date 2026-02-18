@@ -58,9 +58,9 @@ public class MainLayout extends FrameLayout {
                 }
             } else {
                 int cellWidth = getWidth() / HomeView.GRID_COLUMNS;
-                int cellHeight = getHeight() / HomeView.GRID_ROWS;
+                int cellHeight = (getHeight() - dpToPx(48)) / HomeView.GRID_ROWS;
                 float col = startX / (cellWidth > 0 ? (float) cellWidth : 1.0f);
-                float row = startY / (cellHeight > 0 ? (float) cellHeight : 1.0f);
+                float row = (startY - dpToPx(48)) / (cellHeight > 0 ? (float) cellHeight : 1.0f);
                 activity.showHomeContextMenu(col, row, activity.homeView.getCurrentPage());
             }
         }
@@ -331,8 +331,13 @@ public class MainLayout extends FrameLayout {
         ViewGroup pagesContainer = (ViewGroup) activity.homeView.getChildAt(0);
         if (pagesContainer != null && page < pagesContainer.getChildCount()) {
             ViewGroup pageLayout = (ViewGroup) pagesContainer.getChildAt(page);
-            float adjustedX = x - pagesContainer.getPaddingLeft();
-            float adjustedY = y - pagesContainer.getPaddingTop();
+
+            float pageAbsX = pagesContainer.getTranslationX() + pageLayout.getLeft();
+            float pageAbsY = pagesContainer.getTranslationY() + pageLayout.getTop();
+
+            float adjustedX = x - pageAbsX;
+            float adjustedY = y - pageAbsY;
+
             for (int i = pageLayout.getChildCount() - 1; i >= 0; i--) {
                 View child = pageLayout.getChildAt(i);
                 if (adjustedX >= child.getX() && adjustedX <= child.getX() + child.getWidth() &&
