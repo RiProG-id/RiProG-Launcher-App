@@ -1,4 +1,9 @@
-package com.riprog.launcher
+package com.riprog.launcher.ui.views.layout
+
+import com.riprog.launcher.ui.views.home.HomeView
+import com.riprog.launcher.ui.activities.MainActivity
+import com.riprog.launcher.data.model.HomeItem
+import com.riprog.launcher.R
 
 import android.content.Context
 import android.graphics.Color

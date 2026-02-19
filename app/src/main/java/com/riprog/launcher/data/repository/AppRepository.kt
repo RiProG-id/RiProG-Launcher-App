@@ -1,4 +1,6 @@
-package com.riprog.launcher
+package com.riprog.launcher.data.repository
+
+import com.riprog.launcher.data.model.AppItem
 
 import android.content.ComponentCallbacks2
 import android.content.Context
@@ -15,7 +17,7 @@ import java.util.*
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 
-class LauncherModel(context: Context) {
+class AppRepository(context: Context) {
     fun interface OnAppsLoadedListener {
         fun onAppsLoaded(apps: List<AppItem>)
     }

@@ -1,4 +1,7 @@
-package com.riprog.launcher
+package com.riprog.launcher.theme
+
+import com.riprog.launcher.logic.managers.SettingsManager
+import com.riprog.launcher.R
 
 import android.app.UiModeManager
 import android.content.Context
@@ -11,7 +14,7 @@ import android.os.Build
 import android.util.TypedValue
 import android.widget.LinearLayout
 
-object ThemeMechanism {
+object ThemeManager {
 
 
     fun applyThemeMode(context: Context, mode: String?) {

@@ -1,10 +1,12 @@
-package com.riprog.launcher
+package com.riprog.launcher.data.repository
+
+import com.riprog.launcher.data.model.AppItem
 
 import org.junit.Test
 import org.junit.Assert.assertEquals
 import java.util.ArrayList
 
-class LauncherModelTest {
+class AppRepositoryTest {
     @Test
     fun testFilterApps() {
         val apps: MutableList<AppItem> = ArrayList()
@@ -12,14 +14,14 @@ class LauncherModelTest {
         apps.add(AppItem("Settings", "com.android.settings", ""))
         apps.add(AppItem("Phone", "com.android.phone", ""))
 
-        var filtered = LauncherModel.filterApps(apps, "cam")
+        var filtered = AppRepository.filterApps(apps, "cam")
         assertEquals(1, filtered.size)
         assertEquals("Camera", filtered[0].label)
 
-        filtered = LauncherModel.filterApps(apps, "")
+        filtered = AppRepository.filterApps(apps, "")
         assertEquals(3, filtered.size)
 
-        filtered = LauncherModel.filterApps(apps, "xyz")
+        filtered = AppRepository.filterApps(apps, "xyz")
         assertEquals(0, filtered.size)
     }
 }

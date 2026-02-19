@@ -1,4 +1,6 @@
-package com.riprog.launcher
+package com.riprog.launcher.logic.managers
+
+import com.riprog.launcher.data.model.HomeItem
 
 import android.content.Context
 import android.content.SharedPreferences

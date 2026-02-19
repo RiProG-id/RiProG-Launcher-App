@@ -1,4 +1,9 @@
-package com.riprog.launcher
+package com.riprog.launcher.logic.managers
+
+import com.riprog.launcher.ui.views.home.HomeView
+import com.riprog.launcher.ui.activities.MainActivity
+import com.riprog.launcher.theme.ThemeUtils
+import com.riprog.launcher.R
 
 import android.app.Dialog
 import android.appwidget.AppWidgetHost

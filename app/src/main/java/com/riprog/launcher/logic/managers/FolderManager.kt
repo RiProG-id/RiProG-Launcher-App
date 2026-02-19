@@ -1,4 +1,9 @@
-package com.riprog.launcher
+package com.riprog.launcher.logic.managers
+
+import com.riprog.launcher.ui.activities.MainActivity
+import com.riprog.launcher.theme.ThemeUtils
+import com.riprog.launcher.data.model.HomeItem
+import com.riprog.launcher.data.model.AppItem
 
 import android.annotation.SuppressLint
 import android.content.Context

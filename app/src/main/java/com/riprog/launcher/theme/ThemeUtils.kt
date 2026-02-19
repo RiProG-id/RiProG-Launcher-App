@@ -1,4 +1,7 @@
-package com.riprog.launcher
+package com.riprog.launcher.theme
+
+import com.riprog.launcher.logic.managers.SettingsManager
+import com.riprog.launcher.R
 
 import android.app.Activity
 import android.content.Context

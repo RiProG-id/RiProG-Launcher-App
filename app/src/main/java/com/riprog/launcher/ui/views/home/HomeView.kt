@@ -1,4 +1,12 @@
-package com.riprog.launcher
+package com.riprog.launcher.ui.views.home
+
+import com.riprog.launcher.ui.activities.MainActivity
+import com.riprog.launcher.logic.managers.SettingsManager
+import com.riprog.launcher.data.repository.AppRepository
+import com.riprog.launcher.data.model.HomeItem
+import com.riprog.launcher.data.model.AppItem
+import com.riprog.launcher.callback.PageActionCallback
+import com.riprog.launcher.R
 
 import android.content.Context
 import android.graphics.Color
@@ -27,7 +35,7 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
     var currentPage: Int = 0
         private set
     private var accentColor = Color.WHITE
-    private var model: LauncherModel? = null
+    private var model: AppRepository? = null
     private var allApps: List<AppItem>? = null
 
     private var draggingView: View? = null
@@ -434,7 +442,7 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
         return pages.size
     }
 
-    fun refreshIcons(model: LauncherModel, allApps: List<AppItem>) {
+    fun refreshIcons(model: AppRepository, allApps: List<AppItem>) {
         this.model = model
         this.allApps = allApps
         val scale = settingsManager.iconScale

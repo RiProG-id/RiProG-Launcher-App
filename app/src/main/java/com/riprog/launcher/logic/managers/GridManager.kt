@@ -1,4 +1,4 @@
-package com.riprog.launcher
+package com.riprog.launcher.logic.managers
 
 import kotlin.math.max
 

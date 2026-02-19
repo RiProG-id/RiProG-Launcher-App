@@ -1,4 +1,9 @@
-package com.riprog.launcher
+package com.riprog.launcher.ui.views.folder
+
+import com.riprog.launcher.theme.ThemeUtils
+import com.riprog.launcher.logic.managers.SettingsManager
+import com.riprog.launcher.data.model.HomeItem
+import com.riprog.launcher.R
 
 import android.content.Context
 import android.text.TextUtils
@@ -11,7 +16,7 @@ import android.widget.GridLayout
 import android.widget.LinearLayout
 import android.widget.TextView
 
-class FolderUI(private val context: Context, private val preferences: SettingsManager) {
+class FolderViewFactory(private val context: Context, private val preferences: SettingsManager) {
 
     fun createFolderView(item: HomeItem, isOnGlass: Boolean, cellWidth: Int, cellHeight: Int): View {
         val container = LinearLayout(context)

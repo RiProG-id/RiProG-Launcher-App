@@ -1,4 +1,6 @@
-package com.riprog.launcher
+package com.riprog.launcher.ui.views.layout
+
+import com.riprog.launcher.logic.managers.SettingsManager
 
 import android.content.Context
 import android.content.res.Configuration

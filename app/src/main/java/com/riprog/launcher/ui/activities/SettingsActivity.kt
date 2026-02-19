@@ -1,4 +1,9 @@
-package com.riprog.launcher
+package com.riprog.launcher.ui.activities
+
+import com.riprog.launcher.theme.ThemeUtils
+import com.riprog.launcher.theme.ThemeManager
+import com.riprog.launcher.logic.managers.SettingsManager
+import com.riprog.launcher.R
 
 import android.app.Activity
 import android.content.Context
@@ -21,13 +26,13 @@ class SettingsActivity : Activity() {
 
     override fun attachBaseContext(newBase: Context) {
         val sm = SettingsManager(newBase)
-        super.attachBaseContext(ThemeMechanism.applyThemeToContext(newBase, sm.themeMode))
+        super.attachBaseContext(ThemeManager.applyThemeToContext(newBase, sm.themeMode))
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         settingsManager = SettingsManager(this)
-        ThemeMechanism.applyThemeMode(this, settingsManager.themeMode)
+        ThemeManager.applyThemeMode(this, settingsManager.themeMode)
 
         val w = window
         w.setFlags(WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS, WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS)
@@ -137,7 +142,7 @@ class SettingsActivity : Activity() {
         val item = LinearLayout(this)
         item.orientation = LinearLayout.VERTICAL
         item.setPadding(dpToPx(16), dpToPx(16), dpToPx(16), dpToPx(16))
-        ThemeMechanism.applySettingItemStyle(this, item, settingsManager)
+        ThemeManager.applySettingItemStyle(this, item, settingsManager)
 
         val adaptiveColor = ThemeUtils.getAdaptiveColor(this, settingsManager, true)
 
@@ -174,7 +179,7 @@ class SettingsActivity : Activity() {
 
             option.setOnClickListener {
                 settingsManager.themeMode = values[index]
-                ThemeMechanism.applyThemeMode(this, values[index])
+                ThemeManager.applyThemeMode(this, values[index])
                 recreate()
             }
 
@@ -217,7 +222,7 @@ class SettingsActivity : Activity() {
         item.orientation = LinearLayout.HORIZONTAL
         item.gravity = Gravity.CENTER_VERTICAL
         item.setPadding(dpToPx(16), dpToPx(16), dpToPx(16), dpToPx(16))
-        ThemeMechanism.applySettingItemStyle(this, item, settingsManager)
+        ThemeManager.applySettingItemStyle(this, item, settingsManager)
 
         val textLayout = LinearLayout(this)
         textLayout.orientation = LinearLayout.VERTICAL
@@ -258,7 +263,7 @@ class SettingsActivity : Activity() {
         val item = LinearLayout(this)
         item.orientation = LinearLayout.VERTICAL
         item.setPadding(dpToPx(16), dpToPx(16), dpToPx(16), dpToPx(16))
-        ThemeMechanism.applySettingItemStyle(this, item, settingsManager)
+        ThemeManager.applySettingItemStyle(this, item, settingsManager)
 
         val adaptiveColor = ThemeUtils.getAdaptiveColor(this, settingsManager, true)
 
