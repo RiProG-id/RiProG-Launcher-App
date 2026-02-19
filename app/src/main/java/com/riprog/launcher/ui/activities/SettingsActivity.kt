@@ -76,6 +76,8 @@ class SettingsActivity : ComponentActivity() {
 
         setContentView(rootContainer)
 
+        val sm = SettingsManager(this)
+        currentSettings = sm.getSettings()
         buildUi(currentSettings)
 
         observeViewModel()
@@ -85,7 +87,9 @@ class SettingsActivity : ComponentActivity() {
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
                 viewModel.settings.collectLatest { settings ->
-                    if (currentSettings.themeMode != settings.themeMode) {
+                    val oldTheme = currentSettings.themeMode
+
+                    if (oldTheme != settings.themeMode) {
                         currentSettings = settings
                         recreate()
                         return@collectLatest

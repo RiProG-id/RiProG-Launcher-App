@@ -87,7 +87,8 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         settingsManager = SettingsManager(this)
-        ThemeManager.applyThemeMode(this, settingsManager.themeMode)
+        currentSettings = settingsManager.getSettings()
+        ThemeManager.applyThemeMode(this, currentSettings.themeMode)
         ThemeUtils.updateStatusBarContrast(this)
 
         val w = window
@@ -167,11 +168,13 @@ class MainActivity : ComponentActivity() {
                 launch {
                     viewModel.settings.collectLatest { settings ->
                         val oldTheme = currentSettings.themeMode
+
                         currentSettings = settings
 
                         ThemeManager.applyThemeMode(this@MainActivity, settings.themeMode)
                         if (oldTheme != settings.themeMode) {
                             recreate()
+                            return@collectLatest
                         }
 
                         homeView.updateSettings(settings)

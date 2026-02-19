@@ -16,6 +16,15 @@ class SettingsManager(context: Context) {
     private val scope = CoroutineScope(Dispatchers.Main + SupervisorJob())
 
     init {
+        try {
+            cachedSettings = runBlocking {
+                withTimeout(100) {
+                    settingsRepository.settingsFlow.first()
+                }
+            }
+        } catch (e: Exception) {
+        }
+
         scope.launch {
             settingsRepository.settingsFlow.collectLatest {
                 cachedSettings = it
@@ -110,6 +119,10 @@ class SettingsManager(context: Context) {
 
     fun incrementDefaultPromptCount() {
         scope.launch { settingsRepository.updateDefaultPrompt(cachedSettings.lastDefaultPromptTimestamp, cachedSettings.defaultPromptCount + 1) }
+    }
+
+    fun getSettings(): LauncherSettings {
+        return cachedSettings
     }
 
     fun saveHomeItems(items: List<HomeItem>) {
