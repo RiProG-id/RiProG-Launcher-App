@@ -1,6 +1,7 @@
 package com.riprog.launcher.data.repository
 
 import android.content.Context
+import androidx.lifecycle.asFlow
 import com.riprog.launcher.data.local.db.dao.HomeItemDao
 import com.riprog.launcher.data.local.db.entity.HomeItemEntity
 import com.riprog.launcher.data.model.HomeItem
@@ -10,12 +11,13 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.withContext
 
 class HomeRepository(private val context: Context, private val homeItemDao: HomeItemDao) {
 
     fun getHomeItems(): Flow<List<HomeItem>> = flow {
-        homeItemDao.getRootItems().collect { entities ->
+        homeItemDao.getRootItems().asFlow().collect { entities ->
             val domainItems = entities.map { entity ->
                 val item = entity.toDomainModel()
                 if (item.type == HomeItem.Type.FOLDER) {

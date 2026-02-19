@@ -1,14 +1,14 @@
 package com.riprog.launcher.data.local.db.dao;
 
+import androidx.lifecycle.LiveData;
 import androidx.room.*;
 import com.riprog.launcher.data.local.db.entity.HomeItemEntity;
 import java.util.List;
-import kotlinx.coroutines.flow.Flow;
 
 @Dao
 public interface HomeItemDao {
     @Query("SELECT * FROM home_items WHERE parentId IS NULL")
-    Flow<List<HomeItemEntity>> getRootItems();
+    LiveData<List<HomeItemEntity>> getRootItems();
 
     @Query("SELECT * FROM home_items WHERE parentId IS NULL")
     List<HomeItemEntity> getRootItemsOnce();

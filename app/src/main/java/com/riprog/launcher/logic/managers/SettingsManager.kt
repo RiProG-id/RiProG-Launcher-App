@@ -16,15 +16,6 @@ class SettingsManager(context: Context) {
     private val scope = CoroutineScope(Dispatchers.Main + SupervisorJob())
 
     init {
-        try {
-            cachedSettings = runBlocking {
-                withTimeout(100) {
-                    settingsRepository.settingsFlow.first()
-                }
-            }
-        } catch (e: Exception) {
-        }
-
         scope.launch {
             settingsRepository.settingsFlow.collectLatest {
                 cachedSettings = it
@@ -126,6 +117,7 @@ class SettingsManager(context: Context) {
     }
 
     fun saveHomeItems(items: List<HomeItem>) {
+        // Handled by HomeRepository via ViewModel now
     }
 
     fun getHomeItems(): MutableList<HomeItem> {
