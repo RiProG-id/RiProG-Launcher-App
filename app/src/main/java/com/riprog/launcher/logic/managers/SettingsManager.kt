@@ -80,7 +80,7 @@ class SettingsManager(context: Context) {
         }
 
     fun incrementUsage(packageName: String) {
-        val current = usageCache.getOrDefault(packageName, 0)
+        val current = usageCache[packageName] ?: 0
         usageCache[packageName] = current + 1
         scope.launch { settingsRepository.incrementUsage(packageName) }
     }
