@@ -3,6 +3,7 @@ package com.riprog.launcher.ui.views.folder
 import com.riprog.launcher.theme.ThemeUtils
 import com.riprog.launcher.logic.managers.SettingsManager
 import com.riprog.launcher.data.model.HomeItem
+import com.riprog.launcher.data.model.LauncherSettings
 import com.riprog.launcher.R
 
 import android.content.Context
@@ -16,15 +17,15 @@ import android.widget.GridLayout
 import android.widget.LinearLayout
 import android.widget.TextView
 
-class FolderViewFactory(private val context: Context, private val preferences: SettingsManager) {
+class FolderViewFactory(private val context: Context) {
 
-    fun createFolderView(item: HomeItem, isOnGlass: Boolean, cellWidth: Int, cellHeight: Int): View {
+    fun createFolderView(item: HomeItem, settings: LauncherSettings, isOnGlass: Boolean, cellWidth: Int, cellHeight: Int): View {
         val container = LinearLayout(context)
         container.orientation = LinearLayout.VERTICAL
         container.gravity = Gravity.CENTER
 
         val previewContainer = FrameLayout(context)
-        val scale = preferences.iconScale
+        val scale = settings.iconScale
         val sizeW: Int
         val sizeH: Int
 
@@ -38,7 +39,7 @@ class FolderViewFactory(private val context: Context, private val preferences: S
         }
 
         previewContainer.layoutParams = LinearLayout.LayoutParams(sizeW, sizeH)
-        previewContainer.background = ThemeUtils.getGlassDrawable(context, preferences, 12f)
+        previewContainer.background = ThemeUtils.getGlassDrawable(context, settings, 12f)
         val padding = dpToPx(6f)
         previewContainer.setPadding(padding, padding, padding, padding)
 
@@ -55,7 +56,7 @@ class FolderViewFactory(private val context: Context, private val preferences: S
 
         val labelView = TextView(context)
         labelView.tag = "item_label"
-        labelView.setTextColor(ThemeUtils.getAdaptiveColor(context, preferences, isOnGlass))
+        labelView.setTextColor(ThemeUtils.getAdaptiveColor(context, settings, isOnGlass))
         labelView.setTextSize(TypedValue.COMPLEX_UNIT_SP, 10 * scale)
         labelView.gravity = Gravity.CENTER
         labelView.maxLines = 1
@@ -64,7 +65,7 @@ class FolderViewFactory(private val context: Context, private val preferences: S
 
         container.addView(previewContainer)
         container.addView(labelView)
-        if (preferences.isHideLabels) {
+        if (settings.isHideLabels) {
             labelView.visibility = View.GONE
         }
         return container

@@ -4,6 +4,7 @@ import com.riprog.launcher.ui.activities.MainActivity
 import com.riprog.launcher.theme.ThemeUtils
 import com.riprog.launcher.data.model.HomeItem
 import com.riprog.launcher.data.model.AppItem
+import com.riprog.launcher.ui.viewmodel.MainViewModel
 
 import android.annotation.SuppressLint
 import android.content.Context
@@ -23,7 +24,7 @@ import android.util.TypedValue
 import android.widget.LinearLayout
 import android.widget.TextView
 
-class FolderManager(private val activity: MainActivity, private val settingsManager: SettingsManager) {
+class FolderManager(private val activity: MainActivity, private val viewModel: MainViewModel) {
     private var currentFolderOverlay: View? = null
 
     @SuppressLint("ClickableViewAccessibility")
@@ -59,15 +60,16 @@ class FolderManager(private val activity: MainActivity, private val settingsMana
             }
         })
 
+        val settings = activity.currentSettings
         val overlay = LinearLayout(activity)
         overlay.orientation = LinearLayout.VERTICAL
-        overlay.background = ThemeUtils.getGlassDrawable(activity, settingsManager, 12f)
+        overlay.background = ThemeUtils.getGlassDrawable(activity, settings, 12f)
         overlay.setPadding(dpToPx(24f), dpToPx(24f), dpToPx(24f), dpToPx(24f))
         overlay.elevation = dpToPx(16f).toFloat()
         overlay.gravity = Gravity.CENTER_HORIZONTAL
         overlay.setOnClickListener { }
 
-        val adaptiveColor = ThemeUtils.getAdaptiveColor(activity, settingsManager, true)
+        val adaptiveColor = ThemeUtils.getAdaptiveColor(activity, settings, true)
 
         val titleText = TextView(activity)
         titleText.text = if (folderItem.folderName == null || folderItem.folderName!!.isEmpty()) "Folder" else folderItem.folderName
@@ -90,7 +92,7 @@ class FolderManager(private val activity: MainActivity, private val settingsMana
             override fun beforeTextChanged(s: CharSequence, start: Int, count: Int, after: Int) {}
             override fun onTextChanged(s: CharSequence, start: Int, before: Int, count: Int) {
                 folderItem.folderName = s.toString()
-                activity.saveHomeState()
+                viewModel.saveHomeItems(activity.homeItems)
             }
             override fun afterTextChanged(s: Editable) {}
         })
@@ -113,7 +115,7 @@ class FolderManager(private val activity: MainActivity, private val settingsMana
                 titleText.visibility = View.VISIBLE
                 val imm = activity.getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager?
                 imm?.hideSoftInputFromWindow(v.windowToken, 0)
-                activity.saveHomeState()
+                viewModel.saveHomeItems(activity.homeItems)
                 activity.homeView.refreshIcons(activity.model, activity.allApps)
                 return@setOnEditorActionListener true
             }
@@ -187,7 +189,7 @@ class FolderManager(private val activity: MainActivity, private val settingsMana
         activity.homeView.removeItemView(target)
         activity.homeView.removeItemView(dragged)
         activity.renderHomeItem(folder)
-        activity.saveHomeState()
+        viewModel.saveHomeItems(homeItems)
     }
 
     fun addToFolder(folder: HomeItem, dragged: HomeItem, homeItems: MutableList<HomeItem>) {
@@ -196,7 +198,7 @@ class FolderManager(private val activity: MainActivity, private val settingsMana
 
         activity.homeView.removeItemView(dragged)
         refreshFolderIconsOnHome(folder)
-        activity.saveHomeState()
+        viewModel.saveHomeItems(homeItems)
     }
 
     fun removeFromFolder(folder: HomeItem, item: HomeItem, homeItems: MutableList<HomeItem>) {
@@ -219,7 +221,7 @@ class FolderManager(private val activity: MainActivity, private val settingsMana
         } else {
             refreshFolderIconsOnHome(folder)
         }
-        activity.saveHomeState()
+        viewModel.saveHomeItems(homeItems)
     }
 
     fun refreshFolderIconsOnHome(folder: HomeItem) {

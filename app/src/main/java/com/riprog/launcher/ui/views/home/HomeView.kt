@@ -5,8 +5,10 @@ import com.riprog.launcher.logic.managers.SettingsManager
 import com.riprog.launcher.data.repository.AppRepository
 import com.riprog.launcher.data.model.HomeItem
 import com.riprog.launcher.data.model.AppItem
+import com.riprog.launcher.data.model.LauncherSettings
 import com.riprog.launcher.callback.PageActionCallback
 import com.riprog.launcher.R
+import com.riprog.launcher.ui.viewmodel.MainViewModel
 
 import android.content.Context
 import android.graphics.Color
@@ -31,12 +33,13 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
     private val pagesContainer: LinearLayout
     private val pageIndicator: PageIndicator
     private val pages: MutableList<FrameLayout> = ArrayList()
-    private val settingsManager: SettingsManager = SettingsManager(context)
+    private var viewModel: MainViewModel? = null
     var currentPage: Int = 0
         private set
     private var accentColor = Color.WHITE
     private var model: AppRepository? = null
     private var allApps: List<AppItem>? = null
+    private var currentSettings = LauncherSettings()
 
     private var draggingView: View? = null
     private var lastX: Float = 0f
@@ -72,6 +75,28 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
         }
     }
 
+    fun initViewModel(viewModel: MainViewModel) {
+        this.viewModel = viewModel
+    }
+
+    fun updateSettings(settings: LauncherSettings) {
+        val oldScale = currentSettings.iconScale
+        val oldHideLabels = currentSettings.isHideLabels
+        val oldFreeform = currentSettings.isFreeformHome
+
+        currentSettings = settings
+
+        if (oldScale != settings.iconScale || oldHideLabels != settings.isHideLabels) {
+            if (model != null && allApps != null) {
+                refreshIcons(model!!, allApps!!)
+            }
+        }
+
+        if (oldFreeform != settings.isFreeformHome) {
+            refreshLayout()
+        }
+    }
+
     fun addPageAtIndex(index: Int) {
         val page = FrameLayout(context)
         page.clipChildren = false
@@ -82,7 +107,6 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
                 pageWidth, LayoutParams.MATCH_PARENT
             )
         )
-
 
         for (i in pages.indices) {
             val p = pages[i]
@@ -113,15 +137,12 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
         indicatorParams.bottomMargin = dpToPx(80)
         addView(pageIndicator, indicatorParams)
 
-
         addPage()
         addPage()
-
-        addDrawerHint()
     }
 
-    private fun addDrawerHint() {
-        if (settingsManager.drawerOpenCount >= 5) return
+    fun showDrawerHint(count: Int) {
+        if (count >= 5) return
 
         val hint = TextView(context)
         hint.text = context.getString(R.string.drawer_hint)
@@ -132,7 +153,6 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
         lp.gravity = Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL
         lp.bottomMargin = dpToPx(120)
         addView(hint, lp)
-
 
         if (Math.random() < 0.3) {
             hint.animate().alpha(1f).setDuration(1000).setStartDelay(2000).withEndAction {
@@ -199,7 +219,6 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
         val lp: LayoutParams = if (item.type == HomeItem.Type.WIDGET) {
             LayoutParams(cellWidth * item.spanX, cellHeight * item.spanY)
         } else {
-
             val size = resources.getDimensionPixelSize(R.dimen.grid_icon_size)
             LayoutParams(size * 2, size * 2)
         }
@@ -301,13 +320,10 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
         }
     }
 
-
     override fun onAddPage() {
         addPage()
         scrollToPage(pages.size - 1)
-        if (context is MainActivity) {
-            (context as MainActivity).saveHomeState()
-        }
+        saveState()
     }
 
     override fun onRemovePage() {
@@ -318,8 +334,13 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
             currentPage = pages.size - 1
         }
         scrollToPage(currentPage)
+        saveState()
+    }
+
+    private fun saveState() {
         if (context is MainActivity) {
-            (context as MainActivity).saveHomeState()
+            val items = (context as MainActivity).homeItems
+            viewModel?.saveHomeItems(items)
         }
     }
 
@@ -394,7 +415,7 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
             }
         }
 
-        if (settingsManager.isFreeformHome) {
+        if (currentSettings.isFreeformHome) {
             item.col = v.x / cellWidth.toFloat()
             item.row = v.y / cellHeight.toFloat()
             item.rotation = v.rotation
@@ -416,9 +437,7 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
                 .start()
         }
 
-        if (context is MainActivity) {
-            (context as MainActivity).saveHomeState()
-        }
+        saveState()
     }
 
     fun scrollToPage(page: Int) {
@@ -445,7 +464,7 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
     fun refreshIcons(model: AppRepository, allApps: List<AppItem>) {
         this.model = model
         this.allApps = allApps
-        val scale = settingsManager.iconScale
+        val scale = currentSettings.iconScale
         val baseSize = resources.getDimensionPixelSize(R.dimen.grid_icon_size)
         val size = (baseSize * scale).toInt()
 
@@ -474,7 +493,7 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
                         }
                         if (tv != null) {
                             tv.setTextSize(TypedValue.COMPLEX_UNIT_SP, 10 * scale)
-                            tv.visibility = if (settingsManager.isHideLabels) View.GONE else View.VISIBLE
+                            tv.visibility = if (currentSettings.isHideLabels) View.GONE else View.VISIBLE
                         }
 
                         val app = appMap[item.packageName]
@@ -522,7 +541,7 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
 
     fun refreshLayout() {
         post {
-            val freeform = settingsManager.isFreeformHome
+            val freeform = currentSettings.isFreeformHome
             for (page in pages) {
                 for (i in 0 until page.childCount) {
                     val v = page.getChildAt(i)
@@ -540,8 +559,8 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
                     }
                 }
             }
-            if (!freeform && context is MainActivity) {
-                (context as MainActivity).saveHomeState()
+            if (!freeform) {
+                saveState()
             }
         }
     }

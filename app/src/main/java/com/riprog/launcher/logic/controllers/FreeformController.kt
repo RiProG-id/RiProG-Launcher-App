@@ -3,6 +3,7 @@ package com.riprog.launcher.logic.controllers
 import com.riprog.launcher.ui.views.layout.TransformOverlay
 import com.riprog.launcher.logic.managers.SettingsManager
 import com.riprog.launcher.data.model.HomeItem
+import com.riprog.launcher.data.model.LauncherSettings
 
 import android.app.Activity
 import android.view.View
@@ -12,7 +13,7 @@ import android.widget.FrameLayout
 class FreeformController(
     private val activity: Activity,
     private val rootLayout: FrameLayout,
-    private val preferences: SettingsManager,
+    private var settings: LauncherSettings,
     private val callback: InteractionCallback
 ) {
     private var currentTransformOverlay: TransformOverlay? = null
@@ -24,6 +25,11 @@ class FreeformController(
         fun onSaveState()
         fun onRemoveItem(item: HomeItem?, view: View?)
         fun onShowAppInfo(item: HomeItem?)
+    }
+
+    fun updateSettings(newSettings: LauncherSettings) {
+        this.settings = newSettings
+        currentTransformOverlay?.updateSettings(newSettings)
     }
 
     fun showTransformOverlay(v: View) {
@@ -51,7 +57,7 @@ class FreeformController(
         v.x = x
         v.y = y
 
-        currentTransformOverlay = TransformOverlay(activity, v, preferences, object : TransformOverlay.OnSaveListener {
+        currentTransformOverlay = TransformOverlay(activity, v, settings, object : TransformOverlay.OnSaveListener {
             override fun onMove(x: Float, y: Float) {}
             override fun onMoveStart(x: Float, y: Float) {}
             override fun onSave() {

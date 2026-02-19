@@ -3,6 +3,10 @@ package com.riprog.launcher.ui.activities
 import com.riprog.launcher.theme.ThemeUtils
 import com.riprog.launcher.theme.ThemeManager
 import com.riprog.launcher.logic.managers.SettingsManager
+import com.riprog.launcher.data.model.LauncherSettings
+import com.riprog.launcher.ui.viewmodel.MainViewModel
+import com.riprog.launcher.ui.viewmodel.MainViewModelFactory
+import com.riprog.launcher.LauncherApplication
 import com.riprog.launcher.R
 
 import android.app.Activity
@@ -18,11 +22,30 @@ import android.util.TypedValue
 import android.view.*
 import android.widget.*
 import androidx.core.view.WindowCompat
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import kotlin.math.roundToInt
 
 class SettingsActivity : Activity() {
 
-    private lateinit var settingsManager: SettingsManager
+    private val viewModel: MainViewModel by lazy {
+        val app = application as LauncherApplication
+        val factory = MainViewModelFactory(app.model, app.homeRepository, app.settingsRepository)
+        ViewModelProvider(this as androidx.lifecycle.ViewModelStoreOwner, factory)[MainViewModel::class.java]
+    }
+
+    private var currentSettings = LauncherSettings()
+    private lateinit var rootContainer: FrameLayout
+
+    private val switches = mutableMapOf<String, Switch>()
+    private var scaleSeekBar: SeekBar? = null
+    private val themeOptions = mutableListOf<TextView>()
 
     override fun attachBaseContext(newBase: Context) {
         val sm = SettingsManager(newBase)
@@ -31,8 +54,6 @@ class SettingsActivity : Activity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        settingsManager = SettingsManager(this)
-        ThemeManager.applyThemeMode(this, settingsManager.themeMode)
 
         val w = window
         w.setFlags(WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS, WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS)
@@ -41,7 +62,7 @@ class SettingsActivity : Activity() {
 
         WindowCompat.setDecorFitsSystemWindows(w, false)
 
-        val rootContainer = FrameLayout(this)
+        rootContainer = FrameLayout(this)
         rootContainer.setPadding(dpToPx(16), dpToPx(48), dpToPx(16), dpToPx(32))
 
         rootContainer.setOnApplyWindowInsetsListener { v, insets ->
@@ -54,8 +75,66 @@ class SettingsActivity : Activity() {
             insets
         }
 
+        setContentView(rootContainer)
+
+        // Initial build with current values
+        runBlocking {
+            currentSettings = viewModel.settings.first()
+        }
+        buildUi(currentSettings)
+
+        observeViewModel()
+    }
+
+    private fun observeViewModel() {
+        (this as androidx.lifecycle.LifecycleOwner).lifecycleScope.launch {
+            (this@SettingsActivity as androidx.lifecycle.LifecycleOwner).repeatOnLifecycle(Lifecycle.State.STARTED) {
+                viewModel.settings.collectLatest { settings ->
+                    if (currentSettings.themeMode != settings.themeMode) {
+                        currentSettings = settings
+                        recreate()
+                        return@collectLatest
+                    }
+
+                    updateUiState(settings)
+                    currentSettings = settings
+                }
+            }
+        }
+    }
+
+    private fun updateUiState(settings: LauncherSettings) {
+        switches["freeform"]?.isChecked = settings.isFreeformHome
+        switches["hideLabels"]?.isChecked = settings.isHideLabels
+        switches["liquidGlass"]?.isChecked = settings.isLiquidGlass
+        switches["darkenWallpaper"]?.isChecked = settings.isDarkenWallpaper
+
+        val scaleProgress = ((settings.iconScale - 0.5f) / 1.0f * 100).toInt()
+        if (scaleSeekBar?.progress != scaleProgress) {
+            scaleSeekBar?.progress = scaleProgress
+        }
+
+        val values = arrayOf("system", "light", "dark")
+        val adaptiveColor = ThemeUtils.getAdaptiveColor(this, settings, true)
+        for (i in themeOptions.indices) {
+            val isSelected = values[i] == settings.themeMode
+            themeOptions[i].setTextColor(if (isSelected) adaptiveColor else adaptiveColor and 0xBBFFFFFF.toInt())
+            if (isSelected) {
+                val gd = GradientDrawable()
+                gd.setColor(getColor(R.color.search_background))
+                gd.cornerRadius = dpToPx(8).toFloat()
+                themeOptions[i].background = gd
+            } else {
+                themeOptions[i].background = null
+            }
+        }
+    }
+
+    private fun buildUi(settings: LauncherSettings) {
+        rootContainer.removeAllViews()
+
         val scrollView = ScrollView(this)
-        scrollView.background = ThemeUtils.getGlassDrawable(this, settingsManager)
+        scrollView.background = ThemeUtils.getGlassDrawable(this, settings)
         scrollView.isVerticalScrollBarEnabled = false
         rootContainer.addView(scrollView)
 
@@ -64,7 +143,7 @@ class SettingsActivity : Activity() {
         root.setPadding(dpToPx(24), dpToPx(32), dpToPx(24), dpToPx(32))
         scrollView.addView(root)
 
-        val adaptiveColor = ThemeUtils.getAdaptiveColor(this, settingsManager, true)
+        val adaptiveColor = ThemeUtils.getAdaptiveColor(this, settings, true)
 
         val titleLayout = LinearLayout(this)
         titleLayout.orientation = LinearLayout.HORIZONTAL
@@ -86,17 +165,17 @@ class SettingsActivity : Activity() {
         titleLayout.addView(title)
         root.addView(titleLayout)
 
-        addCategoryHeader(root, getString(R.string.category_home), R.drawable.ic_layout)
-        addFreeformSetting(root)
-        addHideLabelsSetting(root)
+        addCategoryHeader(root, getString(R.string.category_home), R.drawable.ic_layout, settings)
+        addFreeformSetting(root, settings)
+        addHideLabelsSetting(root, settings)
 
-        addCategoryHeader(root, getString(R.string.category_appearance), R.drawable.ic_wallpaper)
-        addThemeSetting(root)
-        addLiquidGlassSetting(root)
-        addDarkenWallpaperSetting(root)
-        addScaleSetting(root)
+        addCategoryHeader(root, getString(R.string.category_appearance), R.drawable.ic_wallpaper, settings)
+        addThemeSetting(root, settings)
+        addLiquidGlassSetting(root, settings)
+        addDarkenWallpaperSetting(root, settings)
+        addScaleSetting(root, settings)
 
-        addCategoryHeader(root, getString(R.string.category_about), R.drawable.ic_info)
+        addCategoryHeader(root, getString(R.string.category_about), R.drawable.ic_info, settings)
 
         val aboutContent = TextView(this)
         aboutContent.setText(R.string.about_content)
@@ -106,17 +185,15 @@ class SettingsActivity : Activity() {
         Linkify.addLinks(aboutContent, Linkify.WEB_URLS)
         aboutContent.movementMethod = LinkMovementMethod.getInstance()
         root.addView(aboutContent)
-
-        setContentView(rootContainer)
     }
 
-    private fun addCategoryHeader(parent: LinearLayout, title: String, iconRes: Int) {
+    private fun addCategoryHeader(parent: LinearLayout, title: String, iconRes: Int, settings: LauncherSettings) {
         val layout = LinearLayout(this)
         layout.orientation = LinearLayout.HORIZONTAL
         layout.gravity = Gravity.CENTER_VERTICAL
         layout.setPadding(0, dpToPx(24), 0, dpToPx(12))
 
-        val adaptiveColor = ThemeUtils.getAdaptiveColor(this, settingsManager, true)
+        val adaptiveColor = ThemeUtils.getAdaptiveColor(this, settings, true)
 
         if (iconRes != 0) {
             val icon = ImageView(this)
@@ -138,13 +215,13 @@ class SettingsActivity : Activity() {
         parent.addView(layout)
     }
 
-    private fun addThemeSetting(parent: LinearLayout) {
+    private fun addThemeSetting(parent: LinearLayout, settings: LauncherSettings) {
         val item = LinearLayout(this)
         item.orientation = LinearLayout.VERTICAL
         item.setPadding(dpToPx(16), dpToPx(16), dpToPx(16), dpToPx(16))
-        ThemeManager.applySettingItemStyle(this, item, settingsManager)
+        ThemeManager.applySettingItemStyle(this, item, settings)
 
-        val adaptiveColor = ThemeUtils.getAdaptiveColor(this, settingsManager, true)
+        val adaptiveColor = ThemeUtils.getAdaptiveColor(this, settings, true)
 
         val titleView = TextView(this)
         titleView.setText(R.string.setting_theme_mode)
@@ -154,12 +231,13 @@ class SettingsActivity : Activity() {
 
         val modes = arrayOf(getString(R.string.theme_system), getString(R.string.theme_light), getString(R.string.theme_dark))
         val values = arrayOf("system", "light", "dark")
-        val current = settingsManager.themeMode
+        val current = settings.themeMode
 
         val optionsLayout = LinearLayout(this)
         optionsLayout.orientation = LinearLayout.HORIZONTAL
         optionsLayout.setPadding(0, dpToPx(8), 0, 0)
 
+        themeOptions.clear()
         for (i in modes.indices) {
             val index = i
             val option = TextView(this)
@@ -178,14 +256,13 @@ class SettingsActivity : Activity() {
             }
 
             option.setOnClickListener {
-                settingsManager.themeMode = values[index]
-                ThemeManager.applyThemeMode(this, values[index])
-                recreate()
+                viewModel.updateThemeMode(values[index])
             }
 
             val lp = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
             optionsLayout.addView(option, lp)
             option.gravity = Gravity.CENTER
+            themeOptions.add(option)
         }
         item.addView(optionsLayout)
 
@@ -194,42 +271,39 @@ class SettingsActivity : Activity() {
         parent.addView(item, itemLp)
     }
 
-    private fun addFreeformSetting(parent: LinearLayout) {
+    private fun addFreeformSetting(parent: LinearLayout, settings: LauncherSettings) {
         addToggleSetting(parent, R.string.setting_freeform, R.string.setting_freeform_summary,
-            settingsManager.isFreeformHome) { isChecked -> settingsManager.isFreeformHome = isChecked }
+            settings.isFreeformHome, settings, "freeform") { isChecked -> viewModel.updateFreeformHome(isChecked) }
     }
 
-    private fun addHideLabelsSetting(parent: LinearLayout) {
+    private fun addHideLabelsSetting(parent: LinearLayout, settings: LauncherSettings) {
         addToggleSetting(parent, R.string.setting_hide_labels, R.string.setting_hide_labels_summary,
-            settingsManager.isHideLabels) { isChecked -> settingsManager.isHideLabels = isChecked }
+            settings.isHideLabels, settings, "hideLabels") { isChecked -> viewModel.updateHideLabels(isChecked) }
     }
 
-    private fun addLiquidGlassSetting(parent: LinearLayout) {
+    private fun addLiquidGlassSetting(parent: LinearLayout, settings: LauncherSettings) {
         addToggleSetting(parent, R.string.setting_liquid_glass, R.string.setting_liquid_glass_summary,
-            settingsManager.isLiquidGlass) { isChecked ->
-            settingsManager.isLiquidGlass = isChecked
-            recreate()
-        }
+            settings.isLiquidGlass, settings, "liquidGlass") { isChecked -> viewModel.updateLiquidGlass(isChecked) }
     }
 
-    private fun addDarkenWallpaperSetting(parent: LinearLayout) {
+    private fun addDarkenWallpaperSetting(parent: LinearLayout, settings: LauncherSettings) {
         addToggleSetting(parent, R.string.setting_darken_wallpaper, R.string.setting_darken_wallpaper_summary,
-            settingsManager.isDarkenWallpaper) { isChecked -> settingsManager.isDarkenWallpaper = isChecked }
+            settings.isDarkenWallpaper, settings, "darkenWallpaper") { isChecked -> viewModel.updateDarkenWallpaper(isChecked) }
     }
 
-    private fun addToggleSetting(parent: LinearLayout, titleRes: Int, summaryRes: Int, isChecked: Boolean, listener: (Boolean) -> Unit) {
+    private fun addToggleSetting(parent: LinearLayout, titleRes: Int, summaryRes: Int, isChecked: Boolean, settings: LauncherSettings, key: String, listener: (Boolean) -> Unit) {
         val item = LinearLayout(this)
         item.orientation = LinearLayout.HORIZONTAL
         item.gravity = Gravity.CENTER_VERTICAL
         item.setPadding(dpToPx(16), dpToPx(16), dpToPx(16), dpToPx(16))
-        ThemeManager.applySettingItemStyle(this, item, settingsManager)
+        ThemeManager.applySettingItemStyle(this, item, settings)
 
         val textLayout = LinearLayout(this)
         textLayout.orientation = LinearLayout.VERTICAL
         val textParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
         item.addView(textLayout, textParams)
 
-        val adaptiveColor = ThemeUtils.getAdaptiveColor(this, settingsManager, true)
+        val adaptiveColor = ThemeUtils.getAdaptiveColor(this, settings, true)
 
         val titleView = TextView(this)
         titleView.setText(titleRes)
@@ -247,6 +321,7 @@ class SettingsActivity : Activity() {
         toggle.isChecked = isChecked
         toggle.isClickable = false
         item.addView(toggle)
+        switches[key] = toggle
 
         item.setOnClickListener {
             val newState = !toggle.isChecked
@@ -259,13 +334,13 @@ class SettingsActivity : Activity() {
         parent.addView(item, itemLp)
     }
 
-    private fun addScaleSetting(parent: LinearLayout) {
+    private fun addScaleSetting(parent: LinearLayout, settings: LauncherSettings) {
         val item = LinearLayout(this)
         item.orientation = LinearLayout.VERTICAL
         item.setPadding(dpToPx(16), dpToPx(16), dpToPx(16), dpToPx(16))
-        ThemeManager.applySettingItemStyle(this, item, settingsManager)
+        ThemeManager.applySettingItemStyle(this, item, settings)
 
-        val adaptiveColor = ThemeUtils.getAdaptiveColor(this, settingsManager, true)
+        val adaptiveColor = ThemeUtils.getAdaptiveColor(this, settings, true)
 
         val titleView = TextView(this)
         titleView.setText(R.string.setting_scale)
@@ -275,13 +350,16 @@ class SettingsActivity : Activity() {
 
         val seekBar = SeekBar(this)
         seekBar.max = 100
-        val currentScale = settingsManager.iconScale
+        val currentScale = settings.iconScale
         seekBar.progress = ((currentScale - 0.5f) / 1.0f * 100).toInt()
+        scaleSeekBar = seekBar
 
         seekBar.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
             override fun onProgressChanged(seekBar: SeekBar, progress: Int, fromUser: Boolean) {
-                val scale = 0.5f + (progress / 100.0f) * 1.0f
-                settingsManager.iconScale = scale
+                if (fromUser) {
+                    val scale = 0.5f + (progress / 100.0f) * 1.0f
+                    viewModel.updateIconScale(scale)
+                }
             }
 
             override fun onStartTrackingTouch(seekBar: SeekBar) {}

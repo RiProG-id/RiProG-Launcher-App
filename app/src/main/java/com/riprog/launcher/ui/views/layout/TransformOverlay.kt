@@ -4,6 +4,7 @@ import com.riprog.launcher.theme.ThemeUtils
 import com.riprog.launcher.logic.managers.SettingsManager
 import com.riprog.launcher.logic.managers.GridManager
 import com.riprog.launcher.data.model.HomeItem
+import com.riprog.launcher.data.model.LauncherSettings
 import com.riprog.launcher.R
 
 import android.annotation.SuppressLint
@@ -26,9 +27,9 @@ import android.widget.TextView
 import kotlin.math.*
 
 @SuppressLint("ViewConstructor")
-class TransformOverlay(context: Context, private val targetView: View, private val settingsManager: SettingsManager, private val onSaveListener: OnSaveListener?) : FrameLayout(context) {
+class TransformOverlay(context: Context, private val targetView: View, private var settings: LauncherSettings, private val onSaveListener: OnSaveListener?) : FrameLayout(context) {
 
-    private val gridManager: GridManager = GridManager(settingsManager.columns)
+    private val gridManager: GridManager = GridManager(settings.columns)
     private val item: HomeItem = targetView.tag as HomeItem
     private val paint = Paint(Paint.ANTI_ALIAS_FLAG)
     private val handleSize: Float = dpToPx(12f).toFloat()
@@ -80,14 +81,19 @@ class TransformOverlay(context: Context, private val targetView: View, private v
         setupButtons()
     }
 
+    fun updateSettings(newSettings: LauncherSettings) {
+        this.settings = newSettings
+        invalidate()
+    }
+
     private fun setupButtons() {
-        val adaptiveColor = ThemeUtils.getAdaptiveColor(context, settingsManager, true)
+        val adaptiveColor = ThemeUtils.getAdaptiveColor(context, settings, true)
 
         val container = LinearLayout(context)
         container.orientation = LinearLayout.HORIZONTAL
         container.gravity = Gravity.CENTER
         container.setPadding(dpToPx(12f), dpToPx(6f), dpToPx(12f), dpToPx(6f))
-        container.background = ThemeUtils.getGlassDrawable(context, settingsManager, 12f)
+        container.background = ThemeUtils.getGlassDrawable(context, settings, 12f)
 
         addButton(container, R.string.action_remove, adaptiveColor) { onSaveListener?.onRemove() }
         addButton(container, R.string.action_reset, adaptiveColor) { reset() }
@@ -131,7 +137,7 @@ class TransformOverlay(context: Context, private val targetView: View, private v
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
 
-        val isFreeform = settingsManager.isFreeformHome
+        val isFreeform = settings.isFreeformHome
         val sx = targetView.scaleX
         val sy = targetView.scaleY
         val r = if (isFreeform) targetView.rotation else 0f
@@ -149,7 +155,7 @@ class TransformOverlay(context: Context, private val targetView: View, private v
         canvas.translate(cx, cy)
         canvas.rotate(r)
 
-        val foregroundColor = ThemeUtils.getAdaptiveColor(context, settingsManager, false)
+        val foregroundColor = ThemeUtils.getAdaptiveColor(context, settings, false)
         paint.color = foregroundColor
         paint.style = Paint.Style.STROKE
         paint.strokeWidth = dpToPx(1f).toFloat()
@@ -290,7 +296,7 @@ class TransformOverlay(context: Context, private val targetView: View, private v
     }
 
     private fun findHandle(tx: Float, ty: Float): Int {
-        val isFreeform = settingsManager.isFreeformHome
+        val isFreeform = settings.isFreeformHome
         val sx = targetView.scaleX
         val sy = targetView.scaleY
         val cx = targetView.x + targetView.pivotX
@@ -326,7 +332,7 @@ class TransformOverlay(context: Context, private val targetView: View, private v
     }
 
     private fun handleInteraction(tx: Float, ty: Float) {
-        val isFreeform = settingsManager.isFreeformHome
+        val isFreeform = settings.isFreeformHome
         val sx = gestureInitialScaleX
         val sy = gestureInitialScaleY
         val cx = gestureInitialX + targetView.pivotX

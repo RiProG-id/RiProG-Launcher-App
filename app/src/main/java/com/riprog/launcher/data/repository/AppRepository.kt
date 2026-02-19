@@ -1,7 +1,6 @@
 package com.riprog.launcher.data.repository
 
 import com.riprog.launcher.data.model.AppItem
-
 import android.content.ComponentCallbacks2
 import android.content.Context
 import android.content.Intent
@@ -10,24 +9,27 @@ import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.drawable.BitmapDrawable
 import android.graphics.drawable.Drawable
-import android.os.Handler
-import android.os.Looper
 import android.util.LruCache
+import kotlinx.coroutines.*
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import java.util.*
-import java.util.concurrent.ExecutorService
-import java.util.concurrent.Executors
 
 class AppRepository(context: Context) {
+    private val context: Context = context.applicationContext
+    private val pm: PackageManager = context.packageManager
+    private val iconCache: LruCache<String, Bitmap>
+    private val iconTasks = mutableMapOf<String, Deferred<Bitmap?>>()
+    private val iconMutex = Mutex()
+    private val repositoryScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
+
     fun interface OnAppsLoadedListener {
         fun onAppsLoaded(apps: List<AppItem>)
     }
 
-    private val context: Context = context.applicationContext
-    private val pm: PackageManager = context.packageManager
-    private val executor: ExecutorService = Executors.newSingleThreadExecutor()
-    private val mainHandler = Handler(Looper.getMainLooper())
-    private val iconCache: LruCache<String, Bitmap>
-    private val pendingListeners: MutableMap<String, MutableList<OnIconLoadedListener>> = HashMap()
+    fun interface OnIconLoadedListener {
+        fun onIconLoaded(icon: Bitmap?)
+    }
 
     init {
         val maxMemory = (Runtime.getRuntime().maxMemory() / 1024).toInt()
@@ -52,77 +54,71 @@ class AppRepository(context: Context) {
     }
 
     fun shutdown() {
-        executor.shutdown()
+        repositoryScope.cancel()
+    }
+
+    suspend fun getApps(): List<AppItem> = withContext(Dispatchers.IO) {
+        val mainIntent = Intent(Intent.ACTION_MAIN, null)
+        mainIntent.addCategory(Intent.CATEGORY_LAUNCHER)
+        val infos = pm.queryIntentActivities(mainIntent, 0)
+
+        val apps: MutableList<AppItem> = ArrayList()
+        val selfPackage = context.packageName
+
+        for (info in infos) {
+            if (info.activityInfo.packageName != selfPackage) {
+                val item = AppItem(
+                    info.loadLabel(pm).toString(),
+                    info.activityInfo.packageName,
+                    info.activityInfo.name
+                )
+                apps.add(item)
+            }
+        }
+
+        apps.sortWith { a, b -> a.label.compareTo(b.label, ignoreCase = true) }
+        apps
+    }
+
+    suspend fun fetchIcon(item: AppItem): Bitmap? = coroutineScope {
+        val packageName = item.packageName
+        val cached = iconCache[packageName]
+        if (cached != null) return@coroutineScope cached
+
+        val task = iconMutex.withLock {
+            iconTasks.getOrPut(packageName) {
+                async(Dispatchers.IO) {
+                    try {
+                        val drawable = pm.getApplicationIcon(packageName)
+                        val bitmap = drawableToBitmap(drawable)
+                        if (bitmap != null) {
+                            iconCache.put(packageName, bitmap)
+                        }
+                        bitmap
+                    } catch (ignored: PackageManager.NameNotFoundException) {
+                        null
+                    } finally {
+                        iconMutex.withLock {
+                            iconTasks.remove(packageName)
+                        }
+                    }
+                }
+            }
+        }
+        task.await()
     }
 
     fun loadApps(listener: OnAppsLoadedListener) {
-        executor.execute {
-            val mainIntent = Intent(Intent.ACTION_MAIN, null)
-            mainIntent.addCategory(Intent.CATEGORY_LAUNCHER)
-            val infos = pm.queryIntentActivities(mainIntent, 0)
-
-            val apps: MutableList<AppItem> = ArrayList()
-            val selfPackage = context.packageName
-
-            for (info in infos) {
-                if (info.activityInfo.packageName != selfPackage) {
-                    val item = AppItem(
-                        info.loadLabel(pm).toString(),
-                        info.activityInfo.packageName,
-                        info.activityInfo.name
-                    )
-                    apps.add(item)
-                }
-            }
-
-            apps.sortWith { a, b -> a.label.compareTo(b.label, ignoreCase = true) }
-
-            mainHandler.post { listener.onAppsLoaded(apps) }
+        repositoryScope.launch {
+            val apps = getApps()
+            listener.onAppsLoaded(apps)
         }
     }
 
     fun loadIcon(item: AppItem, listener: OnIconLoadedListener) {
-        synchronized(pendingListeners) {
-            val cached = iconCache[item.packageName]
-            if (cached != null) {
-                listener.onIconLoaded(cached)
-                return
-            }
-
-            var listeners = pendingListeners[item.packageName]
-            if (listeners != null) {
-                listeners.add(listener)
-                return
-            }
-
-            listeners = ArrayList()
-            listeners.add(listener)
-            pendingListeners[item.packageName] = listeners
-        }
-
-        executor.execute {
-            var bitmap: Bitmap? = null
-            try {
-                val drawable = pm.getApplicationIcon(item.packageName)
-                bitmap = drawableToBitmap(drawable)
-                if (bitmap != null) {
-                    iconCache.put(item.packageName, bitmap)
-                }
-            } catch (ignored: PackageManager.NameNotFoundException) {
-            }
-
-            val finalBitmap = bitmap
-            mainHandler.post {
-                val listeners: MutableList<OnIconLoadedListener>?
-                synchronized(pendingListeners) {
-                    listeners = pendingListeners.remove(item.packageName)
-                }
-                if (listeners != null) {
-                    for (l in listeners) {
-                        l.onIconLoaded(finalBitmap)
-                    }
-                }
-            }
+        repositoryScope.launch {
+            val icon = fetchIcon(item)
+            listener.onIconLoaded(icon)
         }
     }
 
@@ -144,14 +140,9 @@ class AppRepository(context: Context) {
         }
     }
 
-    fun interface OnIconLoadedListener {
-        fun onIconLoaded(icon: Bitmap?)
-    }
-
     companion object {
-
         fun filterApps(apps: List<AppItem>, query: String?): List<AppItem> {
-            if (query == null || query.isEmpty()) return ArrayList(apps)
+            if (query.isNullOrEmpty()) return ArrayList(apps)
             val filtered: MutableList<AppItem> = ArrayList()
             val lowerQuery = query.lowercase(Locale.getDefault())
             for (item in apps) {

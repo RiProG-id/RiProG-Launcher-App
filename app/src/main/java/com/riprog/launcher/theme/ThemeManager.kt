@@ -1,6 +1,6 @@
 package com.riprog.launcher.theme
 
-import com.riprog.launcher.logic.managers.SettingsManager
+import com.riprog.launcher.data.model.LauncherSettings
 import com.riprog.launcher.R
 
 import android.app.UiModeManager
@@ -16,7 +16,6 @@ import android.widget.LinearLayout
 
 object ThemeManager {
 
-
     fun applyThemeMode(context: Context, mode: String?) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             val uiModeManager = context.getSystemService(Context.UI_MODE_SERVICE) as UiModeManager
@@ -30,9 +29,8 @@ object ThemeManager {
         }
     }
 
-
     fun applyThemeToContext(base: Context, mode: String?): Context {
-        if ("system" == mode) return base
+        if ("system" == mode || mode == null) return base
 
         val config = Configuration(base.resources.configuration)
         if ("light" == mode) {
@@ -43,7 +41,6 @@ object ThemeManager {
 
         return base.createConfigurationContext(config)
     }
-
 
     fun getSystemAccentColor(context: Context): Int? {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
@@ -56,8 +53,7 @@ object ThemeManager {
         return null
     }
 
-
-    fun applySettingItemStyle(context: Context, item: LinearLayout, settingsManager: SettingsManager) {
+    fun applySettingItemStyle(context: Context, item: LinearLayout, settings: LauncherSettings) {
         item.isClickable = true
         item.isFocusable = true
 
@@ -66,14 +62,14 @@ object ThemeManager {
                 Configuration.UI_MODE_NIGHT_YES
 
         val shape = GradientDrawable()
-        val baseColor = if (settingsManager.isLiquidGlass) {
+        val baseColor = if (settings.isLiquidGlass) {
             if (isNight) 0x26FFFFFF.toInt() else 0x1A000000.toInt()
         } else {
             if (isNight) 0x1AFFFFFF.toInt() else 0x0D000000.toInt()
         }
         shape.setColor(baseColor)
         shape.cornerRadius = radius
-        if (settingsManager.isLiquidGlass) {
+        if (settings.isLiquidGlass) {
             shape.setStroke(dpToPx(context, 1), 0x20FFFFFF.toInt())
         }
 

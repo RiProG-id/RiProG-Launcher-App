@@ -1,46 +1,31 @@
 package com.riprog.launcher.ui.views.layout
 
+import com.riprog.launcher.data.model.LauncherSettings
 import com.riprog.launcher.logic.managers.SettingsManager
-
 import android.content.Context
-import android.content.res.Configuration
-import android.graphics.Color
 import android.view.View
 import android.view.ViewGroup
 import android.widget.FrameLayout
 
-class AutoDimmingBackground(private val context: Context, private val parentLayout: ViewGroup, private val settingsManager: SettingsManager) {
-    private var dimView: View? = null
+class AutoDimmingBackground(private val context: Context, private val parentLayout: ViewGroup, private var settings: LauncherSettings) {
+    private val dimView: View = View(context)
 
     init {
-        setupDimView()
+        dimView.setBackgroundColor(0x88000000.toInt())
+        dimView.visibility = View.GONE
+        parentLayout.addView(dimView, 0, ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
     }
 
-    private fun setupDimView() {
-        dimView = View(context)
-        dimView!!.setBackgroundColor(Color.BLACK)
-        dimView!!.alpha = 0.3f
-        dimView!!.visibility = View.GONE
-
-        val lp = FrameLayout.LayoutParams(
-            ViewGroup.LayoutParams.MATCH_PARENT,
-            ViewGroup.LayoutParams.MATCH_PARENT
-        )
-        parentLayout.addView(dimView, 0, lp)
+    fun updateSettings(newSettings: LauncherSettings) {
+        this.settings = newSettings
+        updateDimVisibility()
     }
 
     fun updateDimVisibility() {
-        val isNight = (context.resources.configuration.uiMode and
-                Configuration.UI_MODE_NIGHT_MASK) ==
-                Configuration.UI_MODE_NIGHT_YES
-
-        if (isNight && settingsManager.isDarkenWallpaper) {
-            dimView!!.visibility = View.VISIBLE
-            dimView!!.animate().alpha(0.3f).setDuration(300).start()
+        if (settings.isDarkenWallpaper) {
+            dimView.visibility = View.VISIBLE
         } else {
-            dimView!!.animate().alpha(0f).setDuration(300).withEndAction {
-                dimView!!.visibility = View.GONE
-            }.start()
+            dimView.visibility = View.GONE
         }
     }
 }

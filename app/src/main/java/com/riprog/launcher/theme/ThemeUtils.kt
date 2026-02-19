@@ -1,6 +1,6 @@
 package com.riprog.launcher.theme
 
-import com.riprog.launcher.logic.managers.SettingsManager
+import com.riprog.launcher.data.model.LauncherSettings
 import com.riprog.launcher.R
 
 import android.app.Activity
@@ -20,14 +20,12 @@ import androidx.core.view.WindowCompat
 
 object ThemeUtils {
 
-
-    fun getGlassDrawable(context: Context, settingsManager: SettingsManager): Drawable {
-        return getGlassDrawable(context, settingsManager, 28f)
+    fun getGlassDrawable(context: Context, settings: LauncherSettings): Drawable {
+        return getGlassDrawable(context, settings, 28f)
     }
 
-
-    fun getGlassDrawable(context: Context, settingsManager: SettingsManager, cornerRadiusDp: Float): Drawable {
-        val isLiquidGlass = settingsManager.isLiquidGlass
+    fun getGlassDrawable(context: Context, settings: LauncherSettings, cornerRadiusDp: Float): Drawable {
+        val isLiquidGlass = settings.isLiquidGlass
         val isNight = (context.resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) ==
                 Configuration.UI_MODE_NIGHT_YES
 
@@ -49,7 +47,6 @@ object ThemeUtils {
         return gd
     }
 
-
     fun getAdaptiveColor(context: Context, backgroundColor: Int): Int {
         val luminance = (0.2126 * Color.red(backgroundColor) +
                 0.7152 * Color.green(backgroundColor) +
@@ -57,13 +54,12 @@ object ThemeUtils {
         return if (luminance > 0.5) context.getColor(R.color.foreground) else Color.WHITE
     }
 
-
-    fun getAdaptiveColor(context: Context, settingsManager: SettingsManager, isOnGlass: Boolean): Int {
+    fun getAdaptiveColor(context: Context, settings: LauncherSettings, isOnGlass: Boolean): Int {
         val isNight = (context.resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) ==
                 Configuration.UI_MODE_NIGHT_YES
 
         if (isOnGlass) {
-            return if (settingsManager.isLiquidGlass) {
+            return if (settings.isLiquidGlass) {
                 getAdaptiveColor(context, context.getColor(R.color.background))
             } else {
                 if (isNight) Color.WHITE else Color.BLACK
@@ -77,7 +73,6 @@ object ThemeUtils {
         }
     }
 
-
     fun applyBlurIfSupported(view: View, enabled: Boolean) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             if (enabled) {
@@ -87,7 +82,6 @@ object ThemeUtils {
             }
         }
     }
-
 
     fun applyWindowBlur(window: Window, enabled: Boolean) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
@@ -102,7 +96,6 @@ object ThemeUtils {
             window.attributes = lp
         }
     }
-
 
     fun updateStatusBarContrast(activity: Activity) {
         val window = activity.window

@@ -4,6 +4,7 @@ import com.riprog.launcher.theme.ThemeUtils
 import com.riprog.launcher.logic.managers.SettingsManager
 import com.riprog.launcher.data.repository.AppRepository
 import com.riprog.launcher.data.model.AppItem
+import com.riprog.launcher.data.model.LauncherSettings
 import com.riprog.launcher.R
 
 import android.content.Context
@@ -27,7 +28,7 @@ class DrawerView(context: Context) : LinearLayout(context) {
     private var allApps: List<AppItem> = ArrayList()
     private var filteredApps: MutableList<AppItem> = ArrayList()
     private var model: AppRepository? = null
-    private val settingsManager: SettingsManager = SettingsManager(context)
+    private var settings: LauncherSettings = LauncherSettings()
     private val searchBar: EditText
     private val indexBar: IndexBar
 
@@ -47,22 +48,14 @@ class DrawerView(context: Context) : LinearLayout(context) {
 
     init {
         orientation = VERTICAL
-        background = ThemeUtils.getGlassDrawable(context, settingsManager, 0f)
         setPadding(0, dpToPx(48), 0, 0)
-
-        val adaptiveColor = ThemeUtils.getAdaptiveColor(context, settingsManager, true)
 
         searchBar = EditText(context)
         searchBar.setHint(R.string.search_hint)
-        searchBar.setHintTextColor(adaptiveColor and 0x80FFFFFF.toInt())
-        searchBar.setTextColor(adaptiveColor)
         searchBar.setBackgroundColor(context.getColor(R.color.search_background))
         searchBar.setPadding(dpToPx(16), dpToPx(12), dpToPx(16), dpToPx(12))
         searchBar.setCompoundDrawablesWithIntrinsicBounds(R.drawable.ic_search, 0, 0, 0)
         searchBar.compoundDrawablePadding = dpToPx(12)
-        if (searchBar.compoundDrawables[0] != null) {
-            searchBar.compoundDrawables[0].setTint(adaptiveColor and 0x80FFFFFF.toInt())
-        }
         searchBar.setSingleLine(true)
         searchBar.gravity = Gravity.CENTER_VERTICAL
         searchBar.addTextChangedListener(object : TextWatcher {
@@ -111,7 +104,6 @@ class DrawerView(context: Context) : LinearLayout(context) {
         val indexParams = FrameLayout.LayoutParams(dpToPx(30), ViewGroup.LayoutParams.MATCH_PARENT)
         indexParams.gravity = Gravity.END
         contentFrame.addView(indexBar, indexParams)
-        setupIndexBar()
 
         adapter = AppAdapter()
         gridView.adapter = adapter
@@ -129,6 +121,37 @@ class DrawerView(context: Context) : LinearLayout(context) {
             }
             false
         }
+
+        updateUiState()
+    }
+
+    fun updateSettings(newSettings: LauncherSettings) {
+        val oldScale = settings.iconScale
+        val oldColumns = settings.columns
+        val oldTheme = settings.themeMode
+        val oldLiquid = settings.isLiquidGlass
+
+        this.settings = newSettings
+
+        if (oldScale != newSettings.iconScale || oldColumns != newSettings.columns ||
+            oldTheme != newSettings.themeMode || oldLiquid != newSettings.isLiquidGlass) {
+            updateUiState()
+        }
+    }
+
+    private fun updateUiState() {
+        background = ThemeUtils.getGlassDrawable(context, settings, 0f)
+        val adaptiveColor = ThemeUtils.getAdaptiveColor(context, settings, true)
+
+        searchBar.setHintTextColor(adaptiveColor and 0x80FFFFFF.toInt())
+        searchBar.setTextColor(adaptiveColor)
+        if (searchBar.compoundDrawables[0] != null) {
+            searchBar.compoundDrawables[0].setTint(adaptiveColor and 0x80FFFFFF.toInt())
+        }
+
+        gridView.numColumns = settings.columns
+        setupIndexBar()
+        adapter.notifyDataSetChanged()
     }
 
     fun setApps(apps: List<AppItem>, model: AppRepository) {
@@ -146,7 +169,7 @@ class DrawerView(context: Context) : LinearLayout(context) {
 
     private fun setupIndexBar() {
         indexBar.removeAllViews()
-        val adaptiveColor = ThemeUtils.getAdaptiveColor(context, settingsManager, true)
+        val adaptiveColor = ThemeUtils.getAdaptiveColor(context, settings, true)
         val alphabet = "#ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("".toRegex()).dropLastWhile { it.isEmpty() }.toTypedArray()
         for (letter in alphabet) {
             if (letter.isEmpty()) continue
@@ -227,7 +250,7 @@ class DrawerView(context: Context) : LinearLayout(context) {
         override fun getView(position: Int, convertView: View?, parent: ViewGroup): View {
             var view = convertView
             val holder: ViewHolder
-            val scale = settingsManager.iconScale
+            val scale = settings.iconScale
             if (view == null) {
                 val itemLayout = LinearLayout(context)
                 itemLayout.orientation = VERTICAL
@@ -239,7 +262,7 @@ class DrawerView(context: Context) : LinearLayout(context) {
                 val size = (baseSize * scale).toInt()
                 itemLayout.addView(icon, LayoutParams(size, size))
 
-                val adaptiveColor = ThemeUtils.getAdaptiveColor(context, settingsManager, true)
+                val adaptiveColor = ThemeUtils.getAdaptiveColor(context, settings, true)
                 val label = TextView(context)
                 label.setTextColor(adaptiveColor)
                 label.setTextSize(TypedValue.COMPLEX_UNIT_SP, 10 * scale)
@@ -268,6 +291,8 @@ class DrawerView(context: Context) : LinearLayout(context) {
                     holder.label!!.setTextSize(TypedValue.COMPLEX_UNIT_SP, 10 * scale)
                     holder.lastScale = scale
                 }
+                val adaptiveColor = ThemeUtils.getAdaptiveColor(context, settings, true)
+                holder.label!!.setTextColor(adaptiveColor)
             }
 
             val item = filteredApps[position]

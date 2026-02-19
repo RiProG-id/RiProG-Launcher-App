@@ -4,6 +4,7 @@ import com.riprog.launcher.ui.views.home.HomeView
 import com.riprog.launcher.ui.activities.MainActivity
 import com.riprog.launcher.theme.ThemeUtils
 import com.riprog.launcher.R
+import com.riprog.launcher.ui.viewmodel.MainViewModel
 
 import android.app.Dialog
 import android.appwidget.AppWidgetHost
@@ -34,11 +35,11 @@ import kotlin.math.roundToInt
 
 class WidgetManager(
     private val activity: MainActivity,
-    private val settingsManager: SettingsManager,
+    private val viewModel: MainViewModel,
     private val appWidgetManager: AppWidgetManager?,
     private val appWidgetHost: AppWidgetHost
 ) {
-    private val gridManager: GridManager = GridManager(settingsManager.columns)
+    private val gridManager: GridManager = GridManager(activity.settingsManager.columns)
     private val widgetPreviewExecutor = Executors.newFixedThreadPool(4)
 
     fun pickWidget(lastGridCol: Float, lastGridRow: Float) {
@@ -59,17 +60,17 @@ class WidgetManager(
         val dialog = Dialog(activity, android.R.style.Theme_DeviceDefault_NoActionBar_Fullscreen)
         dialog.window?.let { window ->
             window.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
-            ThemeUtils.applyWindowBlur(window, settingsManager.isLiquidGlass)
+            ThemeUtils.applyWindowBlur(window, activity.currentSettings.isLiquidGlass)
         }
 
         val root = FrameLayout(activity)
-        root.background = ThemeUtils.getGlassDrawable(activity, settingsManager, 0f)
+        root.background = ThemeUtils.getGlassDrawable(activity, activity.currentSettings, 0f)
 
         val container = LinearLayout(activity)
         container.orientation = LinearLayout.VERTICAL
         root.addView(container)
 
-        val adaptiveColor = ThemeUtils.getAdaptiveColor(activity, settingsManager, true)
+        val adaptiveColor = ThemeUtils.getAdaptiveColor(activity, activity.currentSettings, true)
         val secondaryColor = (adaptiveColor and 0x00FFFFFF) or 0x80000000.toInt()
 
         val titleLayout = LinearLayout(activity)
@@ -122,7 +123,7 @@ class WidgetManager(
                     val cardBg = GradientDrawable()
                     val isNight = (activity.resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) ==
                             Configuration.UI_MODE_NIGHT_YES
-                    val cardColor = if (settingsManager.isLiquidGlass) 0x1AFFFFFF.toInt() else (if (isNight) 0x1AFFFFFF.toInt() else 0x0D000000.toInt())
+                    val cardColor = if (activity.settingsManager.isLiquidGlass) 0x1AFFFFFF.toInt() else (if (isNight) 0x1AFFFFFF.toInt() else 0x0D000000.toInt())
                     cardBg.setColor(cardColor)
                     cardBg.cornerRadius = dpToPx(16f).toFloat()
                     card.background = cardBg

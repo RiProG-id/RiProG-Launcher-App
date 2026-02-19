@@ -14,6 +14,9 @@ import com.riprog.launcher.logic.controllers.FreeformController
 import com.riprog.launcher.data.repository.AppRepository
 import com.riprog.launcher.data.model.HomeItem
 import com.riprog.launcher.data.model.AppItem
+import com.riprog.launcher.data.model.LauncherSettings
+import com.riprog.launcher.ui.viewmodel.MainViewModel
+import com.riprog.launcher.ui.viewmodel.MainViewModelFactory
 import com.riprog.launcher.R
 import com.riprog.launcher.LauncherApplication
 
@@ -40,6 +43,12 @@ import android.view.*
 import android.view.inputmethod.InputMethodManager
 import androidx.core.view.WindowCompat
 import android.widget.*
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.launch
 import java.util.*
 
 class MainActivity : Activity() {
@@ -61,6 +70,14 @@ class MainActivity : Activity() {
     var allApps: List<AppItem> = ArrayList()
     private var lastGridCol: Float = 0f
     private var lastGridRow: Float = 0f
+
+    private val viewModel: MainViewModel by lazy {
+        val app = application as LauncherApplication
+        val factory = MainViewModelFactory(app.model, app.homeRepository, app.settingsRepository)
+        ViewModelProvider(this as androidx.lifecycle.ViewModelStoreOwner, factory)[MainViewModel::class.java]
+    }
+
+    var currentSettings = LauncherSettings()
 
     override fun attachBaseContext(newBase: Context) {
         val sm = SettingsManager(newBase)
@@ -84,8 +101,8 @@ class MainActivity : Activity() {
 
         mainLayout = MainLayout(this)
         homeView = HomeView(this)
+        homeView.initViewModel(viewModel)
         drawerView = DrawerView(this)
-        drawerView.setColumns(settingsManager.columns)
         drawerView.setOnAppLongClickListener(object : DrawerView.OnAppLongClickListener {
             override fun onAppLongClick(app: AppItem) {
                 mainLayout.closeDrawer()
@@ -102,7 +119,7 @@ class MainActivity : Activity() {
         mainLayout.addView(drawerView)
         drawerView.visibility = View.GONE
 
-        freeformInteraction = FreeformController(this, mainLayout, settingsManager, object : FreeformController.InteractionCallback {
+        freeformInteraction = FreeformController(this, mainLayout, currentSettings, object : FreeformController.InteractionCallback {
             override fun onSaveState() {
                 saveHomeState()
             }
@@ -118,22 +135,65 @@ class MainActivity : Activity() {
 
         setContentView(mainLayout)
 
-        autoDimmingBackground = AutoDimmingBackground(this, mainLayout, settingsManager)
+        autoDimmingBackground = AutoDimmingBackground(this, mainLayout, currentSettings)
 
         appWidgetManager = AppWidgetManager.getInstance(this)
         appWidgetHost = AppWidgetHost(this, APPWIDGET_HOST_ID)
         appWidgetHost.startListening()
 
-        applyDynamicColors()
-        folderManager = FolderManager(this, settingsManager)
-        folderUI = FolderViewFactory(this, settingsManager)
-        widgetManager = WidgetManager(this, settingsManager, AppWidgetManager.getInstance(this), AppWidgetHost(this, APPWIDGET_HOST_ID))
-        loadApps()
+        folderManager = FolderManager(this, viewModel)
+        folderUI = FolderViewFactory(this)
+        widgetManager = WidgetManager(this, viewModel, AppWidgetManager.getInstance(this), AppWidgetHost(this, APPWIDGET_HOST_ID))
+
+        observeViewModel()
         registerAppInstallReceiver()
 
         homeView.post {
-            restoreHomeState()
             showDefaultLauncherPrompt()
+        }
+    }
+
+    private fun observeViewModel() {
+        (this as androidx.lifecycle.LifecycleOwner).lifecycleScope.launch {
+            (this@MainActivity as androidx.lifecycle.LifecycleOwner).repeatOnLifecycle(Lifecycle.State.STARTED) {
+                launch {
+                    viewModel.allApps.collectLatest { apps ->
+                        this@MainActivity.allApps = apps
+                        drawerView.setApps(apps, model)
+                        homeView.refreshIcons(model, apps)
+                    }
+                }
+
+                launch {
+                    viewModel.settings.collectLatest { settings ->
+                        val oldTheme = currentSettings.themeMode
+                        currentSettings = settings
+
+                        ThemeManager.applyThemeMode(this@MainActivity, settings.themeMode)
+                        if (oldTheme != settings.themeMode) {
+                            recreate()
+                        }
+
+                        homeView.updateSettings(settings)
+                        drawerView.updateSettings(settings)
+                        autoDimmingBackground?.updateSettings(settings)
+                        freeformInteraction.updateSettings(settings)
+
+                        applyDynamicColors()
+                    }
+                }
+
+                launch {
+                    viewModel.homeItems.collectLatest { items ->
+                        if (items.isNotEmpty()) {
+                            this@MainActivity.homeItems = items.toMutableList()
+                            restoreHomeStateFromItems(items)
+                        } else {
+                            setupDefaultHome()
+                        }
+                    }
+                }
+            }
         }
     }
 
@@ -148,8 +208,8 @@ class MainActivity : Activity() {
     private fun showDefaultLauncherPrompt() {
         if (isDefaultLauncher()) return
 
-        val lastShown = settingsManager.lastDefaultPromptTimestamp
-        val count = settingsManager.defaultPromptCount
+        val lastShown = currentSettings.lastDefaultPromptTimestamp
+        val count = currentSettings.defaultPromptCount
 
         if (System.currentTimeMillis() - lastShown < 24 * 60 * 60 * 1000) return
         if (count >= 5) return
@@ -205,20 +265,36 @@ class MainActivity : Activity() {
         )
         mainLayout.addView(prompt, lp)
 
-        settingsManager.lastDefaultPromptTimestamp = System.currentTimeMillis()
-        settingsManager.incrementDefaultPromptCount()
+        viewModel.updateDefaultPrompt(System.currentTimeMillis(), count + 1)
     }
 
     fun saveHomeState() {
-        settingsManager.saveHomeItems(homeItems)
+        viewModel.saveHomeItems(homeItems)
     }
 
-    private fun restoreHomeState() {
-        homeItems = settingsManager.getHomeItems().toMutableList()
-        if (homeItems.isEmpty()) {
-            setupDefaultHome()
-        } else {
-            for (item in homeItems) {
+    private fun restoreHomeStateFromItems(items: List<HomeItem>) {
+        val root = homeView.getChildAt(0) as? ViewGroup
+        val currentViewCount = root?.let { r ->
+            (0 until r.childCount).sumOf { i -> (r.getChildAt(i) as? ViewGroup)?.childCount ?: 0 }
+        } ?: 0
+
+        if (currentViewCount == items.size) {
+            // Primitive check: if count is same, assume synced for now to avoid flicker
+            // In a better implementation we'd check item content/IDs
+            return
+        }
+
+        // Full re-render (optimized to avoid too many refreshes)
+        homeView.post {
+            // Clear current views
+            val pagesContainer = homeView.getChildAt(0) as? ViewGroup
+            if (pagesContainer != null) {
+                for (i in 0 until pagesContainer.childCount) {
+                    (pagesContainer.getChildAt(i) as? ViewGroup)?.removeAllViews()
+                }
+            }
+
+            for (item in items) {
                 renderHomeItem(item)
             }
         }
@@ -237,6 +313,7 @@ class MainActivity : Activity() {
             HomeItem.Type.CLOCK -> view = createClockView(item)
             HomeItem.Type.FOLDER -> view = folderUI.createFolderView(
                 item,
+                currentSettings,
                 true,
                 homeView.width / HomeView.GRID_COLUMNS,
                 (homeView.height - dpToPx(48)) / HomeView.GRID_ROWS
@@ -292,7 +369,7 @@ class MainActivity : Activity() {
         val iconView = ImageView(this)
         iconView.scaleType = ImageView.ScaleType.FIT_CENTER
         val baseSize = resources.getDimensionPixelSize(R.dimen.grid_icon_size)
-        val scale = settingsManager.iconScale
+        val scale = currentSettings.iconScale
         val size = (baseSize * scale).toInt()
 
         val iconParams = LinearLayout.LayoutParams(size, size)
@@ -317,7 +394,7 @@ class MainActivity : Activity() {
 
         container.addView(iconView)
         container.addView(labelView)
-        if (settingsManager.isHideLabels) {
+        if (currentSettings.isHideLabels) {
             labelView.visibility = View.GONE
         }
         return container
@@ -463,7 +540,7 @@ class MainActivity : Activity() {
             icons.add(R.drawable.ic_remove)
         }
 
-        val adaptiveColor = ThemeUtils.getAdaptiveColor(this, settingsManager, true)
+        val adaptiveColor = ThemeUtils.getAdaptiveColor(this, currentSettings, true)
 
         val adapter: ArrayAdapter<String> = object : ArrayAdapter<String>(this, android.R.layout.select_dialog_item, android.R.id.text1, options) {
             override fun getView(position: Int, convertView: View?, parent: ViewGroup): View {
@@ -497,8 +574,8 @@ class MainActivity : Activity() {
 
         dialog.show()
         if (dialog.window != null) {
-            dialog.window!!.setBackgroundDrawable(ThemeUtils.getGlassDrawable(this, settingsManager))
-            ThemeUtils.applyWindowBlur(dialog.window!!, settingsManager.isLiquidGlass)
+            dialog.window!!.setBackgroundDrawable(ThemeUtils.getGlassDrawable(this, currentSettings))
+            ThemeUtils.applyWindowBlur(dialog.window!!, currentSettings.isLiquidGlass)
         }
     }
 
@@ -540,7 +617,7 @@ class MainActivity : Activity() {
 
     private fun openSettings() {
         val intent = Intent(this, SettingsActivity::class.java)
-        startActivityForResult(intent, 100)
+        startActivity(intent)
     }
 
     private fun applyDynamicColors() {
@@ -551,14 +628,6 @@ class MainActivity : Activity() {
                 drawerView.setAccentColor(accentColor)
             } catch (ignored: Exception) {
             }
-        }
-    }
-
-    private fun loadApps() {
-        model.loadApps { apps ->
-            this.allApps = apps
-            drawerView.setApps(apps, model)
-            homeView.refreshIcons(model, apps)
         }
     }
 
@@ -573,10 +642,6 @@ class MainActivity : Activity() {
         } else {
             registerReceiver(appInstallReceiver, filter)
         }
-    }
-
-    override fun onTrimMemory(level: Int) {
-        super.onTrimMemory(level)
     }
 
     override fun onResume() {
@@ -603,11 +668,6 @@ class MainActivity : Activity() {
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
-        if (requestCode == 100) {
-            loadApps()
-            homeView.refreshLayout()
-            return
-        }
         if (resultCode == RESULT_OK && data != null) {
             if (requestCode == REQUEST_PICK_APPWIDGET) {
                 configureWidget(data)
@@ -693,6 +753,7 @@ class MainActivity : Activity() {
     fun handleAppLaunch(packageName: String) {
         val intent = packageManager.getLaunchIntentForPackage(packageName)
         if (intent != null) startActivity(intent)
+        viewModel.incrementUsage(packageName)
     }
 
     private fun dpToPx(dp: Int): Int {
@@ -703,7 +764,7 @@ class MainActivity : Activity() {
 
     private inner class AppInstallReceiver : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
-            loadApps()
+            viewModel.refreshApps()
         }
     }
 
