@@ -1,4 +1,21 @@
-package com.riprog.launcher
+package com.riprog.launcher.ui.activities
+
+import com.riprog.launcher.ui.views.layout.MainLayout
+import com.riprog.launcher.ui.views.layout.AutoDimmingBackground
+import com.riprog.launcher.ui.views.home.HomeView
+import com.riprog.launcher.ui.views.folder.FolderViewFactory
+import com.riprog.launcher.ui.views.drawer.DrawerView
+import com.riprog.launcher.theme.ThemeUtils
+import com.riprog.launcher.theme.ThemeManager
+import com.riprog.launcher.logic.managers.WidgetManager
+import com.riprog.launcher.logic.managers.SettingsManager
+import com.riprog.launcher.logic.managers.FolderManager
+import com.riprog.launcher.logic.controllers.FreeformController
+import com.riprog.launcher.data.repository.AppRepository
+import com.riprog.launcher.data.model.HomeItem
+import com.riprog.launcher.data.model.AppItem
+import com.riprog.launcher.R
+import com.riprog.launcher.LauncherApplication
 
 import android.app.Activity
 import android.app.AlertDialog
@@ -27,12 +44,12 @@ import java.util.*
 
 class MainActivity : Activity() {
 
-    lateinit var model: LauncherModel
+    lateinit var model: AppRepository
     lateinit var settingsManager: SettingsManager
     private var autoDimmingBackground: AutoDimmingBackground? = null
     lateinit var folderManager: FolderManager
-    private lateinit var folderUI: FolderUI
-    lateinit var freeformInteraction: FreeformInteraction
+    private lateinit var folderUI: FolderViewFactory
+    lateinit var freeformInteraction: FreeformController
     private var widgetManager: WidgetManager? = null
     private lateinit var appWidgetHost: AppWidgetHost
     private lateinit var appWidgetManager: AppWidgetManager
@@ -47,13 +64,13 @@ class MainActivity : Activity() {
 
     override fun attachBaseContext(newBase: Context) {
         val sm = SettingsManager(newBase)
-        super.attachBaseContext(ThemeMechanism.applyThemeToContext(newBase, sm.themeMode))
+        super.attachBaseContext(ThemeManager.applyThemeToContext(newBase, sm.themeMode))
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         settingsManager = SettingsManager(this)
-        ThemeMechanism.applyThemeMode(this, settingsManager.themeMode)
+        ThemeManager.applyThemeMode(this, settingsManager.themeMode)
         ThemeUtils.updateStatusBarContrast(this)
 
         val w = window
@@ -85,7 +102,7 @@ class MainActivity : Activity() {
         mainLayout.addView(drawerView)
         drawerView.visibility = View.GONE
 
-        freeformInteraction = FreeformInteraction(this, mainLayout, settingsManager, object : FreeformInteraction.InteractionCallback {
+        freeformInteraction = FreeformController(this, mainLayout, settingsManager, object : FreeformController.InteractionCallback {
             override fun onSaveState() {
                 saveHomeState()
             }
@@ -109,7 +126,7 @@ class MainActivity : Activity() {
 
         applyDynamicColors()
         folderManager = FolderManager(this, settingsManager)
-        folderUI = FolderUI(this, settingsManager)
+        folderUI = FolderViewFactory(this, settingsManager)
         widgetManager = WidgetManager(this, settingsManager, AppWidgetManager.getInstance(this), AppWidgetHost(this, APPWIDGET_HOST_ID))
         loadApps()
         registerAppInstallReceiver()

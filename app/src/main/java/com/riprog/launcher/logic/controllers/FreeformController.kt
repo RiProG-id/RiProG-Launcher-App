@@ -1,11 +1,15 @@
-package com.riprog.launcher
+package com.riprog.launcher.logic.controllers
+
+import com.riprog.launcher.ui.views.layout.TransformOverlay
+import com.riprog.launcher.logic.managers.SettingsManager
+import com.riprog.launcher.data.model.HomeItem
 
 import android.app.Activity
 import android.view.View
 import android.view.ViewGroup
 import android.widget.FrameLayout
 
-class FreeformInteraction(
+class FreeformController(
     private val activity: Activity,
     private val rootLayout: FrameLayout,
     private val preferences: SettingsManager,

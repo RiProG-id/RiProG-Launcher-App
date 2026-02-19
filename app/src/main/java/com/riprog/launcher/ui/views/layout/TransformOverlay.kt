@@ -1,4 +1,10 @@
-package com.riprog.launcher
+package com.riprog.launcher.ui.views.layout
+
+import com.riprog.launcher.theme.ThemeUtils
+import com.riprog.launcher.logic.managers.SettingsManager
+import com.riprog.launcher.logic.managers.GridManager
+import com.riprog.launcher.data.model.HomeItem
+import com.riprog.launcher.R
 
 import android.annotation.SuppressLint
 import android.appwidget.AppWidgetHostView

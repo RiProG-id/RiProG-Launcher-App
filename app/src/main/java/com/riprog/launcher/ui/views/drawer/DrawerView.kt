@@ -1,4 +1,10 @@
-package com.riprog.launcher
+package com.riprog.launcher.ui.views.drawer
+
+import com.riprog.launcher.theme.ThemeUtils
+import com.riprog.launcher.logic.managers.SettingsManager
+import com.riprog.launcher.data.repository.AppRepository
+import com.riprog.launcher.data.model.AppItem
+import com.riprog.launcher.R
 
 import android.content.Context
 import android.content.Intent
@@ -20,7 +26,7 @@ class DrawerView(context: Context) : LinearLayout(context) {
     private var longClickListener: OnAppLongClickListener? = null
     private var allApps: List<AppItem> = ArrayList()
     private var filteredApps: MutableList<AppItem> = ArrayList()
-    private var model: LauncherModel? = null
+    private var model: AppRepository? = null
     private val settingsManager: SettingsManager = SettingsManager(context)
     private val searchBar: EditText
     private val indexBar: IndexBar
@@ -125,7 +131,7 @@ class DrawerView(context: Context) : LinearLayout(context) {
         }
     }
 
-    fun setApps(apps: List<AppItem>, model: LauncherModel) {
+    fun setApps(apps: List<AppItem>, model: AppRepository) {
         this.allApps = apps
         this.model = model
         sortAppsAlphabetically()
@@ -177,7 +183,7 @@ class DrawerView(context: Context) : LinearLayout(context) {
     }
 
     fun filter(query: String?) {
-        filteredApps = LauncherModel.filterApps(allApps, query).toMutableList()
+        filteredApps = AppRepository.filterApps(allApps, query).toMutableList()
         adapter.notifyDataSetChanged()
     }
 
