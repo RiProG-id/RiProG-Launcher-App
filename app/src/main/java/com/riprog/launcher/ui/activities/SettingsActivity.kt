@@ -9,7 +9,7 @@ import com.riprog.launcher.ui.viewmodel.MainViewModelFactory
 import com.riprog.launcher.LauncherApplication
 import com.riprog.launcher.R
 
-import android.app.Activity
+import androidx.activity.ComponentActivity
 import android.content.Context
 import android.graphics.Color
 import android.graphics.Typeface
@@ -29,15 +29,14 @@ import androidx.lifecycle.repeatOnLifecycle
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.runBlocking
 import kotlin.math.roundToInt
 
-class SettingsActivity : Activity() {
+class SettingsActivity : ComponentActivity() {
 
     private val viewModel: MainViewModel by lazy {
         val app = application as LauncherApplication
         val factory = MainViewModelFactory(app.model, app.homeRepository, app.settingsRepository)
-        ViewModelProvider(this as androidx.lifecycle.ViewModelStoreOwner, factory)[MainViewModel::class.java]
+        ViewModelProvider(this, factory)[MainViewModel::class.java]
     }
 
     private var currentSettings = LauncherSettings()
@@ -77,17 +76,14 @@ class SettingsActivity : Activity() {
 
         setContentView(rootContainer)
 
-        runBlocking {
-            currentSettings = viewModel.settings.first()
-        }
         buildUi(currentSettings)
 
         observeViewModel()
     }
 
     private fun observeViewModel() {
-        (this as androidx.lifecycle.LifecycleOwner).lifecycleScope.launch {
-            (this@SettingsActivity as androidx.lifecycle.LifecycleOwner).repeatOnLifecycle(Lifecycle.State.STARTED) {
+        lifecycleScope.launch {
+            repeatOnLifecycle(Lifecycle.State.STARTED) {
                 viewModel.settings.collectLatest { settings ->
                     if (currentSettings.themeMode != settings.themeMode) {
                         currentSettings = settings

@@ -20,7 +20,7 @@ import com.riprog.launcher.ui.viewmodel.MainViewModelFactory
 import com.riprog.launcher.R
 import com.riprog.launcher.LauncherApplication
 
-import android.app.Activity
+import androidx.activity.ComponentActivity
 import android.app.AlertDialog
 import android.appwidget.AppWidgetHost
 import android.appwidget.AppWidgetHostView
@@ -51,7 +51,7 @@ import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import java.util.*
 
-class MainActivity : Activity() {
+class MainActivity : ComponentActivity() {
 
     lateinit var model: AppRepository
     lateinit var settingsManager: SettingsManager
@@ -74,7 +74,7 @@ class MainActivity : Activity() {
     private val viewModel: MainViewModel by lazy {
         val app = application as LauncherApplication
         val factory = MainViewModelFactory(app.model, app.homeRepository, app.settingsRepository)
-        ViewModelProvider(this as androidx.lifecycle.ViewModelStoreOwner, factory)[MainViewModel::class.java]
+        ViewModelProvider(this, factory)[MainViewModel::class.java]
     }
 
     var currentSettings = LauncherSettings()
@@ -154,8 +154,8 @@ class MainActivity : Activity() {
     }
 
     private fun observeViewModel() {
-        (this as androidx.lifecycle.LifecycleOwner).lifecycleScope.launch {
-            (this@MainActivity as androidx.lifecycle.LifecycleOwner).repeatOnLifecycle(Lifecycle.State.STARTED) {
+        lifecycleScope.launch {
+            repeatOnLifecycle(Lifecycle.State.STARTED) {
                 launch {
                     viewModel.allApps.collectLatest { apps ->
                         this@MainActivity.allApps = apps
@@ -273,15 +273,6 @@ class MainActivity : Activity() {
     }
 
     private fun restoreHomeStateFromItems(items: List<HomeItem>) {
-        val root = homeView.getChildAt(0) as? ViewGroup
-        val currentViewCount = root?.let { r ->
-            (0 until r.childCount).sumOf { i -> (r.getChildAt(i) as? ViewGroup)?.childCount ?: 0 }
-        } ?: 0
-
-        if (currentViewCount == items.size) {
-            return
-        }
-
         homeView.post {
             val pagesContainer = homeView.getChildAt(0) as? ViewGroup
             if (pagesContainer != null) {

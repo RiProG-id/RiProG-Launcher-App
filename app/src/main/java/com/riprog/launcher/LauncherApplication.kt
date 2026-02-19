@@ -27,6 +27,7 @@ class LauncherApplication : Application() {
         settingsRepository = SettingsRepository(this)
 
         applicationScope.launch {
+            settingsRepository.checkAndMigrate()
             homeRepository.checkAndMigrate()
         }
     }

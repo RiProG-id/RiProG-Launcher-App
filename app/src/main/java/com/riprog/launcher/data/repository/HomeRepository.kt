@@ -19,9 +19,11 @@ class HomeRepository(private val context: Context, private val homeItemDao: Home
             val domainItems = entities.map { entity ->
                 val item = entity.toDomainModel()
                 if (item.type == HomeItem.Type.FOLDER) {
-                    item.folderItems = homeItemDao.getItemsByParentId(entity.id)
-                        .map { it.toDomainModel() }
-                        .toMutableList()
+                    item.folderItems = withContext(Dispatchers.IO) {
+                        homeItemDao.getItemsByParentId(entity.id)
+                            .map { it.toDomainModel() }
+                            .toMutableList()
+                    }
                 }
                 item
             }
@@ -36,7 +38,7 @@ class HomeRepository(private val context: Context, private val homeItemDao: Home
         }
     }
 
-    private suspend fun saveItemRecursive(item: HomeItem, parentId: Long?) {
+    private suspend fun saveItemRecursive(item: HomeItem, parentId: Long?): Unit = withContext(Dispatchers.IO) {
         val entity = HomeItemEntity.fromDomainModel(item, parentId)
         val id = homeItemDao.insertItem(entity)
         if (item.type == HomeItem.Type.FOLDER) {

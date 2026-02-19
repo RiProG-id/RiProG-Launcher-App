@@ -2,24 +2,18 @@ package com.riprog.launcher.data.repository
 
 import android.content.Context
 import androidx.datastore.core.DataStore
-import androidx.datastore.preferences.SharedPreferencesMigration
 import androidx.datastore.preferences.core.*
 import androidx.datastore.preferences.preferencesDataStore
 import com.riprog.launcher.data.model.LauncherSettings
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import java.io.IOException
 
 private const val USER_PREFERENCES_NAME = "launcher_settings"
-private const val OLD_PREFS_NAME = "riprog_launcher_prefs"
 
-private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(
-    name = USER_PREFERENCES_NAME,
-    produceMigrations = { context ->
-        listOf(SharedPreferencesMigration(context, OLD_PREFS_NAME))
-    }
-)
+private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = USER_PREFERENCES_NAME)
 
 class SettingsRepository(private val context: Context) {
 
@@ -35,6 +29,7 @@ class SettingsRepository(private val context: Context) {
         val DRAWER_OPEN_COUNT = intPreferencesKey("drawer_open_count")
         val DEFAULT_PROMPT_TIMESTAMP = longPreferencesKey("default_prompt_ts")
         val DEFAULT_PROMPT_COUNT = intPreferencesKey("default_prompt_count")
+        val MIGRATED = booleanPreferencesKey("settings_migrated")
     }
 
     val settingsFlow: Flow<LauncherSettings> = context.dataStore.data
@@ -59,6 +54,30 @@ class SettingsRepository(private val context: Context) {
                 defaultPromptCount = preferences[PreferencesKeys.DEFAULT_PROMPT_COUNT] ?: 0
             )
         }
+
+    suspend fun checkAndMigrate() {
+        val prefs = context.dataStore.data.first()
+        if (prefs[PreferencesKeys.MIGRATED] == true) return
+
+        val oldPrefs = context.getSharedPreferences("riprog_launcher_prefs", Context.MODE_PRIVATE)
+        if (oldPrefs.all.isEmpty()) return
+
+        context.dataStore.edit { it ->
+            if (oldPrefs.contains("columns")) it[PreferencesKeys.COLUMNS] = oldPrefs.getInt("columns", 4)
+            if (oldPrefs.contains("widget_id")) it[PreferencesKeys.WIDGET_ID] = oldPrefs.getInt("widget_id", -1)
+            if (oldPrefs.contains("freeform_home")) it[PreferencesKeys.FREEFORM_HOME] = oldPrefs.getBoolean("freeform_home", false)
+            if (oldPrefs.contains("icon_scale")) it[PreferencesKeys.ICON_SCALE] = oldPrefs.getFloat("icon_scale", 1.0f)
+            if (oldPrefs.contains("hide_labels")) it[PreferencesKeys.HIDE_LABELS] = oldPrefs.getBoolean("hide_labels", false)
+            if (oldPrefs.contains("theme_mode")) it[PreferencesKeys.THEME_MODE] = oldPrefs.getString("theme_mode", "system") ?: "system"
+            if (oldPrefs.contains("liquid_glass")) it[PreferencesKeys.LIQUID_GLASS] = oldPrefs.getBoolean("liquid_glass", false)
+            if (oldPrefs.contains("darken_wallpaper")) it[PreferencesKeys.DARKEN_WALLPAPER] = oldPrefs.getBoolean("darken_wallpaper", false)
+            if (oldPrefs.contains("drawer_open_count")) it[PreferencesKeys.DRAWER_OPEN_COUNT] = oldPrefs.getInt("drawer_open_count", 0)
+            if (oldPrefs.contains("default_prompt_ts")) it[PreferencesKeys.DEFAULT_PROMPT_TIMESTAMP] = oldPrefs.getLong("default_prompt_ts", 0L)
+            if (oldPrefs.contains("default_prompt_count")) it[PreferencesKeys.DEFAULT_PROMPT_COUNT] = oldPrefs.getInt("default_prompt_count", 0)
+
+            it[PreferencesKeys.MIGRATED] = true
+        }
+    }
 
     suspend fun updateColumns(columns: Int) {
         context.dataStore.edit { it[PreferencesKeys.COLUMNS] = columns }

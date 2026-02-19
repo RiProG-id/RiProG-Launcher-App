@@ -7,7 +7,7 @@ import com.riprog.launcher.data.model.LauncherSettings
 import com.riprog.launcher.data.repository.SettingsRepository
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.flow.collectLatest
 
 class SettingsManager(context: Context) {
     private val settingsRepository: SettingsRepository = (context.applicationContext as LauncherApplication).settingsRepository
@@ -17,17 +17,9 @@ class SettingsManager(context: Context) {
 
     init {
         scope.launch {
-            settingsRepository.settingsFlow.collect {
+            settingsRepository.settingsFlow.collectLatest {
                 cachedSettings = it
             }
-        }
-        try {
-            runBlocking {
-                withTimeout(200) {
-                    cachedSettings = settingsRepository.settingsFlow.first()
-                }
-            }
-        } catch (e: Exception) {
         }
     }
 
@@ -52,7 +44,7 @@ class SettingsManager(context: Context) {
     var iconScale: Float
         get() = cachedSettings.iconScale
         set(value) {
-            scope.launch { settingsRepository.updateIconScale(value) }
+            scope.launch { settingsRepository.updateIconScale(scale = value) }
         }
 
     var isHideLabels: Boolean
