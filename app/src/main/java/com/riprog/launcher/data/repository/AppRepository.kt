@@ -1,10 +1,12 @@
 package com.riprog.launcher.data.repository
 
 import com.riprog.launcher.data.model.AppItem
+import com.riprog.launcher.data.cache.SmartCacheManager
 
 import android.content.ComponentCallbacks2
 import android.content.Context
 import android.content.Intent
+import android.content.pm.LauncherApps
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.graphics.Canvas
@@ -12,10 +14,10 @@ import android.graphics.drawable.BitmapDrawable
 import android.graphics.drawable.Drawable
 import android.os.Handler
 import android.os.Looper
+import android.os.UserHandle
 import android.util.LruCache
+import kotlinx.coroutines.*
 import java.util.*
-import java.util.concurrent.ExecutorService
-import java.util.concurrent.Executors
 
 class AppRepository(context: Context) {
     fun interface OnAppsLoadedListener {
@@ -24,10 +26,35 @@ class AppRepository(context: Context) {
 
     private val context: Context = context.applicationContext
     private val pm: PackageManager = context.packageManager
-    private val executor: ExecutorService = Executors.newSingleThreadExecutor()
-    private val mainHandler = Handler(Looper.getMainLooper())
+    private val launcherApps: LauncherApps = context.getSystemService(Context.LAUNCHER_APPS_SERVICE) as LauncherApps
     private val iconCache: LruCache<String, Bitmap>
     private val pendingListeners: MutableMap<String, MutableList<OnIconLoadedListener>> = HashMap()
+    private val appsLoadedListeners: MutableList<OnAppsLoadedListener> = ArrayList()
+
+    private val cacheManager = SmartCacheManager(context)
+    private val scope = CoroutineScope(Dispatchers.Main + SupervisorJob())
+
+    private val launcherCallback = object : LauncherApps.Callback() {
+        override fun onPackageRemoved(packageName: String, user: UserHandle) {
+            onPackageChangedInternal(packageName)
+        }
+
+        override fun onPackageAdded(packageName: String, user: UserHandle) {
+            onPackageChangedInternal(packageName)
+        }
+
+        override fun onPackageChanged(packageName: String, user: UserHandle) {
+            onPackageChangedInternal(packageName)
+        }
+
+        override fun onPackagesAvailable(packageNames: Array<String>, user: UserHandle, replacing: Boolean) {
+            onPackageChangedInternal(null)
+        }
+
+        override fun onPackagesUnavailable(packageNames: Array<String>, user: UserHandle, replacing: Boolean) {
+            onPackageChangedInternal(null)
+        }
+    }
 
     init {
         val maxMemory = (Runtime.getRuntime().maxMemory() / 1024).toInt()
@@ -35,6 +62,18 @@ class AppRepository(context: Context) {
         iconCache = object : LruCache<String, Bitmap>(cacheSize) {
             override fun sizeOf(key: String, bitmap: Bitmap): Int {
                 return bitmap.byteCount / 1024
+            }
+        }
+
+        launcherApps.registerCallback(launcherCallback)
+
+        // Initial cleanup in background
+        scope.launch {
+            withContext(Dispatchers.IO) {
+                val mainIntent = Intent(Intent.ACTION_MAIN, null).apply { addCategory(Intent.CATEGORY_LAUNCHER) }
+                val infos = pm.queryIntentActivities(mainIntent, 0)
+                val currentPkgs = infos.map { it.activityInfo.packageName }.toSet()
+                cacheManager.cleanup(currentPkgs)
             }
         }
     }
@@ -52,43 +91,96 @@ class AppRepository(context: Context) {
     }
 
     fun shutdown() {
-        executor.shutdown()
+        launcherApps.unregisterCallback(launcherCallback)
+        scope.cancel()
+    }
+
+    private fun onPackageChangedInternal(packageName: String?) {
+        scope.launch {
+            if (packageName != null) {
+                cacheManager.evictApp(packageName)
+                synchronized(pendingListeners) {
+                    iconCache.remove(packageName)
+                }
+            }
+            refreshApps()
+        }
+    }
+
+    private fun refreshApps() {
+        loadApps { /* Subscribed listeners will be notified automatically */ }
     }
 
     fun loadApps(listener: OnAppsLoadedListener) {
-        executor.execute {
-            val mainIntent = Intent(Intent.ACTION_MAIN, null)
-            mainIntent.addCategory(Intent.CATEGORY_LAUNCHER)
-            val infos = pm.queryIntentActivities(mainIntent, 0)
+        synchronized(appsLoadedListeners) {
+            if (!appsLoadedListeners.contains(listener)) {
+                appsLoadedListeners.add(listener)
+            }
+        }
 
-            val apps: MutableList<AppItem> = ArrayList()
-            val selfPackage = context.packageName
-
-            for (info in infos) {
-                if (info.activityInfo.packageName != selfPackage) {
-                    val item = AppItem(
-                        info.loadLabel(pm).toString(),
-                        info.activityInfo.packageName,
-                        info.activityInfo.name
-                    )
-                    apps.add(item)
-                }
+        scope.launch {
+            // 1. Load from cache first
+            val cachedApps = cacheManager.getCachedApps()
+            if (cachedApps.isNotEmpty()) {
+                notifyListeners(cachedApps)
             }
 
-            apps.sortWith { a, b -> a.label.compareTo(b.label, ignoreCase = true) }
+            // 2. Sync with PackageManager in background
+            withContext(Dispatchers.IO) {
+                val mainIntent = Intent(Intent.ACTION_MAIN, null)
+                mainIntent.addCategory(Intent.CATEGORY_LAUNCHER)
+                val infos = pm.queryIntentActivities(mainIntent, 0)
 
-            mainHandler.post { listener.onAppsLoaded(apps) }
+                val apps: MutableList<AppItem> = ArrayList()
+                val selfPackage = context.packageName
+
+                for (info in infos) {
+                    if (info.activityInfo.packageName != selfPackage) {
+                        val item = AppItem(
+                            info.loadLabel(pm).toString(),
+                            info.activityInfo.packageName,
+                            info.activityInfo.name
+                        )
+                        apps.add(item)
+                    }
+                }
+
+                apps.sortWith { a, b -> a.label.compareTo(b.label, ignoreCase = true) }
+
+                // Check if data changed
+                val changed = cachedApps.size != apps.size ||
+                             cachedApps.zip(apps).any {
+                                 it.first.packageName != it.second.packageName ||
+                                 it.first.label != it.second.label ||
+                                 it.first.className != it.second.className
+                             }
+
+                if (changed || cachedApps.isEmpty()) {
+                    cacheManager.saveAppsToCache(apps)
+                    withContext(Dispatchers.Main) {
+                        notifyListeners(apps)
+                    }
+                }
+            }
+        }
+    }
+
+    private fun notifyListeners(apps: List<AppItem>) {
+        val listeners = synchronized(appsLoadedListeners) { ArrayList(appsLoadedListeners) }
+        for (l in listeners) {
+            l.onAppsLoaded(apps)
         }
     }
 
     fun loadIcon(item: AppItem, listener: OnIconLoadedListener) {
-        synchronized(pendingListeners) {
-            val cached = iconCache[item.packageName]
-            if (cached != null) {
-                listener.onIconLoaded(cached)
-                return
-            }
+        // 1. Check memory cache
+        val memoryCached = iconCache[item.packageName]
+        if (memoryCached != null) {
+            listener.onIconLoaded(memoryCached)
+            return
+        }
 
+        synchronized(pendingListeners) {
             var listeners = pendingListeners[item.packageName]
             if (listeners != null) {
                 listeners.add(listener)
@@ -100,27 +192,37 @@ class AppRepository(context: Context) {
             pendingListeners[item.packageName] = listeners
         }
 
-        executor.execute {
-            var bitmap: Bitmap? = null
-            try {
-                val drawable = pm.getApplicationIcon(item.packageName)
-                bitmap = drawableToBitmap(drawable)
-                if (bitmap != null) {
-                    iconCache.put(item.packageName, bitmap)
+        scope.launch {
+            // 2. Check disk cache
+            var bitmap = cacheManager.getCachedIcon(item.packageName)
+
+            if (bitmap == null) {
+                // 3. Load from PackageManager
+                bitmap = withContext(Dispatchers.IO) {
+                    try {
+                        val drawable = pm.getApplicationIcon(item.packageName)
+                        drawableToBitmap(drawable)
+                    } catch (ignored: PackageManager.NameNotFoundException) {
+                        null
+                    }
                 }
-            } catch (ignored: PackageManager.NameNotFoundException) {
+                if (bitmap != null) {
+                    cacheManager.saveIconToCache(item.packageName, bitmap)
+                }
+            }
+
+            if (bitmap != null) {
+                iconCache.put(item.packageName, bitmap)
             }
 
             val finalBitmap = bitmap
-            mainHandler.post {
-                val listeners: MutableList<OnIconLoadedListener>?
-                synchronized(pendingListeners) {
-                    listeners = pendingListeners.remove(item.packageName)
-                }
-                if (listeners != null) {
-                    for (l in listeners) {
-                        l.onIconLoaded(finalBitmap)
-                    }
+            val listeners: MutableList<OnIconLoadedListener>?
+            synchronized(pendingListeners) {
+                listeners = pendingListeners.remove(item.packageName)
+            }
+            if (listeners != null) {
+                for (l in listeners) {
+                    l.onIconLoaded(finalBitmap)
                 }
             }
         }

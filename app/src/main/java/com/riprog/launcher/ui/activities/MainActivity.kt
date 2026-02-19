@@ -56,7 +56,6 @@ class MainActivity : Activity() {
     lateinit var mainLayout: MainLayout
     lateinit var homeView: HomeView
     lateinit var drawerView: DrawerView
-    private var appInstallReceiver: AppInstallReceiver? = null
     var homeItems: MutableList<HomeItem> = ArrayList()
     var allApps: List<AppItem> = ArrayList()
     private var lastGridCol: Float = 0f
@@ -129,7 +128,6 @@ class MainActivity : Activity() {
         folderUI = FolderViewFactory(this, settingsManager)
         widgetManager = WidgetManager(this, settingsManager, AppWidgetManager.getInstance(this), AppWidgetHost(this, APPWIDGET_HOST_ID))
         loadApps()
-        registerAppInstallReceiver()
 
         homeView.post {
             restoreHomeState()
@@ -562,19 +560,6 @@ class MainActivity : Activity() {
         }
     }
 
-    private fun registerAppInstallReceiver() {
-        appInstallReceiver = AppInstallReceiver()
-        val filter = IntentFilter()
-        filter.addAction(Intent.ACTION_PACKAGE_ADDED)
-        filter.addAction(Intent.ACTION_PACKAGE_REMOVED)
-        filter.addDataScheme("package")
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            registerReceiver(appInstallReceiver, filter, RECEIVER_NOT_EXPORTED)
-        } else {
-            registerReceiver(appInstallReceiver, filter)
-        }
-    }
-
     override fun onTrimMemory(level: Int) {
         super.onTrimMemory(level)
     }
@@ -598,7 +583,6 @@ class MainActivity : Activity() {
 
     override fun onDestroy() {
         super.onDestroy()
-        if (appInstallReceiver != null) unregisterReceiver(appInstallReceiver)
     }
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
@@ -699,12 +683,6 @@ class MainActivity : Activity() {
         return TypedValue.applyDimension(
             TypedValue.COMPLEX_UNIT_DIP, dp.toFloat(), resources.displayMetrics
         ).toInt()
-    }
-
-    private inner class AppInstallReceiver : BroadcastReceiver() {
-        override fun onReceive(context: Context, intent: Intent) {
-            loadApps()
-        }
     }
 
     companion object {
