@@ -9,6 +9,9 @@ import com.riprog.launcher.callback.PageActionCallback
 import com.riprog.launcher.R
 
 import android.content.Context
+import androidx.lifecycle.findViewTreeLifecycleOwner
+import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.launch
 import android.graphics.Color
 import android.graphics.drawable.GradientDrawable
 import android.os.Handler
@@ -69,6 +72,12 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
                 isEdgeScrolling = false
                 edgeHoldStart = 0
             }
+        }
+    }
+
+    fun clearItems() {
+        for (page in pages) {
+            page.removeAllViews()
         }
     }
 
@@ -481,7 +490,8 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
 
                         if (iv != null && app != null) {
                             val finalApp = app
-                            model.loadIcon(app) { bitmap ->
+                            findViewTreeLifecycleOwner()?.lifecycleScope?.launch {
+                                val bitmap = model.loadIcon(app)
                                 if (bitmap != null) {
                                     iv.setImageBitmap(bitmap)
                                     if (tv != null) tv.text = finalApp.label

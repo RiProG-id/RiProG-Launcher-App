@@ -9,6 +9,9 @@ import com.riprog.launcher.R
 import android.content.Context
 import android.content.Intent
 import android.graphics.Color
+import androidx.lifecycle.findViewTreeLifecycleOwner
+import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.launch
 import android.text.Editable
 import android.text.TextUtils
 import android.text.TextWatcher
@@ -275,7 +278,8 @@ class DrawerView(context: Context) : LinearLayout(context) {
             holder.icon!!.setImageBitmap(null)
             holder.icon!!.tag = item.packageName
             if (model != null) {
-                model!!.loadIcon(item) { bitmap ->
+                findViewTreeLifecycleOwner()?.lifecycleScope?.launch {
+                    val bitmap = model!!.loadIcon(item)
                     if (bitmap != null && item.packageName == holder.icon!!.tag) {
                         holder.icon!!.setImageBitmap(bitmap)
                     }

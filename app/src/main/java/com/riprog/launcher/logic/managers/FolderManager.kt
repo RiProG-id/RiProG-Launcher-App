@@ -4,6 +4,7 @@ import com.riprog.launcher.ui.activities.MainActivity
 import com.riprog.launcher.theme.ThemeUtils
 import com.riprog.launcher.data.model.HomeItem
 import com.riprog.launcher.data.model.AppItem
+import com.riprog.launcher.LauncherApplication
 
 import android.annotation.SuppressLint
 import android.content.Context
@@ -114,7 +115,8 @@ class FolderManager(private val activity: MainActivity, private val settingsMana
                 val imm = activity.getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager?
                 imm?.hideSoftInputFromWindow(v.windowToken, 0)
                 activity.saveHomeState()
-                activity.homeView.refreshIcons(activity.model, activity.allApps)
+                val appRepo = (activity.application as LauncherApplication).appRepository
+                activity.homeView.refreshIcons(appRepo, activity.allApps)
                 return@setOnEditorActionListener true
             }
             false
@@ -166,7 +168,8 @@ class FolderManager(private val activity: MainActivity, private val settingsMana
             ThemeUtils.applyWindowBlur(activity.window, false)
             val imm = activity.getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager?
             imm?.hideSoftInputFromWindow(activity.mainLayout.windowToken, 0)
-            activity.homeView.refreshIcons(activity.model, activity.allApps)
+            val appRepo = (activity.application as LauncherApplication).appRepository
+            activity.homeView.refreshIcons(appRepo, activity.allApps)
         }
     }
 

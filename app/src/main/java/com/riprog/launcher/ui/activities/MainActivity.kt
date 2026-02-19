@@ -14,10 +14,10 @@ import com.riprog.launcher.logic.controllers.FreeformController
 import com.riprog.launcher.data.repository.AppRepository
 import com.riprog.launcher.data.model.HomeItem
 import com.riprog.launcher.data.model.AppItem
+import com.riprog.launcher.ui.viewmodel.MainViewModel
 import com.riprog.launcher.R
 import com.riprog.launcher.LauncherApplication
 
-import android.app.Activity
 import android.app.AlertDialog
 import android.appwidget.AppWidgetHost
 import android.appwidget.AppWidgetHostView
@@ -37,14 +37,24 @@ import android.text.TextUtils
 import android.text.format.DateFormat
 import android.util.TypedValue
 import android.view.*
-import android.view.inputmethod.InputMethodManager
-import androidx.core.view.WindowCompat
 import android.widget.*
+import androidx.activity.ComponentActivity
+import androidx.activity.viewModels
+import androidx.core.view.WindowCompat
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.launch
 import java.util.*
 
-class MainActivity : Activity() {
+class MainActivity : ComponentActivity() {
 
-    lateinit var model: AppRepository
+    private val viewModel: MainViewModel by viewModels {
+        val app = application as LauncherApplication
+        MainViewModel.Factory(app.appRepository, app.homeItemRepository, app.settingsRepository)
+    }
+
     lateinit var settingsManager: SettingsManager
     private var autoDimmingBackground: AutoDimmingBackground? = null
     lateinit var folderManager: FolderManager
@@ -79,8 +89,6 @@ class MainActivity : Activity() {
         w.navigationBarColor = Color.TRANSPARENT
 
         WindowCompat.setDecorFitsSystemWindows(w, false)
-
-        model = (application as LauncherApplication).model
 
         mainLayout = MainLayout(this)
         homeView = HomeView(this)
@@ -128,12 +136,56 @@ class MainActivity : Activity() {
         folderManager = FolderManager(this, settingsManager)
         folderUI = FolderViewFactory(this, settingsManager)
         widgetManager = WidgetManager(this, settingsManager, AppWidgetManager.getInstance(this), AppWidgetHost(this, APPWIDGET_HOST_ID))
-        loadApps()
+
         registerAppInstallReceiver()
+        setupObservers()
 
         homeView.post {
-            restoreHomeState()
             showDefaultLauncherPrompt()
+        }
+    }
+
+    private fun setupObservers() {
+        lifecycleScope.launch {
+            repeatOnLifecycle(Lifecycle.State.STARTED) {
+                launch {
+                    viewModel.allApps.collectLatest { apps ->
+                        this@MainActivity.allApps = apps
+                        drawerView.setApps(apps, (application as LauncherApplication).appRepository)
+                        homeView.refreshIcons((application as LauncherApplication).appRepository, apps)
+                    }
+                }
+                launch {
+                    viewModel.homeItems.collectLatest { items ->
+                        this@MainActivity.homeItems = items.toMutableList()
+                        if (homeItems.isEmpty()) {
+                            setupDefaultHome()
+                        } else {
+                            homeView.post {
+                                homeView.clearItems()
+                                for (item in homeItems) {
+                                    renderHomeItem(item)
+                                }
+                            }
+                        }
+                    }
+                }
+                launch {
+                    viewModel.columns.collect { count ->
+                        drawerView.setColumns(count)
+                    }
+                }
+                launch {
+                    viewModel.isDarkenWallpaper.collect {
+                        autoDimmingBackground?.updateDimVisibility()
+                    }
+                }
+                launch {
+                    viewModel.isLiquidGlass.collect {
+                        homeView.refreshLayout()
+                    }
+                }
+            }
         }
     }
 
@@ -205,23 +257,12 @@ class MainActivity : Activity() {
         )
         mainLayout.addView(prompt, lp)
 
-        settingsManager.lastDefaultPromptTimestamp = System.currentTimeMillis()
-        settingsManager.incrementDefaultPromptCount()
+        viewModel.setLastDefaultPromptTimestamp(System.currentTimeMillis())
+        viewModel.incrementDefaultPromptCount()
     }
 
     fun saveHomeState() {
-        settingsManager.saveHomeItems(homeItems)
-    }
-
-    private fun restoreHomeState() {
-        homeItems = settingsManager.getHomeItems().toMutableList()
-        if (homeItems.isEmpty()) {
-            setupDefaultHome()
-        } else {
-            for (item in homeItems) {
-                renderHomeItem(item)
-            }
-        }
+        viewModel.saveHomeState(homeItems)
     }
 
     private fun setupDefaultHome() {
@@ -265,7 +306,8 @@ class MainActivity : Activity() {
             lp.width = size
             lp.height = size
             iv.layoutParams = lp
-            model.loadIcon(AppItem.fromPackage(this, packageName)) { bitmap ->
+            lifecycleScope.launch {
+                val bitmap = viewModel.loadIcon(AppItem.fromPackage(this@MainActivity, packageName))
                 iv.setImageBitmap(bitmap)
             }
             grid.addView(iv)
@@ -308,7 +350,10 @@ class MainActivity : Activity() {
         val packageName = item.packageName ?: return container
         val app = findApp(packageName)
         if (app != null) {
-            model.loadIcon(app) { bitmap -> iconView.setImageBitmap(bitmap) }
+            lifecycleScope.launch {
+                val bitmap = viewModel.loadIcon(app)
+                iconView.setImageBitmap(bitmap)
+            }
             labelView.text = app.label
         } else {
             iconView.setImageResource(android.R.drawable.sym_def_app_icon)
@@ -386,7 +431,7 @@ class MainActivity : Activity() {
             (view.parent as ViewGroup).removeView(view)
         }
         saveHomeState()
-        homeView.refreshIcons(model, allApps)
+        homeView.refreshIcons((application as LauncherApplication).appRepository, allApps)
     }
 
     fun showAppInfo(item: HomeItem?) {
@@ -555,11 +600,7 @@ class MainActivity : Activity() {
     }
 
     private fun loadApps() {
-        model.loadApps { apps ->
-            this.allApps = apps
-            drawerView.setApps(apps, model)
-            homeView.refreshIcons(model, apps)
-        }
+        viewModel.loadApps()
     }
 
     private fun registerAppInstallReceiver() {
@@ -583,7 +624,7 @@ class MainActivity : Activity() {
         super.onResume()
         autoDimmingBackground?.updateDimVisibility()
         homeView.refreshLayout()
-        homeView.refreshIcons(model, allApps)
+        homeView.refreshIcons((application as LauncherApplication).appRepository, allApps)
     }
 
     override fun onStart() {

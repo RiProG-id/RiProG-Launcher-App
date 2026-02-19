@@ -3,9 +3,13 @@ package com.riprog.launcher.ui.activities
 import com.riprog.launcher.theme.ThemeUtils
 import com.riprog.launcher.theme.ThemeManager
 import com.riprog.launcher.logic.managers.SettingsManager
+import com.riprog.launcher.data.repository.AppRepository
+import com.riprog.launcher.data.repository.HomeItemRepository
+import com.riprog.launcher.data.repository.SettingsRepository
+import com.riprog.launcher.ui.viewmodel.MainViewModel
+import com.riprog.launcher.LauncherApplication
 import com.riprog.launcher.R
 
-import android.app.Activity
 import android.content.Context
 import android.graphics.Color
 import android.graphics.Typeface
@@ -17,10 +21,19 @@ import android.text.util.Linkify
 import android.util.TypedValue
 import android.view.*
 import android.widget.*
+import androidx.activity.ComponentActivity
+import androidx.activity.viewModels
 import androidx.core.view.WindowCompat
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.runBlocking
 import kotlin.math.roundToInt
 
-class SettingsActivity : Activity() {
+class SettingsActivity : ComponentActivity() {
+
+    private val viewModel: MainViewModel by viewModels {
+        val app = application as LauncherApplication
+        MainViewModel.Factory(app.appRepository, app.homeItemRepository, app.settingsRepository)
+    }
 
     private lateinit var settingsManager: SettingsManager
 
@@ -32,7 +45,9 @@ class SettingsActivity : Activity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         settingsManager = SettingsManager(this)
-        ThemeManager.applyThemeMode(this, settingsManager.themeMode)
+
+        val currentThemeMode = runBlocking { (application as LauncherApplication).settingsRepository.themeMode.first() }
+        ThemeManager.applyThemeMode(this, currentThemeMode)
 
         val w = window
         w.setFlags(WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS, WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS)
@@ -178,7 +193,7 @@ class SettingsActivity : Activity() {
             }
 
             option.setOnClickListener {
-                settingsManager.themeMode = values[index]
+                viewModel.setThemeMode(values[index])
                 ThemeManager.applyThemeMode(this, values[index])
                 recreate()
             }
@@ -195,26 +210,30 @@ class SettingsActivity : Activity() {
     }
 
     private fun addFreeformSetting(parent: LinearLayout) {
+        val isChecked = runBlocking { (application as LauncherApplication).settingsRepository.isFreeformHome.first() }
         addToggleSetting(parent, R.string.setting_freeform, R.string.setting_freeform_summary,
-            settingsManager.isFreeformHome) { isChecked -> settingsManager.isFreeformHome = isChecked }
+            isChecked) { checked -> viewModel.setFreeformHome(checked) }
     }
 
     private fun addHideLabelsSetting(parent: LinearLayout) {
+        val isChecked = runBlocking { (application as LauncherApplication).settingsRepository.isHideLabels.first() }
         addToggleSetting(parent, R.string.setting_hide_labels, R.string.setting_hide_labels_summary,
-            settingsManager.isHideLabels) { isChecked -> settingsManager.isHideLabels = isChecked }
+            isChecked) { checked -> viewModel.setHideLabels(checked) }
     }
 
     private fun addLiquidGlassSetting(parent: LinearLayout) {
+        val isChecked = runBlocking { (application as LauncherApplication).settingsRepository.isLiquidGlass.first() }
         addToggleSetting(parent, R.string.setting_liquid_glass, R.string.setting_liquid_glass_summary,
-            settingsManager.isLiquidGlass) { isChecked ->
-            settingsManager.isLiquidGlass = isChecked
+            isChecked) { checked ->
+            viewModel.setLiquidGlass(checked)
             recreate()
         }
     }
 
     private fun addDarkenWallpaperSetting(parent: LinearLayout) {
+        val isChecked = runBlocking { (application as LauncherApplication).settingsRepository.isDarkenWallpaper.first() }
         addToggleSetting(parent, R.string.setting_darken_wallpaper, R.string.setting_darken_wallpaper_summary,
-            settingsManager.isDarkenWallpaper) { isChecked -> settingsManager.isDarkenWallpaper = isChecked }
+            isChecked) { checked -> viewModel.setDarkenWallpaper(checked) }
     }
 
     private fun addToggleSetting(parent: LinearLayout, titleRes: Int, summaryRes: Int, isChecked: Boolean, listener: (Boolean) -> Unit) {
@@ -275,13 +294,13 @@ class SettingsActivity : Activity() {
 
         val seekBar = SeekBar(this)
         seekBar.max = 100
-        val currentScale = settingsManager.iconScale
+        val currentScale = runBlocking { (application as LauncherApplication).settingsRepository.iconScale.first() }
         seekBar.progress = ((currentScale - 0.5f) / 1.0f * 100).toInt()
 
         seekBar.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
             override fun onProgressChanged(seekBar: SeekBar, progress: Int, fromUser: Boolean) {
                 val scale = 0.5f + (progress / 100.0f) * 1.0f
-                settingsManager.iconScale = scale
+                viewModel.setIconScale(scale)
             }
 
             override fun onStartTrackingTouch(seekBar: SeekBar) {}
