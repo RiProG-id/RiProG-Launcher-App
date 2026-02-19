@@ -77,7 +77,6 @@ class SettingsActivity : Activity() {
 
         setContentView(rootContainer)
 
-        // Initial build with current values
         runBlocking {
             currentSettings = viewModel.settings.first()
         }

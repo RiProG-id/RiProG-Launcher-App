@@ -21,8 +21,6 @@ class SettingsManager(context: Context) {
                 cachedSettings = it
             }
         }
-        // Initial load for general settings (blocking once at start is sometimes necessary for legacy)
-        // But for modernization we'll try to minimize it.
         try {
             runBlocking {
                 withTimeout(200) {
@@ -30,7 +28,6 @@ class SettingsManager(context: Context) {
                 }
             }
         } catch (e: Exception) {
-            // Fallback to default
         }
     }
 
@@ -89,7 +86,6 @@ class SettingsManager(context: Context) {
     }
 
     fun getUsage(packageName: String): Int {
-        // Return from cache if available, otherwise launch a fetch to update cache for next time
         if (!usageCache.containsKey(packageName)) {
             scope.launch {
                 val usage = settingsRepository.getUsage(packageName).first()
@@ -125,7 +121,6 @@ class SettingsManager(context: Context) {
     }
 
     fun saveHomeItems(items: List<HomeItem>) {
-        // No-op, handled by Repository/ViewModel
     }
 
     fun getHomeItems(): MutableList<HomeItem> {

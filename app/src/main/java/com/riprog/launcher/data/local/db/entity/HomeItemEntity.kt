@@ -39,7 +39,6 @@ data class HomeItemEntity(
         item.scale = scale
         item.tiltX = tiltX
         item.tiltY = tiltY
-        // folderItems will be populated by the repository
         return item
     }
 

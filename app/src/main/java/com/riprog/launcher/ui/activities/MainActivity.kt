@@ -279,14 +279,10 @@ class MainActivity : Activity() {
         } ?: 0
 
         if (currentViewCount == items.size) {
-            // Primitive check: if count is same, assume synced for now to avoid flicker
-            // In a better implementation we'd check item content/IDs
             return
         }
 
-        // Full re-render (optimized to avoid too many refreshes)
         homeView.post {
-            // Clear current views
             val pagesContainer = homeView.getChildAt(0) as? ViewGroup
             if (pagesContainer != null) {
                 for (i in 0 until pagesContainer.childCount) {

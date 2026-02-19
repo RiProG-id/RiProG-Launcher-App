@@ -72,7 +72,7 @@ class FolderManager(private val activity: MainActivity, private val viewModel: M
         val adaptiveColor = ThemeUtils.getAdaptiveColor(activity, settings, true)
 
         val titleText = TextView(activity)
-        titleText.text = if (folderItem.folderName == null || folderItem.folderName!!.isEmpty()) "Folder" else folderItem.folderName
+        titleText.text = if (folderItem.folderName.isNullOrEmpty()) "Folder" else folderItem.folderName
         titleText.setTextColor(adaptiveColor)
         titleText.textSize = 20f
         titleText.setTypeface(null, Typeface.BOLD)

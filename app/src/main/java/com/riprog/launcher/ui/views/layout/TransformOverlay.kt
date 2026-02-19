@@ -362,7 +362,6 @@ class TransformOverlay(context: Context, private val targetView: View, private v
             while (targetR - currentR < -180) targetR += 360f
             targetView.rotation = currentR + (targetR - currentR) * SMOOTHING_FACTOR
         } else {
-            // Edge-based resizing/scaling
             val rotAngle = Math.toRadians((-targetView.rotation).toDouble()).toFloat()
             val rx = (cos(rotAngle.toDouble()) * (tx - cx) - sin(rotAngle.toDouble()) * (ty - cy)).toFloat()
             val ry = (sin(rotAngle.toDouble()) * (tx - cx) + cos(rotAngle.toDouble()) * (ty - cy)).toFloat()
