@@ -3,6 +3,7 @@ package com.riprog.launcher.data.cache
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import android.util.Log
 import java.io.File
 import java.io.FileOutputStream
 
@@ -22,7 +23,7 @@ class IconDiskCache(context: Context) {
                 bitmap.compress(Bitmap.CompressFormat.PNG, 100, out)
             }
         } catch (e: Exception) {
-            e.printStackTrace()
+            Log.e("IconDiskCache", "Error saving icon: $packageName", e)
         }
     }
 
@@ -32,6 +33,7 @@ class IconDiskCache(context: Context) {
         return try {
             BitmapFactory.decodeFile(file.absolutePath)
         } catch (e: Exception) {
+            Log.e("IconDiskCache", "Error loading icon: $packageName", e)
             null
         }
     }

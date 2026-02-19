@@ -1,19 +1,26 @@
-# Add project specific ProGuard rules here.
-# By default, the flags in this file are appended to flags specified
-# in /opt/android-sdk/tools/proguard/proguard-android.txt
-# You can edit the include path and order by changing the proguardFiles
-# directive in build.gradle.
+# Core launcher classes
+-keep public class com.riprog.launcher.ui.activities.MainActivity
+-keep public class com.riprog.launcher.ui.activities.SettingsActivity
+-keep public class com.riprog.launcher.LauncherApplication
 
--optimizationpasses 5
--allowaccessmodification
--dontpreverify
+# Data models
+-keep class com.riprog.launcher.data.model.** { *; }
+-keep class com.riprog.launcher.data.cache.** { *; }
 
-# Keep the main activity and launcher model
--keep public class com.riprog.launcher.MainActivity
--keep public class com.riprog.launcher.LauncherModel { *; }
--keep public class com.riprog.launcher.AppItem { *; }
-
-# Keep AppWidget classes
+# AppWidget classes
 -keep class * extends android.appwidget.AppWidgetProvider { *; }
 -keep class * extends android.appwidget.AppWidgetHost { *; }
 -keep class * extends android.appwidget.AppWidgetHostView { *; }
+
+# Kotlin Coroutines
+-keepnames class kotlinx.coroutines.internal.MainDispatcherFactory {}
+-keepnames class kotlinx.coroutines.CoroutineExceptionHandler {}
+-keepclassmembernames class kotlinx.coroutines.android.HandlerContext$HandlerPost {
+    *** run();
+}
+
+# AndroidX Core
+-keep class androidx.core.** { *; }
+
+# Suppress warnings if any
+-dontwarn kotlinx.coroutines.**

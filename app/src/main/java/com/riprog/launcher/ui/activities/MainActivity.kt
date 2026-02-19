@@ -58,6 +58,11 @@ class MainActivity : Activity() {
     lateinit var drawerView: DrawerView
     var homeItems: MutableList<HomeItem> = ArrayList()
     var allApps: List<AppItem> = ArrayList()
+    private val appsLoadedListener = AppRepository.OnAppsLoadedListener { apps ->
+        this.allApps = apps
+        drawerView.setApps(apps, model)
+        homeView.refreshIcons(model, apps)
+    }
     private var lastGridCol: Float = 0f
     private var lastGridRow: Float = 0f
 
@@ -553,11 +558,7 @@ class MainActivity : Activity() {
     }
 
     private fun loadApps() {
-        model.loadApps { apps ->
-            this.allApps = apps
-            drawerView.setApps(apps, model)
-            homeView.refreshIcons(model, apps)
-        }
+        model.loadApps(appsLoadedListener)
     }
 
     override fun onTrimMemory(level: Int) {
@@ -583,6 +584,7 @@ class MainActivity : Activity() {
 
     override fun onDestroy() {
         super.onDestroy()
+        model.removeAppsLoadedListener(appsLoadedListener)
     }
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {

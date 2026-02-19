@@ -111,6 +111,12 @@ class AppRepository(context: Context) {
         loadApps { /* Subscribed listeners will be notified automatically */ }
     }
 
+    fun removeAppsLoadedListener(listener: OnAppsLoadedListener) {
+        synchronized(appsLoadedListeners) {
+            appsLoadedListeners.remove(listener)
+        }
+    }
+
     fun loadApps(listener: OnAppsLoadedListener) {
         synchronized(appsLoadedListeners) {
             if (!appsLoadedListeners.contains(listener)) {
