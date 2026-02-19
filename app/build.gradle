@@ -3,15 +3,14 @@ plugins {
 }
 
 android {
-    compileSdkVersion 35
-
+    compileSdk 35
 
     defaultConfig {
         applicationId "com.riprog.launcher"
-        minSdkVersion 23
-        targetSdkVersion 35
-        versionCode 231
-        versionName "2.3.1"
+        minSdk 23
+        targetSdk 35
+        versionCode 300
+        versionName "3.0.0"
     }
 
     signingConfigs {
@@ -38,14 +37,14 @@ android {
     }
 
     compileOptions {
-        sourceCompatibility JavaVersion.VERSION_17
-        targetCompatibility JavaVersion.VERSION_17
+        sourceCompatibility JavaVersion.VERSION_21
+        targetCompatibility JavaVersion.VERSION_21
     }
 
     namespace 'com.riprog.launcher'
 }
 
 dependencies {
-    implementation 'androidx.core:core:1.13.1'
+    implementation 'androidx.core:core-ktx:1.15.0'
     testImplementation 'junit:junit:4.13.2'
 }
