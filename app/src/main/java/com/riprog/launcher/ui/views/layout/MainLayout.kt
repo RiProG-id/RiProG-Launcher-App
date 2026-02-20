@@ -129,6 +129,9 @@ class MainLayout(private val activity: MainActivity) : FrameLayout(activity) {
     }
 
     override fun onInterceptTouchEvent(ev: MotionEvent): Boolean {
+        if (activity.freeformInteraction.isTransforming()) {
+            return false
+        }
         if (isDrawerOpen) {
             when (ev.action) {
                 MotionEvent.ACTION_DOWN -> {
@@ -159,17 +162,15 @@ class MainLayout(private val activity: MainActivity) : FrameLayout(activity) {
                 isDragging = false
                 touchedView = findTouchedHomeItem(startX, startY)
                 longPressHandler.removeCallbacks(longPressRunnable)
-                longPressHandler.postDelayed(longPressRunnable, 400)
+                if (!activity.freeformInteraction.isTransforming()) {
+                    longPressHandler.postDelayed(longPressRunnable, 400)
+                }
                 return false
             }
 
             MotionEvent.ACTION_MOVE -> {
                 val dx = ev.x - startX
                 val dy = ev.y - startY
-
-                if (activity.freeformInteraction.isTransforming()) {
-                    return false
-                }
 
                 if (dy < -touchSlop && abs(dy.toDouble()) > abs(dx.toDouble())) {
                     longPressHandler.removeCallbacks(longPressRunnable)
@@ -197,6 +198,9 @@ class MainLayout(private val activity: MainActivity) : FrameLayout(activity) {
     }
 
     override fun onTouchEvent(event: MotionEvent): Boolean {
+        if (activity.freeformInteraction.isTransforming()) {
+            return true
+        }
         if (isDrawerOpen) {
             if (event.action == MotionEvent.ACTION_DOWN) {
                 startX = event.x

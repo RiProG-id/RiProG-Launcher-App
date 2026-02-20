@@ -158,22 +158,10 @@ class TransformOverlay(context: Context, private val targetView: View, private v
 
         val hs = handleSize / 2f
 
-        drawHandle(canvas, left, top, hs, true, foregroundColor)
-        drawHandle(canvas, right, top, hs, true, foregroundColor)
-        drawHandle(canvas, right, bottom, hs, true, foregroundColor)
-        drawHandle(canvas, left, bottom, hs, true, foregroundColor)
-
-        drawHandle(canvas, (left + right) / 2f, top, hs, false, foregroundColor)
-        drawHandle(canvas, right, (top + bottom) / 2f, hs, false, foregroundColor)
-        drawHandle(canvas, (left + right) / 2f, bottom, hs, false, foregroundColor)
-        drawHandle(canvas, left, (top + bottom) / 2f, hs, false, foregroundColor)
-
-        if (isFreeform || item.type == HomeItem.Type.WIDGET || item.type == HomeItem.Type.FOLDER) {
-            paint.color = foregroundColor
-            paint.alpha = 100
-            canvas.drawLine((left + right) / 2f, top, (left + right) / 2f, top - rotationHandleDist, paint)
-            drawHandle(canvas, (left + right) / 2f, top - rotationHandleDist, hs * 1.1f, true, foregroundColor)
-        }
+        drawHandle(canvas, left, top, hs, true, foregroundColor) // Rotate
+        drawHandle(canvas, right, top, hs, true, foregroundColor) // Scale
+        drawHandle(canvas, right, bottom, hs, true, foregroundColor) // Scale
+        drawHandle(canvas, left, bottom, hs, true, foregroundColor) // Scale
 
         canvas.restore()
     }
@@ -308,19 +296,10 @@ class TransformOverlay(context: Context, private val targetView: View, private v
 
         val hs = dpToPx(24f).toFloat()
 
-        if ((isFreeform || item.type == HomeItem.Type.WIDGET || item.type == HomeItem.Type.FOLDER) &&
-            dist(rx, ry, (left + right) / 2f, top - rotationHandleDist) < hs
-        ) return HANDLE_ROTATE
-
-        if (dist(rx, ry, left, top) < hs) return HANDLE_TOP_LEFT
+        if (dist(rx, ry, left, top) < hs) return HANDLE_ROTATE
         if (dist(rx, ry, right, top) < hs) return HANDLE_TOP_RIGHT
         if (dist(rx, ry, right, bottom) < hs) return HANDLE_BOTTOM_RIGHT
         if (dist(rx, ry, left, bottom) < hs) return HANDLE_BOTTOM_LEFT
-
-        if (dist(rx, ry, (left + right) / 2f, top) < hs) return HANDLE_TOP
-        if (dist(rx, ry, right, (top + bottom) / 2f) < hs) return HANDLE_RIGHT
-        if (dist(rx, ry, (left + right) / 2f, bottom) < hs) return HANDLE_BOTTOM
-        if (dist(rx, ry, left, (top + bottom) / 2f) < hs) return HANDLE_LEFT
 
         return if (rx >= left && rx <= right && ry >= top && ry <= bottom) ACTION_MOVE else ACTION_OUTSIDE
     }
@@ -349,7 +328,7 @@ class TransformOverlay(context: Context, private val targetView: View, private v
             targetView.y = newY
             onSaveListener?.onMove(tx, ty)
         } else if (activeHandle == HANDLE_ROTATE) {
-            val angle = Math.toDegrees(atan2((ty - cy).toDouble(), (tx - cx).toDouble())) + 90
+            val angle = Math.toDegrees(atan2((ty - cy).toDouble(), (tx - cx).toDouble())) + 135
             var targetR = angle.toFloat()
             val currentR = targetView.rotation
             while (targetR - currentR > 180) targetR -= 360f
@@ -369,11 +348,7 @@ class TransformOverlay(context: Context, private val targetView: View, private v
             var newScaleY = sy
 
             when (activeHandle) {
-                HANDLE_TOP -> if (halfContentH > 0) newScaleY = max(0.2f, abs(ry) / halfContentH)
-                HANDLE_BOTTOM -> if (halfContentH > 0) newScaleY = max(0.2f, abs(ry) / halfContentH)
-                HANDLE_LEFT -> if (halfContentW > 0) newScaleX = max(0.2f, abs(rx) / halfContentW)
-                HANDLE_RIGHT -> if (halfContentW > 0) newScaleX = max(0.2f, abs(rx) / halfContentW)
-                HANDLE_TOP_LEFT, HANDLE_TOP_RIGHT, HANDLE_BOTTOM_LEFT, HANDLE_BOTTOM_RIGHT -> {
+                HANDLE_TOP_RIGHT, HANDLE_BOTTOM_LEFT, HANDLE_BOTTOM_RIGHT -> {
                     val initialDist = dist(initialTouchX, initialTouchY, cx, cy)
                     val currDist = dist(tx, ty, cx, cy)
                     if (initialDist > 0) {

@@ -17,7 +17,7 @@ import com.riprog.launcher.data.model.AppItem
 import com.riprog.launcher.R
 import com.riprog.launcher.LauncherApplication
 
-import android.app.Activity
+import androidx.appcompat.app.AppCompatActivity
 import android.app.AlertDialog
 import android.appwidget.AppWidgetHost
 import android.appwidget.AppWidgetHostView
@@ -42,7 +42,7 @@ import androidx.core.view.WindowCompat
 import android.widget.*
 import java.util.*
 
-class MainActivity : Activity() {
+class MainActivity : AppCompatActivity() {
 
     lateinit var model: AppRepository
     lateinit var settingsManager: SettingsManager
