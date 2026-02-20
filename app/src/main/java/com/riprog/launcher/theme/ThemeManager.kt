@@ -3,6 +3,7 @@ package com.riprog.launcher.theme
 import com.riprog.launcher.logic.managers.SettingsManager
 import com.riprog.launcher.R
 
+import android.app.UiModeManager
 import android.content.Context
 import android.content.res.ColorStateList
 import android.content.res.Configuration
@@ -18,27 +19,27 @@ object ThemeManager {
 
 
     fun applyThemeMode(context: Context, mode: String?) {
-        val nightMode = when (mode) {
+        val appCompatMode = when (mode) {
             "light" -> AppCompatDelegate.MODE_NIGHT_NO
             "dark" -> AppCompatDelegate.MODE_NIGHT_YES
             else -> AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM
         }
-        AppCompatDelegate.setDefaultNightMode(nightMode)
-    }
+        AppCompatDelegate.setDefaultNightMode(appCompatMode)
 
-
-    fun applyThemeToContext(base: Context, mode: String?): Context {
-        if ("system" == mode) return base
-
-        val config = Configuration(base.resources.configuration)
-        if ("light" == mode) {
-            config.uiMode = (config.uiMode and Configuration.UI_MODE_NIGHT_MASK.inv()) or Configuration.UI_MODE_NIGHT_NO
-        } else if ("dark" == mode) {
-            config.uiMode = (config.uiMode and Configuration.UI_MODE_NIGHT_MASK.inv()) or Configuration.UI_MODE_NIGHT_YES
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            val uiModeManager = context.getSystemService(Context.UI_MODE_SERVICE) as UiModeManager
+            val systemMode = when (mode) {
+                "light" -> UiModeManager.MODE_NIGHT_NO
+                "dark" -> UiModeManager.MODE_NIGHT_YES
+                else -> UiModeManager.MODE_NIGHT_AUTO
+            }
+            if (uiModeManager.nightMode != systemMode) {
+                uiModeManager.setApplicationNightMode(systemMode)
+            }
         }
-
-        return base.createConfigurationContext(config)
     }
+
+
 
 
     fun getSystemAccentColor(context: Context): Int? {

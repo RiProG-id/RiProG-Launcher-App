@@ -24,15 +24,10 @@ class SettingsActivity : AppCompatActivity() {
 
     private lateinit var settingsManager: SettingsManager
 
-    override fun attachBaseContext(newBase: Context) {
-        val sm = SettingsManager(newBase)
-        super.attachBaseContext(ThemeManager.applyThemeToContext(newBase, sm.themeMode))
-    }
-
     override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
         settingsManager = SettingsManager(this)
         ThemeManager.applyThemeMode(this, settingsManager.themeMode)
+        super.onCreate(savedInstanceState)
 
         val w = window
         w.setFlags(WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS, WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS)
