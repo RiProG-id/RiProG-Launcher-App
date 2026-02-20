@@ -51,6 +51,7 @@ class MainLayout(private val activity: MainActivity) : FrameLayout(activity) {
     private var startY3 = 0f
 
     private val longPressRunnable = Runnable {
+        if (activity.freeformInteraction.isTransforming()) return@Runnable
         longPressTriggered = true
         if (touchedView != null) {
             if (activity.settingsManager.isFreeformHome) {
@@ -197,6 +198,9 @@ class MainLayout(private val activity: MainActivity) : FrameLayout(activity) {
     }
 
     override fun onTouchEvent(event: MotionEvent): Boolean {
+        if (activity.freeformInteraction.isTransforming()) {
+            return true
+        }
         if (isDrawerOpen) {
             if (event.action == MotionEvent.ACTION_DOWN) {
                 startX = event.x

@@ -5,7 +5,7 @@ import com.riprog.launcher.theme.ThemeManager
 import com.riprog.launcher.logic.managers.SettingsManager
 import com.riprog.launcher.R
 
-import android.app.Activity
+import androidx.appcompat.app.AppCompatActivity
 import android.content.Context
 import android.graphics.Color
 import android.graphics.Typeface
@@ -20,7 +20,7 @@ import android.widget.*
 import androidx.core.view.WindowCompat
 import kotlin.math.roundToInt
 
-class SettingsActivity : Activity() {
+class SettingsActivity : AppCompatActivity() {
 
     private lateinit var settingsManager: SettingsManager
 
