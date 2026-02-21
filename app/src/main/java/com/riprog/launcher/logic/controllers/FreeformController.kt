@@ -1,6 +1,9 @@
 package com.riprog.launcher.logic.controllers
 
 import com.riprog.launcher.ui.views.layout.TransformOverlay
+import com.riprog.launcher.ui.views.layout.MainLayout
+import com.riprog.launcher.ui.views.home.HomeView
+import com.riprog.launcher.ui.activities.MainActivity
 import com.riprog.launcher.logic.managers.SettingsManager
 import com.riprog.launcher.data.model.HomeItem
 
@@ -72,12 +75,17 @@ class FreeformController(
             }
             override fun onUninstall() {}
             override fun onCollision(otherView: View) {
-                saveTransform()
-                closeTransformOverlay()
-                showTransformOverlay(otherView)
+                if (handleFolderDrop(v, otherView)) {
+                    closeTransformOverlay()
+                } else {
+                    saveTransform()
+                    closeTransformOverlay()
+                    showTransformOverlay(otherView)
+                }
             }
             override fun findItemAt(x: Float, y: Float, exclude: View): View? {
-                return null
+                val mainLayout = rootLayout as? MainLayout ?: return null
+                return mainLayout.findTouchedHomeItem(x, y, exclude)
             }
         })
 
@@ -91,11 +99,38 @@ class FreeformController(
     private fun saveTransform() {
         if (transformingView == null) return
         val item = transformingView!!.tag as HomeItem? ?: return
+
+        val cellWidth = rootLayout.width / HomeView.GRID_COLUMNS
+        val density = activity.resources.displayMetrics.density
+        val cellHeight = (rootLayout.height - (48 * density).toInt()) / HomeView.GRID_ROWS
+
+        if (cellWidth > 0 && cellHeight > 0) {
+            item.col = transformingView!!.x / cellWidth
+            item.row = transformingView!!.y / cellHeight
+        }
+
         item.rotation = transformingView!!.rotation
         item.scale = transformingView!!.scaleX
         item.tiltX = transformingView!!.rotationX
         item.tiltY = transformingView!!.rotationY
         callback.onSaveState()
+    }
+
+    private fun handleFolderDrop(draggedView: View, targetView: View): Boolean {
+        val draggedItem = draggedView.tag as? HomeItem ?: return false
+        val targetItem = targetView.tag as? HomeItem ?: return false
+        val mainActivity = activity as? MainActivity ?: return false
+
+        if (draggedItem.type == HomeItem.Type.APP) {
+            if (targetItem.type == HomeItem.Type.APP) {
+                mainActivity.folderManager.mergeToFolder(targetItem, draggedItem, mainActivity.homeItems)
+                return true
+            } else if (targetItem.type == HomeItem.Type.FOLDER) {
+                mainActivity.folderManager.addToFolder(targetItem, draggedItem, mainActivity.homeItems)
+                return true
+            }
+        }
+        return false
     }
 
     fun closeTransformOverlay() {

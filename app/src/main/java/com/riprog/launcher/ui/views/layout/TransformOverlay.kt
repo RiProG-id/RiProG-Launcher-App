@@ -163,10 +163,12 @@ class TransformOverlay(context: Context, private val targetView: View, private v
         drawHandle(canvas, right, bottom, hs, true, foregroundColor)
         drawHandle(canvas, left, bottom, hs, true, foregroundColor)
 
-        drawHandle(canvas, (left + right) / 2f, top, hs, false, foregroundColor)
-        drawHandle(canvas, right, (top + bottom) / 2f, hs, false, foregroundColor)
-        drawHandle(canvas, (left + right) / 2f, bottom, hs, false, foregroundColor)
-        drawHandle(canvas, left, (top + bottom) / 2f, hs, false, foregroundColor)
+        if (!isFreeform) {
+            drawHandle(canvas, (left + right) / 2f, top, hs, false, foregroundColor)
+            drawHandle(canvas, right, (top + bottom) / 2f, hs, false, foregroundColor)
+            drawHandle(canvas, (left + right) / 2f, bottom, hs, false, foregroundColor)
+            drawHandle(canvas, left, (top + bottom) / 2f, hs, false, foregroundColor)
+        }
 
         if (isFreeform || item.type == HomeItem.Type.WIDGET || item.type == HomeItem.Type.FOLDER) {
             paint.color = foregroundColor
@@ -281,6 +283,17 @@ class TransformOverlay(context: Context, private val targetView: View, private v
             }
 
             MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                if (activeHandle == ACTION_MOVE && hasPassedThreshold) {
+                    val midX = targetView.x + targetView.width / 2f
+                    val midY = targetView.y + targetView.height / 2f
+                    val other = onSaveListener?.findItemAt(midX, midY, targetView)
+                    if (other != null) {
+                        onSaveListener?.onCollision(other)
+                        activeHandle = -1
+                        hasPassedThreshold = false
+                        return true
+                    }
+                }
                 activeHandle = -1
                 hasPassedThreshold = false
                 return true
@@ -317,10 +330,12 @@ class TransformOverlay(context: Context, private val targetView: View, private v
         if (dist(rx, ry, right, bottom) < hs) return HANDLE_BOTTOM_RIGHT
         if (dist(rx, ry, left, bottom) < hs) return HANDLE_BOTTOM_LEFT
 
-        if (dist(rx, ry, (left + right) / 2f, top) < hs) return HANDLE_TOP
-        if (dist(rx, ry, right, (top + bottom) / 2f) < hs) return HANDLE_RIGHT
-        if (dist(rx, ry, (left + right) / 2f, bottom) < hs) return HANDLE_BOTTOM
-        if (dist(rx, ry, left, (top + bottom) / 2f) < hs) return HANDLE_LEFT
+        if (!isFreeform) {
+            if (dist(rx, ry, (left + right) / 2f, top) < hs) return HANDLE_TOP
+            if (dist(rx, ry, right, (top + bottom) / 2f) < hs) return HANDLE_RIGHT
+            if (dist(rx, ry, (left + right) / 2f, bottom) < hs) return HANDLE_BOTTOM
+            if (dist(rx, ry, left, (top + bottom) / 2f) < hs) return HANDLE_LEFT
+        }
 
         return if (rx >= left && rx <= right && ry >= top && ry <= bottom) ACTION_MOVE else ACTION_OUTSIDE
     }

@@ -159,7 +159,9 @@ class MainLayout(private val activity: MainActivity) : FrameLayout(activity) {
                 isDragging = false
                 touchedView = findTouchedHomeItem(startX, startY)
                 longPressHandler.removeCallbacks(longPressRunnable)
-                longPressHandler.postDelayed(longPressRunnable, 400)
+                if (!activity.freeformInteraction.isTransforming()) {
+                    longPressHandler.postDelayed(longPressRunnable, 400)
+                }
                 return false
             }
 
@@ -237,6 +239,10 @@ class MainLayout(private val activity: MainActivity) : FrameLayout(activity) {
             MotionEvent.ACTION_MOVE -> {
                 val dx = event.x - startX
                 val dy = event.y - startY
+
+                if (activity.freeformInteraction.isTransforming()) {
+                    return true
+                }
 
                 if (isDragging) {
                     if (activity.settingsManager.isFreeformHome && event.pointerCount > 1) {
@@ -337,7 +343,7 @@ class MainLayout(private val activity: MainActivity) : FrameLayout(activity) {
         return true
     }
 
-    private fun findTouchedHomeItem(x: Float, y: Float): View? {
+    fun findTouchedHomeItem(x: Float, y: Float, exclude: View? = null): View? {
         val page = activity.homeView.currentPage
         val pagesContainer = activity.homeView.getChildAt(0) as ViewGroup?
         if (pagesContainer != null && page < pagesContainer.childCount) {
@@ -351,6 +357,7 @@ class MainLayout(private val activity: MainActivity) : FrameLayout(activity) {
 
             for (i in pageLayout.childCount - 1 downTo 0) {
                 val child = pageLayout.getChildAt(i)
+                if (child === exclude) continue
                 if (adjustedX >= child.x && adjustedX <= child.x + child.width &&
                     adjustedY >= child.y && adjustedY <= child.y + child.height
                 ) {
