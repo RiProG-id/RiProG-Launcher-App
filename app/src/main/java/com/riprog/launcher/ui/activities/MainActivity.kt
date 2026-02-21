@@ -256,15 +256,22 @@ class MainActivity : Activity() {
         grid.removeAllViews()
         if (folder.folderItems == null) return
         val count = Math.min(folder.folderItems.size, 4)
+        val scale = settingsManager.iconScale
+        val size = (dpToPx(18) * scale).toInt()
+
         for (i in 0 until count) {
             val sub = folder.folderItems[i]
             val packageName = sub.packageName ?: continue
             val iv = ImageView(this)
-            val size = dpToPx(20)
-            val lp = GridLayout.LayoutParams()
+
+            val lp = GridLayout.LayoutParams(
+                GridLayout.spec(i / 2, GridLayout.CENTER, 1f),
+                GridLayout.spec(i % 2, GridLayout.CENTER, 1f)
+            )
             lp.width = size
             lp.height = size
             iv.layoutParams = lp
+
             model.loadIcon(AppItem.fromPackage(this, packageName)) { bitmap ->
                 iv.setImageBitmap(bitmap)
             }

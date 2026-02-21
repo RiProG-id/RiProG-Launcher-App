@@ -124,9 +124,11 @@ class FreeformController(
         if (draggedItem.type == HomeItem.Type.APP) {
             if (targetItem.type == HomeItem.Type.APP) {
                 mainActivity.folderManager.mergeToFolder(targetItem, draggedItem, mainActivity.homeItems)
+                transformingViewOriginalParent = null
                 return true
             } else if (targetItem.type == HomeItem.Type.FOLDER) {
                 mainActivity.folderManager.addToFolder(targetItem, draggedItem, mainActivity.homeItems)
+                transformingViewOriginalParent = null
                 return true
             }
         }
@@ -138,9 +140,11 @@ class FreeformController(
             rootLayout.removeView(currentTransformOverlay)
             currentTransformOverlay = null
 
-            if (transformingView != null && transformingViewOriginalParent != null) {
+            if (transformingView != null) {
                 rootLayout.removeView(transformingView)
-                transformingViewOriginalParent!!.addView(transformingView, transformingViewOriginalIndex)
+                if (transformingViewOriginalParent != null) {
+                    transformingViewOriginalParent!!.addView(transformingView, transformingViewOriginalIndex)
+                }
             }
             transformingView = null
             transformingViewOriginalParent = null

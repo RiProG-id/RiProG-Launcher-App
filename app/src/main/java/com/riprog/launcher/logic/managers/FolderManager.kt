@@ -170,7 +170,8 @@ class FolderManager(private val activity: MainActivity, private val settingsMana
         }
     }
 
-    fun mergeToFolder(target: HomeItem, dragged: HomeItem, homeItems: MutableList<HomeItem>) {
+    fun mergeToFolder(target: HomeItem?, dragged: HomeItem?, homeItems: MutableList<HomeItem>) {
+        if (target == null || dragged == null) return
         val targetPage = target.page
         homeItems.remove(dragged)
         homeItems.remove(target)
@@ -190,7 +191,8 @@ class FolderManager(private val activity: MainActivity, private val settingsMana
         activity.saveHomeState()
     }
 
-    fun addToFolder(folder: HomeItem, dragged: HomeItem, homeItems: MutableList<HomeItem>) {
+    fun addToFolder(folder: HomeItem?, dragged: HomeItem?, homeItems: MutableList<HomeItem>) {
+        if (folder == null || dragged == null) return
         homeItems.remove(dragged)
         folder.folderItems.add(dragged)
 
