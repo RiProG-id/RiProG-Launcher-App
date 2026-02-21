@@ -382,17 +382,18 @@ class TransformOverlay(context: Context, private val targetView: View, private v
             var newScaleX = sx
             var newScaleY = sy
 
-            val lockAspect = !(canResizeHorizontal && canResizeVertical)
+            // Maintain original aspect ratio
+            val lockAspect = true
 
             when (activeHandle) {
                 HANDLE_TOP, HANDLE_BOTTOM -> {
-                    if (halfContentH > 0) {
+                    if (halfContentH > 0 && canResizeVertical) {
                         newScaleY = max(0.2f, abs(ry) / halfContentH)
                         if (lockAspect) newScaleX = (sx / sy) * newScaleY
                     }
                 }
                 HANDLE_LEFT, HANDLE_RIGHT -> {
-                    if (halfContentW > 0) {
+                    if (halfContentW > 0 && canResizeHorizontal) {
                         newScaleX = max(0.2f, abs(rx) / halfContentW)
                         if (lockAspect) newScaleY = (sy / sx) * newScaleX
                     }

@@ -643,21 +643,16 @@ class MainActivity : Activity() {
     private fun createWidget(data: Intent) {
         val appWidgetId = data.getIntExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, -1)
 
-        var sX = pendingSpanX
-        var sY = pendingSpanY
+        val sX = pendingSpanX
+        val sY = pendingSpanY
 
-        var col = maxOf(0, (HomeView.GRID_COLUMNS - sX) / 2)
-        var row = maxOf(0, (HomeView.GRID_ROWS - sY) / 2)
-
-        if (sX > HomeView.GRID_COLUMNS || sY > HomeView.GRID_ROWS || !homeView.doesFit(sX, sY, col, row, homeView.currentPage)) {
-            val reduced = WidgetSizingUtils.applySizeReduction(this, appWidgetManager.getAppWidgetInfo(appWidgetId) ?: return, sX, sY)
-            sX = reduced.first
-            sY = reduced.second
-            col = maxOf(0, (HomeView.GRID_COLUMNS - sX) / 2)
-            row = maxOf(0, (HomeView.GRID_ROWS - sY) / 2)
-        }
+        val col = maxOf(0, (HomeView.GRID_COLUMNS - sX) / 2)
+        val row = maxOf(0, (HomeView.GRID_ROWS - sY) / 2)
 
         val item = HomeItem.createWidget(appWidgetId, col.toFloat(), row.toFloat(), sX, sY, homeView.currentPage)
+        if (sX > HomeView.GRID_COLUMNS || sY > HomeView.GRID_ROWS || !homeView.doesFit(sX, sY, col, row, homeView.currentPage)) {
+            item.scale = 0.75f
+        }
         homeItems.add(item)
         renderHomeItem(item)
         saveHomeState()
@@ -668,19 +663,11 @@ class MainActivity : Activity() {
     }
 
     fun spawnWidget(info: AppWidgetProviderInfo, spanX: Int, spanY: Int) {
-        var sX = spanX
-        var sY = spanY
+        val sX = spanX
+        val sY = spanY
 
-        var col = maxOf(0, (HomeView.GRID_COLUMNS - sX) / 2)
-        var row = maxOf(0, (HomeView.GRID_ROWS - sY) / 2)
-
-        if (sX > HomeView.GRID_COLUMNS || sY > HomeView.GRID_ROWS || !homeView.doesFit(sX, sY, col, row, homeView.currentPage)) {
-            val reduced = WidgetSizingUtils.applySizeReduction(this, info, sX, sY)
-            sX = reduced.first
-            sY = reduced.second
-            col = maxOf(0, (HomeView.GRID_COLUMNS - sX) / 2)
-            row = maxOf(0, (HomeView.GRID_ROWS - sY) / 2)
-        }
+        val col = maxOf(0, (HomeView.GRID_COLUMNS - sX) / 2)
+        val row = maxOf(0, (HomeView.GRID_ROWS - sY) / 2)
 
         pendingSpanX = sX
         pendingSpanY = sY
@@ -689,6 +676,9 @@ class MainActivity : Activity() {
         val allowed = appWidgetManager.bindAppWidgetIdIfAllowed(appWidgetId, info.provider)
         if (allowed) {
             val item = HomeItem.createWidget(appWidgetId, col.toFloat(), row.toFloat(), sX, sY, homeView.currentPage)
+            if (sX > HomeView.GRID_COLUMNS || sY > HomeView.GRID_ROWS || !homeView.doesFit(sX, sY, col, row, homeView.currentPage)) {
+                item.scale = 0.75f
+            }
             homeItems.add(item)
             renderHomeItem(item)
             saveHomeState()
@@ -701,17 +691,16 @@ class MainActivity : Activity() {
     }
 
     fun startNewWidgetDrag(info: AppWidgetProviderInfo, spanX: Int, spanY: Int) {
-        var sX = spanX
-        var sY = spanY
-        if (sX > HomeView.GRID_COLUMNS || sY > HomeView.GRID_ROWS) {
-            val reduced = WidgetSizingUtils.applySizeReduction(this, info, sX, sY)
-            sX = reduced.first
-            sY = reduced.second
-        }
+        val sX = spanX
+        val sY = spanY
+
         val appWidgetId = appWidgetHost.allocateAppWidgetId()
         val allowed = appWidgetManager.bindAppWidgetIdIfAllowed(appWidgetId, info.provider)
         if (allowed) {
             val item = HomeItem.createWidget(appWidgetId, 0f, 0f, sX, sY, homeView.currentPage)
+            if (sX > HomeView.GRID_COLUMNS || sY > HomeView.GRID_ROWS) {
+                item.scale = 0.75f
+            }
             homeItems.add(item)
             val view = createWidgetView(item)
             if (view != null) {

@@ -26,37 +26,15 @@ object WidgetSizingUtils {
             spanX = info.targetCellWidth
             spanY = info.targetCellHeight
         } else {
-            // 2. Use preview image metadata if available
-            val preview = info.loadPreviewImage(context, 0)
-            if (preview != null && preview.intrinsicWidth > 0 && preview.intrinsicHeight > 0) {
-                val pw = preview.intrinsicWidth
-                val ph = preview.intrinsicHeight
-
-                // Heuristic: assume the preview is rendered at a scale where
-                // a standard cell is around 80-100dp or depends on the image size.
-                // But the most reliable way with preview is aspect ratio.
-
-                val aspect = pw.toFloat() / ph.toFloat()
-
-                // Still need a base dimension. Use minWidth.
-                val baseSpanX = ((info.minWidth * density) / cellWidth).roundToInt().coerceAtLeast(1)
-                spanX = baseSpanX
-                spanY = (spanX / aspect).roundToInt().coerceAtLeast(1)
-            } else {
-                // 3. Fallback to minWidth/minHeight with improved formula
-                spanX = ceil((info.minWidth * density - 30) / cellWidth).toInt().coerceAtLeast(1)
-                spanY = ceil((info.minHeight * density - 30) / cellHeight).toInt().coerceAtLeast(1)
-            }
+            // 2. Fallback to minWidth/minHeight with standard formula
+            // We use (minWidth + 30) / cellWidth to be more generous or ceil(minWidth/cellWidth)
+            // Standard Android formula is often: (minWidth + 30) / 70 for 70dp cells.
+            // Here we use our actual cell dimensions.
+            spanX = ceil((info.minWidth * density) / cellWidth).toInt().coerceAtLeast(1)
+            spanY = ceil((info.minHeight * density) / cellHeight).toInt().coerceAtLeast(1)
         }
 
         return Pair(spanX, spanY)
-    }
-
-    fun applySizeReduction(context: Context, info: AppWidgetProviderInfo, spanX: Int, spanY: Int): Pair<Int, Int> {
-        // Apply 25% reduction from current span as a proxy for dimensions
-        val newSpanX = ceil(spanX * 0.75f).toInt().coerceAtLeast(1)
-        val newSpanY = ceil(spanY * 0.75f).toInt().coerceAtLeast(1)
-        return Pair(newSpanX, newSpanY)
     }
 
     private fun dpToPx(context: Context, dp: Float): Int {
