@@ -182,6 +182,15 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
         }
         val page = pages[item.page]
 
+        if (!settingsManager.isFreeformHome) {
+            item.col = item.col.roundToInt().toFloat()
+            item.row = item.row.roundToInt().toFloat()
+            item.rotation = 0f
+            item.scale = 1.0f
+            item.tiltX = 0f
+            item.tiltY = 0f
+        }
+
         updateViewPosition(item, view)
         view.tag = item
         page.addView(view)
@@ -668,7 +677,7 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
         return !(al >= br || ar <= bl || at >= bb || ab <= bt)
     }
 
-    private fun findNearestAvailable(occupied: Array<BooleanArray>, r: Int, c: Int, spanX: Int, spanY: Int): Pair<Int, Int>? {
+    fun findNearestAvailable(occupied: Array<BooleanArray>, r: Int, c: Int, spanX: Int, spanY: Int): Pair<Int, Int>? {
         var minDest = Double.MAX_VALUE
         var bestPos: Pair<Int, Int>? = null
 
@@ -686,13 +695,31 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
         return bestPos
     }
 
-    private fun canPlace(occupied: Array<BooleanArray>, r: Int, c: Int, spanX: Int, spanY: Int): Boolean {
+    fun canPlace(occupied: Array<BooleanArray>, r: Int, c: Int, spanX: Int, spanY: Int): Boolean {
         for (i in r until r + spanY) {
             for (j in c until c + spanX) {
                 if (i >= GRID_ROWS || j >= GRID_COLUMNS || occupied[i][j]) return false
             }
         }
         return true
+    }
+
+    fun getOccupiedGrid(pageIndex: Int): Array<BooleanArray> {
+        val occupied = Array(GRID_ROWS) { BooleanArray(GRID_COLUMNS) }
+        val activity = context as? MainActivity ?: return occupied
+        val items = activity.homeItems.filter { it.page == pageIndex }
+        for (item in items) {
+            val rStart = max(0, item.row.roundToInt())
+            val rEnd = min(GRID_ROWS - 1, rStart + item.spanY - 1)
+            val cStart = max(0, item.col.roundToInt())
+            val cEnd = min(GRID_COLUMNS - 1, cStart + item.spanX - 1)
+            for (r in rStart..rEnd) {
+                for (c in cStart..cEnd) {
+                    occupied[r][c] = true
+                }
+            }
+        }
+        return occupied
     }
 
     private fun updateItemView(item: HomeItem) {

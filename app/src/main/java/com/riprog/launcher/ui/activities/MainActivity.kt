@@ -41,6 +41,8 @@ import android.view.inputmethod.InputMethodManager
 import androidx.core.view.WindowCompat
 import android.widget.*
 import java.util.*
+import kotlin.math.max
+import kotlin.math.roundToInt
 
 class MainActivity : Activity() {
 
@@ -381,6 +383,9 @@ class MainActivity : Activity() {
                     }
                 }
                 homeView.updateViewPosition(item, hostView)
+                if (!settingsManager.isFreeformHome) {
+                    homeView.refreshLayout()
+                }
                 saveHomeState()
             }.create()
         dialog.show()
@@ -639,7 +644,11 @@ class MainActivity : Activity() {
 
     private fun createWidget(data: Intent) {
         val appWidgetId = data.getIntExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, -1)
-        val item = HomeItem.createWidget(appWidgetId, lastGridCol, lastGridRow, 2, 1, homeView.currentPage)
+        val info = appWidgetManager.getAppWidgetInfo(appWidgetId) ?: return
+        val spans = getWidgetSpans(info)
+        val placement = findWidgetPlacement(spans.first, spans.second)
+
+        val item = HomeItem.createWidget(appWidgetId, placement.second.toFloat(), placement.first.toFloat(), placement.third.first, placement.third.second, homeView.currentPage)
         homeItems.add(item)
         renderHomeItem(item)
         saveHomeState()
@@ -653,7 +662,8 @@ class MainActivity : Activity() {
         val appWidgetId = appWidgetHost.allocateAppWidgetId()
         val allowed = appWidgetManager.bindAppWidgetIdIfAllowed(appWidgetId, info.provider)
         if (allowed) {
-            val item = HomeItem.createWidget(appWidgetId, lastGridCol, lastGridRow, spanX, spanY, homeView.currentPage)
+            val placement = findWidgetPlacement(spanX, spanY)
+            val item = HomeItem.createWidget(appWidgetId, placement.second.toFloat(), placement.first.toFloat(), placement.third.first, placement.third.second, homeView.currentPage)
             homeItems.add(item)
             renderHomeItem(item)
             saveHomeState()
@@ -669,7 +679,8 @@ class MainActivity : Activity() {
         val appWidgetId = appWidgetHost.allocateAppWidgetId()
         val allowed = appWidgetManager.bindAppWidgetIdIfAllowed(appWidgetId, info.provider)
         if (allowed) {
-            val item = HomeItem.createWidget(appWidgetId, 0f, 0f, spanX, spanY, homeView.currentPage)
+            val placement = findWidgetPlacement(spanX, spanY)
+            val item = HomeItem.createWidget(appWidgetId, placement.second.toFloat(), placement.first.toFloat(), placement.third.first, placement.third.second, homeView.currentPage)
             homeItems.add(item)
             val view = createWidgetView(item)
             if (view != null) {
@@ -683,6 +694,39 @@ class MainActivity : Activity() {
             intent.putExtra(AppWidgetManager.EXTRA_APPWIDGET_PROVIDER, info.provider)
             startActivityForResult(intent, REQUEST_PICK_APPWIDGET)
         }
+    }
+
+    private fun getWidgetSpans(info: AppWidgetProviderInfo): Pair<Int, Int> {
+        val density = resources.displayMetrics.density
+        var cellWidth = homeView.width / HomeView.GRID_COLUMNS
+        var cellHeight = (homeView.height - dpToPx(48)) / HomeView.GRID_ROWS
+        if (cellWidth <= 0) cellWidth = (resources.displayMetrics.widthPixels / HomeView.GRID_COLUMNS)
+        if (cellHeight <= 0) cellHeight = ((resources.displayMetrics.heightPixels - dpToPx(48)) / HomeView.GRID_ROWS)
+
+        val spanX = max(1, (info.minWidth * density / cellWidth).roundToInt())
+        val spanY = max(1, (info.minHeight * density / cellHeight).roundToInt())
+        return Pair(spanX, spanY)
+    }
+
+    private fun findWidgetPlacement(spanX: Int, spanY: Int): Triple<Int, Int, Pair<Int, Int>> {
+        var currentSpanX = spanX
+        var currentSpanY = spanY
+        val page = homeView.currentPage
+        val occupied = homeView.getOccupiedGrid(page)
+
+        var pos = homeView.findNearestAvailable(occupied, (HomeView.GRID_ROWS - currentSpanY) / 2, (HomeView.GRID_COLUMNS - currentSpanX) / 2, currentSpanX, currentSpanY)
+
+        var attempts = 0
+        while (pos == null && attempts < 3 && (currentSpanX > 1 || currentSpanY > 1)) {
+            // Reduce by 25%
+            currentSpanX = max(1, (currentSpanX * 0.75f).roundToInt())
+            currentSpanY = max(1, (currentSpanY * 0.75f).roundToInt())
+            pos = homeView.findNearestAvailable(occupied, (HomeView.GRID_ROWS - currentSpanY) / 2, (HomeView.GRID_COLUMNS - currentSpanX) / 2, currentSpanX, currentSpanY)
+            attempts++
+        }
+
+        val finalPos = pos ?: Pair((HomeView.GRID_ROWS - currentSpanY) / 2, (HomeView.GRID_COLUMNS - currentSpanX) / 2)
+        return Triple(finalPos.first, finalPos.second, Pair(currentSpanX, currentSpanY))
     }
 
     fun getAppName(packageName: String): String {

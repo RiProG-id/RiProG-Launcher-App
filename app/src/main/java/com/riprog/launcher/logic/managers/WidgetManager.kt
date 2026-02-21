@@ -63,10 +63,12 @@ class WidgetManager(
         }
 
         val root = FrameLayout(activity)
-        root.background = ThemeUtils.getGlassDrawable(activity, settingsManager, 0f)
+        root.setPadding(dpToPx(16f), dpToPx(48f), dpToPx(16f), dpToPx(32f))
 
         val container = LinearLayout(activity)
         container.orientation = LinearLayout.VERTICAL
+        container.background = ThemeUtils.getGlassDrawable(activity, settingsManager, 16f)
+        container.setPadding(dpToPx(24f), dpToPx(32f), dpToPx(24f), dpToPx(32f))
         root.addView(container)
 
         val adaptiveColor = ThemeUtils.getAdaptiveColor(activity, settingsManager, true)
@@ -184,15 +186,13 @@ class WidgetManager(
         closeBtn.alpha = 0.6f
         closeBtn.setOnClickListener { dialog.dismiss() }
         val closeLp = FrameLayout.LayoutParams(dpToPx(48f), dpToPx(48f), Gravity.TOP or Gravity.END)
-        closeLp.topMargin = dpToPx(16f)
-        closeLp.rightMargin = dpToPx(16f)
+        closeLp.topMargin = dpToPx(8f)
+        closeLp.rightMargin = dpToPx(8f)
         root.addView(closeBtn, closeLp)
 
         ViewCompat.setOnApplyWindowInsetsListener(root) { v: View?, insets: WindowInsetsCompat ->
             val bars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
-            container.setPadding(dpToPx(24f), bars.top + dpToPx(64f), dpToPx(24f), bars.bottom + dpToPx(24f))
-            closeLp.topMargin = bars.top + dpToPx(16f)
-            closeBtn.layoutParams = closeLp
+            v?.setPadding(dpToPx(16f), bars.top + dpToPx(16f), dpToPx(16f), bars.bottom + dpToPx(16f))
             insets
         }
 
