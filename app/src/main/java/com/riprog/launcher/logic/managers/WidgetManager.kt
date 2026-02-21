@@ -47,6 +47,7 @@ class WidgetManager(
 
         val grouped = HashMap<String, MutableList<AppWidgetProviderInfo>>()
         for (info in providers) {
+            if ((info.widgetCategory and AppWidgetProviderInfo.WIDGET_CATEGORY_HOME_SCREEN) == 0) continue
             val pkg = info.provider.packageName
             if (!grouped.containsKey(pkg)) grouped[pkg] = ArrayList()
             grouped[pkg]!!.add(info)
@@ -114,12 +115,27 @@ class WidgetManager(
 
             val infos = grouped[pkg]
             if (infos != null) {
-                // Sort variants by size/proportions
-                infos.sortBy { info ->
-                    val spans = WidgetSizingUtils.calculateWidgetSpan(activity, activity.homeView, info)
-                    spans.first * spans.second
-                }
-                for (info in infos) {
+                val labelGroups = infos.groupBy { it.loadLabel(activity.packageManager).toString() }
+
+                for ((label, variants) in labelGroups) {
+                    val uniqueVariants = mutableListOf<AppWidgetProviderInfo>()
+                    val seenSpans = mutableSetOf<Pair<Int, Int>>()
+
+                    // Sort by target size or min size
+                    val sortedVariants = variants.sortedBy { v ->
+                        val spans = WidgetSizingUtils.calculateWidgetSpan(activity, activity.homeView, v)
+                        spans.first * spans.second
+                    }
+
+                    for (v in sortedVariants) {
+                        val spans = WidgetSizingUtils.calculateWidgetSpan(activity, activity.homeView, v)
+                        // Preserve orientation: only add if this span/orientation is not seen yet for this label
+                        if (seenSpans.add(spans)) {
+                            uniqueVariants.add(v)
+                        }
+                    }
+
+                    for (info in uniqueVariants) {
                     val card = LinearLayout(activity)
                     card.orientation = LinearLayout.HORIZONTAL
                     card.gravity = Gravity.CENTER_VERTICAL
@@ -171,6 +187,7 @@ class WidgetManager(
                     textLayout.addView(label)
 
                     val size = TextView(activity)
+                    // Correct wrong span label: Span text must reflect actual calculated span
                     size.text = activity.getString(R.string.widget_size_format, spanX, spanY)
                     size.textSize = 12f
                     size.setTextColor(secondaryColor)
@@ -180,6 +197,7 @@ class WidgetManager(
                         dialog.dismiss()
                         activity.spawnWidget(info, spanX, spanY)
                     }
+                }
                 }
             }
         }

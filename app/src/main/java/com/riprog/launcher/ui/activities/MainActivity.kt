@@ -643,16 +643,25 @@ class MainActivity : Activity() {
     private fun createWidget(data: Intent) {
         val appWidgetId = data.getIntExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, -1)
 
-        val sX = pendingSpanX
-        val sY = pendingSpanY
+        val sX = pendingSpanX.coerceAtMost(settingsManager.columns)
+        val sY = pendingSpanY.coerceAtMost(HomeView.GRID_ROWS)
 
-        val col = maxOf(0, (settingsManager.columns - sX) / 2)
-        val row = maxOf(0, (HomeView.GRID_ROWS - sY) / 2)
+        var col = maxOf(0, (settingsManager.columns - sX) / 2)
+        var row = maxOf(0, (HomeView.GRID_ROWS - sY) / 2)
+
+        if (col + sX > settingsManager.columns) col = settingsManager.columns - sX
+        if (row + sY > HomeView.GRID_ROWS) row = HomeView.GRID_ROWS - sY
+
+        if (!settingsManager.isFreeformHome && !homeView.doesFit(sX, sY, col, row, homeView.currentPage)) {
+            val occupied = homeView.getOccupiedCells(homeView.currentPage)
+            val nearest = findNearestAvailable(occupied, row, col, sX, sY)
+            if (nearest != null) {
+                row = nearest.first
+                col = nearest.second
+            }
+        }
 
         val item = HomeItem.createWidget(appWidgetId, col.toFloat(), row.toFloat(), sX, sY, homeView.currentPage)
-        if (sX > settingsManager.columns || sY > HomeView.GRID_ROWS || !homeView.doesFit(sX, sY, col, row, homeView.currentPage)) {
-            item.scale = 0.75f
-        }
         homeItems.add(item)
         renderHomeItem(item)
         saveHomeState()
@@ -663,11 +672,17 @@ class MainActivity : Activity() {
     }
 
     fun spawnWidget(info: AppWidgetProviderInfo, spanX: Int, spanY: Int) {
-        val sX = spanX
-        val sY = spanY
+        // Respect calculated span dimensions but ensure they fit within workspace bounds
+        val sX = spanX.coerceAtMost(settingsManager.columns)
+        val sY = spanY.coerceAtMost(HomeView.GRID_ROWS)
 
-        val col = maxOf(0, (settingsManager.columns - sX) / 2)
-        val row = maxOf(0, (HomeView.GRID_ROWS - sY) / 2)
+        // Spawn widget centered on home screen
+        var col = maxOf(0, (settingsManager.columns - sX) / 2)
+        var row = maxOf(0, (HomeView.GRID_ROWS - sY) / 2)
+
+        // Ensure widget remains inside valid workspace bounds
+        if (col + sX > settingsManager.columns) col = settingsManager.columns - sX
+        if (row + sY > HomeView.GRID_ROWS) row = HomeView.GRID_ROWS - sY
 
         pendingSpanX = sX
         pendingSpanY = sY
@@ -675,10 +690,19 @@ class MainActivity : Activity() {
         val appWidgetId = appWidgetHost.allocateAppWidgetId()
         val allowed = appWidgetManager.bindAppWidgetIdIfAllowed(appWidgetId, info.provider)
         if (allowed) {
-            val item = HomeItem.createWidget(appWidgetId, col.toFloat(), row.toFloat(), sX, sY, homeView.currentPage)
-            if (sX > settingsManager.columns || sY > HomeView.GRID_ROWS || !homeView.doesFit(sX, sY, col, row, homeView.currentPage)) {
-                item.scale = 0.75f
+            // Find nearest valid position to prevent overlap if Freeform is OFF
+            if (!settingsManager.isFreeformHome && !homeView.doesFit(sX, sY, col, row, homeView.currentPage)) {
+                val occupied = homeView.getOccupiedCells(homeView.currentPage)
+                val nearest = findNearestAvailable(occupied, row, col, sX, sY)
+                if (nearest != null) {
+                    row = nearest.first
+                    col = nearest.second
+                }
             }
+
+            val item = HomeItem.createWidget(appWidgetId, col.toFloat(), row.toFloat(), sX, sY, homeView.currentPage)
+            // No forced resizing during attach - visual scale handled separately if needed
+
             homeItems.add(item)
             renderHomeItem(item)
             saveHomeState()
@@ -731,6 +755,36 @@ class MainActivity : Activity() {
     fun handleAppLaunch(packageName: String) {
         val intent = packageManager.getLaunchIntentForPackage(packageName)
         if (intent != null) startActivity(intent)
+    }
+
+    private fun findNearestAvailable(occupied: Array<BooleanArray>, r: Int, c: Int, spanX: Int, spanY: Int): Pair<Int, Int>? {
+        var minDest = Double.MAX_VALUE
+        var bestPos: Pair<Int, Int>? = null
+        val columns = settingsManager.columns
+
+        for (i in 0..HomeView.GRID_ROWS - spanY) {
+            for (j in 0..columns - spanX) {
+                var canPlace = true
+                for (ri in i until i + spanY) {
+                    for (ci in j until j + spanX) {
+                        if (ri >= HomeView.GRID_ROWS || ci >= columns || occupied[ri][ci]) {
+                            canPlace = false
+                            break
+                        }
+                    }
+                    if (!canPlace) break
+                }
+
+                if (canPlace) {
+                    val d = Math.sqrt(Math.pow((i - r).toDouble(), 2.0) + Math.pow((j - c).toDouble(), 2.0))
+                    if (d < minDest) {
+                        minDest = d
+                        bestPos = Pair(i, j)
+                    }
+                }
+            }
+        }
+        return bestPos
     }
 
     private fun dpToPx(dp: Int): Int {

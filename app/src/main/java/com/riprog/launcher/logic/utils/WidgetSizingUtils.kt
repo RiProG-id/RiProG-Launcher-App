@@ -37,12 +37,13 @@ object WidgetSizingUtils {
         var spanX: Int
         var spanY: Int
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && info.targetCellWidth > 0 && info.targetCellHeight > 0) {
-            spanX = info.targetCellWidth
-            spanY = info.targetCellHeight
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && (info.targetCellWidth > 0 || info.targetCellHeight > 0)) {
+            spanX = info.targetCellWidth.coerceAtLeast(1)
+            spanY = info.targetCellHeight.coerceAtLeast(1)
         } else {
-            spanX = ceil((info.minWidth * density) / cellWidth).toInt().coerceAtLeast(1)
-            spanY = ceil((info.minHeight * density) / cellHeight).toInt().coerceAtLeast(1)
+            // Use cell metrics for accurate span calculation
+            spanX = ceil(info.minWidth * density / cellWidth).toInt().coerceAtLeast(1)
+            spanY = ceil(info.minHeight * density / cellHeight).toInt().coerceAtLeast(1)
         }
 
         return Pair(spanX, spanY)

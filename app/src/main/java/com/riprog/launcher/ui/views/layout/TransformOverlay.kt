@@ -2,6 +2,7 @@ package com.riprog.launcher.ui.views.layout
 
 import com.riprog.launcher.theme.ThemeUtils
 import com.riprog.launcher.logic.managers.SettingsManager
+import com.riprog.launcher.logic.utils.WidgetSizingUtils
 import com.riprog.launcher.data.model.HomeItem
 import com.riprog.launcher.ui.activities.MainActivity
 import com.riprog.launcher.R
@@ -122,7 +123,25 @@ class TransformOverlay(context: Context, private val targetView: View, private v
         targetView.rotation = 0f
         targetView.scaleX = 1.0f
         targetView.scaleY = 1.0f
-        // Maintain position but reset transformation
+
+        // Restore widget to provider-based calculated span
+        if (item.type == HomeItem.Type.WIDGET && targetView is AppWidgetHostView) {
+            val info = targetView.appWidgetInfo
+            if (info != null && context is MainActivity) {
+                val activity = context as MainActivity
+                val spans = WidgetSizingUtils.calculateWidgetSpan(activity, activity.homeView, info)
+                item.spanX = spans.first
+                item.spanY = spans.second
+                activity.homeView.updateViewPosition(item, targetView)
+            }
+        } else if (item.type == HomeItem.Type.APP || item.type == HomeItem.Type.FOLDER) {
+            item.spanX = 1
+            item.spanY = 1
+            if (context is MainActivity) {
+                (context as MainActivity).homeView.updateViewPosition(item, targetView)
+            }
+        }
+
         invalidate()
     }
 
