@@ -11,6 +11,7 @@ import com.riprog.launcher.logic.managers.WidgetManager
 import com.riprog.launcher.logic.managers.SettingsManager
 import com.riprog.launcher.logic.managers.FolderManager
 import com.riprog.launcher.logic.controllers.FreeformController
+import com.riprog.launcher.logic.utils.WidgetSizingUtils
 import com.riprog.launcher.data.repository.AppRepository
 import com.riprog.launcher.data.model.HomeItem
 import com.riprog.launcher.data.model.AppItem
@@ -61,6 +62,8 @@ class MainActivity : Activity() {
     var allApps: List<AppItem> = ArrayList()
     private var lastGridCol: Float = 0f
     private var lastGridRow: Float = 0f
+    private var pendingSpanX: Int = 2
+    private var pendingSpanY: Int = 1
 
     override fun attachBaseContext(newBase: Context) {
         val sm = SettingsManager(newBase)
@@ -639,7 +642,22 @@ class MainActivity : Activity() {
 
     private fun createWidget(data: Intent) {
         val appWidgetId = data.getIntExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, -1)
-        val item = HomeItem.createWidget(appWidgetId, lastGridCol, lastGridRow, 2, 1, homeView.currentPage)
+
+        var sX = pendingSpanX
+        var sY = pendingSpanY
+
+        var col = maxOf(0, (HomeView.GRID_COLUMNS - sX) / 2)
+        var row = maxOf(0, (HomeView.GRID_ROWS - sY) / 2)
+
+        if (sX > HomeView.GRID_COLUMNS || sY > HomeView.GRID_ROWS || !homeView.doesFit(sX, sY, col, row, homeView.currentPage)) {
+            val reduced = WidgetSizingUtils.applySizeReduction(this, appWidgetManager.getAppWidgetInfo(appWidgetId) ?: return, sX, sY)
+            sX = reduced.first
+            sY = reduced.second
+            col = maxOf(0, (HomeView.GRID_COLUMNS - sX) / 2)
+            row = maxOf(0, (HomeView.GRID_ROWS - sY) / 2)
+        }
+
+        val item = HomeItem.createWidget(appWidgetId, col.toFloat(), row.toFloat(), sX, sY, homeView.currentPage)
         homeItems.add(item)
         renderHomeItem(item)
         saveHomeState()
@@ -650,10 +668,27 @@ class MainActivity : Activity() {
     }
 
     fun spawnWidget(info: AppWidgetProviderInfo, spanX: Int, spanY: Int) {
+        var sX = spanX
+        var sY = spanY
+
+        var col = maxOf(0, (HomeView.GRID_COLUMNS - sX) / 2)
+        var row = maxOf(0, (HomeView.GRID_ROWS - sY) / 2)
+
+        if (sX > HomeView.GRID_COLUMNS || sY > HomeView.GRID_ROWS || !homeView.doesFit(sX, sY, col, row, homeView.currentPage)) {
+            val reduced = WidgetSizingUtils.applySizeReduction(this, info, sX, sY)
+            sX = reduced.first
+            sY = reduced.second
+            col = maxOf(0, (HomeView.GRID_COLUMNS - sX) / 2)
+            row = maxOf(0, (HomeView.GRID_ROWS - sY) / 2)
+        }
+
+        pendingSpanX = sX
+        pendingSpanY = sY
+
         val appWidgetId = appWidgetHost.allocateAppWidgetId()
         val allowed = appWidgetManager.bindAppWidgetIdIfAllowed(appWidgetId, info.provider)
         if (allowed) {
-            val item = HomeItem.createWidget(appWidgetId, lastGridCol, lastGridRow, spanX, spanY, homeView.currentPage)
+            val item = HomeItem.createWidget(appWidgetId, col.toFloat(), row.toFloat(), sX, sY, homeView.currentPage)
             homeItems.add(item)
             renderHomeItem(item)
             saveHomeState()
@@ -666,10 +701,17 @@ class MainActivity : Activity() {
     }
 
     fun startNewWidgetDrag(info: AppWidgetProviderInfo, spanX: Int, spanY: Int) {
+        var sX = spanX
+        var sY = spanY
+        if (sX > HomeView.GRID_COLUMNS || sY > HomeView.GRID_ROWS) {
+            val reduced = WidgetSizingUtils.applySizeReduction(this, info, sX, sY)
+            sX = reduced.first
+            sY = reduced.second
+        }
         val appWidgetId = appWidgetHost.allocateAppWidgetId()
         val allowed = appWidgetManager.bindAppWidgetIdIfAllowed(appWidgetId, info.provider)
         if (allowed) {
-            val item = HomeItem.createWidget(appWidgetId, 0f, 0f, spanX, spanY, homeView.currentPage)
+            val item = HomeItem.createWidget(appWidgetId, 0f, 0f, sX, sY, homeView.currentPage)
             homeItems.add(item)
             val view = createWidgetView(item)
             if (view != null) {

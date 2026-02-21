@@ -620,6 +620,16 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
                         }
                     }
                     updateItemView(item)
+                } else {
+                    // No space on this page, move to next page
+                    val v = findViewForItem(item)
+                    if (v != null) {
+                        item.page = item.page + 1
+                        item.row = 0f
+                        item.col = 0f
+                        removeItemView(item)
+                        addItemView(item, v)
+                    }
                 }
             }
         }
@@ -695,16 +705,19 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
         return true
     }
 
-    private fun updateItemView(item: HomeItem) {
+    private fun findViewForItem(item: HomeItem): View? {
         for (page in pages) {
             for (i in 0 until page.childCount) {
                 val v = page.getChildAt(i)
-                if (v.tag === item) {
-                    updateViewPosition(item, v)
-                    return
-                }
+                if (v.tag === item) return v
             }
         }
+        return null
+    }
+
+    private fun updateItemView(item: HomeItem) {
+        val v = findViewForItem(item)
+        if (v != null) updateViewPosition(item, v)
     }
 
     fun setAccentColor(color: Int) {
@@ -769,6 +782,43 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
                 addView(dot)
             }
         }
+    }
+
+    fun getOccupiedCells(pageIndex: Int): Array<BooleanArray> {
+        val occupied = Array(GRID_ROWS) { BooleanArray(GRID_COLUMNS) }
+        if (context is MainActivity) {
+            val activity = context as MainActivity
+            for (item in activity.homeItems) {
+                if (item.page == pageIndex) {
+                    val rStart = max(0, item.row.roundToInt())
+                    val rEnd = min(GRID_ROWS - 1, rStart + item.spanY - 1)
+                    val cStart = max(0, item.col.roundToInt())
+                    val cEnd = min(GRID_COLUMNS - 1, cStart + item.spanX - 1)
+                    for (r in rStart..rEnd) {
+                        for (c in cStart..cEnd) {
+                            occupied[r][c] = true
+                        }
+                    }
+                }
+            }
+        }
+        return occupied
+    }
+
+    fun doesFit(spanX: Int, spanY: Int, col: Int, row: Int, pageIndex: Int): Boolean {
+        if (col < 0 || row < 0 || col + spanX > GRID_COLUMNS || row + spanY > GRID_ROWS) return false
+        val occupied = getOccupiedCells(pageIndex)
+        return canPlace(occupied, row, col, spanX, spanY)
+    }
+
+    fun hasAnySpace(spanX: Int, spanY: Int, pageIndex: Int): Boolean {
+        val occupied = getOccupiedCells(pageIndex)
+        for (r in 0..GRID_ROWS - spanY) {
+            for (c in 0..GRID_COLUMNS - spanX) {
+                if (canPlace(occupied, r, c, spanX, spanY)) return true
+            }
+        }
+        return false
     }
 
     companion object {

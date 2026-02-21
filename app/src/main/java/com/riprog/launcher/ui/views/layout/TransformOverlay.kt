@@ -120,11 +120,10 @@ class TransformOverlay(context: Context, private val targetView: View, private v
     }
 
     private fun reset() {
-        targetView.rotation = initialRotation
-        targetView.scaleX = initialScaleX
-        targetView.scaleY = initialScaleY
-        targetView.x = initialX
-        targetView.y = initialY
+        targetView.rotation = 0f
+        targetView.scaleX = 1.0f
+        targetView.scaleY = 1.0f
+        // Maintain position but reset transformation
         invalidate()
     }
 
@@ -383,11 +382,21 @@ class TransformOverlay(context: Context, private val targetView: View, private v
             var newScaleX = sx
             var newScaleY = sy
 
+            val lockAspect = !(canResizeHorizontal && canResizeVertical)
+
             when (activeHandle) {
-                HANDLE_TOP -> if (halfContentH > 0) newScaleY = max(0.2f, abs(ry) / halfContentH)
-                HANDLE_BOTTOM -> if (halfContentH > 0) newScaleY = max(0.2f, abs(ry) / halfContentH)
-                HANDLE_LEFT -> if (halfContentW > 0) newScaleX = max(0.2f, abs(rx) / halfContentW)
-                HANDLE_RIGHT -> if (halfContentW > 0) newScaleX = max(0.2f, abs(rx) / halfContentW)
+                HANDLE_TOP, HANDLE_BOTTOM -> {
+                    if (halfContentH > 0) {
+                        newScaleY = max(0.2f, abs(ry) / halfContentH)
+                        if (lockAspect) newScaleX = (sx / sy) * newScaleY
+                    }
+                }
+                HANDLE_LEFT, HANDLE_RIGHT -> {
+                    if (halfContentW > 0) {
+                        newScaleX = max(0.2f, abs(rx) / halfContentW)
+                        if (lockAspect) newScaleY = (sy / sx) * newScaleX
+                    }
+                }
                 HANDLE_TOP_LEFT, HANDLE_TOP_RIGHT, HANDLE_BOTTOM_LEFT, HANDLE_BOTTOM_RIGHT -> {
                     val initialDist = dist(initialTouchX, initialTouchY, cx, cy)
                     val currDist = dist(tx, ty, cx, cy)

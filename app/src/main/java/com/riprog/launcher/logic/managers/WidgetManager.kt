@@ -26,6 +26,7 @@ import android.widget.ScrollView
 import android.widget.TextView
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
+import com.riprog.launcher.logic.utils.WidgetSizingUtils
 import java.util.*
 import java.util.concurrent.Executors
 import kotlin.math.ceil
@@ -63,11 +64,17 @@ class WidgetManager(
         }
 
         val root = FrameLayout(activity)
-        root.background = ThemeUtils.getGlassDrawable(activity, settingsManager, 0f)
+        root.setPadding(dpToPx(16f), dpToPx(48f), dpToPx(16f), dpToPx(32f))
+
+        val scrollView = ScrollView(activity)
+        scrollView.background = ThemeUtils.getGlassDrawable(activity, settingsManager, 28f)
+        scrollView.isVerticalScrollBarEnabled = false
+        root.addView(scrollView)
 
         val container = LinearLayout(activity)
         container.orientation = LinearLayout.VERTICAL
-        root.addView(container)
+        container.setPadding(dpToPx(24f), dpToPx(32f), dpToPx(24f), dpToPx(32f))
+        scrollView.addView(container)
 
         val adaptiveColor = ThemeUtils.getAdaptiveColor(activity, settingsManager, true)
         val secondaryColor = (adaptiveColor and 0x00FFFFFF) or 0x80000000.toInt()
@@ -92,12 +99,9 @@ class WidgetManager(
         titleLayout.addView(title, titleParams)
         container.addView(titleLayout)
 
-        val scrollView = ScrollView(activity)
-        scrollView.isVerticalScrollBarEnabled = false
         val itemsContainer = LinearLayout(activity)
         itemsContainer.orientation = LinearLayout.VERTICAL
-        scrollView.addView(itemsContainer)
-        container.addView(scrollView)
+        container.addView(itemsContainer)
 
         for (pkg in packages) {
             val header = TextView(activity)
@@ -111,6 +115,11 @@ class WidgetManager(
 
             val infos = grouped[pkg]
             if (infos != null) {
+                // Sort variants by size/proportions
+                infos.sortBy { info ->
+                    val spans = WidgetSizingUtils.calculateWidgetSpan(activity, info)
+                    spans.first * spans.second
+                }
                 for (info in infos) {
                     val card = LinearLayout(activity)
                     card.orientation = LinearLayout.HORIZONTAL
@@ -133,12 +142,10 @@ class WidgetManager(
 
                     val preview = ImageView(activity)
                     preview.scaleType = ImageView.ScaleType.FIT_CENTER
-                    val density = activity.resources.displayMetrics.density
-                    val widthPx = activity.resources.displayMetrics.widthPixels
-                    val heightPx = activity.resources.displayMetrics.heightPixels
 
-                    val spanX = max(1, ((info.minWidth * density) / (widthPx / HomeView.GRID_COLUMNS.toFloat())).roundToInt()).toFloat()
-                    val spanY = max(1, ((info.minHeight * density) / (heightPx / HomeView.GRID_ROWS.toFloat())).roundToInt()).toFloat()
+                    val spans = WidgetSizingUtils.calculateWidgetSpan(activity, info)
+                    val spanX = spans.first
+                    val spanY = spans.second
 
                     widgetPreviewExecutor.execute {
                         try {
@@ -165,14 +172,14 @@ class WidgetManager(
                     textLayout.addView(label)
 
                     val size = TextView(activity)
-                    size.text = activity.getString(R.string.widget_size_format, ceil(spanX.toDouble()).toInt(), ceil(spanY.toDouble()).toInt())
+                    size.text = activity.getString(R.string.widget_size_format, spanX, spanY)
                     size.textSize = 12f
                     size.setTextColor(secondaryColor)
                     textLayout.addView(size)
 
                     card.setOnClickListener {
                         dialog.dismiss()
-                        activity.spawnWidget(info, spanX.toInt(), spanY.toInt())
+                        activity.spawnWidget(info, spanX, spanY)
                     }
                 }
             }
@@ -190,7 +197,7 @@ class WidgetManager(
 
         ViewCompat.setOnApplyWindowInsetsListener(root) { v: View?, insets: WindowInsetsCompat ->
             val bars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
-            container.setPadding(dpToPx(24f), bars.top + dpToPx(64f), dpToPx(24f), bars.bottom + dpToPx(24f))
+            root.setPadding(dpToPx(16f), bars.top + dpToPx(16f), dpToPx(16f), bars.bottom + dpToPx(16f))
             closeLp.topMargin = bars.top + dpToPx(16f)
             closeBtn.layoutParams = closeLp
             insets
