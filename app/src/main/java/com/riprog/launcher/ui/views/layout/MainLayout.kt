@@ -129,6 +129,9 @@ class MainLayout(private val activity: MainActivity) : FrameLayout(activity) {
     }
 
     override fun onInterceptTouchEvent(ev: MotionEvent): Boolean {
+        if (activity.freeformInteraction.isTransforming()) {
+            return false
+        }
         if (isDrawerOpen) {
             when (ev.action) {
                 MotionEvent.ACTION_DOWN -> {
@@ -199,6 +202,9 @@ class MainLayout(private val activity: MainActivity) : FrameLayout(activity) {
     }
 
     override fun onTouchEvent(event: MotionEvent): Boolean {
+        if (activity.freeformInteraction.isTransforming()) {
+            return true
+        }
         if (isDrawerOpen) {
             if (event.action == MotionEvent.ACTION_DOWN) {
                 startX = event.x

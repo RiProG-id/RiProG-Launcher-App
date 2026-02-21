@@ -61,6 +61,7 @@ class TransformOverlay(context: Context, private val targetView: View, private v
         fun onMoveStart(x: Float, y: Float)
         fun onSave()
         fun onCancel()
+        fun onReset()
         fun onRemove()
         fun onAppInfo()
         fun onUninstall()
@@ -120,11 +121,15 @@ class TransformOverlay(context: Context, private val targetView: View, private v
     }
 
     private fun reset() {
-        targetView.rotation = initialRotation
-        targetView.scaleX = initialScaleX
-        targetView.scaleY = initialScaleY
-        targetView.x = initialX
-        targetView.y = initialY
+        if (onSaveListener != null) {
+            onSaveListener.onReset()
+        } else {
+            targetView.rotation = initialRotation
+            targetView.scaleX = initialScaleX
+            targetView.scaleY = initialScaleY
+            targetView.x = initialX
+            targetView.y = initialY
+        }
         invalidate()
     }
 

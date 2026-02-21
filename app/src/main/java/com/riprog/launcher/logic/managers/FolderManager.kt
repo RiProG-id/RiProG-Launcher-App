@@ -261,6 +261,40 @@ class FolderManager(private val activity: MainActivity, private val settingsMana
         return currentFolderOverlay != null
     }
 
+    fun validateFolders(homeItems: MutableList<HomeItem>) {
+        val toRemove = mutableListOf<HomeItem>()
+        val toAdd = mutableListOf<HomeItem>()
+
+        val iterator = homeItems.iterator()
+        while (iterator.hasNext()) {
+            val item = iterator.next()
+            if (item.type == HomeItem.Type.FOLDER) {
+                if (item.folderItems.isEmpty()) {
+                    toRemove.add(item)
+                } else if (item.folderItems.size == 1) {
+                    val lastItem = item.folderItems[0]
+                    lastItem.col = item.col
+                    lastItem.row = item.row
+                    lastItem.page = item.page
+                    toRemove.add(item)
+                    toAdd.add(lastItem)
+                }
+            }
+        }
+
+        for (item in toRemove) {
+            homeItems.remove(item)
+            activity.homeView.removeItemView(item)
+        }
+        for (item in toAdd) {
+            homeItems.add(item)
+            activity.renderHomeItem(item)
+        }
+        if (toRemove.isNotEmpty() || toAdd.isNotEmpty()) {
+            activity.saveHomeState()
+        }
+    }
+
     private fun dpToPx(dp: Float): Int {
         return TypedValue.applyDimension(
             TypedValue.COMPLEX_UNIT_DIP, dp, activity.resources.displayMetrics

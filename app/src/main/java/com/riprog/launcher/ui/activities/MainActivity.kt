@@ -41,7 +41,9 @@ import android.view.inputmethod.InputMethodManager
 import androidx.core.view.WindowCompat
 import android.widget.*
 import java.util.*
+import kotlin.math.ceil
 import kotlin.math.max
+import kotlin.math.min
 import kotlin.math.roundToInt
 
 class MainActivity : Activity() {
@@ -570,7 +572,21 @@ class MainActivity : Activity() {
         model.loadApps { apps ->
             this.allApps = apps
             drawerView.setApps(apps, model)
+
+            val appPackages = apps.map { it.packageName }.toSet()
+            val toRemove = homeItems.filter { it.type == HomeItem.Type.APP && !appPackages.contains(it.packageName) }
+            for (item in toRemove) {
+                removeHomeItem(item, null)
+            }
+
+            for (item in homeItems) {
+                if (item.type == HomeItem.Type.FOLDER) {
+                    item.folderItems.removeAll { it.type == HomeItem.Type.APP && !appPackages.contains(it.packageName) }
+                }
+            }
+
             homeView.refreshIcons(model, apps)
+            folderManager.validateFolders(homeItems)
         }
     }
 
@@ -648,6 +664,12 @@ class MainActivity : Activity() {
         val spans = getWidgetSpans(info)
         val placement = findWidgetPlacement(spans.first, spans.second)
 
+        if (placement.first == -1) {
+            Toast.makeText(this, R.string.error_no_space, Toast.LENGTH_SHORT).show()
+            appWidgetHost.deleteAppWidgetId(appWidgetId)
+            return
+        }
+
         val item = HomeItem.createWidget(appWidgetId, placement.second.toFloat(), placement.first.toFloat(), placement.third.first, placement.third.second, homeView.currentPage)
         homeItems.add(item)
         renderHomeItem(item)
@@ -663,6 +685,11 @@ class MainActivity : Activity() {
         val allowed = appWidgetManager.bindAppWidgetIdIfAllowed(appWidgetId, info.provider)
         if (allowed) {
             val placement = findWidgetPlacement(spanX, spanY)
+            if (placement.first == -1) {
+                Toast.makeText(this, R.string.error_no_space, Toast.LENGTH_SHORT).show()
+                appWidgetHost.deleteAppWidgetId(appWidgetId)
+                return
+            }
             val item = HomeItem.createWidget(appWidgetId, placement.second.toFloat(), placement.first.toFloat(), placement.third.first, placement.third.second, homeView.currentPage)
             homeItems.add(item)
             renderHomeItem(item)
@@ -680,6 +707,11 @@ class MainActivity : Activity() {
         val allowed = appWidgetManager.bindAppWidgetIdIfAllowed(appWidgetId, info.provider)
         if (allowed) {
             val placement = findWidgetPlacement(spanX, spanY)
+            if (placement.first == -1) {
+                Toast.makeText(this, R.string.error_no_space, Toast.LENGTH_SHORT).show()
+                appWidgetHost.deleteAppWidgetId(appWidgetId)
+                return
+            }
             val item = HomeItem.createWidget(appWidgetId, placement.second.toFloat(), placement.first.toFloat(), placement.third.first, placement.third.second, homeView.currentPage)
             homeItems.add(item)
             val view = createWidgetView(item)
@@ -700,33 +732,43 @@ class MainActivity : Activity() {
         val density = resources.displayMetrics.density
         var cellWidth = homeView.width / HomeView.GRID_COLUMNS
         var cellHeight = (homeView.height - dpToPx(48)) / HomeView.GRID_ROWS
-        if (cellWidth <= 0) cellWidth = (resources.displayMetrics.widthPixels / HomeView.GRID_COLUMNS)
-        if (cellHeight <= 0) cellHeight = ((resources.displayMetrics.heightPixels - dpToPx(48)) / HomeView.GRID_ROWS)
+        if (cellWidth <= 0) cellWidth = resources.displayMetrics.widthPixels / HomeView.GRID_COLUMNS
+        if (cellHeight <= 0) cellHeight = (resources.displayMetrics.heightPixels - dpToPx(48)) / HomeView.GRID_ROWS
 
-        val spanX = max(1, (info.minWidth * density / cellWidth).roundToInt())
-        val spanY = max(1, (info.minHeight * density / cellHeight).roundToInt())
+        // STAGE 3: Controlled Initial Scaling (0.75x)
+        val scaleFactor = 0.75f
+        val scaledWidthPx = info.minWidth * density * scaleFactor
+        val scaledHeightPx = info.minHeight * density * scaleFactor
+
+        // STAGE 2: Accurate Span Calculation (using ceil)
+        val spanX = max(1, min(HomeView.GRID_COLUMNS, ceil(scaledWidthPx / cellWidth).toInt()))
+        val spanY = max(1, min(HomeView.GRID_ROWS, ceil(scaledHeightPx / cellHeight).toInt()))
         return Pair(spanX, spanY)
     }
 
     private fun findWidgetPlacement(spanX: Int, spanY: Int): Triple<Int, Int, Pair<Int, Int>> {
-        var currentSpanX = spanX
-        var currentSpanY = spanY
         val page = homeView.currentPage
         val occupied = homeView.getOccupiedGrid(page)
 
-        var pos = homeView.findNearestAvailable(occupied, (HomeView.GRID_ROWS - currentSpanY) / 2, (HomeView.GRID_COLUMNS - currentSpanX) / 2, currentSpanX, currentSpanY)
+        // STAGE 4: Deterministic Spawn Placement (Target Center)
+        val targetRow = (HomeView.GRID_ROWS - spanY) / 2
+        val targetCol = (HomeView.GRID_COLUMNS - spanX) / 2
 
-        var attempts = 0
-        while (pos == null && attempts < 3 && (currentSpanX > 1 || currentSpanY > 1)) {
-            // Reduce by 25%
-            currentSpanX = max(1, (currentSpanX * 0.75f).roundToInt())
-            currentSpanY = max(1, (currentSpanY * 0.75f).roundToInt())
-            pos = homeView.findNearestAvailable(occupied, (HomeView.GRID_ROWS - currentSpanY) / 2, (HomeView.GRID_COLUMNS - currentSpanX) / 2, currentSpanX, currentSpanY)
-            attempts++
+        var currentSpanX = spanX
+        var currentSpanY = spanY
+        var pos = homeView.findNearestAvailable(occupied, targetRow, targetCol, currentSpanX, currentSpanY)
+
+        // If still occupied, we can try one more reduction if needed by user rules,
+        // but Stage 3 already applied 0.75x. User said "If none available -> reject placement safely".
+        // I will keep a small retry logic if it still doesn't fit after 0.75x, but Stage 4 says reject if none.
+
+        if (pos == null) {
+            // Safe rejection or one more try with even smaller size?
+            // "If none available -> reject placement safely"
+            return Triple(-1, -1, Pair(currentSpanX, currentSpanY))
         }
 
-        val finalPos = pos ?: Pair((HomeView.GRID_ROWS - currentSpanY) / 2, (HomeView.GRID_COLUMNS - currentSpanX) / 2)
-        return Triple(finalPos.first, finalPos.second, Pair(currentSpanX, currentSpanY))
+        return Triple(pos.first, pos.second, Pair(currentSpanX, currentSpanY))
     }
 
     fun getAppName(packageName: String): String {

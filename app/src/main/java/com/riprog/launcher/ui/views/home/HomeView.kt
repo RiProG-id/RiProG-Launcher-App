@@ -619,8 +619,27 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
             }
 
             for (item in overlappingItems) {
-                val newPos = findNearestAvailable(finalOccupied, item.row.roundToInt(), item.col.roundToInt(), item.spanX, item.spanY)
-                if (newPos != null) {
+                var newPos = findNearestAvailable(finalOccupied, item.row.roundToInt(), item.col.roundToInt(), item.spanX, item.spanY)
+
+                if (newPos == null) {
+                    // Stage 6: Never stack items. If no room on current page, move to next page
+                    item.page = item.page + 1
+                    item.row = 0f
+                    item.col = 0f
+                    // Recursive call to arrange on next page if needed
+                    val nextOccupied = getOccupiedGrid(item.page)
+                    newPos = findNearestAvailable(nextOccupied, 0, 0, item.spanX, item.spanY)
+                    if (newPos != null) {
+                        item.row = newPos.first.toFloat()
+                        item.col = newPos.second.toFloat()
+                    }
+
+                    // We need to move the view between pages
+                    post {
+                        removeItemView(item)
+                        addItemView(item, findViewForItem(item))
+                    }
+                } else {
                     item.row = newPos.first.toFloat()
                     item.col = newPos.second.toFloat()
                     for (r in newPos.first until newPos.first + item.spanY) {
@@ -678,21 +697,27 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
     }
 
     fun findNearestAvailable(occupied: Array<BooleanArray>, r: Int, c: Int, spanX: Int, spanY: Int): Pair<Int, Int>? {
-        var minDest = Double.MAX_VALUE
-        var bestPos: Pair<Int, Int>? = null
+        // STAGE 4: Deterministic Spawn Placement (Spiral Search)
+        if (canPlace(occupied, r, c, spanX, spanY)) return Pair(r, c)
 
-        for (i in 0..GRID_ROWS - spanY) {
-            for (j in 0..GRID_COLUMNS - spanX) {
-                if (canPlace(occupied, i, j, spanX, spanY)) {
-                    val d = Math.sqrt(Math.pow((i - r).toDouble(), 2.0) + Math.pow((j - c).toDouble(), 2.0))
-                    if (d < minDest) {
-                        minDest = d
-                        bestPos = Pair(i, j)
+        val maxDist = max(GRID_ROWS, GRID_COLUMNS)
+        for (dist in 1..maxDist) {
+            for (dr in -dist..dist) {
+                for (dc in -dist..dist) {
+                    if (kotlin.math.abs(dr) != dist && kotlin.math.abs(dc) != dist) continue
+
+                    val nr = r + dr
+                    val nc = c + dc
+
+                    if (nr in 0..GRID_ROWS - spanY && nc in 0..GRID_COLUMNS - spanX) {
+                        if (canPlace(occupied, nr, nc, spanX, spanY)) {
+                            return Pair(nr, nc)
+                        }
                     }
                 }
             }
         }
-        return bestPos
+        return null
     }
 
     fun canPlace(occupied: Array<BooleanArray>, r: Int, c: Int, spanX: Int, spanY: Int): Boolean {
@@ -720,6 +745,16 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
             }
         }
         return occupied
+    }
+
+    private fun findViewForItem(item: HomeItem): View? {
+        for (page in pages) {
+            for (i in 0 until page.childCount) {
+                val v = page.getChildAt(i)
+                if (v.tag === item) return v
+            }
+        }
+        return null
     }
 
     private fun updateItemView(item: HomeItem) {

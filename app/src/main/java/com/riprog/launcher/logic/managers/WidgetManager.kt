@@ -30,6 +30,7 @@ import java.util.*
 import java.util.concurrent.Executors
 import kotlin.math.ceil
 import kotlin.math.max
+import kotlin.math.min
 import kotlin.math.roundToInt
 
 class WidgetManager(
@@ -139,8 +140,11 @@ class WidgetManager(
                     val widthPx = activity.resources.displayMetrics.widthPixels
                     val heightPx = activity.resources.displayMetrics.heightPixels
 
-                    val spanX = max(1, ((info.minWidth * density) / (widthPx / HomeView.GRID_COLUMNS.toFloat())).roundToInt()).toFloat()
-                    val spanY = max(1, ((info.minHeight * density) / (heightPx / HomeView.GRID_ROWS.toFloat())).roundToInt()).toFloat()
+                    val cellWidth = widthPx / HomeView.GRID_COLUMNS.toFloat()
+                    val cellHeight = (heightPx - dpToPx(48f)) / HomeView.GRID_ROWS.toFloat()
+                    val scaleFactor = 0.75f
+                    val spanX = kotlin.math.max(1, kotlin.math.min(HomeView.GRID_COLUMNS, kotlin.math.ceil(info.minWidth * density * scaleFactor / cellWidth).toInt()))
+                    val spanY = kotlin.math.max(1, kotlin.math.min(HomeView.GRID_ROWS, kotlin.math.ceil(info.minHeight * density * scaleFactor / cellHeight).toInt()))
 
                     widgetPreviewExecutor.execute {
                         try {
@@ -167,14 +171,14 @@ class WidgetManager(
                     textLayout.addView(label)
 
                     val size = TextView(activity)
-                    size.text = activity.getString(R.string.widget_size_format, ceil(spanX.toDouble()).toInt(), ceil(spanY.toDouble()).toInt())
+                    size.text = activity.getString(R.string.widget_size_format, spanX, spanY)
                     size.textSize = 12f
                     size.setTextColor(secondaryColor)
                     textLayout.addView(size)
 
                     card.setOnClickListener {
                         dialog.dismiss()
-                        activity.spawnWidget(info, spanX.toInt(), spanY.toInt())
+                        activity.spawnWidget(info, spanX, spanY)
                     }
                 }
             }

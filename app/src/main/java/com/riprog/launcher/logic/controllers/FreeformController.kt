@@ -8,6 +8,7 @@ import com.riprog.launcher.logic.managers.SettingsManager
 import com.riprog.launcher.data.model.HomeItem
 
 import android.app.Activity
+import android.appwidget.AppWidgetManager
 import android.view.View
 import android.view.ViewGroup
 import android.widget.FrameLayout
@@ -63,6 +64,9 @@ class FreeformController(
             }
             override fun onCancel() {
                 closeTransformOverlay()
+            }
+            override fun onReset() {
+                resetItem(v)
             }
             override fun onRemove() {
                 val item = v.tag as HomeItem?
@@ -149,6 +153,38 @@ class FreeformController(
             transformingView = null
             transformingViewOriginalParent = null
         }
+    }
+
+    private fun resetItem(v: View) {
+        val item = v.tag as? HomeItem ?: return
+        val mainActivity = activity as? MainActivity ?: return
+
+        if (item.type == HomeItem.Type.WIDGET) {
+            val awm = AppWidgetManager.getInstance(activity)
+            val info = awm.getAppWidgetInfo(item.widgetId)
+            if (info != null) {
+                // STAGE 8: Reset Logic - Restore 75% baseline size
+                val density = activity.resources.displayMetrics.density
+                val cellWidth = rootLayout.width / HomeView.GRID_COLUMNS
+                val cellHeight = (rootLayout.height - (48 * density).toInt()) / HomeView.GRID_ROWS
+
+                val scaleFactor = 0.75f
+                item.spanX = kotlin.math.max(1, kotlin.math.min(HomeView.GRID_COLUMNS, kotlin.math.ceil(info.minWidth * density * scaleFactor / cellWidth).toInt()))
+                item.spanY = kotlin.math.max(1, kotlin.math.min(HomeView.GRID_ROWS, kotlin.math.ceil(info.minHeight * density * scaleFactor / cellHeight).toInt()))
+            }
+        } else {
+            item.spanX = 1
+            item.spanY = 1
+        }
+
+        item.rotation = 0f
+        item.scale = 1.0f
+        item.tiltX = 0f
+        item.tiltY = 0f
+
+        // Re-center if requested or just refresh
+        mainActivity.homeView.updateViewPosition(item, v)
+        callback.onSaveState()
     }
 
     fun isTransforming(): Boolean {
