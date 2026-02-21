@@ -163,11 +163,6 @@ class TransformOverlay(context: Context, private val targetView: View, private v
         drawHandle(canvas, right, bottom, hs, true, foregroundColor)
         drawHandle(canvas, left, bottom, hs, true, foregroundColor)
 
-        drawHandle(canvas, (left + right) / 2f, top, hs, false, foregroundColor)
-        drawHandle(canvas, right, (top + bottom) / 2f, hs, false, foregroundColor)
-        drawHandle(canvas, (left + right) / 2f, bottom, hs, false, foregroundColor)
-        drawHandle(canvas, left, (top + bottom) / 2f, hs, false, foregroundColor)
-
         if (isFreeform || item.type == HomeItem.Type.WIDGET || item.type == HomeItem.Type.FOLDER) {
             paint.color = foregroundColor
             paint.alpha = 100
@@ -317,11 +312,6 @@ class TransformOverlay(context: Context, private val targetView: View, private v
         if (dist(rx, ry, right, bottom) < hs) return HANDLE_BOTTOM_RIGHT
         if (dist(rx, ry, left, bottom) < hs) return HANDLE_BOTTOM_LEFT
 
-        if (dist(rx, ry, (left + right) / 2f, top) < hs) return HANDLE_TOP
-        if (dist(rx, ry, right, (top + bottom) / 2f) < hs) return HANDLE_RIGHT
-        if (dist(rx, ry, (left + right) / 2f, bottom) < hs) return HANDLE_BOTTOM
-        if (dist(rx, ry, left, (top + bottom) / 2f) < hs) return HANDLE_LEFT
-
         return if (rx >= left && rx <= right && ry >= top && ry <= bottom) ACTION_MOVE else ACTION_OUTSIDE
     }
 
@@ -356,23 +346,12 @@ class TransformOverlay(context: Context, private val targetView: View, private v
             while (targetR - currentR < -180) targetR += 360f
             targetView.rotation = currentR + (targetR - currentR) * SMOOTHING_FACTOR
         } else {
-            // Edge-based resizing/scaling
-            val rotAngle = Math.toRadians((-targetView.rotation).toDouble()).toFloat()
-            val rx = (cos(rotAngle.toDouble()) * (tx - cx) - sin(rotAngle.toDouble()) * (ty - cy)).toFloat()
-            val ry = (sin(rotAngle.toDouble()) * (tx - cx) + cos(rotAngle.toDouble()) * (ty - cy)).toFloat()
-
+            // Proportional corner scaling
             val bounds = if (gestureInitialBounds != null) gestureInitialBounds!! else contentBounds
-            val halfContentW = bounds.width() / 2f
-            val halfContentH = bounds.height() / 2f
-
             var newScaleX = sx
             var newScaleY = sy
 
             when (activeHandle) {
-                HANDLE_TOP -> if (halfContentH > 0) newScaleY = max(0.2f, abs(ry) / halfContentH)
-                HANDLE_BOTTOM -> if (halfContentH > 0) newScaleY = max(0.2f, abs(ry) / halfContentH)
-                HANDLE_LEFT -> if (halfContentW > 0) newScaleX = max(0.2f, abs(rx) / halfContentW)
-                HANDLE_RIGHT -> if (halfContentW > 0) newScaleX = max(0.2f, abs(rx) / halfContentW)
                 HANDLE_TOP_LEFT, HANDLE_TOP_RIGHT, HANDLE_BOTTOM_LEFT, HANDLE_BOTTOM_RIGHT -> {
                     val initialDist = dist(initialTouchX, initialTouchY, cx, cy)
                     val currDist = dist(tx, ty, cx, cy)

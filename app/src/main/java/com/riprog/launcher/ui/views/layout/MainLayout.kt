@@ -159,6 +159,11 @@ class MainLayout(private val activity: MainActivity) : FrameLayout(activity) {
                 isDragging = false
                 touchedView = findTouchedHomeItem(startX, startY)
                 longPressHandler.removeCallbacks(longPressRunnable)
+
+                if (activity.freeformInteraction.isTransforming()) {
+                    return false
+                }
+
                 longPressHandler.postDelayed(longPressRunnable, 400)
                 return false
             }
@@ -238,6 +243,10 @@ class MainLayout(private val activity: MainActivity) : FrameLayout(activity) {
                 val dx = event.x - startX
                 val dy = event.y - startY
 
+                if (activity.freeformInteraction.isTransforming()) {
+                    return true
+                }
+
                 if (isDragging) {
                     if (activity.settingsManager.isFreeformHome && event.pointerCount > 1) {
                         if (event.pointerCount == 2) {
@@ -284,6 +293,9 @@ class MainLayout(private val activity: MainActivity) : FrameLayout(activity) {
 
             MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
                 longPressHandler.removeCallbacks(longPressRunnable)
+                if (activity.freeformInteraction.isTransforming()) {
+                    return true
+                }
                 if (isDragging) {
                     if (dragOverlay != null) {
                         val overlayHeight = dragOverlay!!.height

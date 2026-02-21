@@ -3,7 +3,6 @@ package com.riprog.launcher.theme
 import com.riprog.launcher.logic.managers.SettingsManager
 import com.riprog.launcher.R
 
-import android.app.UiModeManager
 import android.content.Context
 import android.content.res.ColorStateList
 import android.content.res.Configuration
@@ -13,26 +12,23 @@ import android.graphics.drawable.RippleDrawable
 import android.os.Build
 import android.util.TypedValue
 import android.widget.LinearLayout
+import androidx.appcompat.app.AppCompatDelegate
 
 object ThemeManager {
 
 
     fun applyThemeMode(context: Context, mode: String?) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            val uiModeManager = context.getSystemService(Context.UI_MODE_SERVICE) as UiModeManager
-            var nightMode = UiModeManager.MODE_NIGHT_AUTO
-            if ("light" == mode) nightMode = UiModeManager.MODE_NIGHT_NO
-            else if ("dark" == mode) nightMode = UiModeManager.MODE_NIGHT_YES
-
-            if (uiModeManager.nightMode != nightMode) {
-                uiModeManager.setApplicationNightMode(nightMode)
-            }
+        val nightMode = when (mode) {
+            "light" -> AppCompatDelegate.MODE_NIGHT_NO
+            "dark" -> AppCompatDelegate.MODE_NIGHT_YES
+            else -> AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM
         }
+        AppCompatDelegate.setDefaultNightMode(nightMode)
     }
 
 
     fun applyThemeToContext(base: Context, mode: String?): Context {
-        if ("system" == mode) return base
+        if (mode == null || "system" == mode) return base
 
         val config = Configuration(base.resources.configuration)
         if ("light" == mode) {
