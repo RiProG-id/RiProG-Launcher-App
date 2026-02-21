@@ -72,10 +72,11 @@ class MainLayout(private val activity: MainActivity) : FrameLayout(activity) {
                 activity.homeView.startDragging(touchedView!!, startX, startY)
             }
         } else {
-            val cellWidth = width / HomeView.GRID_COLUMNS
-            val cellHeight = (height - dpToPx(48)) / HomeView.GRID_ROWS
-            val col = startX / if (cellWidth > 0) cellWidth.toFloat() else 1.0f
-            val row = (startY - dpToPx(48)) / if (cellHeight > 0) cellHeight.toFloat() else 1.0f
+            val cellWidth = activity.homeView.getCellWidth()
+            val cellHeight = activity.homeView.getCellHeight()
+            val horizontalPadding = dpToPx(16)
+            val col = (startX - horizontalPadding) / if (cellWidth > 0) cellWidth else 1.0f
+            val row = startY / if (cellHeight > 0) cellHeight else 1.0f
             activity.showHomeContextMenu(col, row, activity.homeView.currentPage)
         }
     }

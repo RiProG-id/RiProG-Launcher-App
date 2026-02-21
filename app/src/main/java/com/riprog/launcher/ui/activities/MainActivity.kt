@@ -241,8 +241,8 @@ class MainActivity : Activity() {
             HomeItem.Type.FOLDER -> view = folderUI.createFolderView(
                 item,
                 true,
-                homeView.width / HomeView.GRID_COLUMNS,
-                (homeView.height - dpToPx(48)) / HomeView.GRID_ROWS
+                homeView.getCellWidth().toInt(),
+                homeView.getCellHeight().toInt()
             )
             else -> {}
         }
@@ -646,11 +646,11 @@ class MainActivity : Activity() {
         val sX = pendingSpanX
         val sY = pendingSpanY
 
-        val col = maxOf(0, (HomeView.GRID_COLUMNS - sX) / 2)
+        val col = maxOf(0, (settingsManager.columns - sX) / 2)
         val row = maxOf(0, (HomeView.GRID_ROWS - sY) / 2)
 
         val item = HomeItem.createWidget(appWidgetId, col.toFloat(), row.toFloat(), sX, sY, homeView.currentPage)
-        if (sX > HomeView.GRID_COLUMNS || sY > HomeView.GRID_ROWS || !homeView.doesFit(sX, sY, col, row, homeView.currentPage)) {
+        if (sX > settingsManager.columns || sY > HomeView.GRID_ROWS || !homeView.doesFit(sX, sY, col, row, homeView.currentPage)) {
             item.scale = 0.75f
         }
         homeItems.add(item)
@@ -666,7 +666,7 @@ class MainActivity : Activity() {
         val sX = spanX
         val sY = spanY
 
-        val col = maxOf(0, (HomeView.GRID_COLUMNS - sX) / 2)
+        val col = maxOf(0, (settingsManager.columns - sX) / 2)
         val row = maxOf(0, (HomeView.GRID_ROWS - sY) / 2)
 
         pendingSpanX = sX
@@ -676,7 +676,7 @@ class MainActivity : Activity() {
         val allowed = appWidgetManager.bindAppWidgetIdIfAllowed(appWidgetId, info.provider)
         if (allowed) {
             val item = HomeItem.createWidget(appWidgetId, col.toFloat(), row.toFloat(), sX, sY, homeView.currentPage)
-            if (sX > HomeView.GRID_COLUMNS || sY > HomeView.GRID_ROWS || !homeView.doesFit(sX, sY, col, row, homeView.currentPage)) {
+            if (sX > settingsManager.columns || sY > HomeView.GRID_ROWS || !homeView.doesFit(sX, sY, col, row, homeView.currentPage)) {
                 item.scale = 0.75f
             }
             homeItems.add(item)
@@ -698,7 +698,7 @@ class MainActivity : Activity() {
         val allowed = appWidgetManager.bindAppWidgetIdIfAllowed(appWidgetId, info.provider)
         if (allowed) {
             val item = HomeItem.createWidget(appWidgetId, 0f, 0f, sX, sY, homeView.currentPage)
-            if (sX > HomeView.GRID_COLUMNS || sY > HomeView.GRID_ROWS) {
+            if (sX > settingsManager.columns || sY > HomeView.GRID_ROWS) {
                 item.scale = 0.75f
             }
             homeItems.add(item)

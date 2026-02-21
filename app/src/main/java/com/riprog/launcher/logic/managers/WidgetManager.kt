@@ -39,7 +39,6 @@ class WidgetManager(
     private val appWidgetManager: AppWidgetManager?,
     private val appWidgetHost: AppWidgetHost
 ) {
-    private val gridManager: GridManager = GridManager(settingsManager.columns)
     private val widgetPreviewExecutor = Executors.newFixedThreadPool(4)
 
     fun pickWidget(lastGridCol: Float, lastGridRow: Float) {
@@ -117,7 +116,7 @@ class WidgetManager(
             if (infos != null) {
                 // Sort variants by size/proportions
                 infos.sortBy { info ->
-                    val spans = WidgetSizingUtils.calculateWidgetSpan(activity, info)
+                    val spans = WidgetSizingUtils.calculateWidgetSpan(activity, activity.homeView, info)
                     spans.first * spans.second
                 }
                 for (info in infos) {
@@ -143,7 +142,7 @@ class WidgetManager(
                     val preview = ImageView(activity)
                     preview.scaleType = ImageView.ScaleType.FIT_CENTER
 
-                    val spans = WidgetSizingUtils.calculateWidgetSpan(activity, info)
+                    val spans = WidgetSizingUtils.calculateWidgetSpan(activity, activity.homeView, info)
                     val spanX = spans.first
                     val spanY = spans.second
 

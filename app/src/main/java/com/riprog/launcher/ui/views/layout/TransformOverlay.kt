@@ -2,8 +2,8 @@ package com.riprog.launcher.ui.views.layout
 
 import com.riprog.launcher.theme.ThemeUtils
 import com.riprog.launcher.logic.managers.SettingsManager
-import com.riprog.launcher.logic.managers.GridManager
 import com.riprog.launcher.data.model.HomeItem
+import com.riprog.launcher.ui.activities.MainActivity
 import com.riprog.launcher.R
 
 import android.annotation.SuppressLint
@@ -28,7 +28,6 @@ import kotlin.math.*
 @SuppressLint("ViewConstructor")
 class TransformOverlay(context: Context, private val targetView: View, private val settingsManager: SettingsManager, private val onSaveListener: OnSaveListener?) : FrameLayout(context) {
 
-    private val gridManager: GridManager = GridManager(settingsManager.columns)
     private val item: HomeItem = targetView.tag as HomeItem
     private val paint = Paint(Paint.ANTI_ALIAS_FLAG)
     private val handleSize: Float = dpToPx(12f).toFloat()
@@ -350,11 +349,13 @@ class TransformOverlay(context: Context, private val targetView: View, private v
             var newX = gestureInitialX + (tx - initialTouchX)
             var newY = gestureInitialY + (ty - initialTouchY)
 
-            if (!isFreeform) {
-                val cellWidth = gridManager.getCellWidth(width)
-                val cellHeight = gridManager.getCellHeight(height)
+            if (!isFreeform && context is MainActivity) {
+                val activity = context as MainActivity
+                val cellWidth = activity.homeView.getCellWidth()
+                val cellHeight = activity.homeView.getCellHeight()
                 if (cellWidth > 0 && cellHeight > 0) {
-                    newX = (newX / cellWidth).roundToInt().toFloat() * cellWidth
+                    val horizontalPadding = dpToPx(16f)
+                    newX = ((newX - horizontalPadding) / cellWidth).roundToInt().toFloat() * cellWidth + horizontalPadding
                     newY = (newY / cellHeight).roundToInt().toFloat() * cellHeight
                 }
             }

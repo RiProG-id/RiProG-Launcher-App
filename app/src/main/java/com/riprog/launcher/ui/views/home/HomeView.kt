@@ -21,6 +21,8 @@ import android.widget.FrameLayout
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
 import java.util.ArrayList
 import java.util.HashMap
 import kotlin.math.max
@@ -32,6 +34,8 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
     private val pageIndicator: PageIndicator
     private val pages: MutableList<FrameLayout> = ArrayList()
     private val settingsManager: SettingsManager = SettingsManager(context)
+    private var systemTopInset = 0
+    private var systemBottomInset = 0
     var currentPage: Int = 0
         private set
     private var accentColor = Color.WHITE
@@ -104,6 +108,15 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
         pagesContainer.orientation = LinearLayout.HORIZONTAL
         pagesContainer.setPadding(0, dpToPx(48), 0, 0)
         pagesContainer.clipChildren = false
+
+        ViewCompat.setOnApplyWindowInsetsListener(this) { _, insets ->
+            val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
+            systemTopInset = systemBars.top
+            systemBottomInset = systemBars.bottom
+            pagesContainer.setPadding(0, dpToPx(48) + systemTopInset, 0, 0)
+            post { refreshLayout() }
+            insets
+        }
         pagesContainer.clipToPadding = false
         addView(pagesContainer, LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.MATCH_PARENT))
 
@@ -187,25 +200,43 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
         page.addView(view)
     }
 
-    fun updateViewPosition(item: HomeItem, view: View) {
-        val cellWidth = width / GRID_COLUMNS
-        val cellHeight = (height - dpToPx(48)) / GRID_ROWS
+    fun getCellWidth(): Float {
+        val horizontalPadding = dpToPx(16) * 2
+        val columnCount = settingsManager.columns
+        return if (width > horizontalPadding) (width - horizontalPadding) / columnCount.toFloat() else 0f
+    }
 
-        if (cellWidth == 0 || cellHeight <= 0) {
+    fun getCellHeight(): Float {
+        val topPadding = dpToPx(48)
+        val bottomPadding = dpToPx(16)
+        val dockHeight = 0
+        val indicatorHeight = dpToPx(80)
+        val systemInsets = systemTopInset + systemBottomInset
+        val usableHeight = height - topPadding - bottomPadding - dockHeight - indicatorHeight - systemInsets
+
+        val cw = getCellWidth()
+        var ch = if (usableHeight > 0) usableHeight / GRID_ROWS.toFloat() else 0f
+
+        // Maintain near-square cell ratio to prevent vertical stretching
+        if (ch > cw * 1.1f) ch = cw * 1.1f
+
+        return ch
+    }
+
+    fun updateViewPosition(item: HomeItem, view: View) {
+        val cellWidth = getCellWidth()
+        val cellHeight = getCellHeight()
+
+        if (cellWidth <= 0f || cellHeight <= 0f) {
             post { updateViewPosition(item, view) }
             return
         }
 
-        val lp: LayoutParams = if (item.type == HomeItem.Type.WIDGET) {
-            LayoutParams(cellWidth * item.spanX, cellHeight * item.spanY)
-        } else {
-
-            val size = resources.getDimensionPixelSize(R.dimen.grid_icon_size)
-            LayoutParams(size * 2, size * 2)
-        }
+        val lp = LayoutParams((cellWidth * item.spanX).toInt(), (cellHeight * item.spanY).toInt())
         view.layoutParams = lp
 
-        view.x = item.col * cellWidth
+        val horizontalPadding = dpToPx(16)
+        view.x = item.col * cellWidth + horizontalPadding
         view.y = item.row * cellHeight
 
         view.rotation = item.rotation
@@ -359,8 +390,8 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
     }
 
     private fun snapToGrid(item: HomeItem, v: View) {
-        val cellWidth = width / GRID_COLUMNS
-        val cellHeight = (height - dpToPx(48)) / GRID_ROWS
+        val cellWidth = getCellWidth()
+        val cellHeight = getCellHeight()
 
         if (context is MainActivity) {
             val activity = context as MainActivity
@@ -395,15 +426,17 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
         }
 
         if (settingsManager.isFreeformHome) {
-            item.col = v.x / cellWidth.toFloat()
-            item.row = v.y / cellHeight.toFloat()
+            val horizontalPadding = dpToPx(16)
+            item.col = (v.x - horizontalPadding) / cellWidth
+            item.row = v.y / cellHeight
             item.rotation = v.rotation
             item.scale = v.scaleX
             item.tiltX = v.rotationX
             item.tiltY = v.rotationY
         } else {
-            item.col = max(0, min(GRID_COLUMNS - item.spanX, (v.x / cellWidth.toFloat()).roundToInt())).toFloat()
-            item.row = max(0, min(GRID_ROWS - item.spanY, (v.y / cellHeight.toFloat()).roundToInt())).toFloat()
+            val horizontalPadding = dpToPx(16)
+            item.col = max(0, min(settingsManager.columns - item.spanX, ((v.x - horizontalPadding) / cellWidth).roundToInt())).toFloat()
+            item.row = max(0, min(GRID_ROWS - item.spanY, (v.y / cellHeight).roundToInt())).toFloat()
             item.rotation = 0f
             item.scale = 1.0f
             item.tiltX = 0f
@@ -412,7 +445,7 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
             autoArrange(item)
 
             v.animate()
-                .x(item.col * cellWidth)
+                .x(item.col * cellWidth + horizontalPadding)
                 .y(item.row * cellHeight)
                 .setDuration(200)
                 .start()
@@ -559,20 +592,21 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
         if (settingsManager.isFreeformHome) return
         val activity = context as? MainActivity ?: return
         val items = activity.homeItems
+        val columns = settingsManager.columns
 
         val pageItems = items.filter { it.page == movedItem.page && it !== movedItem }
 
-        val occupied = Array(GRID_ROWS) { BooleanArray(GRID_COLUMNS) }
+        val occupied = Array(GRID_ROWS) { BooleanArray(columns) }
 
         for (item in pageItems) {
             val rStart = max(0, item.row.roundToInt())
             val rEnd = min(GRID_ROWS - 1, rStart + item.spanY - 1)
             val cStart = max(0, item.col.roundToInt())
-            val cEnd = min(GRID_COLUMNS - 1, cStart + item.spanX - 1)
+            val cEnd = min(columns - 1, cStart + item.spanX - 1)
 
             for (r in rStart..rEnd) {
                 for (c in cStart..cEnd) {
-                    occupied[r][c] = true
+                    if (r < GRID_ROWS && c < columns) occupied[r][c] = true
                 }
             }
         }
@@ -585,14 +619,14 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
         }
 
         if (overlappingItems.isNotEmpty()) {
-            val finalOccupied = Array(GRID_ROWS) { BooleanArray(GRID_COLUMNS) }
+            val finalOccupied = Array(GRID_ROWS) { BooleanArray(columns) }
             val mrStart = max(0, movedItem.row.roundToInt())
             val mrEnd = min(GRID_ROWS - 1, mrStart + movedItem.spanY - 1)
             val mcStart = max(0, movedItem.col.roundToInt())
-            val mcEnd = min(GRID_COLUMNS - 1, mcStart + movedItem.spanX - 1)
+            val mcEnd = min(columns - 1, mcStart + movedItem.spanX - 1)
             for (r in mrStart..mrEnd) {
                 for (c in mcStart..mcEnd) {
-                    finalOccupied[r][c] = true
+                    if (r < GRID_ROWS && c < columns) finalOccupied[r][c] = true
                 }
             }
             for (item in pageItems) {
@@ -600,10 +634,10 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
                     val rStart = max(0, item.row.roundToInt())
                     val rEnd = min(GRID_ROWS - 1, rStart + item.spanY - 1)
                     val cStart = max(0, item.col.roundToInt())
-                    val cEnd = min(GRID_COLUMNS - 1, cStart + item.spanX - 1)
+                    val cEnd = min(columns - 1, cStart + item.spanX - 1)
                     for (r in rStart..rEnd) {
                         for (c in cStart..cEnd) {
-                            finalOccupied[r][c] = true
+                            if (r < GRID_ROWS && c < columns) finalOccupied[r][c] = true
                         }
                     }
                 }
@@ -616,7 +650,7 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
                     item.col = newPos.second.toFloat()
                     for (r in newPos.first until newPos.first + item.spanY) {
                         for (c in newPos.second until newPos.second + item.spanX) {
-                            if (r < GRID_ROWS && c < GRID_COLUMNS) finalOccupied[r][c] = true
+                            if (r < GRID_ROWS && c < columns) finalOccupied[r][c] = true
                         }
                     }
                     updateItemView(item)
@@ -638,12 +672,13 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
     private fun resolveAllOverlaps(pageIndex: Int) {
         if (settingsManager.isFreeformHome) return
         val activity = context as? MainActivity ?: return
-        val items = activity.homeItems.filter { it.page == pageIndex }.sortedBy { it.row * GRID_COLUMNS + it.col }
+        val columns = settingsManager.columns
+        val items = activity.homeItems.filter { it.page == pageIndex }.sortedBy { it.row * columns + it.col }
 
-        val occupied = Array(GRID_ROWS) { BooleanArray(GRID_COLUMNS) }
+        val occupied = Array(GRID_ROWS) { BooleanArray(columns) }
         for (item in items) {
             var r = max(0, min(GRID_ROWS - item.spanY, item.row.roundToInt()))
-            var c = max(0, min(GRID_COLUMNS - item.spanX, item.col.roundToInt()))
+            var c = max(0, min(columns - item.spanX, item.col.roundToInt()))
 
             if (!canPlace(occupied, r, c, item.spanX, item.spanY)) {
                 val pos = findNearestAvailable(occupied, r, c, item.spanX, item.spanY)
@@ -657,7 +692,7 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
             item.col = c.toFloat()
             for (i in r until r + item.spanY) {
                 for (j in c until c + item.spanX) {
-                    if (i < GRID_ROWS && j < GRID_COLUMNS) occupied[i][j] = true
+                    if (i < GRID_ROWS && j < columns) occupied[i][j] = true
                 }
             }
             updateItemView(item)
@@ -681,9 +716,10 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
     private fun findNearestAvailable(occupied: Array<BooleanArray>, r: Int, c: Int, spanX: Int, spanY: Int): Pair<Int, Int>? {
         var minDest = Double.MAX_VALUE
         var bestPos: Pair<Int, Int>? = null
+        val columns = settingsManager.columns
 
         for (i in 0..GRID_ROWS - spanY) {
-            for (j in 0..GRID_COLUMNS - spanX) {
+            for (j in 0..columns - spanX) {
                 if (canPlace(occupied, i, j, spanX, spanY)) {
                     val d = Math.sqrt(Math.pow((i - r).toDouble(), 2.0) + Math.pow((j - c).toDouble(), 2.0))
                     if (d < minDest) {
@@ -697,9 +733,10 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
     }
 
     private fun canPlace(occupied: Array<BooleanArray>, r: Int, c: Int, spanX: Int, spanY: Int): Boolean {
+        val columns = settingsManager.columns
         for (i in r until r + spanY) {
             for (j in c until c + spanX) {
-                if (i >= GRID_ROWS || j >= GRID_COLUMNS || occupied[i][j]) return false
+                if (i >= GRID_ROWS || j >= columns || occupied[i][j]) return false
             }
         }
         return true
@@ -785,7 +822,8 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
     }
 
     fun getOccupiedCells(pageIndex: Int): Array<BooleanArray> {
-        val occupied = Array(GRID_ROWS) { BooleanArray(GRID_COLUMNS) }
+        val columns = settingsManager.columns
+        val occupied = Array(GRID_ROWS) { BooleanArray(columns) }
         if (context is MainActivity) {
             val activity = context as MainActivity
             for (item in activity.homeItems) {
@@ -793,10 +831,10 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
                     val rStart = max(0, item.row.roundToInt())
                     val rEnd = min(GRID_ROWS - 1, rStart + item.spanY - 1)
                     val cStart = max(0, item.col.roundToInt())
-                    val cEnd = min(GRID_COLUMNS - 1, cStart + item.spanX - 1)
+                    val cEnd = min(columns - 1, cStart + item.spanX - 1)
                     for (r in rStart..rEnd) {
                         for (c in cStart..cEnd) {
-                            occupied[r][c] = true
+                            if (r < GRID_ROWS && c < columns) occupied[r][c] = true
                         }
                     }
                 }
@@ -806,15 +844,17 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
     }
 
     fun doesFit(spanX: Int, spanY: Int, col: Int, row: Int, pageIndex: Int): Boolean {
-        if (col < 0 || row < 0 || col + spanX > GRID_COLUMNS || row + spanY > GRID_ROWS) return false
+        val columns = settingsManager.columns
+        if (col < 0 || row < 0 || col + spanX > columns || row + spanY > GRID_ROWS) return false
         val occupied = getOccupiedCells(pageIndex)
         return canPlace(occupied, row, col, spanX, spanY)
     }
 
     fun hasAnySpace(spanX: Int, spanY: Int, pageIndex: Int): Boolean {
+        val columns = settingsManager.columns
         val occupied = getOccupiedCells(pageIndex)
         for (r in 0..GRID_ROWS - spanY) {
-            for (c in 0..GRID_COLUMNS - spanX) {
+            for (c in 0..columns - spanX) {
                 if (canPlace(occupied, r, c, spanX, spanY)) return true
             }
         }
