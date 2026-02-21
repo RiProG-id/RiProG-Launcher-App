@@ -383,18 +383,29 @@ class TransformOverlay(context: Context, private val targetView: View, private v
             var newScaleX = sx
             var newScaleY = sy
 
-            when (activeHandle) {
-                HANDLE_TOP -> if (halfContentH > 0) newScaleY = max(0.2f, abs(ry) / halfContentH)
-                HANDLE_BOTTOM -> if (halfContentH > 0) newScaleY = max(0.2f, abs(ry) / halfContentH)
-                HANDLE_LEFT -> if (halfContentW > 0) newScaleX = max(0.2f, abs(rx) / halfContentW)
-                HANDLE_RIGHT -> if (halfContentW > 0) newScaleX = max(0.2f, abs(rx) / halfContentW)
-                HANDLE_TOP_LEFT, HANDLE_TOP_RIGHT, HANDLE_BOTTOM_LEFT, HANDLE_BOTTOM_RIGHT -> {
-                    val initialDist = dist(initialTouchX, initialTouchY, cx, cy)
-                    val currDist = dist(tx, ty, cx, cy)
-                    if (initialDist > 0) {
-                        val factor = currDist / initialDist
-                        newScaleX = sx * factor
-                        newScaleY = sy * factor
+            if (isFreeform) {
+                // In freeform mode, all handles maintain aspect ratio
+                val initialDist = dist(initialTouchX, initialTouchY, cx, cy)
+                val currDist = dist(tx, ty, cx, cy)
+                if (initialDist > 0) {
+                    val factor = currDist / initialDist
+                    newScaleX = sx * factor
+                    newScaleY = sy * factor
+                }
+            } else {
+                when (activeHandle) {
+                    HANDLE_TOP -> if (halfContentH > 0) newScaleY = max(0.2f, abs(ry) / halfContentH)
+                    HANDLE_BOTTOM -> if (halfContentH > 0) newScaleY = max(0.2f, abs(ry) / halfContentH)
+                    HANDLE_LEFT -> if (halfContentW > 0) newScaleX = max(0.2f, abs(rx) / halfContentW)
+                    HANDLE_RIGHT -> if (halfContentW > 0) newScaleX = max(0.2f, abs(rx) / halfContentW)
+                    HANDLE_TOP_LEFT, HANDLE_TOP_RIGHT, HANDLE_BOTTOM_LEFT, HANDLE_BOTTOM_RIGHT -> {
+                        val initialDist = dist(initialTouchX, initialTouchY, cx, cy)
+                        val currDist = dist(tx, ty, cx, cy)
+                        if (initialDist > 0) {
+                            val factor = currDist / initialDist
+                            newScaleX = sx * factor
+                            newScaleY = sy * factor
+                        }
                     }
                 }
             }

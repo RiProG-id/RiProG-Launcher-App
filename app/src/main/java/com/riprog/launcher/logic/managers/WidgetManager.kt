@@ -39,6 +39,7 @@ class WidgetManager(
     private val appWidgetHost: AppWidgetHost
 ) {
     private val gridManager: GridManager = GridManager(settingsManager.columns)
+    private val dimensionCalculator = DimensionCalculator(activity)
     private val widgetPreviewExecutor = Executors.newFixedThreadPool(4)
 
     fun pickWidget(lastGridCol: Float, lastGridRow: Float) {
@@ -137,8 +138,11 @@ class WidgetManager(
                     val widthPx = activity.resources.displayMetrics.widthPixels
                     val heightPx = activity.resources.displayMetrics.heightPixels
 
-                    val spanX = max(1, ((info.minWidth * density) / (widthPx / HomeView.GRID_COLUMNS.toFloat())).roundToInt()).toFloat()
-                    val spanY = max(1, ((info.minHeight * density) / (heightPx / HomeView.GRID_ROWS.toFloat())).roundToInt()).toFloat()
+                    val cellWidthPx = widthPx / HomeView.GRID_COLUMNS.toFloat()
+                    val cellHeightPx = (heightPx - dpToPx(48f)) / HomeView.GRID_ROWS.toFloat()
+                    val spans = dimensionCalculator.calculateSpan(info, cellWidthPx, cellHeightPx, isInitial = true)
+                    val spanX = spans.first.toFloat()
+                    val spanY = spans.second.toFloat()
 
                     widgetPreviewExecutor.execute {
                         try {
@@ -173,6 +177,12 @@ class WidgetManager(
                     card.setOnClickListener {
                         dialog.dismiss()
                         activity.spawnWidget(info, spanX.toInt(), spanY.toInt())
+                    }
+
+                    card.setOnLongClickListener {
+                        dialog.dismiss()
+                        activity.startNewWidgetDrag(info, spanX.toInt(), spanY.toInt())
+                        true
                     }
                 }
             }

@@ -2,6 +2,9 @@ package com.riprog.launcher.ui.views.home
 
 import com.riprog.launcher.ui.activities.MainActivity
 import com.riprog.launcher.logic.managers.SettingsManager
+import com.riprog.launcher.logic.managers.DimensionCalculator
+import com.riprog.launcher.logic.managers.OverlapResolver
+import com.riprog.launcher.logic.managers.PlacementEngine
 import com.riprog.launcher.data.repository.AppRepository
 import com.riprog.launcher.data.model.HomeItem
 import com.riprog.launcher.data.model.AppItem
@@ -32,6 +35,9 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
     private val pageIndicator: PageIndicator
     private val pages: MutableList<FrameLayout> = ArrayList()
     private val settingsManager: SettingsManager = SettingsManager(context)
+    private val dimensionCalculator: DimensionCalculator by lazy { (context as MainActivity).dimensionCalculator }
+    private val overlapResolver: OverlapResolver by lazy { (context as MainActivity).overlapResolver }
+    private val placementEngine: PlacementEngine by lazy { (context as MainActivity).placementEngine }
     var currentPage: Int = 0
         private set
     private var accentColor = Color.WHITE
@@ -102,7 +108,7 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
 
         pagesContainer = LinearLayout(context)
         pagesContainer.orientation = LinearLayout.HORIZONTAL
-        pagesContainer.setPadding(0, dpToPx(48), 0, 0)
+        pagesContainer.setPadding(0, dpToPx(DOCK_HEIGHT_DP), 0, 0)
         pagesContainer.clipChildren = false
         pagesContainer.clipToPadding = false
         addView(pagesContainer, LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.MATCH_PARENT))
@@ -189,7 +195,7 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
 
     fun updateViewPosition(item: HomeItem, view: View) {
         val cellWidth = width / GRID_COLUMNS
-        val cellHeight = (height - dpToPx(48)) / GRID_ROWS
+        val cellHeight = (height - dpToPx(DOCK_HEIGHT_DP)) / GRID_ROWS
 
         if (cellWidth == 0 || cellHeight <= 0) {
             post { updateViewPosition(item, view) }
@@ -360,7 +366,7 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
 
     private fun snapToGrid(item: HomeItem, v: View) {
         val cellWidth = width / GRID_COLUMNS
-        val cellHeight = (height - dpToPx(48)) / GRID_ROWS
+        val cellHeight = (height - dpToPx(DOCK_HEIGHT_DP)) / GRID_ROWS
 
         if (context is MainActivity) {
             val activity = context as MainActivity
@@ -409,7 +415,14 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
             item.tiltX = 0f
             item.tiltY = 0f
 
-            autoArrange(item)
+            if (context is MainActivity) {
+                val repositioned = overlapResolver.resolve(item, (context as MainActivity).homeItems)
+                for ((otherItem, pos) in repositioned) {
+                    otherItem.row = pos.first.toFloat()
+                    otherItem.col = pos.second.toFloat()
+                    updateItemView(otherItem)
+                }
+            }
 
             v.animate()
                 .x(item.col * cellWidth)
@@ -538,7 +551,6 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
                             item.tiltY = 0f
                         }
                     }
-                    resolveAllOverlaps(i)
                 }
             } else {
                 for (page in pages) {
@@ -553,146 +565,6 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
                 (context as MainActivity).saveHomeState()
             }
         }
-    }
-
-    private fun autoArrange(movedItem: HomeItem) {
-        if (settingsManager.isFreeformHome) return
-        val activity = context as? MainActivity ?: return
-        val items = activity.homeItems
-
-        val pageItems = items.filter { it.page == movedItem.page && it !== movedItem }
-
-        val occupied = Array(GRID_ROWS) { BooleanArray(GRID_COLUMNS) }
-
-        for (item in pageItems) {
-            val rStart = max(0, item.row.roundToInt())
-            val rEnd = min(GRID_ROWS - 1, rStart + item.spanY - 1)
-            val cStart = max(0, item.col.roundToInt())
-            val cEnd = min(GRID_COLUMNS - 1, cStart + item.spanX - 1)
-
-            for (r in rStart..rEnd) {
-                for (c in cStart..cEnd) {
-                    occupied[r][c] = true
-                }
-            }
-        }
-
-        val overlappingItems = mutableListOf<HomeItem>()
-        for (item in pageItems) {
-            if (isOverlapping(movedItem, item)) {
-                overlappingItems.add(item)
-            }
-        }
-
-        if (overlappingItems.isNotEmpty()) {
-            val finalOccupied = Array(GRID_ROWS) { BooleanArray(GRID_COLUMNS) }
-            val mrStart = max(0, movedItem.row.roundToInt())
-            val mrEnd = min(GRID_ROWS - 1, mrStart + movedItem.spanY - 1)
-            val mcStart = max(0, movedItem.col.roundToInt())
-            val mcEnd = min(GRID_COLUMNS - 1, mcStart + movedItem.spanX - 1)
-            for (r in mrStart..mrEnd) {
-                for (c in mcStart..mcEnd) {
-                    finalOccupied[r][c] = true
-                }
-            }
-            for (item in pageItems) {
-                if (!overlappingItems.contains(item)) {
-                    val rStart = max(0, item.row.roundToInt())
-                    val rEnd = min(GRID_ROWS - 1, rStart + item.spanY - 1)
-                    val cStart = max(0, item.col.roundToInt())
-                    val cEnd = min(GRID_COLUMNS - 1, cStart + item.spanX - 1)
-                    for (r in rStart..rEnd) {
-                        for (c in cStart..cEnd) {
-                            finalOccupied[r][c] = true
-                        }
-                    }
-                }
-            }
-
-            for (item in overlappingItems) {
-                val newPos = findNearestAvailable(finalOccupied, item.row.roundToInt(), item.col.roundToInt(), item.spanX, item.spanY)
-                if (newPos != null) {
-                    item.row = newPos.first.toFloat()
-                    item.col = newPos.second.toFloat()
-                    for (r in newPos.first until newPos.first + item.spanY) {
-                        for (c in newPos.second until newPos.second + item.spanX) {
-                            if (r < GRID_ROWS && c < GRID_COLUMNS) finalOccupied[r][c] = true
-                        }
-                    }
-                    updateItemView(item)
-                }
-            }
-        }
-    }
-
-    private fun resolveAllOverlaps(pageIndex: Int) {
-        if (settingsManager.isFreeformHome) return
-        val activity = context as? MainActivity ?: return
-        val items = activity.homeItems.filter { it.page == pageIndex }.sortedBy { it.row * GRID_COLUMNS + it.col }
-
-        val occupied = Array(GRID_ROWS) { BooleanArray(GRID_COLUMNS) }
-        for (item in items) {
-            var r = max(0, min(GRID_ROWS - item.spanY, item.row.roundToInt()))
-            var c = max(0, min(GRID_COLUMNS - item.spanX, item.col.roundToInt()))
-
-            if (!canPlace(occupied, r, c, item.spanX, item.spanY)) {
-                val pos = findNearestAvailable(occupied, r, c, item.spanX, item.spanY)
-                if (pos != null) {
-                    r = pos.first
-                    c = pos.second
-                }
-            }
-
-            item.row = r.toFloat()
-            item.col = c.toFloat()
-            for (i in r until r + item.spanY) {
-                for (j in c until c + item.spanX) {
-                    if (i < GRID_ROWS && j < GRID_COLUMNS) occupied[i][j] = true
-                }
-            }
-            updateItemView(item)
-        }
-    }
-
-    private fun isOverlapping(a: HomeItem, b: HomeItem): Boolean {
-        val al = a.col.roundToInt()
-        val at = a.row.roundToInt()
-        val ar = al + a.spanX
-        val ab = at + a.spanY
-
-        val bl = b.col.roundToInt()
-        val bt = b.row.roundToInt()
-        val br = bl + b.spanX
-        val bb = bt + b.spanY
-
-        return !(al >= br || ar <= bl || at >= bb || ab <= bt)
-    }
-
-    private fun findNearestAvailable(occupied: Array<BooleanArray>, r: Int, c: Int, spanX: Int, spanY: Int): Pair<Int, Int>? {
-        var minDest = Double.MAX_VALUE
-        var bestPos: Pair<Int, Int>? = null
-
-        for (i in 0..GRID_ROWS - spanY) {
-            for (j in 0..GRID_COLUMNS - spanX) {
-                if (canPlace(occupied, i, j, spanX, spanY)) {
-                    val d = Math.sqrt(Math.pow((i - r).toDouble(), 2.0) + Math.pow((j - c).toDouble(), 2.0))
-                    if (d < minDest) {
-                        minDest = d
-                        bestPos = Pair(i, j)
-                    }
-                }
-            }
-        }
-        return bestPos
-    }
-
-    private fun canPlace(occupied: Array<BooleanArray>, r: Int, c: Int, spanX: Int, spanY: Int): Boolean {
-        for (i in r until r + spanY) {
-            for (j in c until c + spanX) {
-                if (i >= GRID_ROWS || j >= GRID_COLUMNS || occupied[i][j]) return false
-            }
-        }
-        return true
     }
 
     private fun updateItemView(item: HomeItem) {
@@ -774,5 +646,6 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
     companion object {
         const val GRID_COLUMNS = 4
         const val GRID_ROWS = 6
+        const val DOCK_HEIGHT_DP = 48
     }
 }

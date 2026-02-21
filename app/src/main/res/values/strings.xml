@@ -51,4 +51,5 @@
     <string name="prompt_default_launcher_message">RiProG Launcher works best when set as your primary home application.</string>
     <string name="action_set_default">Set Default</string>
     <string name="action_later">Later</string>
+    <string name="no_space_on_home">No space on home screen</string>
 </resources>

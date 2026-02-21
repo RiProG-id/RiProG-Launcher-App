@@ -73,9 +73,9 @@ class MainLayout(private val activity: MainActivity) : FrameLayout(activity) {
             }
         } else {
             val cellWidth = width / HomeView.GRID_COLUMNS
-            val cellHeight = (height - dpToPx(48)) / HomeView.GRID_ROWS
+            val cellHeight = (height - dpToPx(HomeView.DOCK_HEIGHT_DP)) / HomeView.GRID_ROWS
             val col = startX / if (cellWidth > 0) cellWidth.toFloat() else 1.0f
-            val row = (startY - dpToPx(48)) / if (cellHeight > 0) cellHeight.toFloat() else 1.0f
+            val row = (startY - dpToPx(HomeView.DOCK_HEIGHT_DP)) / if (cellHeight > 0) cellHeight.toFloat() else 1.0f
             activity.showHomeContextMenu(col, row, activity.homeView.currentPage)
         }
     }
@@ -109,7 +109,7 @@ class MainLayout(private val activity: MainActivity) : FrameLayout(activity) {
         dragOverlay!!.addView(ivAppInfo)
 
         val lp = LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT, Gravity.TOP or Gravity.CENTER_HORIZONTAL)
-        lp.topMargin = dpToPx(48)
+        lp.topMargin = dpToPx(HomeView.DOCK_HEIGHT_DP)
         addView(dragOverlay, lp)
     }
 
@@ -270,18 +270,20 @@ class MainLayout(private val activity: MainActivity) : FrameLayout(activity) {
 
                 if (!isGestureCanceled && (abs(dx.toDouble()) > touchSlop || abs(dy.toDouble()) > touchSlop)) {
                     longPressHandler.removeCallbacks(longPressRunnable)
-                    if (abs(dy.toDouble()) > abs(dx.toDouble())) {
-                        if (dy < -touchSlop * 2) {
-                            openDrawer()
-                            isGestureCanceled = true
-                        }
-                    } else {
-                        if (dx > touchSlop * 2 && activity.homeView.currentPage > 0) {
-                            activity.homeView.scrollToPage(activity.homeView.currentPage - 1)
-                            isGestureCanceled = true
-                        } else if (dx < -touchSlop * 2 && activity.homeView.currentPage < activity.homeView.getPageCount() - 1) {
-                            activity.homeView.scrollToPage(activity.homeView.currentPage + 1)
-                            isGestureCanceled = true
+                    if (!activity.freeformInteraction.isTransforming()) {
+                        if (abs(dy.toDouble()) > abs(dx.toDouble())) {
+                            if (dy < -touchSlop * 2) {
+                                openDrawer()
+                                isGestureCanceled = true
+                            }
+                        } else {
+                            if (dx > touchSlop * 2 && activity.homeView.currentPage > 0) {
+                                activity.homeView.scrollToPage(activity.homeView.currentPage - 1)
+                                isGestureCanceled = true
+                            } else if (dx < -touchSlop * 2 && activity.homeView.currentPage < activity.homeView.getPageCount() - 1) {
+                                activity.homeView.scrollToPage(activity.homeView.currentPage + 1)
+                                isGestureCanceled = true
+                            }
                         }
                     }
                 }
@@ -398,7 +400,7 @@ class MainLayout(private val activity: MainActivity) : FrameLayout(activity) {
 
         val iconSize = resources.getDimensionPixelSize(R.dimen.grid_icon_size)
         v.x = startX - iconSize / 2f
-        v.y = startY - iconSize / 2f - dpToPx(48)
+        v.y = startY - iconSize / 2f - dpToPx(HomeView.DOCK_HEIGHT_DP)
 
         activity.homeView.startDragging(v, startX, startY)
     }

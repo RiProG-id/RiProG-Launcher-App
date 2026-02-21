@@ -7,9 +7,7 @@ import com.riprog.launcher.ui.views.folder.FolderViewFactory
 import com.riprog.launcher.ui.views.drawer.DrawerView
 import com.riprog.launcher.theme.ThemeUtils
 import com.riprog.launcher.theme.ThemeManager
-import com.riprog.launcher.logic.managers.WidgetManager
-import com.riprog.launcher.logic.managers.SettingsManager
-import com.riprog.launcher.logic.managers.FolderManager
+import com.riprog.launcher.logic.managers.*
 import com.riprog.launcher.logic.controllers.FreeformController
 import com.riprog.launcher.data.repository.AppRepository
 import com.riprog.launcher.data.model.HomeItem
@@ -53,6 +51,9 @@ class MainActivity : Activity() {
     private var widgetManager: WidgetManager? = null
     private lateinit var appWidgetHost: AppWidgetHost
     private lateinit var appWidgetManager: AppWidgetManager
+    lateinit var dimensionCalculator: DimensionCalculator
+    lateinit var overlapResolver: OverlapResolver
+    lateinit var placementEngine: PlacementEngine
     lateinit var mainLayout: MainLayout
     lateinit var homeView: HomeView
     lateinit var drawerView: DrawerView
@@ -125,6 +126,9 @@ class MainActivity : Activity() {
         appWidgetHost.startListening()
 
         applyDynamicColors()
+        dimensionCalculator = DimensionCalculator(this)
+        overlapResolver = OverlapResolver(HomeView.GRID_COLUMNS, HomeView.GRID_ROWS)
+        placementEngine = PlacementEngine(HomeView.GRID_COLUMNS, HomeView.GRID_ROWS)
         folderManager = FolderManager(this, settingsManager)
         folderUI = FolderViewFactory(this, settingsManager)
         widgetManager = WidgetManager(this, settingsManager, AppWidgetManager.getInstance(this), AppWidgetHost(this, APPWIDGET_HOST_ID))
@@ -239,7 +243,7 @@ class MainActivity : Activity() {
                 item,
                 true,
                 homeView.width / HomeView.GRID_COLUMNS,
-                (homeView.height - dpToPx(48)) / HomeView.GRID_ROWS
+                (homeView.height - dpToPx(HomeView.DOCK_HEIGHT_DP)) / HomeView.GRID_ROWS
             )
             else -> {}
         }
@@ -256,7 +260,7 @@ class MainActivity : Activity() {
         grid.removeAllViews()
         if (folder.folderItems == null) return
         val count = Math.min(folder.folderItems.size, 4)
-        val scale = settingsManager.iconScale
+        val scale = settingsManager.iconScale * folder.scale
         val size = (dpToPx(18) * scale).toInt()
 
         for (i in 0 until count) {
@@ -343,14 +347,35 @@ class MainActivity : Activity() {
     }
 
     fun showWidgetOptions(item: HomeItem, hostView: View) {
-        val options = arrayOf(getString(R.string.action_resize), getString(R.string.action_remove))
+        val options = arrayOf(getString(R.string.action_resize), getString(R.string.action_reset), getString(R.string.action_remove))
         val dialog = AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert)
             .setItems(options) { _, which ->
-                if (which == 0) showResizeDialog(item, hostView)
-                else removeHomeItem(item, hostView)
+                when (which) {
+                    0 -> showResizeDialog(item, hostView)
+                    1 -> resetWidget(item, hostView)
+                    2 -> removeHomeItem(item, hostView)
+                }
             }.create()
         dialog.show()
         if (dialog.window != null) dialog.window!!.setBackgroundDrawableResource(R.drawable.glass_bg)
+    }
+
+    private fun resetWidget(item: HomeItem, hostView: View) {
+        val info = appWidgetManager.getAppWidgetInfo(item.widgetId) ?: return
+        val cellWidthPx = homeView.width / HomeView.GRID_COLUMNS.toFloat()
+        val cellHeightPx = (homeView.height - dpToPx(HomeView.DOCK_HEIGHT_DP)) / HomeView.GRID_ROWS.toFloat()
+
+        placementEngine.resetWidget(
+            item,
+            dimensionCalculator,
+            info,
+            cellWidthPx,
+            cellHeightPx,
+            homeItems.filter { it.page == item.page }
+        )
+
+        homeView.updateViewPosition(item, hostView)
+        saveHomeState()
     }
 
     private fun showResizeDialog(item: HomeItem, hostView: View) {
@@ -359,32 +384,39 @@ class MainActivity : Activity() {
             .setTitle(R.string.title_resize_widget)
             .setItems(sizes) { _, which ->
                 when (which) {
-                    0 -> {
-                        item.spanX = 1
-                        item.spanY = 1
-                    }
-                    1 -> {
-                        item.spanX = 2
-                        item.spanY = 1
-                    }
-                    2 -> {
-                        item.spanX = 2
-                        item.spanY = 2
-                    }
-                    3 -> {
-                        item.spanX = 4
-                        item.spanY = 2
-                    }
-                    4 -> {
-                        item.spanX = 4
-                        item.spanY = 1
+                    0 -> { item.spanX = 1; item.spanY = 1 }
+                    1 -> { item.spanX = 2; item.spanY = 1 }
+                    2 -> { item.spanX = 2; item.spanY = 2 }
+                    3 -> { item.spanX = 4; item.spanY = 2 }
+                    4 -> { item.spanX = 4; item.spanY = 1 }
+                }
+
+                if (!settingsManager.isFreeformHome) {
+                    val repositioned = overlapResolver.resolve(item, homeItems)
+                    for ((otherItem, pos) in repositioned) {
+                        otherItem.row = pos.first.toFloat()
+                        otherItem.col = pos.second.toFloat()
+                        findViewForItem(otherItem)?.let { homeView.updateViewPosition(otherItem, it) }
                     }
                 }
+
                 homeView.updateViewPosition(item, hostView)
                 saveHomeState()
             }.create()
         dialog.show()
         if (dialog.window != null) dialog.window!!.setBackgroundDrawableResource(R.drawable.glass_bg)
+    }
+
+    private fun findViewForItem(item: HomeItem): View? {
+        val pagesContainer = homeView.getChildAt(0) as? ViewGroup ?: return null
+        for (i in 0 until pagesContainer.childCount) {
+            val page = pagesContainer.getChildAt(i) as? ViewGroup ?: continue
+            for (j in 0 until page.childCount) {
+                val v = page.getChildAt(j)
+                if (v.tag === item) return v
+            }
+        }
+        return null
     }
 
     fun removeHomeItem(item: HomeItem?, view: View?) {
@@ -639,10 +671,23 @@ class MainActivity : Activity() {
 
     private fun createWidget(data: Intent) {
         val appWidgetId = data.getIntExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, -1)
-        val item = HomeItem.createWidget(appWidgetId, lastGridCol, lastGridRow, 2, 1, homeView.currentPage)
-        homeItems.add(item)
-        renderHomeItem(item)
-        saveHomeState()
+        val info = appWidgetManager.getAppWidgetInfo(appWidgetId) ?: return
+
+        val cellWidthPx = homeView.width / HomeView.GRID_COLUMNS.toFloat()
+        val cellHeightPx = (homeView.height - dpToPx(HomeView.DOCK_HEIGHT_DP)) / HomeView.GRID_ROWS.toFloat()
+        val spans = dimensionCalculator.calculateSpan(info, cellWidthPx, cellHeightPx, isInitial = true)
+
+        val pageItems = homeItems.filter { it.page == homeView.currentPage }
+        val pos = placementEngine.findSpawnPosition(spans.first, spans.second, pageItems)
+
+        if (pos != null) {
+            val item = HomeItem.createWidget(appWidgetId, pos.second.toFloat(), pos.first.toFloat(), spans.first, spans.second, homeView.currentPage)
+            homeItems.add(item)
+            renderHomeItem(item)
+            saveHomeState()
+        } else {
+            Toast.makeText(this, getString(R.string.no_space_on_home), Toast.LENGTH_SHORT).show()
+        }
     }
 
     fun pickWidget() {
@@ -653,10 +698,17 @@ class MainActivity : Activity() {
         val appWidgetId = appWidgetHost.allocateAppWidgetId()
         val allowed = appWidgetManager.bindAppWidgetIdIfAllowed(appWidgetId, info.provider)
         if (allowed) {
-            val item = HomeItem.createWidget(appWidgetId, lastGridCol, lastGridRow, spanX, spanY, homeView.currentPage)
-            homeItems.add(item)
-            renderHomeItem(item)
-            saveHomeState()
+            val pageItems = homeItems.filter { it.page == homeView.currentPage }
+            val pos = placementEngine.findSpawnPosition(spanX, spanY, pageItems)
+
+            if (pos != null) {
+                val item = HomeItem.createWidget(appWidgetId, pos.second.toFloat(), pos.first.toFloat(), spanX, spanY, homeView.currentPage)
+                homeItems.add(item)
+                renderHomeItem(item)
+                saveHomeState()
+            } else {
+                Toast.makeText(this, getString(R.string.no_space_on_home), Toast.LENGTH_SHORT).show()
+            }
         } else {
             val intent = Intent(AppWidgetManager.ACTION_APPWIDGET_BIND)
             intent.putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, appWidgetId)
@@ -670,6 +722,10 @@ class MainActivity : Activity() {
         val allowed = appWidgetManager.bindAppWidgetIdIfAllowed(appWidgetId, info.provider)
         if (allowed) {
             val item = HomeItem.createWidget(appWidgetId, 0f, 0f, spanX, spanY, homeView.currentPage)
+            // No direct add here, wait for drop?
+            // Actually existing code adds it immediately and starts drag.
+            // But we should probably find a position if it's not a drag?
+            // This is "start drag", so position 0,0 is temporary.
             homeItems.add(item)
             val view = createWidgetView(item)
             if (view != null) {
