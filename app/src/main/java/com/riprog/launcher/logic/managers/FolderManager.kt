@@ -204,20 +204,25 @@ class FolderManager(private val activity: MainActivity, private val settingsMana
     fun removeFromFolder(folder: HomeItem, item: HomeItem, homeItems: MutableList<HomeItem>) {
         val page = folder.page
         folder.folderItems.remove(item)
-        if (folder.folderItems.size == 1) {
-            val lastItem = folder.folderItems[0]
-            homeItems.remove(folder)
-            lastItem.col = folder.col
-            lastItem.row = folder.row
-            lastItem.page = page
-            lastItem.rotation = folder.rotation
-            lastItem.scale = folder.scale
-            lastItem.tiltX = folder.tiltX
-            lastItem.tiltY = folder.tiltY
-            homeItems.add(lastItem)
+        if (folder.folderItems.size <= 1) {
+            if (folder.folderItems.size == 1) {
+                val lastItem = folder.folderItems[0]
+                homeItems.remove(folder)
+                lastItem.col = folder.col
+                lastItem.row = folder.row
+                lastItem.page = page
+                lastItem.rotation = folder.rotation
+                lastItem.scale = folder.scale
+                lastItem.tiltX = folder.tiltX
+                lastItem.tiltY = folder.tiltY
+                homeItems.add(lastItem)
 
-            activity.homeView.removeItemView(folder)
-            activity.renderHomeItem(lastItem)
+                activity.homeView.removeItemView(folder)
+                activity.renderHomeItem(lastItem)
+            } else {
+                homeItems.remove(folder)
+                activity.homeView.removeItemView(folder)
+            }
         } else {
             refreshFolderIconsOnHome(folder)
         }
@@ -225,13 +230,14 @@ class FolderManager(private val activity: MainActivity, private val settingsMana
     }
 
     fun refreshFolderIconsOnHome(folder: HomeItem) {
-        val pagesContainer = activity.homeView.getChildAt(0) as ViewGroup
+        if (activity.homeView.childCount == 0) return
+        val pagesContainer = activity.homeView.getChildAt(0) as? ViewGroup ?: return
         for (i in 0 until pagesContainer.childCount) {
-            val page = pagesContainer.getChildAt(i) as ViewGroup
+            val page = pagesContainer.getChildAt(i) as? ViewGroup ?: continue
             for (j in 0 until page.childCount) {
                 val v = page.getChildAt(j)
                 if (v.tag === folder) {
-                    val grid = findGridLayout(v as ViewGroup)
+                    val grid = findGridLayout(v as? ViewGroup ?: continue)
                     if (grid != null) activity.refreshFolderPreview(folder, grid)
                     return
                 }

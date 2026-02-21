@@ -332,7 +332,7 @@ class MainLayout(private val activity: MainActivity) : FrameLayout(activity) {
                     val finalDx = event.x - startX
                     val finalDy = event.y - startY
                     val dist = sqrt((finalDx * finalDx + finalDy * finalDy).toDouble()).toFloat()
-                    if (duration >= 80 && duration < 150 && dist < touchSlop) {
+                    if (duration >= 80 && duration < 350 && dist < touchSlop) {
                         if (touchedView != null) activity.handleItemClick(touchedView!!)
                         else performClick()
                     }

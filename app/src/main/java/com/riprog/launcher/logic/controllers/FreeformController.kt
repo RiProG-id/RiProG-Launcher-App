@@ -97,7 +97,7 @@ class FreeformController(
     }
 
     private fun saveTransform() {
-        if (transformingView == null) return
+        if (transformingView == null || rootLayout.width == 0) return
         val item = transformingView!!.tag as HomeItem? ?: return
 
         val cellWidth = rootLayout.width / HomeView.GRID_COLUMNS
