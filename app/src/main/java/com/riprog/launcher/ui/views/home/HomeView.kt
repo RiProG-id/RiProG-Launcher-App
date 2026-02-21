@@ -215,10 +215,7 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
         val usableHeight = height - topPadding - bottomPadding - dockHeight - indicatorHeight - systemInsets
 
         val cw = getCellWidth()
-        var ch = if (usableHeight > 0) usableHeight / GRID_ROWS.toFloat() else 0f
-
-        // Maintain near-square cell ratio to prevent vertical stretching
-        if (ch > cw * 1.1f) ch = cw * 1.1f
+        val ch = if (usableHeight > 0) usableHeight / GRID_ROWS.toFloat() else 0f
 
         return ch
     }

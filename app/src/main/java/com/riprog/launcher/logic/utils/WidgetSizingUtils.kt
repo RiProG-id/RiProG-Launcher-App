@@ -30,8 +30,6 @@ object WidgetSizingUtils {
             val systemInsets = 72 * density // Estimation
             val usableHeight = screenHeight - topPadding - bottomPadding - indicatorHeight - systemInsets
             cellHeight = usableHeight / HomeView.GRID_ROWS.toFloat()
-
-            if (cellHeight > cellWidth * 1.1f) cellHeight = cellWidth * 1.1f
         }
 
         var spanX: Int
@@ -45,6 +43,7 @@ object WidgetSizingUtils {
             spanX = ceil(info.minWidth * density / cellWidth).toInt().coerceAtLeast(1)
             spanY = ceil(info.minHeight * density / cellHeight).toInt().coerceAtLeast(1)
         }
+
 
         return Pair(spanX, spanY)
     }

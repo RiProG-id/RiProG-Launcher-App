@@ -722,9 +722,6 @@ class MainActivity : Activity() {
         val allowed = appWidgetManager.bindAppWidgetIdIfAllowed(appWidgetId, info.provider)
         if (allowed) {
             val item = HomeItem.createWidget(appWidgetId, 0f, 0f, sX, sY, homeView.currentPage)
-            if (sX > settingsManager.columns || sY > HomeView.GRID_ROWS) {
-                item.scale = 0.75f
-            }
             homeItems.add(item)
             val view = createWidgetView(item)
             if (view != null) {
