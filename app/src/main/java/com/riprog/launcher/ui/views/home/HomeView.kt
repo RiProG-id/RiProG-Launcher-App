@@ -43,7 +43,7 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
     private var model: AppRepository? = null
     private var allApps: List<AppItem>? = null
 
-    private var activeDragView: View? = null
+    private var draggingView: View? = null
     private var lastX: Float = 0f
     private var lastY: Float = 0f
     private val edgeScrollHandler = Handler(Looper.getMainLooper())
@@ -51,7 +51,7 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
     private var edgeHoldStart: Long = 0
     private val edgeScrollRunnable: Runnable = object : Runnable {
         override fun run() {
-            if (activeDragView != null) {
+            if (draggingView != null) {
                 if (lastX < width * 0.05f) {
                     if (currentPage > 0) {
                         scrollToPage(currentPage - 1)
@@ -251,9 +251,43 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
         }
     }
 
+    fun startDragging(v: View, x: Float, y: Float) {
+        draggingView = v
+        lastX = x
+        lastY = y
+
+        if (v.parent !== this) {
+            var absX = v.x
+            var absY = v.y
+            val p = v.parent as View?
+            if (p != null) {
+                // If it was in MainLayout, we need absolute coordinates
+                // But startExternalDrag already sets v.x/v.y in MainLayout coordinates
+                (p as ViewGroup).removeView(v)
+            }
+            addView(v)
+            v.x = absX
+            v.y = absY
+        }
+
+        v.animate().scaleX(1.1f).scaleY(1.1f).alpha(0.8f).setDuration(150).start()
+        v.performHapticFeedback(android.view.HapticFeedbackConstants.LONG_PRESS)
+    }
+
+    fun handleDrag(x: Float, y: Float) {
+        if (draggingView != null) {
+            val dx = x - lastX
+            val dy = y - lastY
+            draggingView!!.x = draggingView!!.x + dx
+            draggingView!!.y = draggingView!!.y + dy
+            lastX = x
+            lastY = y
+            checkEdgeScroll(x)
+        }
+    }
+
     fun checkEdgeScroll(x: Float) {
         lastX = x
-        activeDragView = this // Use self as dummy
         if (x < width * 0.05f || x > width * 0.95f) {
             if (!isEdgeScrolling) {
                 isEdgeScrolling = true
@@ -262,12 +296,43 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
         } else {
             isEdgeScrolling = false
             edgeScrollHandler.removeCallbacks(edgeScrollRunnable)
-            activeDragView = null
         }
     }
 
     fun stopEdgeScroll() {
-        activeDragView = null
+        isEdgeScrolling = false
+        edgeScrollHandler.removeCallbacks(edgeScrollRunnable)
+    }
+
+    fun endDragging() {
+        if (draggingView != null) {
+            draggingView!!.animate().scaleX(1.0f).scaleY(1.0f).alpha(1.0f).setDuration(150).start()
+            val item = draggingView!!.tag as HomeItem?
+            if (item != null) {
+                val absX = draggingView!!.x
+                val absY = draggingView!!.y
+
+                item.page = currentPage
+                removeView(draggingView)
+                addItemView(item, draggingView)
+
+                draggingView!!.x = absX - (pages[currentPage].left + pagesContainer.translationX)
+                draggingView!!.y = absY - (pages[currentPage].top + pagesContainer.translationY)
+
+                snapToGrid(item, draggingView!!)
+            }
+            draggingView = null
+            isEdgeScrolling = false
+            edgeHoldStart = 0
+            edgeScrollHandler.removeCallbacks(edgeScrollRunnable)
+            if (model != null && allApps != null) {
+                refreshIcons(model!!, allApps!!)
+            }
+        }
+    }
+
+    fun cancelDragging() {
+        draggingView = null
         isEdgeScrolling = false
         edgeScrollHandler.removeCallbacks(edgeScrollRunnable)
     }
@@ -339,18 +404,6 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
         val cellWidth = getCellWidth()
         val cellHeight = getCellHeight()
 
-        val absX = v.x
-        val absY = v.y
-
-        item.page = currentPage
-        if (v.parent is ViewGroup) {
-            (v.parent as ViewGroup).removeView(v)
-        }
-        addItemView(item, v)
-
-        v.x = absX - (pages[currentPage].left + pagesContainer.translationX)
-        v.y = absY - (pages[currentPage].top + pagesContainer.translationY)
-
         if (context is MainActivity) {
             val activity = context as MainActivity
             val midX = v.x + v.width / 2f
@@ -393,14 +446,24 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
             item.tiltY = v.rotationY
         } else {
             val horizontalPadding = dpToPx(HORIZONTAL_PADDING_DP)
-            item.col = max(0, min(settingsManager.columns - item.spanX, ((v.x - horizontalPadding) / cellWidth).roundToInt())).toFloat()
-            item.row = max(0, min(GRID_ROWS - item.spanY, (v.y / cellHeight).roundToInt())).toFloat()
+            var targetCol = ((v.x - horizontalPadding) / cellWidth).roundToInt()
+            var targetRow = (v.y / cellHeight).roundToInt()
+
+            if (!doesFit(item.spanX, item.spanY, targetCol, targetRow, currentPage)) {
+                val occupied = getOccupiedCells(currentPage, item)
+                val nearest = findNearestAvailable(occupied, targetRow, targetCol, item.spanX, item.spanY)
+                if (nearest != null) {
+                    targetRow = nearest.first
+                    targetCol = nearest.second
+                }
+            }
+
+            item.col = max(0, min(settingsManager.columns - item.spanX, targetCol)).toFloat()
+            item.row = max(0, min(GRID_ROWS - item.spanY, targetRow)).toFloat()
             item.rotation = 0f
             item.scale = 1.0f
             item.tiltX = 0f
             item.tiltY = 0f
-
-            autoArrange(item)
 
             v.animate()
                 .x(item.col * cellWidth + horizontalPadding)

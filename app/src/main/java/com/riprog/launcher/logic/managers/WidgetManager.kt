@@ -121,7 +121,6 @@ class WidgetManager(
                     val uniqueVariants = mutableListOf<AppWidgetProviderInfo>()
                     val seenSpans = mutableSetOf<Pair<Int, Int>>()
 
-                    // Sort by target size or min size
                     val sortedVariants = variants.sortedBy { v ->
                         val spans = WidgetSizingUtils.calculateWidgetSpan(activity, activity.homeView, v)
                         spans.first * spans.second
@@ -129,7 +128,6 @@ class WidgetManager(
 
                     for (v in sortedVariants) {
                         val spans = WidgetSizingUtils.calculateWidgetSpan(activity, activity.homeView, v)
-                        // Preserve orientation: only add if this span/orientation is not seen yet for this label
                         if (seenSpans.add(spans)) {
                             uniqueVariants.add(v)
                         }
@@ -187,16 +185,14 @@ class WidgetManager(
                     textLayout.addView(label)
 
                     val size = TextView(activity)
-                    // Correct wrong span label: Span text must reflect actual calculated span
                     size.text = activity.getString(R.string.widget_size_format, spanX, spanY)
                     size.textSize = 12f
                     size.setTextColor(secondaryColor)
                     textLayout.addView(size)
 
-                    card.setOnLongClickListener {
+                    card.setOnClickListener {
                         dialog.dismiss()
-                        activity.startNewWidgetDrag(info, spanX, spanY)
-                        true
+                        activity.spawnWidget(info, spanX, spanY)
                     }
                 }
                 }

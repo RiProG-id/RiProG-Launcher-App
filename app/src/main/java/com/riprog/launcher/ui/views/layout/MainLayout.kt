@@ -38,6 +38,7 @@ class MainLayout(private val activity: MainActivity) : FrameLayout(activity) {
     private val longPressHandler = Handler(Looper.getMainLooper())
     private var touchedView: View? = null
     private var longPressTriggered = false
+    private var isDragging = false
 
     private val longPressRunnable = Runnable {
         longPressTriggered = true
@@ -116,10 +117,11 @@ class MainLayout(private val activity: MainActivity) : FrameLayout(activity) {
                 if (abs(dx.toDouble()) > touchSlop || abs(dy.toDouble()) > touchSlop) {
                     longPressHandler.removeCallbacks(longPressRunnable)
                 }
-                return false
+                return isDragging
             }
 
             MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                if (isDragging) return true
                 val duration = System.currentTimeMillis() - downTime
                 if (duration < 80) {
                     longPressHandler.removeCallbacks(longPressRunnable)
@@ -127,7 +129,7 @@ class MainLayout(private val activity: MainActivity) : FrameLayout(activity) {
                 }
             }
         }
-        return false
+        return isDragging
     }
 
     override fun onTouchEvent(event: MotionEvent): Boolean {
@@ -153,8 +155,7 @@ class MainLayout(private val activity: MainActivity) : FrameLayout(activity) {
 
         when (event.action and MotionEvent.ACTION_MASK) {
             MotionEvent.ACTION_DOWN -> {
-                startX = event.x
-                startY = event.y
+                // startX/startY already set in onInterceptTouchEvent
                 return true
             }
 
@@ -164,6 +165,11 @@ class MainLayout(private val activity: MainActivity) : FrameLayout(activity) {
 
                 if (activity.freeformInteraction.isTransforming()) {
                     activity.freeformInteraction.currentTransformOverlay?.dispatchTouchEvent(event)
+                    return true
+                }
+
+                if (isDragging) {
+                    activity.homeView.handleDrag(event.x, event.y)
                     return true
                 }
 
@@ -191,6 +197,11 @@ class MainLayout(private val activity: MainActivity) : FrameLayout(activity) {
                 longPressHandler.removeCallbacks(longPressRunnable)
                 if (activity.freeformInteraction.isTransforming()) {
                     activity.freeformInteraction.currentTransformOverlay?.dispatchTouchEvent(event)
+                    return true
+                }
+                if (isDragging) {
+                    activity.homeView.endDragging()
+                    isDragging = false
                     return true
                 }
                 if (!isGestureCanceled && !longPressTriggered) {
@@ -252,8 +263,14 @@ class MainLayout(private val activity: MainActivity) : FrameLayout(activity) {
     }
 
     fun startExternalDrag(v: View) {
+        isDragging = true
         touchedView = v
-        activity.freeformInteraction.showTransformOverlay(v, lastX, lastY)
+
+        val iconSize = resources.getDimensionPixelSize(R.dimen.grid_icon_size)
+        v.x = lastX - iconSize / 2f
+        v.y = lastY - iconSize / 2f - dpToPx(48)
+
+        activity.homeView.startDragging(v, lastX, lastY)
     }
 
     fun closeDrawer() {

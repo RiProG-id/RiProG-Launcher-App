@@ -95,11 +95,8 @@ class MainActivity : Activity() {
                 val item = HomeItem.createApp(app.packageName, app.className, 0f, 0f, homeView.currentPage)
                 homeItems.add(item)
                 val view = createAppView(item)
-                homeView.addItemView(item, view)
+                mainLayout.startExternalDrag(view)
                 saveHomeState()
-
-                // Start instant Edit Mode drag from drawer
-                freeformInteraction.showTransformOverlay(view, mainLayout.lastX, mainLayout.lastY)
             }
         })
 
@@ -674,15 +671,12 @@ class MainActivity : Activity() {
     }
 
     fun spawnWidget(info: AppWidgetProviderInfo, spanX: Int, spanY: Int) {
-        // Respect calculated span dimensions but ensure they fit within workspace bounds
         val sX = spanX.coerceAtMost(settingsManager.columns)
         val sY = spanY.coerceAtMost(HomeView.GRID_ROWS)
 
-        // Spawn widget centered on home screen
         var col = maxOf(0, (settingsManager.columns - sX) / 2)
         var row = maxOf(0, (HomeView.GRID_ROWS - sY) / 2)
 
-        // Ensure widget remains inside valid workspace bounds
         if (col + sX > settingsManager.columns) col = settingsManager.columns - sX
         if (row + sY > HomeView.GRID_ROWS) row = HomeView.GRID_ROWS - sY
 
@@ -692,7 +686,6 @@ class MainActivity : Activity() {
         val appWidgetId = appWidgetHost.allocateAppWidgetId()
         val allowed = appWidgetManager.bindAppWidgetIdIfAllowed(appWidgetId, info.provider)
         if (allowed) {
-            // Find nearest valid position to prevent overlap if Freeform is OFF
             if (!settingsManager.isFreeformHome && !homeView.doesFit(sX, sY, col, row, homeView.currentPage)) {
                 val occupied = homeView.getOccupiedCells(homeView.currentPage)
                 val nearest = findNearestAvailable(occupied, row, col, sX, sY)
@@ -703,7 +696,6 @@ class MainActivity : Activity() {
             }
 
             val item = HomeItem.createWidget(appWidgetId, col.toFloat(), row.toFloat(), sX, sY, homeView.currentPage)
-            // No forced resizing during attach - visual scale handled separately if needed
 
             homeItems.add(item)
             renderHomeItem(item)
@@ -729,9 +721,7 @@ class MainActivity : Activity() {
             if (view != null) {
                 homeView.addItemView(item, view)
                 saveHomeState()
-
-                // Start instant Edit Mode drag for new widget
-                freeformInteraction.showTransformOverlay(view, mainLayout.lastX, mainLayout.lastY)
+                mainLayout.startExternalDrag(view)
             }
         } else {
             val intent = Intent(AppWidgetManager.ACTION_APPWIDGET_BIND)
