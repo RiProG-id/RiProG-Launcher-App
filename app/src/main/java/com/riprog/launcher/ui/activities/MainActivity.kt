@@ -91,11 +91,19 @@ class MainActivity : Activity() {
         drawerView.setColumns(settingsManager.columns)
         drawerView.setOnAppLongClickListener(object : DrawerView.OnAppLongClickListener {
             override fun onAppLongClick(app: AppItem) {
-                mainLayout.closeDrawer()
-                val item = HomeItem.createApp(app.packageName, app.className, 0f, 0f, homeView.currentPage)
-                val view = createAppView(item)
-                view.tag = item
-                mainLayout.startExternalDrag(view)
+                val options = arrayOf(getString(R.string.action_app_info), getString(R.string.action_add_to_home))
+                val dialog = AlertDialog.Builder(this@MainActivity, android.R.style.Theme_DeviceDefault_Dialog_Alert)
+                    .setTitle(app.label)
+                    .setItems(options) { _, which ->
+                        if (which == 0) {
+                            showAppInfo(HomeItem.createApp(app.packageName, app.className, 0f, 0f, 0))
+                        } else {
+                            mainLayout.closeDrawer()
+                            spawnApp(app)
+                        }
+                    }.create()
+                dialog.show()
+                if (dialog.window != null) dialog.window!!.setBackgroundDrawableResource(R.drawable.glass_bg)
             }
         })
 
@@ -774,6 +782,67 @@ class MainActivity : Activity() {
             }
         }
         return bestPos
+    }
+
+    private fun findFirstAvailableSlot(spanX: Int, spanY: Int): Triple<Int, Int, Int>? {
+        val startPage = homeView.currentPage
+        val pageCount = homeView.getPageCount()
+
+        for (p in startPage until pageCount) {
+            val occupied = homeView.getOccupiedCells(p)
+            for (r in 0..HomeView.GRID_ROWS - spanY) {
+                for (c in 0..settingsManager.columns - spanX) {
+                    var canPlace = true
+                    for (ri in r until r + spanY) {
+                        for (ci in c until c + spanX) {
+                            if (ri >= HomeView.GRID_ROWS || ci >= settingsManager.columns || occupied[ri][ci]) {
+                                canPlace = false
+                                break
+                            }
+                        }
+                        if (!canPlace) break
+                    }
+                    if (canPlace) return Triple(p, r, c)
+                }
+            }
+        }
+
+        for (p in 0 until startPage) {
+            val occupied = homeView.getOccupiedCells(p)
+            for (r in 0..HomeView.GRID_ROWS - spanY) {
+                for (c in 0..settingsManager.columns - spanX) {
+                    var canPlace = true
+                    for (ri in r until r + spanY) {
+                        for (ci in c until c + spanX) {
+                            if (ri >= HomeView.GRID_ROWS || ci >= settingsManager.columns || occupied[ri][ci]) {
+                                canPlace = false
+                                break
+                            }
+                        }
+                        if (!canPlace) break
+                    }
+                    if (canPlace) return Triple(p, r, c)
+                }
+            }
+        }
+
+        return null
+    }
+
+    fun spawnApp(app: AppItem) {
+        var slot = findFirstAvailableSlot(1, 1)
+        if (slot == null) {
+            homeView.addPage()
+            slot = Triple(homeView.getPageCount() - 1, 0, 0)
+        }
+
+        val item = HomeItem.createApp(app.packageName, app.className, slot.third.toFloat(), slot.second.toFloat(), slot.first)
+        homeItems.add(item)
+        renderHomeItem(item)
+        saveHomeState()
+
+        homeView.scrollToPage(slot.first)
+        Toast.makeText(this, getString(R.string.app_added_to_home, app.label), Toast.LENGTH_SHORT).show()
     }
 
     private fun dpToPx(dp: Int): Int {
