@@ -99,7 +99,7 @@ class MainActivity : Activity() {
                 saveHomeState()
 
                 // Start instant Edit Mode drag from drawer
-                freeformInteraction.showTransformOverlay(view, mainLayout.startX, mainLayout.startY)
+                freeformInteraction.showTransformOverlay(view, mainLayout.lastX, mainLayout.lastY)
             }
         })
 
@@ -731,7 +731,7 @@ class MainActivity : Activity() {
                 saveHomeState()
 
                 // Start instant Edit Mode drag for new widget
-                freeformInteraction.showTransformOverlay(view, mainLayout.startX, mainLayout.startY)
+                freeformInteraction.showTransformOverlay(view, mainLayout.lastX, mainLayout.lastY)
             }
         } else {
             val intent = Intent(AppWidgetManager.ACTION_APPWIDGET_BIND)

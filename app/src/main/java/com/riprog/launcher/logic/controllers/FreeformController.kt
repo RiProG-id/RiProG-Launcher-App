@@ -112,6 +112,10 @@ class FreeformController(
             val w = if (v.width > 0) v.width.toFloat() else if (item != null) cellWidth * item.spanX else 0f
             val h = if (v.height > 0) v.height.toFloat() else if (item != null) cellHeight * item.spanY else 0f
 
+            // Immediately set pivot to center
+            v.pivotX = w / 2f
+            v.pivotY = h / 2f
+
             v.x = initialTouchX - w / 2f
             v.y = initialTouchY - h / 2f
 

@@ -97,8 +97,17 @@ class TransformOverlay(context: Context, private val targetView: View, private v
         gestureInitialScaleY = targetView.scaleY
         gestureInitialX = targetView.x
         gestureInitialY = targetView.y
-        gestureInitialWidth = targetView.width
-        gestureInitialHeight = targetView.height
+
+        // Ensure width and height are captured correctly even if not laid out
+        gestureInitialWidth = if (targetView.width > 0) targetView.width else {
+            val cw = (context as? MainActivity)?.homeView?.getCellWidth() ?: 0f
+            (cw * item.spanX).toInt()
+        }
+        gestureInitialHeight = if (targetView.height > 0) targetView.height else {
+            val ch = (context as? MainActivity)?.homeView?.getCellHeight() ?: 0f
+            (ch * item.spanY).toInt()
+        }
+
         gestureInitialBounds = contentBounds
         gestureInitialSpanX = item.spanX
         gestureInitialSpanY = item.spanY

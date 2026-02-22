@@ -28,6 +28,10 @@ class MainLayout(private val activity: MainActivity) : FrameLayout(activity) {
         private set
     var startY = 0f
         private set
+    var lastX = 0f
+        private set
+    var lastY = 0f
+        private set
     private var downTime: Long = 0
     private var isGestureCanceled = false
     private val touchSlop: Int = ViewConfiguration.get(activity).scaledTouchSlop
@@ -54,6 +58,9 @@ class MainLayout(private val activity: MainActivity) : FrameLayout(activity) {
     }
 
     override fun onInterceptTouchEvent(ev: MotionEvent): Boolean {
+        lastX = ev.x
+        lastY = ev.y
+
         if (activity.freeformInteraction.isTransforming()) {
             return false
         }
@@ -81,6 +88,8 @@ class MainLayout(private val activity: MainActivity) : FrameLayout(activity) {
             MotionEvent.ACTION_DOWN -> {
                 startX = ev.x
                 startY = ev.y
+                lastX = ev.x
+                lastY = ev.y
                 downTime = System.currentTimeMillis()
                 isGestureCanceled = false
                 longPressTriggered = false
@@ -122,6 +131,9 @@ class MainLayout(private val activity: MainActivity) : FrameLayout(activity) {
     }
 
     override fun onTouchEvent(event: MotionEvent): Boolean {
+        lastX = event.x
+        lastY = event.y
+
         if (isDrawerOpen) {
             if (event.action == MotionEvent.ACTION_DOWN) {
                 startX = event.x
@@ -140,7 +152,11 @@ class MainLayout(private val activity: MainActivity) : FrameLayout(activity) {
         }
 
         when (event.action and MotionEvent.ACTION_MASK) {
-            MotionEvent.ACTION_DOWN -> return true
+            MotionEvent.ACTION_DOWN -> {
+                startX = event.x
+                startY = event.y
+                return true
+            }
 
             MotionEvent.ACTION_MOVE -> {
                 val dx = event.x - startX
@@ -237,12 +253,7 @@ class MainLayout(private val activity: MainActivity) : FrameLayout(activity) {
 
     fun startExternalDrag(v: View) {
         touchedView = v
-
-        val iconSize = resources.getDimensionPixelSize(R.dimen.grid_icon_size)
-        v.x = startX - iconSize / 2f
-        v.y = startY - iconSize / 2f - dpToPx(48)
-
-        activity.freeformInteraction.showTransformOverlay(v, startX, startY)
+        activity.freeformInteraction.showTransformOverlay(v, lastX, lastY)
     }
 
     fun closeDrawer() {
