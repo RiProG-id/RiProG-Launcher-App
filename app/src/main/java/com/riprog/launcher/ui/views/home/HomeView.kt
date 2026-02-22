@@ -88,6 +88,12 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
             )
         )
 
+        if (context is MainActivity) {
+            val activity = context as MainActivity
+            activity.homeItems.forEach {
+                if (it.page >= index) it.page++
+            }
+        }
 
         for (i in pages.indices) {
             val p = pages[i]
@@ -99,6 +105,10 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
         }
         pageIndicator.setPageCount(pages.size)
         pageIndicator.setCurrentPage(currentPage)
+
+        if (context is MainActivity) {
+            (context as MainActivity).saveHomeState()
+        }
     }
 
     init {
@@ -309,22 +319,39 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
 
     fun endDragging() {
         if (draggingView != null) {
-            draggingView!!.animate().scaleX(1.0f).scaleY(1.0f).alpha(1.0f).setDuration(150).start()
-            val item = draggingView!!.tag as HomeItem?
+            val v = draggingView!!
+            v.animate().scaleX(1.0f).scaleY(1.0f).alpha(1.0f).setDuration(150).start()
+            val item = v.tag as HomeItem?
             if (item != null) {
-                val absX = draggingView!!.x
-                val absY = draggingView!!.y
+                val absX = v.x
+                val absY = v.y
 
-                val targetPage = resolvePageIndex(absX + draggingView!!.width / 2f)
+                val targetPage = resolvePageIndex(absX + v.width / 2f)
                 item.page = targetPage
 
-                removeView(draggingView)
-                addItemView(item, draggingView)
+                removeView(v)
 
-                draggingView!!.x = absX - (pages[targetPage].left + pagesContainer.translationX)
-                draggingView!!.y = absY - (pages[targetPage].top + pagesContainer.translationY)
+                if (context is MainActivity) {
+                    val activity = context as MainActivity
 
-                snapToGrid(item, draggingView!!)
+                    // Final page resolution - update page indicator one last time
+                    pageIndicator.setCurrentPage(targetPage)
+
+                    if (!activity.homeItems.contains(item)) {
+                        activity.homeItems.add(item)
+                    }
+
+                    val newView = activity.renderHomeItem(item)
+                    if (newView != null) {
+                        // Immediately place at drop position relative to target page
+                        newView.x = absX - (pages[targetPage].left + pagesContainer.translationX)
+                        newView.y = absY - (pages[targetPage].top + pagesContainer.translationY)
+
+                        // Then snap to grid with animation
+                        snapToGrid(item, newView)
+                    }
+                    activity.saveHomeState()
+                }
             }
             draggingView = null
             isEdgeScrolling = false
@@ -399,6 +426,10 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
             }
         }
         pageIndicator.setPageCount(pages.size)
+
+        if (context is MainActivity) {
+            (context as MainActivity).saveHomeState()
+        }
     }
 
     fun removeItemsByPackage(packageName: String?) {

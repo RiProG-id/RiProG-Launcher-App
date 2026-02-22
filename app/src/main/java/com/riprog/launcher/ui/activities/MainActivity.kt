@@ -93,10 +93,9 @@ class MainActivity : Activity() {
             override fun onAppLongClick(app: AppItem) {
                 mainLayout.closeDrawer()
                 val item = HomeItem.createApp(app.packageName, app.className, 0f, 0f, homeView.currentPage)
-                homeItems.add(item)
                 val view = createAppView(item)
+                view.tag = item
                 mainLayout.startExternalDrag(view)
-                saveHomeState()
             }
         })
 
@@ -230,8 +229,8 @@ class MainActivity : Activity() {
         saveHomeState()
     }
 
-    fun renderHomeItem(item: HomeItem?) {
-        if (item == null) return
+    fun renderHomeItem(item: HomeItem?): View? {
+        if (item == null) return null
         var view: View? = null
         when (item.type) {
             HomeItem.Type.APP -> view = createAppView(item)
@@ -252,6 +251,7 @@ class MainActivity : Activity() {
                 if (grid != null) refreshFolderPreview(item, grid)
             }
         }
+        return view
     }
 
     fun refreshFolderPreview(folder: HomeItem, grid: GridLayout) {
@@ -716,11 +716,9 @@ class MainActivity : Activity() {
         val allowed = appWidgetManager.bindAppWidgetIdIfAllowed(appWidgetId, info.provider)
         if (allowed) {
             val item = HomeItem.createWidget(appWidgetId, 0f, 0f, sX, sY, homeView.currentPage)
-            homeItems.add(item)
             val view = createWidgetView(item)
             if (view != null) {
-                homeView.addItemView(item, view)
-                saveHomeState()
+                view.tag = item
                 mainLayout.startExternalDrag(view)
             }
         } else {

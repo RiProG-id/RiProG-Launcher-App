@@ -155,19 +155,25 @@ class FreeformController(
         }
 
         if (!preferences.isFreeformHome) {
-            val newCol = max(0, min(preferences.columns - item.spanX, ((v.x - horizontalPadding) / cellWidth).roundToInt()))
+            val targetPage = homeView.resolvePageIndex(v.x + v.width / 2f)
+            val relativeX = v.x - (homeView.pages[targetPage].left + homeView.pagesContainer.translationX)
+
+            val newCol = max(0, min(preferences.columns - item.spanX, ((relativeX - horizontalPadding) / cellWidth).roundToInt()))
             val newRow = max(0, min(HomeView.GRID_ROWS - item.spanY, (v.y / cellHeight).roundToInt()))
 
             item.col = newCol.toFloat()
             item.row = newRow.toFloat()
-            item.page = homeView.currentPage
+            item.page = targetPage
             item.rotation = 0f
             item.scale = 1.0f
             item.tiltX = 0f
             item.tiltY = 0f
 
-            // Animate to snapped position in MainLayout
-            val snappedX = newCol * cellWidth + horizontalPadding
+            // Update page indicator to reflect target
+            homeView.pageIndicator.setCurrentPage(targetPage)
+
+            // Animate to snapped position relative to current display (MainLayout coordinates)
+            val snappedX = newCol * cellWidth + horizontalPadding + (homeView.pages[targetPage].left + homeView.pagesContainer.translationX)
             val snappedY = newRow * cellHeight
 
             v.animate()
@@ -238,7 +244,8 @@ class FreeformController(
 
                 val item = transformingView!!.tag as? HomeItem
                 if (item != null && activity is MainActivity) {
-                    activity.homeView.addItemView(item, transformingView!!)
+                    activity.renderHomeItem(item)
+                    activity.saveHomeState()
                 }
             }
             transformingView = null
