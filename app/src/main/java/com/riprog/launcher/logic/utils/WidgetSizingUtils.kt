@@ -38,10 +38,18 @@ object WidgetSizingUtils {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && (info.targetCellWidth > 0 || info.targetCellHeight > 0)) {
             spanX = info.targetCellWidth.coerceAtLeast(1)
             spanY = info.targetCellHeight.coerceAtLeast(1)
+        } else if (info.minResizeWidth > 0 || info.minResizeHeight > 0) {
+            spanX = ceil(info.minResizeWidth * density / cellWidth).toInt().coerceAtLeast(1)
+            spanY = ceil(info.minResizeHeight * density / cellHeight).toInt().coerceAtLeast(1)
         } else {
-            // Use cell metrics for accurate span calculation
-            spanX = ceil(info.minWidth * density / cellWidth).toInt().coerceAtLeast(1)
-            spanY = ceil(info.minHeight * density / cellHeight).toInt().coerceAtLeast(1)
+            // Fallback: Use minWidth/minHeight after removing default widget padding
+            val padding = android.graphics.Rect()
+            android.appwidget.AppWidgetHostView.getDefaultPaddingForWidget(context, info.provider, padding)
+            val minWidthPx = (info.minWidth * density) - (padding.left + padding.right)
+            val minHeightPx = (info.minHeight * density) - (padding.top + padding.bottom)
+
+            spanX = ceil(minWidthPx / cellWidth).toInt().coerceAtLeast(1)
+            spanY = ceil(minHeightPx / cellHeight).toInt().coerceAtLeast(1)
         }
 
 
