@@ -14,3 +14,9 @@ allprojects {
         mavenCentral()
     }
 }
+
+subprojects {
+    plugins.withId("com.android.application") {
+        apply from: rootProject.file('gradle/signing.gradle')
+    }
+}
