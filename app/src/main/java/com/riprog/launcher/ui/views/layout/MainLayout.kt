@@ -221,10 +221,19 @@ class MainLayout(private val activity: MainActivity) : FrameLayout(activity) {
     }
 
     fun findTouchedHomeItem(x: Float, y: Float, exclude: View? = null): View? {
-        val page = activity.homeView.currentPage
-        val pagesContainer = activity.homeView.getChildAt(0) as ViewGroup?
-        if (pagesContainer != null && page < pagesContainer.childCount) {
-            val pageLayout = pagesContainer.getChildAt(page) as ViewGroup
+        val homeView = activity.homeView
+        val pagesContainer = homeView.pagesContainer
+
+        // Strategy: First check current page, then check others
+        val currentIdx = homeView.currentPage
+        val indices = mutableListOf(currentIdx)
+        for (i in 0 until homeView.pages.size) {
+            if (i != currentIdx) indices.add(i)
+        }
+
+        for (pageIdx in indices) {
+            if (pageIdx >= homeView.pages.size) continue
+            val pageLayout = homeView.pages[pageIdx]
 
             val pageAbsX = pagesContainer.translationX + pageLayout.left
             val pageAbsY = pagesContainer.translationY + pageLayout.top

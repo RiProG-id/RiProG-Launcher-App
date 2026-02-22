@@ -31,9 +31,9 @@ import kotlin.math.min
 import kotlin.math.roundToInt
 
 class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
-    private val pagesContainer: LinearLayout
-    private val pageIndicator: PageIndicator
-    private val pages: MutableList<FrameLayout> = ArrayList()
+    val pagesContainer: LinearLayout
+    val pageIndicator: PageIndicator
+    val pages: MutableList<FrameLayout> = ArrayList()
     private val settingsManager: SettingsManager = SettingsManager(context)
     private var systemTopInset = 0
     private var systemBottomInset = 0
@@ -424,9 +424,9 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
             val midY = v.y + v.height / 2f
 
             var otherView: View? = null
-            val currentPageLayout = pages[currentPage]
-            for (i in 0 until currentPageLayout.childCount) {
-                val child = currentPageLayout.getChildAt(i)
+            val targetPageLayout = pages[item.page]
+            for (i in 0 until targetPageLayout.childCount) {
+                val child = targetPageLayout.getChildAt(i)
                 if (child === v) continue
                 if (midX >= child.x && midX <= child.x + child.width &&
                     midY >= child.y && midY <= child.y + child.height
@@ -463,8 +463,8 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
             var targetCol = ((v.x - horizontalPadding) / cellWidth).roundToInt()
             var targetRow = (v.y / cellHeight).roundToInt()
 
-            if (!doesFit(item.spanX, item.spanY, targetCol, targetRow, currentPage)) {
-                val occupied = getOccupiedCells(currentPage, item)
+            if (!doesFit(item.spanX, item.spanY, targetCol, targetRow, item.page)) {
+                val occupied = getOccupiedCells(item.page, item)
                 val nearest = findNearestAvailable(occupied, targetRow, targetCol, item.spanX, item.spanY)
                 if (nearest != null) {
                     targetRow = nearest.first
@@ -797,7 +797,7 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
         pageIndicator.setAccentColor(color)
     }
 
-    private fun resolvePageIndex(x: Float): Int {
+    fun resolvePageIndex(x: Float): Int {
         val scrollX = -pagesContainer.translationX
         val relativeX = x + scrollX
         val index = (relativeX / pageWidth).toInt()
@@ -817,7 +817,7 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
         ).toInt()
     }
 
-    private inner class PageIndicator(context: Context) : LinearLayout(context) {
+    inner class PageIndicator(context: Context) : LinearLayout(context) {
         private var count = 0
         private var current = 0
         private var accentColor = Color.WHITE
