@@ -266,9 +266,38 @@ class MainLayout(private val activity: MainActivity) : FrameLayout(activity) {
         isDragging = true
         touchedView = v
 
-        val iconSize = resources.getDimensionPixelSize(R.dimen.grid_icon_size)
-        v.x = lastX - iconSize / 2f
-        v.y = lastY - iconSize / 2f - dpToPx(48)
+        val cellWidth = activity.homeView.getCellWidth()
+        val cellHeight = activity.homeView.getCellHeight()
+
+        val item = v.tag as? HomeItem
+
+        var w = 0f
+        var h = 0f
+
+        if (v.width > 0) {
+            w = v.width.toFloat()
+            h = v.height.toFloat()
+        } else if (v.layoutParams != null && v.layoutParams.width > 0) {
+            w = v.layoutParams.width.toFloat()
+            h = v.layoutParams.height.toFloat()
+        } else if (item != null && cellWidth > 0 && cellHeight > 0) {
+            w = item.spanX * cellWidth
+            h = item.spanY * cellHeight
+        } else {
+            val iconSize = resources.getDimensionPixelSize(R.dimen.grid_icon_size).toFloat()
+            w = if (cellWidth > 0) cellWidth else iconSize
+            h = if (cellHeight > 0) cellHeight else iconSize * 1.2f
+        }
+
+        if (v.layoutParams == null || v.layoutParams.width <= 0) {
+            v.layoutParams = LayoutParams(w.toInt(), h.toInt())
+        }
+
+        v.pivotX = w / 2f
+        v.pivotY = h / 2f
+
+        v.x = lastX - w / 2f
+        v.y = lastY - h / 2f
 
         activity.homeView.startDragging(v, lastX, lastY)
     }
