@@ -24,8 +24,10 @@ import kotlin.math.sqrt
 
 class MainLayout(private val activity: MainActivity) : FrameLayout(activity) {
     private var isDrawerOpen = false
-    private var startX = 0f
-    private var startY = 0f
+    var startX = 0f
+        private set
+    var startY = 0f
+        private set
     private var downTime: Long = 0
     private var isGestureCanceled = false
     private val touchSlop: Int = ViewConfiguration.get(activity).scaledTouchSlop

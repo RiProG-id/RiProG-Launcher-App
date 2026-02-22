@@ -61,9 +61,10 @@ class FreeformController(
         v.x = x
         v.y = y
 
+        val homeView = (activity as? MainActivity)?.homeView
         currentTransformOverlay = TransformOverlay(activity, v, preferences, object : TransformOverlay.OnSaveListener {
             override fun onMove(x: Float, y: Float) {
-                (activity as? MainActivity)?.homeView?.checkEdgeScroll(x)
+                homeView?.checkEdgeScroll(x)
             }
 
             override fun onMoveStart(x: Float, y: Float) {}
@@ -104,6 +105,16 @@ class FreeformController(
         })
 
         if (initialTouchX != -1f && initialTouchY != -1f) {
+            val cellWidth = homeView?.getCellWidth() ?: 0f
+            val cellHeight = homeView?.getCellHeight() ?: 0f
+            val item = v.tag as? HomeItem
+
+            val w = if (v.width > 0) v.width.toFloat() else if (item != null) cellWidth * item.spanX else 0f
+            val h = if (v.height > 0) v.height.toFloat() else if (item != null) cellHeight * item.spanY else 0f
+
+            v.x = initialTouchX - w / 2f
+            v.y = initialTouchY - h / 2f
+
             currentTransformOverlay?.startImmediateDrag(initialTouchX, initialTouchY)
         }
 

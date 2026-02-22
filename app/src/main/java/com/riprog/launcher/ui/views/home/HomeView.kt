@@ -253,7 +253,7 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
 
     fun checkEdgeScroll(x: Float) {
         lastX = x
-        if (activeDragView == null) activeDragView = this // Use self as non-null dummy
+        activeDragView = this // Use self as dummy
         if (x < width * 0.05f || x > width * 0.95f) {
             if (!isEdgeScrolling) {
                 isEdgeScrolling = true
