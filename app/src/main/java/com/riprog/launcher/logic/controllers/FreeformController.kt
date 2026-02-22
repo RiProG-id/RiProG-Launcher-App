@@ -65,6 +65,7 @@ class FreeformController(
         currentTransformOverlay = TransformOverlay(activity, v, preferences, object : TransformOverlay.OnSaveListener {
             override fun onMove(x: Float, y: Float) {
                 homeView?.checkEdgeScroll(x)
+                homeView?.pageIndicator?.setCurrentPage(homeView.resolvePageIndex(x))
             }
 
             override fun onMoveStart(x: Float, y: Float) {}
@@ -189,10 +190,15 @@ class FreeformController(
         val cellWidth = homeView.getCellWidth()
         val cellHeight = homeView.getCellHeight()
 
+        val absX = transformingView!!.x
+        val targetPage = homeView.resolvePageIndex(absX + transformingView!!.width / 2f)
+        item.page = targetPage
+
         if (cellWidth > 0 && cellHeight > 0) {
             val density = activity.resources.displayMetrics.density
             val horizontalPadding = HomeView.HORIZONTAL_PADDING_DP * density
-            item.col = (transformingView!!.x - horizontalPadding) / cellWidth
+            val relativeX = absX - (homeView.pages[targetPage].left + homeView.pagesContainer.translationX)
+            item.col = (relativeX - horizontalPadding) / cellWidth
             item.row = transformingView!!.y / cellHeight
         }
 
@@ -229,13 +235,10 @@ class FreeformController(
 
             if (transformingView != null) {
                 rootLayout.removeView(transformingView)
-                if (transformingViewOriginalParent != null) {
-                    transformingViewOriginalParent!!.addView(transformingView, transformingViewOriginalIndex)
-                }
-                // Force update position in its new/old parent
+
                 val item = transformingView!!.tag as? HomeItem
                 if (item != null && activity is MainActivity) {
-                    activity.homeView.updateViewPosition(item, transformingView!!)
+                    activity.homeView.addItemView(item, transformingView!!)
                 }
             }
             transformingView = null
