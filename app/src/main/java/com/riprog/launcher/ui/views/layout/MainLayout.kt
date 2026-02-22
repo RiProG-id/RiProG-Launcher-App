@@ -244,8 +244,16 @@ class MainLayout(private val activity: MainActivity) : FrameLayout(activity) {
             for (i in pageLayout.childCount - 1 downTo 0) {
                 val child = pageLayout.getChildAt(i)
                 if (child === exclude) continue
-                if (adjustedX >= child.x && adjustedX <= child.x + child.width &&
-                    adjustedY >= child.y && adjustedY <= child.y + child.height
+
+                val item = child.tag as? HomeItem
+                val cellWidth = homeView.getCellWidth()
+                val cellHeight = homeView.getCellHeight()
+
+                val w = if (child.width > 0) child.width.toFloat() else (item?.spanX?.toFloat()?.times(cellWidth) ?: 0f)
+                val h = if (child.height > 0) child.height.toFloat() else (item?.spanY?.toFloat()?.times(cellHeight) ?: 0f)
+
+                if (adjustedX >= child.x && adjustedX <= child.x + w &&
+                    adjustedY >= child.y && adjustedY <= child.y + h
                 ) {
                     return child
                 }
