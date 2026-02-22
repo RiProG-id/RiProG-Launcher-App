@@ -53,24 +53,7 @@ class MainLayout(private val activity: MainActivity) : FrameLayout(activity) {
     private val longPressRunnable = Runnable {
         longPressTriggered = true
         if (touchedView != null) {
-            if (activity.settingsManager.isFreeformHome) {
-                activity.freeformInteraction.showTransformOverlay(touchedView!!)
-            } else {
-                isDragging = true
-                isExternalDrag = false
-                val item = touchedView!!.tag as HomeItem?
-                if (item != null) {
-                    origCol = item.col
-                    origRow = item.row
-                    origPage = item.page
-                }
-                if (dragOverlay != null) {
-                    val isApp = item != null && item.type == HomeItem.Type.APP
-                    ivAppInfo!!.visibility = if (isApp) View.VISIBLE else View.GONE
-                    dragOverlay!!.visibility = View.VISIBLE
-                }
-                activity.homeView.startDragging(touchedView!!, startX, startY)
-            }
+            activity.freeformInteraction.showTransformOverlay(touchedView!!)
         } else {
             val cellWidth = activity.homeView.getCellWidth()
             val cellHeight = activity.homeView.getCellHeight()
@@ -87,6 +70,49 @@ class MainLayout(private val activity: MainActivity) : FrameLayout(activity) {
 
     override fun performClick(): Boolean {
         return super.performClick()
+    }
+
+    fun showDragOverlay(isApp: Boolean) {
+        if (dragOverlay != null) {
+            ivAppInfo!!.visibility = if (isApp) View.VISIBLE else View.GONE
+            dragOverlay!!.visibility = View.VISIBLE
+        }
+    }
+
+    fun hideDragOverlay() {
+        if (dragOverlay != null) {
+            dragOverlay!!.visibility = View.GONE
+            ivRemove!!.setBackgroundColor(Color.TRANSPARENT)
+            ivAppInfo!!.setBackgroundColor(Color.TRANSPARENT)
+        }
+    }
+
+    fun handleDrop(x: Float, y: Float, item: HomeItem?, v: View): Boolean {
+        if (dragOverlay == null) return false
+
+        val overlayWidth = dragOverlay!!.width
+        val left = (width - overlayWidth) / 2f
+
+        if (y < dragOverlay!!.bottom + touchSlop * 2 &&
+            x >= left && x <= left + overlayWidth
+        ) {
+            if (item != null) {
+                val isApp = ivAppInfo!!.visibility == View.VISIBLE
+                if (!isApp) {
+                    activity.removeHomeItem(item, v)
+                } else {
+                    if (x < left + overlayWidth / 2f) {
+                        activity.removeHomeItem(item, v)
+                    } else {
+                        activity.showAppInfo(item)
+                        revertPosition(item, v)
+                    }
+                }
+            }
+            activity.homeView.cancelDragging()
+            return true
+        }
+        return false
     }
 
     private fun setupDragOverlay() {
@@ -130,6 +156,9 @@ class MainLayout(private val activity: MainActivity) : FrameLayout(activity) {
     }
 
     override fun onInterceptTouchEvent(ev: MotionEvent): Boolean {
+        if (activity.freeformInteraction.isTransforming()) {
+            return false
+        }
         if (isDrawerOpen) {
             when (ev.action) {
                 MotionEvent.ACTION_DOWN -> {
@@ -292,39 +321,11 @@ class MainLayout(private val activity: MainActivity) : FrameLayout(activity) {
             MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
                 longPressHandler.removeCallbacks(longPressRunnable)
                 if (isDragging) {
-                    if (dragOverlay != null) {
-                        val overlayHeight = dragOverlay!!.height
-                        val overlayWidth = dragOverlay!!.width
-                        val left = (width - overlayWidth) / 2f
-                        dragOverlay!!.visibility = View.GONE
-                        ivRemove!!.setBackgroundColor(Color.TRANSPARENT)
-                        ivAppInfo!!.setBackgroundColor(Color.TRANSPARENT)
-
-                        if (event.y < dragOverlay!!.bottom + touchSlop * 2 &&
-                            event.x >= left && event.x <= left + overlayWidth
-                        ) {
-                            val item = touchedView!!.tag as HomeItem?
-                            if (item != null) {
-                                val isApp = ivAppInfo!!.visibility == View.VISIBLE
-                                if (!isApp) {
-                                    activity.removeHomeItem(item, touchedView)
-                                } else {
-                                    val x = event.x
-                                    if (x < left + overlayWidth / 2f) {
-                                        activity.removeHomeItem(item, touchedView)
-                                    } else {
-                                        activity.showAppInfo(item)
-                                        revertPosition(item, touchedView!!)
-                                    }
-                                }
-                            }
-                            activity.homeView.cancelDragging()
-                        } else {
-                            activity.homeView.endDragging()
-                        }
-                    } else {
+                    val item = touchedView!!.tag as HomeItem?
+                    if (!handleDrop(event.x, event.y, item, touchedView!!)) {
                         activity.homeView.endDragging()
                     }
+                    hideDragOverlay()
                     isDragging = false
                     return true
                 }
@@ -404,7 +405,7 @@ class MainLayout(private val activity: MainActivity) : FrameLayout(activity) {
         activity.homeView.startDragging(v, startX, startY)
     }
 
-    private fun updateDragHighlight(x: Float, y: Float) {
+    fun updateDragHighlight(x: Float, y: Float) {
         if (dragOverlay == null || dragOverlay!!.visibility != View.VISIBLE) return
 
         val overlayWidth = dragOverlay!!.width

@@ -270,10 +270,30 @@ class TransformOverlay(context: Context, private val targetView: View, private v
             MotionEvent.ACTION_DOWN -> {
                 performClick()
                 activeHandle = findHandle(x, y)
-                if (activeHandle == ACTION_MOVE && onSaveListener != null) {
-                    onSaveListener.onMoveStart(x, y)
-                }
-                if (activeHandle == ACTION_OUTSIDE) {
+                if (activeHandle != ACTION_OUTSIDE) {
+                    if (activeHandle == ACTION_MOVE && onSaveListener != null) {
+                        onSaveListener.onMoveStart(x, y)
+                    }
+                    initialTouchX = x
+                    initialTouchY = y
+                    lastTouchX = x
+                    lastTouchY = y
+                    gestureInitialScaleX = targetView.scaleX
+                    gestureInitialScaleY = targetView.scaleY
+                    gestureInitialX = targetView.x
+                    gestureInitialY = targetView.y
+                    gestureInitialWidth = targetView.width
+                    gestureInitialHeight = targetView.height
+                    gestureInitialBounds = contentBounds
+                    gestureInitialSpanX = item.spanX
+                    gestureInitialSpanY = item.spanY
+                    gestureInitialCol = item.col
+                    gestureInitialRow = item.row
+                    currentDrx = 0f
+                    currentDry = 0f
+                    hasPassedThreshold = false
+                    return true
+                } else {
                     if (onSaveListener != null) {
                         val other = onSaveListener.findItemAt(x, y, targetView)
                         if (other != null) {
@@ -284,25 +304,6 @@ class TransformOverlay(context: Context, private val targetView: View, private v
                     }
                     return false
                 }
-                initialTouchX = x
-                initialTouchY = y
-                lastTouchX = x
-                lastTouchY = y
-                gestureInitialScaleX = targetView.scaleX
-                gestureInitialScaleY = targetView.scaleY
-                gestureInitialX = targetView.x
-                gestureInitialY = targetView.y
-                gestureInitialWidth = targetView.width
-                gestureInitialHeight = targetView.height
-                gestureInitialBounds = contentBounds
-                gestureInitialSpanX = item.spanX
-                gestureInitialSpanY = item.spanY
-                gestureInitialCol = item.col
-                gestureInitialRow = item.row
-                currentDrx = 0f
-                currentDry = 0f
-                hasPassedThreshold = false
-                return activeHandle != -1
             }
 
             MotionEvent.ACTION_MOVE -> {

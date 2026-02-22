@@ -55,16 +55,51 @@ class FreeformController(
         v.y = y
 
         currentTransformOverlay = TransformOverlay(activity, v, preferences, object : TransformOverlay.OnSaveListener {
-            override fun onMove(x: Float, y: Float) {}
-            override fun onMoveStart(x: Float, y: Float) {}
+            private var hasTriggeredDrag = false
+            private var initialX = 0f
+            private var initialY = 0f
+
+            override fun onMove(x: Float, y: Float) {
+                val mainLayout = rootLayout as? MainLayout ?: return
+                if (!hasTriggeredDrag) {
+                    val dx = x - initialX
+                    val dy = y - initialY
+                    if (Math.sqrt((dx * dx + dy * dy).toDouble()) > 24 * activity.resources.displayMetrics.density) {
+                        hasTriggeredDrag = true
+                        val item = v.tag as HomeItem?
+                        mainLayout.showDragOverlay(item?.type == HomeItem.Type.APP)
+                    }
+                }
+                if (hasTriggeredDrag) {
+                    mainLayout.updateDragHighlight(x, y)
+                }
+            }
+
+            override fun onMoveStart(x: Float, y: Float) {
+                initialX = x
+                initialY = y
+                hasTriggeredDrag = false
+            }
+
             override fun onSave() {
+                val mainLayout = rootLayout as? MainLayout
+                val item = v.tag as HomeItem?
+                if (hasTriggeredDrag && mainLayout != null && item != null) {
+                    if (mainLayout.handleDrop(transformingView!!.x + transformingView!!.width / 2f, transformingView!!.y + transformingView!!.height / 2f, item, v)) {
+                        closeTransformOverlay()
+                        return
+                    }
+                }
+                mainLayout?.hideDragOverlay()
                 saveTransform()
                 closeTransformOverlay()
             }
             override fun onCancel() {
+                (rootLayout as? MainLayout)?.hideDragOverlay()
                 closeTransformOverlay()
             }
             override fun onRemove() {
+                (rootLayout as? MainLayout)?.hideDragOverlay()
                 val item = v.tag as HomeItem?
                 callback.onRemoveItem(item, v)
                 transformingView = null
