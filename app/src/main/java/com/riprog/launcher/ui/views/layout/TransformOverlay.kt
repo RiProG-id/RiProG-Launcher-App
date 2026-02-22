@@ -50,6 +50,8 @@ class TransformOverlay(context: Context, private val targetView: View, private v
     private var gestureInitialSpanY = 1
     private var gestureInitialCol = 0f
     private var gestureInitialRow = 0f
+    private var currentDrx = 0f
+    private var currentDry = 0f
     private var hasPassedThreshold = false
     private var activeHandle = -1
     private var canResizeHorizontal = true
@@ -158,14 +160,25 @@ class TransformOverlay(context: Context, private val targetView: View, private v
         val sy = targetView.scaleY
         val r = if (isFreeform) targetView.rotation else 0f
 
-        val cx = targetView.x + targetView.pivotX
-        val cy = targetView.y + targetView.pivotY
+        val isEdgeResizing = activeHandle == HANDLE_TOP || activeHandle == HANDLE_BOTTOM || activeHandle == HANDLE_LEFT || activeHandle == HANDLE_RIGHT
+        val cx = if (isEdgeResizing) gestureInitialX + gestureInitialWidth / 2f else targetView.x + targetView.pivotX
+        val cy = if (isEdgeResizing) gestureInitialY + gestureInitialHeight / 2f else targetView.y + targetView.pivotY
 
         val bounds = if (activeHandle != -1 && gestureInitialBounds != null) gestureInitialBounds!! else contentBounds
-        val left = (bounds.left - targetView.pivotX) * sx
-        val top = (bounds.top - targetView.pivotY) * sy
-        val right = (bounds.right - targetView.pivotX) * sx
-        val bottom = (bounds.bottom - targetView.pivotY) * sy
+        var left = (bounds.left - (if (isEdgeResizing) gestureInitialWidth / 2f else targetView.pivotX)) * sx
+        var top = (bounds.top - (if (isEdgeResizing) gestureInitialHeight / 2f else targetView.pivotY)) * sy
+        var right = (bounds.right - (if (isEdgeResizing) gestureInitialWidth / 2f else targetView.pivotX)) * sx
+        var bottom = (bounds.bottom - (if (isEdgeResizing) gestureInitialHeight / 2f else targetView.pivotY)) * sy
+
+        // Adjust guideline based on continuous displacement
+        if (isEdgeResizing) {
+            when (activeHandle) {
+                HANDLE_RIGHT -> right += currentDrx
+                HANDLE_LEFT -> left += currentDrx
+                HANDLE_BOTTOM -> bottom += currentDry
+                HANDLE_TOP -> top += currentDry
+            }
+        }
 
         canvas.save()
         canvas.translate(cx, cy)
@@ -286,6 +299,8 @@ class TransformOverlay(context: Context, private val targetView: View, private v
                 gestureInitialSpanY = item.spanY
                 gestureInitialCol = item.col
                 gestureInitialRow = item.row
+                currentDrx = 0f
+                currentDry = 0f
                 hasPassedThreshold = false
                 return activeHandle != -1
             }
@@ -312,6 +327,22 @@ class TransformOverlay(context: Context, private val targetView: View, private v
                 if (activeHandle == ACTION_MOVE && hasPassedThreshold) {
                     val midX = targetView.x + targetView.width / 2f
                     val midY = targetView.y + targetView.height / 2f
+
+                    // Final snap for movement on release
+                    if (!settingsManager.isFreeformHome && context is MainActivity) {
+                        val activity = context as MainActivity
+                        val cellWidth = activity.homeView.getCellWidth()
+                        val cellHeight = activity.homeView.getCellHeight()
+                        if (cellWidth > 0 && cellHeight > 0) {
+                            val horizontalPadding = dpToPx(16f)
+                            val newCol = ((targetView.x - horizontalPadding) / cellWidth).roundToInt()
+                            val newRow = (targetView.y / cellHeight).roundToInt()
+                            item.col = newCol.toFloat()
+                            item.row = newRow.toFloat()
+                            activity.homeView.updateViewPosition(item, targetView)
+                        }
+                    }
+
                     val other = onSaveListener?.findItemAt(midX, midY, targetView)
                     if (other != null) {
                         onSaveListener?.onCollision(other)
@@ -372,20 +403,10 @@ class TransformOverlay(context: Context, private val targetView: View, private v
         val cy = gestureInitialY + targetView.pivotY
 
         if (activeHandle == ACTION_MOVE) {
-            var newX = gestureInitialX + (tx - initialTouchX)
-            var newY = gestureInitialY + (ty - initialTouchY)
+            val newX = gestureInitialX + (tx - initialTouchX)
+            val newY = gestureInitialY + (ty - initialTouchY)
 
-            if (!isFreeform && context is MainActivity) {
-                val activity = context as MainActivity
-                val cellWidth = activity.homeView.getCellWidth()
-                val cellHeight = activity.homeView.getCellHeight()
-                if (cellWidth > 0 && cellHeight > 0) {
-                    val horizontalPadding = dpToPx(16f)
-                    newX = ((newX - horizontalPadding) / cellWidth).roundToInt().toFloat() * cellWidth + horizontalPadding
-                    newY = (newY / cellHeight).roundToInt().toFloat() * cellHeight
-                }
-            }
-
+            // Smooth movement during drag for "light" feel
             targetView.x = newX
             targetView.y = newY
             onSaveListener?.onMove(tx, ty)
@@ -418,9 +439,6 @@ class TransformOverlay(context: Context, private val targetView: View, private v
         val cellHeight = activity.homeView.getCellHeight()
         if (cellWidth <= 0 || cellHeight <= 0) return
 
-        val dx = tx - initialTouchX
-        val dy = ty - initialTouchY
-
         // Use local coordinates for better accuracy if rotated
         val rotAngle = Math.toRadians((-targetView.rotation).toDouble()).toFloat()
         val cx = gestureInitialX + targetView.pivotX
@@ -430,8 +448,8 @@ class TransformOverlay(context: Context, private val targetView: View, private v
         val irx = (cos(rotAngle.toDouble()) * (initialTouchX - cx) - sin(rotAngle.toDouble()) * (initialTouchY - cy)).toFloat()
         val iry = (sin(rotAngle.toDouble()) * (initialTouchX - cx) + cos(rotAngle.toDouble()) * (initialTouchY - cy)).toFloat()
 
-        val drx = rx - irx
-        val dry = ry - iry
+        currentDrx = rx - irx
+        currentDry = ry - iry
 
         var newSpanX = item.spanX
         var newSpanY = item.spanY
@@ -450,26 +468,26 @@ class TransformOverlay(context: Context, private val targetView: View, private v
         when (activeHandle) {
             HANDLE_RIGHT -> {
                 if (canResizeHorizontal) {
-                    val spanDelta = (drx / (cellWidth * targetView.scaleX)).roundToInt()
+                    val spanDelta = (currentDrx / (cellWidth * targetView.scaleX)).roundToInt()
                     newSpanX = (gestureInitialSpanX + spanDelta).coerceIn(minSpanX, maxSpanX)
                 }
             }
             HANDLE_LEFT -> {
                 if (canResizeHorizontal) {
-                    val spanDelta = (-drx / (cellWidth * targetView.scaleX)).roundToInt()
+                    val spanDelta = (-currentDrx / (cellWidth * targetView.scaleX)).roundToInt()
                     newSpanX = (gestureInitialSpanX + spanDelta).coerceIn(minSpanX, maxSpanX)
                     newCol = (gestureInitialCol.roundToInt() + gestureInitialSpanX - newSpanX)
                 }
             }
             HANDLE_BOTTOM -> {
                 if (canResizeVertical) {
-                    val spanDelta = (dry / (cellHeight * targetView.scaleY)).roundToInt()
+                    val spanDelta = (currentDry / (cellHeight * targetView.scaleY)).roundToInt()
                     newSpanY = (gestureInitialSpanY + spanDelta).coerceIn(minSpanY, maxSpanY)
                 }
             }
             HANDLE_TOP -> {
                 if (canResizeVertical) {
-                    val spanDelta = (-dry / (cellHeight * targetView.scaleY)).roundToInt()
+                    val spanDelta = (-currentDry / (cellHeight * targetView.scaleY)).roundToInt()
                     newSpanY = (gestureInitialSpanY + spanDelta).coerceIn(minSpanY, maxSpanY)
                     newRow = (gestureInitialRow.roundToInt() + gestureInitialSpanY - newSpanY)
                 }
