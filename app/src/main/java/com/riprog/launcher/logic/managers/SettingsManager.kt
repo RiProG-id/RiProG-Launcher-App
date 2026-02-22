@@ -41,6 +41,12 @@ class SettingsManager(context: Context) {
             prefs.edit().putBoolean(KEY_HIDE_LABELS, hide).apply()
         }
 
+    var pageCount: Int
+        get() = prefs.getInt(KEY_PAGE_COUNT, 2)
+        set(count) {
+            prefs.edit().putInt(KEY_PAGE_COUNT, count).apply()
+        }
+
     var themeMode: String?
         get() = prefs.getString(KEY_THEME_MODE, "system")
         set(mode) {
@@ -174,6 +180,7 @@ class SettingsManager(context: Context) {
         private const val KEY_LIQUID_GLASS = "liquid_glass"
         private const val KEY_DARKEN_WALLPAPER = "darken_wallpaper"
         private const val KEY_HIDE_LABELS = "hide_labels"
+        private const val KEY_PAGE_COUNT = "page_count"
         private const val KEY_DRAWER_OPEN_COUNT = "drawer_open_count"
         private const val KEY_DEFAULT_PROMPT_TIMESTAMP = "default_prompt_ts"
         private const val KEY_DEFAULT_PROMPT_COUNT = "default_prompt_count"

@@ -188,9 +188,8 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
 
     fun addItemView(item: HomeItem?, view: View?) {
         if (item == null || view == null) return
-        while (item.page >= pages.size) {
-            addPage()
-        }
+        if (item.page < 0 || item.page >= pages.size) return
+
         if (view.parent is ViewGroup) {
             (view.parent as ViewGroup).removeView(view)
         }
@@ -366,15 +365,17 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
             currentPage = pages.size - 1
         }
         scrollToPage(currentPage)
-        if (context is MainActivity) {
-            (context as MainActivity).saveHomeState()
-        }
     }
 
     fun removePage(index: Int) {
         if (index < 0 || index >= pages.size) return
+
         val page = pages.removeAt(index)
+        page.removeAllViews()
         pagesContainer.removeView(page)
+
+        val activity = context as? MainActivity
+        activity?.removeItemsFromPage(index)
 
         for (i in pages.indices) {
             val p = pages[i]
@@ -385,6 +386,24 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
             }
         }
         pageIndicator.setPageCount(pages.size)
+        activity?.saveHomeState()
+    }
+
+    fun setPageCount(count: Int) {
+        clearPages()
+        for (i in 0 until count) {
+            addPage()
+        }
+    }
+
+    fun clearPages() {
+        for (page in pages) {
+            page.removeAllViews()
+        }
+        pages.clear()
+        pagesContainer.removeAllViews()
+        currentPage = 0
+        pagesContainer.translationX = 0f
     }
 
     fun removeItemsByPackage(packageName: String?) {
@@ -675,16 +694,6 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
                         }
                     }
                     updateItemView(item)
-                } else {
-                    // No space on this page, move to next page
-                    val v = findViewForItem(item)
-                    if (v != null) {
-                        item.page = item.page + 1
-                        item.row = 0f
-                        item.col = 0f
-                        removeItemView(item)
-                        addItemView(item, v)
-                    }
                 }
             }
         }
