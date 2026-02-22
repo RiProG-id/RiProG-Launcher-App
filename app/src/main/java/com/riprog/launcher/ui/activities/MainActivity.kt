@@ -213,15 +213,21 @@ class MainActivity : Activity() {
 
     fun saveHomeState() {
         settingsManager.saveHomeItems(homeItems)
+        settingsManager.pageCount = homeView.getPageCount()
     }
 
     private fun restoreHomeState() {
+        val pageCount = settingsManager.pageCount
+        homeView.setPageCount(pageCount)
+
         homeItems = settingsManager.getHomeItems().toMutableList()
         if (homeItems.isEmpty()) {
             setupDefaultHome()
         } else {
             for (item in homeItems) {
-                renderHomeItem(item)
+                if (item.page < pageCount) {
+                    renderHomeItem(item)
+                }
             }
         }
     }
@@ -390,12 +396,32 @@ class MainActivity : Activity() {
     }
 
     fun removeHomeItem(item: HomeItem?, view: View?) {
+        if (item != null && item.type == HomeItem.Type.WIDGET && item.widgetId != -1) {
+            appWidgetHost.deleteAppWidgetId(item.widgetId)
+        }
         homeItems.remove(item)
         if (view != null && view.parent is ViewGroup) {
             (view.parent as ViewGroup).removeView(view)
         }
         saveHomeState()
         homeView.refreshIcons(model, allApps)
+    }
+
+    fun removeItemsFromPage(pageIndex: Int) {
+        val itemsToRemove = homeItems.filter { it.page == pageIndex }
+        for (item in itemsToRemove) {
+            if (item.type == HomeItem.Type.WIDGET && item.widgetId != -1) {
+                appWidgetHost.deleteAppWidgetId(item.widgetId)
+            }
+        }
+        homeItems.removeAll(itemsToRemove)
+
+        // Re-index remaining items
+        for (item in homeItems) {
+            if (item.page > pageIndex) {
+                item.page--
+            }
+        }
     }
 
     fun showAppInfo(item: HomeItem?) {
