@@ -156,6 +156,7 @@ class TransformOverlay(context: Context, private val targetView: View, private v
         super.onDraw(canvas)
 
         val isFreeform = settingsManager.isFreeformHome
+        val isWidget = item.type == HomeItem.Type.WIDGET
         val sx = targetView.scaleX
         val sy = targetView.scaleY
         val r = if (isFreeform) targetView.rotation else 0f
@@ -189,7 +190,11 @@ class TransformOverlay(context: Context, private val targetView: View, private v
         paint.style = Paint.Style.STROKE
         paint.strokeWidth = dpToPx(1f).toFloat()
         paint.alpha = 60
-        canvas.drawRect(left, top, right, bottom, paint)
+
+        // Only show directional guide lines (rectangle) for widgets in freeform mode
+        if (isFreeform && isWidget) {
+            canvas.drawRect(left, top, right, bottom, paint)
+        }
 
         val hs = handleSize / 2f
 
@@ -200,10 +205,13 @@ class TransformOverlay(context: Context, private val targetView: View, private v
             drawHandle(canvas, left, bottom, hs, true, foregroundColor)
         }
 
-        drawHandle(canvas, (left + right) / 2f, top, hs, false, foregroundColor)
-        drawHandle(canvas, right, (top + bottom) / 2f, hs, false, foregroundColor)
-        drawHandle(canvas, (left + right) / 2f, bottom, hs, false, foregroundColor)
-        drawHandle(canvas, left, (top + bottom) / 2f, hs, false, foregroundColor)
+        // Only show directional handles for widgets
+        if (isWidget) {
+            drawHandle(canvas, (left + right) / 2f, top, hs, false, foregroundColor)
+            drawHandle(canvas, right, (top + bottom) / 2f, hs, false, foregroundColor)
+            drawHandle(canvas, (left + right) / 2f, bottom, hs, false, foregroundColor)
+            drawHandle(canvas, left, (top + bottom) / 2f, hs, false, foregroundColor)
+        }
 
         if (isFreeform) {
             paint.color = foregroundColor
@@ -362,6 +370,7 @@ class TransformOverlay(context: Context, private val targetView: View, private v
 
     private fun findHandle(tx: Float, ty: Float): Int {
         val isFreeform = settingsManager.isFreeformHome
+        val isWidget = item.type == HomeItem.Type.WIDGET
         val sx = targetView.scaleX
         val sy = targetView.scaleY
         val cx = targetView.x + targetView.pivotX
@@ -388,10 +397,12 @@ class TransformOverlay(context: Context, private val targetView: View, private v
             if (dist(rx, ry, left, bottom) < hs) return HANDLE_BOTTOM_LEFT
         }
 
-        if (dist(rx, ry, (left + right) / 2f, top) < hs) return HANDLE_TOP
-        if (dist(rx, ry, right, (top + bottom) / 2f) < hs) return HANDLE_RIGHT
-        if (dist(rx, ry, (left + right) / 2f, bottom) < hs) return HANDLE_BOTTOM
-        if (dist(rx, ry, left, (top + bottom) / 2f) < hs) return HANDLE_LEFT
+        if (isWidget) {
+            if (dist(rx, ry, (left + right) / 2f, top) < hs) return HANDLE_TOP
+            if (dist(rx, ry, right, (top + bottom) / 2f) < hs) return HANDLE_RIGHT
+            if (dist(rx, ry, (left + right) / 2f, bottom) < hs) return HANDLE_BOTTOM
+            if (dist(rx, ry, left, (top + bottom) / 2f) < hs) return HANDLE_LEFT
+        }
 
         return if (rx >= left && rx <= right && ry >= top && ry <= bottom) ACTION_MOVE else ACTION_OUTSIDE
     }
