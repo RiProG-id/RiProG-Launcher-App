@@ -191,10 +191,8 @@ class TransformOverlay(context: Context, private val targetView: View, private v
         paint.strokeWidth = dpToPx(1f).toFloat()
         paint.alpha = 60
 
-        // Only show directional guide lines (rectangle) for widgets in freeform mode
-        if (isFreeform && isWidget) {
-            canvas.drawRect(left, top, right, bottom, paint)
-        }
+        // Always show guide lines (rectangle)
+        canvas.drawRect(left, top, right, bottom, paint)
 
         val hs = handleSize / 2f
 
