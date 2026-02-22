@@ -1,2 +1,2 @@
 rootProject.name = "RiProGLauncher"
-include ':app'
+include(":app")
