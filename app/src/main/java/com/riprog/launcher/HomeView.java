@@ -272,7 +272,32 @@ public class HomeView extends FrameLayout implements PageActionCallback {
 
     public void removePage(int index) {
         if (index < 0 || index >= pages.size()) return;
-        FrameLayout page = pages.remove(index);
+
+        MainActivity activity = null;
+        if (getContext() instanceof MainActivity) {
+            activity = (MainActivity) getContext();
+        }
+
+        if (activity != null) {
+            activity.getFreeformInteraction().closeTransformOverlay();
+        }
+
+        FrameLayout page = pages.get(index);
+        if (activity != null) {
+            for (int i = 0; i < page.getChildCount(); i++) {
+                View v = page.getChildAt(i);
+                if (v == draggingView) {
+                    cancelDragging();
+                }
+                Object tag = v.getTag();
+                if (tag instanceof HomeItem) {
+                    activity.homeItems.remove((HomeItem) tag);
+                }
+            }
+        }
+
+        page.removeAllViews();
+        pages.remove(index);
         pagesContainer.removeView(page);
 
         for (int i = 0; i < pages.size(); i++) {
@@ -284,6 +309,11 @@ public class HomeView extends FrameLayout implements PageActionCallback {
             }
         }
         pageIndicator.setPageCount(pages.size());
+
+        pagesContainer.invalidate();
+        pagesContainer.requestLayout();
+        invalidate();
+        requestLayout();
     }
 
     public void removeItemsByPackage(String packageName) {
