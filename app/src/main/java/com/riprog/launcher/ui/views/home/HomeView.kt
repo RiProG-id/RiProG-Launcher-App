@@ -283,6 +283,9 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
             lastX = x
             lastY = y
             checkEdgeScroll(x)
+
+            val resolvedPage = resolvePageIndex(draggingView!!.x + draggingView!!.width / 2f)
+            pageIndicator.setCurrentPage(resolvedPage)
         }
     }
 
@@ -312,12 +315,14 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
                 val absX = draggingView!!.x
                 val absY = draggingView!!.y
 
-                item.page = currentPage
+                val targetPage = resolvePageIndex(absX + draggingView!!.width / 2f)
+                item.page = targetPage
+
                 removeView(draggingView)
                 addItemView(item, draggingView)
 
-                draggingView!!.x = absX - (pages[currentPage].left + pagesContainer.translationX)
-                draggingView!!.y = absY - (pages[currentPage].top + pagesContainer.translationY)
+                draggingView!!.x = absX - (pages[targetPage].left + pagesContainer.translationX)
+                draggingView!!.y = absY - (pages[targetPage].top + pagesContainer.translationY)
 
                 snapToGrid(item, draggingView!!)
             }
@@ -373,6 +378,15 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
 
     fun removePage(index: Int) {
         if (index < 0 || index >= pages.size) return
+
+        if (context is MainActivity) {
+            val activity = context as MainActivity
+            activity.homeItems.removeAll { it.page == index }
+            activity.homeItems.forEach {
+                if (it.page > index) it.page--
+            }
+        }
+
         val page = pages.removeAt(index)
         pagesContainer.removeView(page)
 
@@ -781,6 +795,13 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
     fun setAccentColor(color: Int) {
         this.accentColor = color
         pageIndicator.setAccentColor(color)
+    }
+
+    private fun resolvePageIndex(x: Float): Int {
+        val scrollX = -pagesContainer.translationX
+        val relativeX = x + scrollX
+        val index = (relativeX / pageWidth).toInt()
+        return max(0, min(pages.size - 1, index))
     }
 
     private val pageWidth: Int
