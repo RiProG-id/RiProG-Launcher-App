@@ -370,11 +370,26 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
     fun removePage(index: Int) {
         if (index < 0 || index >= pages.size) return
 
+        val activity = context as? MainActivity
+        activity?.folderManager?.closeFolder()
+        activity?.freeformInteraction?.closeTransformOverlay()
+
+        if (draggingView != null) {
+            removeView(draggingView)
+            draggingView = null
+        }
+
+        for (i in childCount - 1 downTo 0) {
+            val child = getChildAt(i)
+            if (child.tag is HomeItem) {
+                removeView(child)
+            }
+        }
+
         val page = pages.removeAt(index)
         page.removeAllViews()
         pagesContainer.removeView(page)
 
-        val activity = context as? MainActivity
         activity?.removeItemsFromPage(index)
 
         for (i in pages.indices) {
@@ -386,6 +401,13 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
             }
         }
         pageIndicator.setPageCount(pages.size)
+
+        pagesContainer.destroyDrawingCache()
+        pagesContainer.requestLayout()
+        pagesContainer.invalidate()
+        requestLayout()
+        invalidate()
+
         activity?.saveHomeState()
     }
 
