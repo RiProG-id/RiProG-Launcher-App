@@ -43,7 +43,7 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
     private var model: AppRepository? = null
     private var allApps: List<AppItem>? = null
 
-    private var draggingView: View? = null
+    private var activeDragView: View? = null
     private var lastX: Float = 0f
     private var lastY: Float = 0f
     private val edgeScrollHandler = Handler(Looper.getMainLooper())
@@ -51,7 +51,7 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
     private var edgeHoldStart: Long = 0
     private val edgeScrollRunnable: Runnable = object : Runnable {
         override fun run() {
-            if (draggingView != null) {
+            if (activeDragView != null) {
                 if (lastX < width * 0.05f) {
                     if (currentPage > 0) {
                         scrollToPage(currentPage - 1)
@@ -202,7 +202,7 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
     }
 
     fun getCellWidth(): Float {
-        val horizontalPadding = dpToPx(16) * 2
+        val horizontalPadding = dpToPx(HORIZONTAL_PADDING_DP) * 2
         val columnCount = settingsManager.columns
         return if (width > horizontalPadding) (width - horizontalPadding) / columnCount.toFloat() else 0f
     }
@@ -233,7 +233,7 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
         val lp = LayoutParams((cellWidth * item.spanX).toInt(), (cellHeight * item.spanY).toInt())
         view.layoutParams = lp
 
-        val horizontalPadding = dpToPx(16)
+        val horizontalPadding = dpToPx(HORIZONTAL_PADDING_DP)
         view.x = item.col * cellWidth + horizontalPadding
         view.y = item.row * cellHeight
 
@@ -251,42 +251,9 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
         }
     }
 
-    fun startDragging(v: View, x: Float, y: Float) {
-        draggingView = v
+    fun checkEdgeScroll(x: Float) {
         lastX = x
-        lastY = y
-
-        if (v.parent !== this) {
-            var absX = v.x
-            var absY = v.y
-            val p = v.parent as View?
-            if (p != null) {
-                absX += p.left + pagesContainer.translationX
-                absY += p.top + pagesContainer.translationY
-                (p as ViewGroup).removeView(v)
-            }
-            addView(v)
-            v.x = absX
-            v.y = absY
-        }
-
-        v.animate().scaleX(1.1f).scaleY(1.1f).alpha(0.8f).setDuration(150).start()
-        v.performHapticFeedback(android.view.HapticFeedbackConstants.LONG_PRESS)
-    }
-
-    fun handleDrag(x: Float, y: Float) {
-        if (draggingView != null) {
-            val dx = x - lastX
-            val dy = y - lastY
-            draggingView!!.x = draggingView!!.x + dx
-            draggingView!!.y = draggingView!!.y + dy
-            lastX = x
-            lastY = y
-            checkEdgeScroll(x)
-        }
-    }
-
-    private fun checkEdgeScroll(x: Float) {
+        if (activeDragView == null) activeDragView = this // Use self as non-null dummy
         if (x < width * 0.05f || x > width * 0.95f) {
             if (!isEdgeScrolling) {
                 isEdgeScrolling = true
@@ -295,34 +262,14 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
         } else {
             isEdgeScrolling = false
             edgeScrollHandler.removeCallbacks(edgeScrollRunnable)
+            activeDragView = null
         }
     }
 
-    fun endDragging() {
-        if (draggingView != null) {
-            draggingView!!.animate().scaleX(1.0f).scaleY(1.0f).alpha(1.0f).setDuration(150).start()
-            val item = draggingView!!.tag as HomeItem?
-            if (item != null) {
-                val absX = draggingView!!.x
-                val absY = draggingView!!.y
-
-                item.page = currentPage
-                removeView(draggingView)
-                addItemView(item, draggingView)
-
-                draggingView!!.x = absX - (pages[currentPage].left + pagesContainer.translationX)
-                draggingView!!.y = absY - (pages[currentPage].top + pagesContainer.translationY)
-
-                snapToGrid(item, draggingView!!)
-            }
-            draggingView = null
-            isEdgeScrolling = false
-            edgeHoldStart = 0
-            edgeScrollHandler.removeCallbacks(edgeScrollRunnable)
-            if (model != null && allApps != null) {
-                refreshIcons(model!!, allApps!!)
-            }
-        }
+    fun stopEdgeScroll() {
+        activeDragView = null
+        isEdgeScrolling = false
+        edgeScrollHandler.removeCallbacks(edgeScrollRunnable)
     }
 
     fun removeItemView(item: HomeItem?) {
@@ -388,15 +335,21 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
         }
     }
 
-    fun cancelDragging() {
-        draggingView = null
-        isEdgeScrolling = false
-        edgeScrollHandler.removeCallbacks(edgeScrollRunnable)
-    }
-
-    private fun snapToGrid(item: HomeItem, v: View) {
+    fun snapToGrid(item: HomeItem, v: View) {
         val cellWidth = getCellWidth()
         val cellHeight = getCellHeight()
+
+        val absX = v.x
+        val absY = v.y
+
+        item.page = currentPage
+        if (v.parent is ViewGroup) {
+            (v.parent as ViewGroup).removeView(v)
+        }
+        addItemView(item, v)
+
+        v.x = absX - (pages[currentPage].left + pagesContainer.translationX)
+        v.y = absY - (pages[currentPage].top + pagesContainer.translationY)
 
         if (context is MainActivity) {
             val activity = context as MainActivity
@@ -431,7 +384,7 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
         }
 
         if (settingsManager.isFreeformHome) {
-            val horizontalPadding = dpToPx(16)
+            val horizontalPadding = dpToPx(HORIZONTAL_PADDING_DP)
             item.col = (v.x - horizontalPadding) / cellWidth
             item.row = v.y / cellHeight
             item.rotation = v.rotation
@@ -439,7 +392,7 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
             item.tiltX = v.rotationX
             item.tiltY = v.rotationY
         } else {
-            val horizontalPadding = dpToPx(16)
+            val horizontalPadding = dpToPx(HORIZONTAL_PADDING_DP)
             item.col = max(0, min(settingsManager.columns - item.spanX, ((v.x - horizontalPadding) / cellWidth).roundToInt())).toFloat()
             item.row = max(0, min(GRID_ROWS - item.spanY, (v.y / cellHeight).roundToInt())).toFloat()
             item.rotation = 0f
@@ -877,5 +830,6 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
     companion object {
         const val GRID_COLUMNS = 4
         const val GRID_ROWS = 6
+        const val HORIZONTAL_PADDING_DP = 16
     }
 }

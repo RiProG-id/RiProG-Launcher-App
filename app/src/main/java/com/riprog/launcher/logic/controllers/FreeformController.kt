@@ -11,6 +11,9 @@ import android.app.Activity
 import android.view.View
 import android.view.ViewGroup
 import android.widget.FrameLayout
+import kotlin.math.max
+import kotlin.math.min
+import kotlin.math.roundToInt
 
 class FreeformController(
     private val activity: Activity,
@@ -18,7 +21,8 @@ class FreeformController(
     private val preferences: SettingsManager,
     private val callback: InteractionCallback
 ) {
-    private var currentTransformOverlay: TransformOverlay? = null
+    var currentTransformOverlay: TransformOverlay? = null
+        private set
     private var transformingView: View? = null
     private var transformingViewOriginalParent: ViewGroup? = null
     private var transformingViewOriginalIndex = -1
@@ -29,8 +33,11 @@ class FreeformController(
         fun onShowAppInfo(item: HomeItem?)
     }
 
-    fun showTransformOverlay(v: View) {
-        if (currentTransformOverlay != null) return
+    fun showTransformOverlay(v: View, initialTouchX: Float = -1f, initialTouchY: Float = -1f) {
+        if (currentTransformOverlay != null) {
+            if (transformingView === v) return
+            closeTransformOverlay()
+        }
 
         transformingView = v
         transformingViewOriginalParent = v.parent as? ViewGroup
@@ -55,51 +62,20 @@ class FreeformController(
         v.y = y
 
         currentTransformOverlay = TransformOverlay(activity, v, preferences, object : TransformOverlay.OnSaveListener {
-            private var hasTriggeredDrag = false
-            private var initialX = 0f
-            private var initialY = 0f
-
             override fun onMove(x: Float, y: Float) {
-                val mainLayout = rootLayout as? MainLayout ?: return
-                if (!hasTriggeredDrag) {
-                    val dx = x - initialX
-                    val dy = y - initialY
-                    if (Math.sqrt((dx * dx + dy * dy).toDouble()) > 24 * activity.resources.displayMetrics.density) {
-                        hasTriggeredDrag = true
-                        val item = v.tag as HomeItem?
-                        mainLayout.showDragOverlay(item?.type == HomeItem.Type.APP)
-                    }
-                }
-                if (hasTriggeredDrag) {
-                    mainLayout.updateDragHighlight(x, y)
-                }
+                (activity as? MainActivity)?.homeView?.checkEdgeScroll(x)
             }
 
-            override fun onMoveStart(x: Float, y: Float) {
-                initialX = x
-                initialY = y
-                hasTriggeredDrag = false
-            }
+            override fun onMoveStart(x: Float, y: Float) {}
 
             override fun onSave() {
-                val mainLayout = rootLayout as? MainLayout
-                val item = v.tag as HomeItem?
-                if (hasTriggeredDrag && mainLayout != null && item != null) {
-                    if (mainLayout.handleDrop(transformingView!!.x + transformingView!!.width / 2f, transformingView!!.y + transformingView!!.height / 2f, item, v)) {
-                        closeTransformOverlay()
-                        return
-                    }
-                }
-                mainLayout?.hideDragOverlay()
                 saveTransform()
                 closeTransformOverlay()
             }
             override fun onCancel() {
-                (rootLayout as? MainLayout)?.hideDragOverlay()
                 closeTransformOverlay()
             }
             override fun onRemove() {
-                (rootLayout as? MainLayout)?.hideDragOverlay()
                 val item = v.tag as HomeItem?
                 callback.onRemoveItem(item, v)
                 transformingView = null
@@ -122,7 +98,15 @@ class FreeformController(
                 val mainLayout = rootLayout as? MainLayout ?: return null
                 return mainLayout.findTouchedHomeItem(x, y, exclude)
             }
+
+            override fun onSnapToGrid(v: View) {
+                snapToGrid(v)
+            }
         })
+
+        if (initialTouchX != -1f && initialTouchY != -1f) {
+            currentTransformOverlay?.startImmediateDrag(initialTouchX, initialTouchY)
+        }
 
         rootLayout.addView(
             currentTransformOverlay, FrameLayout.LayoutParams(
@@ -131,16 +115,70 @@ class FreeformController(
         )
     }
 
+    private fun snapToGrid(v: View) {
+        val mainActivity = activity as? MainActivity ?: return
+        val homeView = mainActivity.homeView
+        val item = v.tag as? HomeItem ?: return
+
+        homeView.stopEdgeScroll()
+
+        val cellWidth = homeView.getCellWidth()
+        val cellHeight = homeView.getCellHeight()
+        if (cellWidth <= 0 || cellHeight <= 0) return
+
+        val density = activity.resources.displayMetrics.density
+        val horizontalPadding = HomeView.HORIZONTAL_PADDING_DP * density
+
+        // Find center of the view to determine target position
+        val midX = v.x + v.width / 2f
+        val midY = v.y + v.height / 2f
+
+        val otherView = (rootLayout as? MainLayout)?.findTouchedHomeItem(midX, midY, v)
+        if (otherView != null && handleFolderDrop(v, otherView)) {
+            closeTransformOverlay()
+            return
+        }
+
+        if (!preferences.isFreeformHome) {
+            val newCol = max(0, min(preferences.columns - item.spanX, ((v.x - horizontalPadding) / cellWidth).roundToInt()))
+            val newRow = max(0, min(HomeView.GRID_ROWS - item.spanY, (v.y / cellHeight).roundToInt()))
+
+            item.col = newCol.toFloat()
+            item.row = newRow.toFloat()
+            item.page = homeView.currentPage
+            item.rotation = 0f
+            item.scale = 1.0f
+            item.tiltX = 0f
+            item.tiltY = 0f
+
+            // Animate to snapped position in MainLayout
+            val snappedX = newCol * cellWidth + horizontalPadding
+            val snappedY = newRow * cellHeight
+
+            v.animate()
+                .x(snappedX)
+                .y(snappedY)
+                .rotation(0f)
+                .scaleX(1f)
+                .scaleY(1f)
+                .setDuration(200)
+                .start()
+        }
+        mainActivity.saveHomeState()
+    }
+
     private fun saveTransform() {
         if (transformingView == null || rootLayout.width == 0) return
         val item = transformingView!!.tag as HomeItem? ?: return
 
-        val cellWidth = rootLayout.width / HomeView.GRID_COLUMNS
-        val density = activity.resources.displayMetrics.density
-        val cellHeight = (rootLayout.height - (48 * density).toInt()) / HomeView.GRID_ROWS
+        val homeView = (activity as? MainActivity)?.homeView ?: return
+        val cellWidth = homeView.getCellWidth()
+        val cellHeight = homeView.getCellHeight()
 
         if (cellWidth > 0 && cellHeight > 0) {
-            item.col = transformingView!!.x / cellWidth
+            val density = activity.resources.displayMetrics.density
+            val horizontalPadding = HomeView.HORIZONTAL_PADDING_DP * density
+            item.col = (transformingView!!.x - horizontalPadding) / cellWidth
             item.row = transformingView!!.y / cellHeight
         }
 
@@ -179,6 +217,11 @@ class FreeformController(
                 rootLayout.removeView(transformingView)
                 if (transformingViewOriginalParent != null) {
                     transformingViewOriginalParent!!.addView(transformingView, transformingViewOriginalIndex)
+                }
+                // Force update position in its new/old parent
+                val item = transformingView!!.tag as? HomeItem
+                if (item != null && activity is MainActivity) {
+                    activity.homeView.updateViewPosition(item, transformingView!!)
                 }
             }
             transformingView = null

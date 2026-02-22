@@ -73,6 +73,7 @@ class TransformOverlay(context: Context, private val targetView: View, private v
         fun onUninstall()
         fun onCollision(otherView: View)
         fun findItemAt(x: Float, y: Float, exclude: View): View?
+        fun onSnapToGrid(v: View)
     }
 
     init {
@@ -85,6 +86,29 @@ class TransformOverlay(context: Context, private val targetView: View, private v
         }
         setWillNotDraw(false)
         setupButtons()
+    }
+
+    fun startImmediateDrag(x: Float, y: Float) {
+        activeHandle = ACTION_MOVE
+        initialTouchX = x
+        initialTouchY = y
+        lastTouchX = x
+        lastTouchY = y
+        gestureInitialScaleX = targetView.scaleX
+        gestureInitialScaleY = targetView.scaleY
+        gestureInitialX = targetView.x
+        gestureInitialY = targetView.y
+        gestureInitialWidth = targetView.width
+        gestureInitialHeight = targetView.height
+        gestureInitialBounds = contentBounds
+        gestureInitialSpanX = item.spanX
+        gestureInitialSpanY = item.spanY
+        gestureInitialCol = item.col
+        gestureInitialRow = item.row
+        currentDrx = 0f
+        currentDry = 0f
+        hasPassedThreshold = true // Already long pressed
+        onSaveListener?.onMoveStart(x, y)
     }
 
     private fun setupButtons() {
@@ -310,7 +334,7 @@ class TransformOverlay(context: Context, private val targetView: View, private v
                         }
                         onSaveListener.onSave()
                     }
-                    return false
+                    return true
                 }
             }
 
@@ -337,27 +361,11 @@ class TransformOverlay(context: Context, private val targetView: View, private v
                     val midX = targetView.x + targetView.width / 2f
                     val midY = targetView.y + targetView.height / 2f
 
-                    // Final snap for movement on release
-                    if (!settingsManager.isFreeformHome && context is MainActivity) {
-                        val activity = context as MainActivity
-                        val cellWidth = activity.homeView.getCellWidth()
-                        val cellHeight = activity.homeView.getCellHeight()
-                        if (cellWidth > 0 && cellHeight > 0) {
-                            val horizontalPadding = dpToPx(16f)
-                            val newCol = ((targetView.x - horizontalPadding) / cellWidth).roundToInt()
-                            val newRow = (targetView.y / cellHeight).roundToInt()
-                            item.col = newCol.toFloat()
-                            item.row = newRow.toFloat()
-                            activity.homeView.updateViewPosition(item, targetView)
-                        }
-                    }
+                    onSaveListener?.onSnapToGrid(targetView)
 
                     val other = onSaveListener?.findItemAt(midX, midY, targetView)
                     if (other != null) {
                         onSaveListener?.onCollision(other)
-                        activeHandle = -1
-                        hasPassedThreshold = false
-                        return true
                     }
                 }
                 activeHandle = -1

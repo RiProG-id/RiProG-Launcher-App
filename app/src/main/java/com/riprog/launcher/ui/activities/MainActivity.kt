@@ -97,7 +97,9 @@ class MainActivity : Activity() {
                 val view = createAppView(item)
                 homeView.addItemView(item, view)
                 saveHomeState()
-                mainLayout.startExternalDrag(view)
+
+                // Start instant Edit Mode drag from drawer
+                freeformInteraction.showTransformOverlay(view, mainLayout.width / 2f, mainLayout.height / 2f)
             }
         })
 
@@ -727,7 +729,9 @@ class MainActivity : Activity() {
             if (view != null) {
                 homeView.addItemView(item, view)
                 saveHomeState()
-                mainLayout.startExternalDrag(view)
+
+                // Start instant Edit Mode drag for new widget
+                freeformInteraction.showTransformOverlay(view, mainLayout.width / 2f, mainLayout.height / 2f)
             }
         } else {
             val intent = Intent(AppWidgetManager.ACTION_APPWIDGET_BIND)

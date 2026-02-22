@@ -32,127 +32,23 @@ class MainLayout(private val activity: MainActivity) : FrameLayout(activity) {
     private val longPressHandler = Handler(Looper.getMainLooper())
     private var touchedView: View? = null
     private var longPressTriggered = false
-    private var isDragging = false
-    private var dragOverlay: LinearLayout? = null
-    private var ivRemove: ImageView? = null
-    private var ivAppInfo: ImageView? = null
-    private var origCol = 0f
-    private var origRow = 0f
-    private var origPage = 0
-    private var isExternalDrag = false
-
-    private var lastDist = 0f
-    private var lastAngle = 0f
-    private var baseScale = 0f
-    private var baseRotation = 0f
-    private var baseTiltX = 0f
-    private var baseTiltY = 0f
-    private var startX3 = 0f
-    private var startY3 = 0f
 
     private val longPressRunnable = Runnable {
         longPressTriggered = true
         if (touchedView != null) {
-            activity.freeformInteraction.showTransformOverlay(touchedView!!)
+            activity.freeformInteraction.showTransformOverlay(touchedView!!, startX, startY)
         } else {
             val cellWidth = activity.homeView.getCellWidth()
             val cellHeight = activity.homeView.getCellHeight()
-            val horizontalPadding = dpToPx(16)
+            val horizontalPadding = dpToPx(HomeView.HORIZONTAL_PADDING_DP)
             val col = (startX - horizontalPadding) / if (cellWidth > 0) cellWidth else 1.0f
             val row = startY / if (cellHeight > 0) cellHeight else 1.0f
             activity.showHomeContextMenu(col, row, activity.homeView.currentPage)
         }
     }
 
-    init {
-        setupDragOverlay()
-    }
-
     override fun performClick(): Boolean {
         return super.performClick()
-    }
-
-    fun showDragOverlay(isApp: Boolean) {
-        if (dragOverlay != null) {
-            ivAppInfo!!.visibility = if (isApp) View.VISIBLE else View.GONE
-            dragOverlay!!.visibility = View.VISIBLE
-        }
-    }
-
-    fun hideDragOverlay() {
-        if (dragOverlay != null) {
-            dragOverlay!!.visibility = View.GONE
-            ivRemove!!.setBackgroundColor(Color.TRANSPARENT)
-            ivAppInfo!!.setBackgroundColor(Color.TRANSPARENT)
-        }
-    }
-
-    fun handleDrop(x: Float, y: Float, item: HomeItem?, v: View): Boolean {
-        if (dragOverlay == null) return false
-
-        val overlayWidth = dragOverlay!!.width
-        val left = (width - overlayWidth) / 2f
-
-        if (y < dragOverlay!!.bottom + touchSlop * 2 &&
-            x >= left && x <= left + overlayWidth
-        ) {
-            if (item != null) {
-                val isApp = ivAppInfo!!.visibility == View.VISIBLE
-                if (!isApp) {
-                    activity.removeHomeItem(item, v)
-                } else {
-                    if (x < left + overlayWidth / 2f) {
-                        activity.removeHomeItem(item, v)
-                    } else {
-                        activity.showAppInfo(item)
-                        revertPosition(item, v)
-                    }
-                }
-            }
-            activity.homeView.cancelDragging()
-            return true
-        }
-        return false
-    }
-
-    private fun setupDragOverlay() {
-        dragOverlay = LinearLayout(context)
-        dragOverlay!!.orientation = LinearLayout.HORIZONTAL
-        dragOverlay!!.setBackgroundResource(R.drawable.glass_bg)
-        dragOverlay!!.gravity = Gravity.CENTER
-        dragOverlay!!.visibility = View.GONE
-        dragOverlay!!.elevation = dpToPx(8).toFloat()
-
-        ivRemove = ImageView(context)
-        ivRemove!!.setImageResource(R.drawable.ic_remove)
-        ivRemove!!.setPadding(dpToPx(24), dpToPx(16), dpToPx(24), dpToPx(16))
-        ivRemove!!.contentDescription = context.getString(R.string.drag_remove)
-        dragOverlay!!.addView(ivRemove)
-
-        ivAppInfo = ImageView(context)
-        ivAppInfo!!.setImageResource(R.drawable.ic_info)
-        ivAppInfo!!.setPadding(dpToPx(24), dpToPx(16), dpToPx(24), dpToPx(16))
-        ivAppInfo!!.contentDescription = context.getString(R.string.drag_app_info)
-        dragOverlay!!.addView(ivAppInfo)
-
-        val lp = LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT, Gravity.TOP or Gravity.CENTER_HORIZONTAL)
-        lp.topMargin = dpToPx(48)
-        addView(dragOverlay, lp)
-    }
-
-    private fun spacing(event: MotionEvent): Float {
-        if (event.pointerCount < 2) return 0f
-        val x = event.getX(0) - event.getX(1)
-        val y = event.getY(0) - event.getY(1)
-        return sqrt((x * x + y * y).toDouble()).toFloat()
-    }
-
-    private fun angle(event: MotionEvent): Float {
-        if (event.pointerCount < 2) return 0f
-        val deltaX = (event.getX(0) - event.getX(1)).toDouble()
-        val deltaY = (event.getY(0) - event.getY(1)).toDouble()
-        val radians = Math.atan2(deltaY, deltaX)
-        return Math.toDegrees(radians).toFloat()
     }
 
     override fun onInterceptTouchEvent(ev: MotionEvent): Boolean {
@@ -186,7 +82,6 @@ class MainLayout(private val activity: MainActivity) : FrameLayout(activity) {
                 downTime = System.currentTimeMillis()
                 isGestureCanceled = false
                 longPressTriggered = false
-                isDragging = false
                 touchedView = findTouchedHomeItem(startX, startY)
                 longPressHandler.removeCallbacks(longPressRunnable)
                 if (!activity.freeformInteraction.isTransforming()) {
@@ -209,15 +104,11 @@ class MainLayout(private val activity: MainActivity) : FrameLayout(activity) {
                 }
                 if (abs(dx.toDouble()) > touchSlop || abs(dy.toDouble()) > touchSlop) {
                     longPressHandler.removeCallbacks(longPressRunnable)
-                    if (!longPressTriggered) {
-                        return true
-                    }
                 }
-                return isDragging
+                return false
             }
 
             MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
-                if (isDragging) return true
                 val duration = System.currentTimeMillis() - downTime
                 if (duration < 80) {
                     longPressHandler.removeCallbacks(longPressRunnable)
@@ -225,7 +116,7 @@ class MainLayout(private val activity: MainActivity) : FrameLayout(activity) {
                 }
             }
         }
-        return isDragging
+        return false
     }
 
     override fun onTouchEvent(event: MotionEvent): Boolean {
@@ -249,52 +140,12 @@ class MainLayout(private val activity: MainActivity) : FrameLayout(activity) {
         when (event.action and MotionEvent.ACTION_MASK) {
             MotionEvent.ACTION_DOWN -> return true
 
-            MotionEvent.ACTION_POINTER_DOWN -> {
-                if (isDragging && activity.settingsManager.isFreeformHome) {
-                    if (event.pointerCount == 2) {
-                        lastDist = spacing(event)
-                        lastAngle = angle(event)
-                        baseScale = touchedView!!.scaleX
-                        baseRotation = touchedView!!.rotation
-                    } else if (event.pointerCount == 3) {
-                        startX3 = event.getX(2)
-                        startY3 = event.getY(2)
-                        baseTiltX = touchedView!!.rotationX
-                        baseTiltY = touchedView!!.rotationY
-                    }
-                }
-                return true
-            }
-
             MotionEvent.ACTION_MOVE -> {
                 val dx = event.x - startX
                 val dy = event.y - startY
 
                 if (activity.freeformInteraction.isTransforming()) {
-                    return true
-                }
-
-                if (isDragging) {
-                    if (activity.settingsManager.isFreeformHome && event.pointerCount > 1) {
-                        if (event.pointerCount == 2) {
-                            val newDist = spacing(event)
-                            if (newDist > 10f) {
-                                val scaleFactor = newDist / lastDist
-                                touchedView!!.scaleX = baseScale * scaleFactor
-                                touchedView!!.scaleY = baseScale * scaleFactor
-                            }
-                            val newAngle = angle(event)
-                            touchedView!!.rotation = baseRotation + (newAngle - lastAngle)
-                        } else if (event.pointerCount == 3) {
-                            val mdx = event.getX(2) - startX3
-                            val mdy = event.getY(2) - startY3
-                            touchedView!!.rotationX = baseTiltX + mdy / 5f
-                            touchedView!!.rotationY = baseTiltY - mdx / 5f
-                        }
-                    } else {
-                        activity.homeView.handleDrag(event.x, event.y)
-                        updateDragHighlight(event.x, event.y)
-                    }
+                    activity.freeformInteraction.currentTransformOverlay?.dispatchTouchEvent(event)
                     return true
                 }
 
@@ -320,13 +171,8 @@ class MainLayout(private val activity: MainActivity) : FrameLayout(activity) {
 
             MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
                 longPressHandler.removeCallbacks(longPressRunnable)
-                if (isDragging) {
-                    val item = touchedView!!.tag as HomeItem?
-                    if (!handleDrop(event.x, event.y, item, touchedView!!)) {
-                        activity.homeView.endDragging()
-                    }
-                    hideDragOverlay()
-                    isDragging = false
+                if (activity.freeformInteraction.isTransforming()) {
+                    activity.freeformInteraction.currentTransformOverlay?.dispatchTouchEvent(event)
                     return true
                 }
                 if (!isGestureCanceled && !longPressTriggered) {
@@ -388,62 +234,13 @@ class MainLayout(private val activity: MainActivity) : FrameLayout(activity) {
     }
 
     fun startExternalDrag(v: View) {
-        isDragging = true
-        isExternalDrag = true
-        if (dragOverlay != null) {
-            val item = v.tag as HomeItem?
-            val isApp = item != null && item.type == HomeItem.Type.APP
-            ivAppInfo!!.visibility = if (isApp) View.VISIBLE else View.GONE
-            dragOverlay!!.visibility = View.VISIBLE
-        }
         touchedView = v
 
         val iconSize = resources.getDimensionPixelSize(R.dimen.grid_icon_size)
         v.x = startX - iconSize / 2f
         v.y = startY - iconSize / 2f - dpToPx(48)
 
-        activity.homeView.startDragging(v, startX, startY)
-    }
-
-    fun updateDragHighlight(x: Float, y: Float) {
-        if (dragOverlay == null || dragOverlay!!.visibility != View.VISIBLE) return
-
-        val overlayWidth = dragOverlay!!.width
-        val left = (width - overlayWidth) / 2f
-        val isApp = ivAppInfo!!.visibility == View.VISIBLE
-
-        ivRemove!!.setBackgroundColor(Color.TRANSPARENT)
-        ivAppInfo!!.setBackgroundColor(Color.TRANSPARENT)
-
-        if (y < dragOverlay!!.bottom + touchSlop * 2 && x >= left && x <= left + overlayWidth) {
-            if (!isApp) {
-                ivRemove!!.setBackgroundColor(0x40FFFFFF)
-            } else {
-                if (x < left + overlayWidth / 2f) {
-                    ivRemove!!.setBackgroundColor(0x40FFFFFF)
-                } else {
-                    ivAppInfo!!.setBackgroundColor(0x40FFFFFF)
-                }
-            }
-        }
-    }
-
-    private fun revertPosition(item: HomeItem, v: View) {
-        if (isExternalDrag) {
-            activity.removeHomeItem(item, v)
-        } else {
-            item.col = origCol
-            item.row = origRow
-            item.page = origPage
-            activity.homeView.addItemView(item, v)
-            v.rotation = item.rotation
-            v.scaleX = item.scale
-            v.scaleY = item.scale
-            v.rotationX = item.tiltX
-            v.rotationY = item.tiltY
-            activity.homeView.updateViewPosition(item, v)
-            activity.saveHomeState()
-        }
+        activity.freeformInteraction.showTransformOverlay(v, startX, startY)
     }
 
     fun closeDrawer() {

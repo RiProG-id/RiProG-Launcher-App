@@ -193,9 +193,10 @@ class WidgetManager(
                     size.setTextColor(secondaryColor)
                     textLayout.addView(size)
 
-                    card.setOnClickListener {
+                    card.setOnLongClickListener {
                         dialog.dismiss()
-                        activity.spawnWidget(info, spanX, spanY)
+                        activity.startNewWidgetDrag(info, spanX, spanY)
+                        true
                     }
                 }
                 }
