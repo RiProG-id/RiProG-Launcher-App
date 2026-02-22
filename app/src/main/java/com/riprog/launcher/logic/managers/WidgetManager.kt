@@ -194,6 +194,12 @@ class WidgetManager(
                         dialog.dismiss()
                         activity.spawnWidget(info, spanX, spanY)
                     }
+
+                    card.setOnLongClickListener {
+                        dialog.dismiss()
+                        activity.startNewWidgetDrag(info, spanX, spanY)
+                        true
+                    }
                 }
                 }
             }
