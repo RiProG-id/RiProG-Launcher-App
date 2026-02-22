@@ -8,6 +8,7 @@ import com.riprog.launcher.data.model.AppItem
 import com.riprog.launcher.callback.PageActionCallback
 import com.riprog.launcher.R
 
+import android.appwidget.AppWidgetHostView
 import android.content.Context
 import android.graphics.Color
 import android.graphics.drawable.GradientDrawable
@@ -241,6 +242,13 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
         view.scaleY = item.scale
         view.rotationX = item.tiltX
         view.rotationY = item.tiltY
+
+        if (view is AppWidgetHostView) {
+            val density = resources.displayMetrics.density
+            val minW = (cellWidth * item.spanX / density).toInt()
+            val minH = (cellHeight * item.spanY / density).toInt()
+            view.updateAppWidgetSize(null, minW, minH, minW, minH)
+        }
     }
 
     fun startDragging(v: View, x: Float, y: Float) {
@@ -818,12 +826,13 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
         }
     }
 
-    fun getOccupiedCells(pageIndex: Int): Array<BooleanArray> {
+    fun getOccupiedCells(pageIndex: Int, excludeItem: HomeItem? = null): Array<BooleanArray> {
         val columns = settingsManager.columns
         val occupied = Array(GRID_ROWS) { BooleanArray(columns) }
         if (context is MainActivity) {
             val activity = context as MainActivity
             for (item in activity.homeItems) {
+                if (item === excludeItem) continue
                 if (item.page == pageIndex) {
                     val rStart = max(0, item.row.roundToInt())
                     val rEnd = min(GRID_ROWS - 1, rStart + item.spanY - 1)
@@ -831,13 +840,20 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
                     val cEnd = min(columns - 1, cStart + item.spanX - 1)
                     for (r in rStart..rEnd) {
                         for (c in cStart..cEnd) {
-                            if (r < GRID_ROWS && c < columns) occupied[r][c] = true
+                            if (r >= 0 && r < GRID_ROWS && c >= 0 && c < columns) occupied[r][c] = true
                         }
                     }
                 }
             }
         }
         return occupied
+    }
+
+    fun isSpanValid(item: HomeItem, newSpanX: Int, newSpanY: Int, newCol: Int, newRow: Int): Boolean {
+        val columns = settingsManager.columns
+        if (newCol < 0 || newRow < 0 || newCol + newSpanX > columns || newRow + newSpanY > GRID_ROWS) return false
+        val occupied = getOccupiedCells(item.page, item)
+        return canPlace(occupied, newRow, newCol, newSpanX, newSpanY)
     }
 
     fun doesFit(spanX: Int, spanY: Int, col: Int, row: Int, pageIndex: Int): Boolean {

@@ -4,6 +4,7 @@ import com.riprog.launcher.theme.ThemeUtils
 import com.riprog.launcher.logic.managers.SettingsManager
 import com.riprog.launcher.logic.utils.WidgetSizingUtils
 import com.riprog.launcher.data.model.HomeItem
+import com.riprog.launcher.ui.views.home.HomeView
 import com.riprog.launcher.ui.activities.MainActivity
 import com.riprog.launcher.R
 
@@ -45,6 +46,10 @@ class TransformOverlay(context: Context, private val targetView: View, private v
     private var gestureInitialWidth = 0
     private var gestureInitialHeight = 0
     private var gestureInitialBounds: RectF? = null
+    private var gestureInitialSpanX = 1
+    private var gestureInitialSpanY = 1
+    private var gestureInitialCol = 0f
+    private var gestureInitialRow = 0f
     private var hasPassedThreshold = false
     private var activeHandle = -1
     private var canResizeHorizontal = true
@@ -175,19 +180,19 @@ class TransformOverlay(context: Context, private val targetView: View, private v
 
         val hs = handleSize / 2f
 
-        drawHandle(canvas, left, top, hs, true, foregroundColor)
-        drawHandle(canvas, right, top, hs, true, foregroundColor)
-        drawHandle(canvas, right, bottom, hs, true, foregroundColor)
-        drawHandle(canvas, left, bottom, hs, true, foregroundColor)
-
-        if (!isFreeform) {
-            drawHandle(canvas, (left + right) / 2f, top, hs, false, foregroundColor)
-            drawHandle(canvas, right, (top + bottom) / 2f, hs, false, foregroundColor)
-            drawHandle(canvas, (left + right) / 2f, bottom, hs, false, foregroundColor)
-            drawHandle(canvas, left, (top + bottom) / 2f, hs, false, foregroundColor)
+        if (isFreeform) {
+            drawHandle(canvas, left, top, hs, true, foregroundColor)
+            drawHandle(canvas, right, top, hs, true, foregroundColor)
+            drawHandle(canvas, right, bottom, hs, true, foregroundColor)
+            drawHandle(canvas, left, bottom, hs, true, foregroundColor)
         }
 
-        if (isFreeform || item.type == HomeItem.Type.WIDGET || item.type == HomeItem.Type.FOLDER) {
+        drawHandle(canvas, (left + right) / 2f, top, hs, false, foregroundColor)
+        drawHandle(canvas, right, (top + bottom) / 2f, hs, false, foregroundColor)
+        drawHandle(canvas, (left + right) / 2f, bottom, hs, false, foregroundColor)
+        drawHandle(canvas, left, (top + bottom) / 2f, hs, false, foregroundColor)
+
+        if (isFreeform) {
             paint.color = foregroundColor
             paint.alpha = 100
             canvas.drawLine((left + right) / 2f, top, (left + right) / 2f, top - rotationHandleDist, paint)
@@ -277,6 +282,10 @@ class TransformOverlay(context: Context, private val targetView: View, private v
                 gestureInitialWidth = targetView.width
                 gestureInitialHeight = targetView.height
                 gestureInitialBounds = contentBounds
+                gestureInitialSpanX = item.spanX
+                gestureInitialSpanY = item.spanY
+                gestureInitialCol = item.col
+                gestureInitialRow = item.row
                 hasPassedThreshold = false
                 return activeHandle != -1
             }
@@ -338,21 +347,19 @@ class TransformOverlay(context: Context, private val targetView: View, private v
 
         val hs = dpToPx(24f).toFloat()
 
-        if ((isFreeform || item.type == HomeItem.Type.WIDGET || item.type == HomeItem.Type.FOLDER) &&
-            dist(rx, ry, (left + right) / 2f, top - rotationHandleDist) < hs
-        ) return HANDLE_ROTATE
+        if (isFreeform && dist(rx, ry, (left + right) / 2f, top - rotationHandleDist) < hs) return HANDLE_ROTATE
 
-        if (dist(rx, ry, left, top) < hs) return HANDLE_TOP_LEFT
-        if (dist(rx, ry, right, top) < hs) return HANDLE_TOP_RIGHT
-        if (dist(rx, ry, right, bottom) < hs) return HANDLE_BOTTOM_RIGHT
-        if (dist(rx, ry, left, bottom) < hs) return HANDLE_BOTTOM_LEFT
-
-        if (!isFreeform) {
-            if (dist(rx, ry, (left + right) / 2f, top) < hs) return HANDLE_TOP
-            if (dist(rx, ry, right, (top + bottom) / 2f) < hs) return HANDLE_RIGHT
-            if (dist(rx, ry, (left + right) / 2f, bottom) < hs) return HANDLE_BOTTOM
-            if (dist(rx, ry, left, (top + bottom) / 2f) < hs) return HANDLE_LEFT
+        if (isFreeform) {
+            if (dist(rx, ry, left, top) < hs) return HANDLE_TOP_LEFT
+            if (dist(rx, ry, right, top) < hs) return HANDLE_TOP_RIGHT
+            if (dist(rx, ry, right, bottom) < hs) return HANDLE_BOTTOM_RIGHT
+            if (dist(rx, ry, left, bottom) < hs) return HANDLE_BOTTOM_LEFT
         }
+
+        if (dist(rx, ry, (left + right) / 2f, top) < hs) return HANDLE_TOP
+        if (dist(rx, ry, right, (top + bottom) / 2f) < hs) return HANDLE_RIGHT
+        if (dist(rx, ry, (left + right) / 2f, bottom) < hs) return HANDLE_BOTTOM
+        if (dist(rx, ry, left, (top + bottom) / 2f) < hs) return HANDLE_LEFT
 
         return if (rx >= left && rx <= right && ry >= top && ry <= bottom) ACTION_MOVE else ACTION_OUTSIDE
     }
@@ -389,48 +396,94 @@ class TransformOverlay(context: Context, private val targetView: View, private v
             while (targetR - currentR > 180) targetR -= 360f
             while (targetR - currentR < -180) targetR += 360f
             targetView.rotation = currentR + (targetR - currentR) * SMOOTHING_FACTOR
+        } else if (activeHandle == HANDLE_TOP || activeHandle == HANDLE_BOTTOM || activeHandle == HANDLE_LEFT || activeHandle == HANDLE_RIGHT) {
+            handleEdgeResize(tx, ty)
         } else {
-            // Edge-based resizing/scaling
-            val rotAngle = Math.toRadians((-targetView.rotation).toDouble()).toFloat()
-            val rx = (cos(rotAngle.toDouble()) * (tx - cx) - sin(rotAngle.toDouble()) * (ty - cy)).toFloat()
-            val ry = (sin(rotAngle.toDouble()) * (tx - cx) + cos(rotAngle.toDouble()) * (ty - cy)).toFloat()
+            // Corner-based scaling (freeform only)
+            if (!isFreeform) return
 
-            val bounds = if (gestureInitialBounds != null) gestureInitialBounds!! else contentBounds
-            val halfContentW = bounds.width() / 2f
-            val halfContentH = bounds.height() / 2f
+            val initialDist = dist(initialTouchX, initialTouchY, cx, cy)
+            val currDist = dist(tx, ty, cx, cy)
+            if (initialDist > 0) {
+                val factor = currDist / initialDist
+                targetView.scaleX = sx * factor
+                targetView.scaleY = sy * factor
+            }
+        }
+    }
 
-            var newScaleX = sx
-            var newScaleY = sy
+    private fun handleEdgeResize(tx: Float, ty: Float) {
+        val activity = context as? MainActivity ?: return
+        val cellWidth = activity.homeView.getCellWidth()
+        val cellHeight = activity.homeView.getCellHeight()
+        if (cellWidth <= 0 || cellHeight <= 0) return
 
-            // Maintain original aspect ratio
-            val lockAspect = true
+        val dx = tx - initialTouchX
+        val dy = ty - initialTouchY
 
-            when (activeHandle) {
-                HANDLE_TOP, HANDLE_BOTTOM -> {
-                    if (halfContentH > 0 && canResizeVertical) {
-                        newScaleY = max(0.2f, abs(ry) / halfContentH)
-                        if (lockAspect) newScaleX = (sx / sy) * newScaleY
-                    }
-                }
-                HANDLE_LEFT, HANDLE_RIGHT -> {
-                    if (halfContentW > 0 && canResizeHorizontal) {
-                        newScaleX = max(0.2f, abs(rx) / halfContentW)
-                        if (lockAspect) newScaleY = (sy / sx) * newScaleX
-                    }
-                }
-                HANDLE_TOP_LEFT, HANDLE_TOP_RIGHT, HANDLE_BOTTOM_LEFT, HANDLE_BOTTOM_RIGHT -> {
-                    val initialDist = dist(initialTouchX, initialTouchY, cx, cy)
-                    val currDist = dist(tx, ty, cx, cy)
-                    if (initialDist > 0) {
-                        val factor = currDist / initialDist
-                        newScaleX = sx * factor
-                        newScaleY = sy * factor
-                    }
+        // Use local coordinates for better accuracy if rotated
+        val rotAngle = Math.toRadians((-targetView.rotation).toDouble()).toFloat()
+        val cx = gestureInitialX + targetView.pivotX
+        val cy = gestureInitialY + targetView.pivotY
+        val rx = (cos(rotAngle.toDouble()) * (tx - cx) - sin(rotAngle.toDouble()) * (ty - cy)).toFloat()
+        val ry = (sin(rotAngle.toDouble()) * (tx - cx) + cos(rotAngle.toDouble()) * (ty - cy)).toFloat()
+        val irx = (cos(rotAngle.toDouble()) * (initialTouchX - cx) - sin(rotAngle.toDouble()) * (initialTouchY - cy)).toFloat()
+        val iry = (sin(rotAngle.toDouble()) * (initialTouchX - cx) + cos(rotAngle.toDouble()) * (initialTouchY - cy)).toFloat()
+
+        val drx = rx - irx
+        val dry = ry - iry
+
+        var newSpanX = item.spanX
+        var newSpanY = item.spanY
+        var newCol = item.col.roundToInt()
+        var newRow = item.row.roundToInt()
+
+        val info = if (targetView is AppWidgetHostView) targetView.appWidgetInfo else null
+        val density = resources.displayMetrics.density
+
+        val minSpanX = if (info != null) WidgetSizingUtils.getMinSpanX(info, cellWidth, density) else 1
+        val minSpanY = if (info != null) WidgetSizingUtils.getMinSpanY(info, cellHeight, density) else 1
+        val maxSpanX = if (info != null) WidgetSizingUtils.getMaxSpanX(info, cellWidth, density) else HomeView.GRID_COLUMNS
+        val maxSpanY = if (info != null) WidgetSizingUtils.getMaxSpanY(info, cellHeight, density) else HomeView.GRID_ROWS
+
+        // Threshold detection: snap if moved more than 50% of cell width/height
+        when (activeHandle) {
+            HANDLE_RIGHT -> {
+                if (canResizeHorizontal) {
+                    val spanDelta = (drx / (cellWidth * targetView.scaleX)).roundToInt()
+                    newSpanX = (gestureInitialSpanX + spanDelta).coerceIn(minSpanX, maxSpanX)
                 }
             }
+            HANDLE_LEFT -> {
+                if (canResizeHorizontal) {
+                    val spanDelta = (-drx / (cellWidth * targetView.scaleX)).roundToInt()
+                    newSpanX = (gestureInitialSpanX + spanDelta).coerceIn(minSpanX, maxSpanX)
+                    newCol = (gestureInitialCol.roundToInt() + gestureInitialSpanX - newSpanX)
+                }
+            }
+            HANDLE_BOTTOM -> {
+                if (canResizeVertical) {
+                    val spanDelta = (dry / (cellHeight * targetView.scaleY)).roundToInt()
+                    newSpanY = (gestureInitialSpanY + spanDelta).coerceIn(minSpanY, maxSpanY)
+                }
+            }
+            HANDLE_TOP -> {
+                if (canResizeVertical) {
+                    val spanDelta = (-dry / (cellHeight * targetView.scaleY)).roundToInt()
+                    newSpanY = (gestureInitialSpanY + spanDelta).coerceIn(minSpanY, maxSpanY)
+                    newRow = (gestureInitialRow.roundToInt() + gestureInitialSpanY - newSpanY)
+                }
+            }
+        }
 
-            targetView.scaleX = newScaleX
-            targetView.scaleY = newScaleY
+        if (newSpanX != item.spanX || newSpanY != item.spanY || newCol != item.col.roundToInt() || newRow != item.row.roundToInt()) {
+            if (activity.homeView.isSpanValid(item, newSpanX, newSpanY, newCol, newRow)) {
+                item.spanX = newSpanX
+                item.spanY = newSpanY
+                item.col = newCol.toFloat()
+                item.row = newRow.toFloat()
+                activity.homeView.updateViewPosition(item, targetView)
+            }
         }
     }
 

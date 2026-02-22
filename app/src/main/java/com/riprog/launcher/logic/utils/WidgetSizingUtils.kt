@@ -6,6 +6,7 @@ import android.os.Build
 import com.riprog.launcher.ui.views.home.HomeView
 import com.riprog.launcher.logic.managers.SettingsManager
 import kotlin.math.ceil
+import kotlin.math.max
 
 object WidgetSizingUtils {
 
@@ -46,5 +47,29 @@ object WidgetSizingUtils {
 
 
         return Pair(spanX, spanY)
+    }
+
+    fun getMinSpanX(info: AppWidgetProviderInfo, cellWidth: Float, density: Float): Int {
+        val minWidth = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN && info.minResizeWidth > 0) info.minResizeWidth else info.minWidth
+        return ceil(minWidth * density / cellWidth).toInt().coerceAtLeast(1)
+    }
+
+    fun getMinSpanY(info: AppWidgetProviderInfo, cellHeight: Float, density: Float): Int {
+        val minHeight = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN && info.minResizeHeight > 0) info.minResizeHeight else info.minHeight
+        return ceil(minHeight * density / cellHeight).toInt().coerceAtLeast(1)
+    }
+
+    fun getMaxSpanX(info: AppWidgetProviderInfo, cellWidth: Float, density: Float): Int {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && info.maxResizeWidth > 0) {
+            return (info.maxResizeWidth * density / cellWidth).toInt().coerceAtLeast(1)
+        }
+        return HomeView.GRID_COLUMNS // Default max
+    }
+
+    fun getMaxSpanY(info: AppWidgetProviderInfo, cellHeight: Float, density: Float): Int {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && info.maxResizeHeight > 0) {
+            return (info.maxResizeHeight * density / cellHeight).toInt().coerceAtLeast(1)
+        }
+        return HomeView.GRID_ROWS // Default max
     }
 }
