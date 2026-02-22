@@ -70,7 +70,6 @@ class TransformOverlay(context: Context, private val targetView: View, private v
         fun onCancel()
         fun onRemove()
         fun onAppInfo()
-        fun onUninstall()
         fun onCollision(otherView: View)
         fun findItemAt(x: Float, y: Float, exclude: View): View?
         fun onSnapToGrid(v: View)
@@ -126,7 +125,6 @@ class TransformOverlay(context: Context, private val targetView: View, private v
 
         if (item.type == HomeItem.Type.APP) {
             addButton(container, R.string.action_app_info, adaptiveColor) { onSaveListener?.onAppInfo() }
-            addButton(container, R.string.drag_uninstall, adaptiveColor) { onSaveListener?.onUninstall() }
         }
 
         val lp = LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT)

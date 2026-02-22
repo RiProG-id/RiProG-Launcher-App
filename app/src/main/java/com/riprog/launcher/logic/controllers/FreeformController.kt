@@ -84,7 +84,6 @@ class FreeformController(
             override fun onAppInfo() {
                 callback.onShowAppInfo(v.tag as HomeItem?)
             }
-            override fun onUninstall() {}
             override fun onCollision(otherView: View) {
                 if (handleFolderDrop(v, otherView)) {
                     closeTransformOverlay()
