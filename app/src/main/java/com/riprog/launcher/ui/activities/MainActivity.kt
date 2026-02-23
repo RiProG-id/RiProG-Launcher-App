@@ -3,8 +3,10 @@ package com.riprog.launcher.ui.activities
 import com.riprog.launcher.ui.views.layout.MainLayout
 import com.riprog.launcher.ui.views.layout.AutoDimmingBackground
 import com.riprog.launcher.ui.views.home.HomeView
+import com.riprog.launcher.ui.views.home.HomeMenuOverlay
 import com.riprog.launcher.ui.views.folder.FolderViewFactory
 import com.riprog.launcher.ui.views.drawer.DrawerView
+import com.riprog.launcher.ui.views.drawer.AppDrawerContextMenu
 import com.riprog.launcher.theme.ThemeUtils
 import com.riprog.launcher.theme.ThemeManager
 import com.riprog.launcher.logic.managers.WidgetManager
@@ -89,8 +91,8 @@ class MainActivity : Activity() {
         drawerView = DrawerView(this)
         drawerView.setColumns(settingsManager.columns)
         drawerView.setOnAppLongClickListener(object : DrawerView.OnAppLongClickListener {
-            override fun onAppLongClick(app: AppItem) {
-                // Legacy context menu removed
+            override fun onAppLongClick(view: View, app: AppItem) {
+                showAppDrawerMenu(view, app)
             }
         })
 
@@ -612,6 +614,64 @@ class MainActivity : Activity() {
     fun handleAppLaunch(packageName: String) {
         val intent = packageManager.getLaunchIntentForPackage(packageName)
         if (intent != null) startActivity(intent)
+    }
+
+    fun showHomeMenu(x: Float, y: Float) {
+        if (currentHomeMenu != null) return
+        val menu = HomeMenuOverlay(this, settingsManager, object : HomeMenuOverlay.Callback {
+            override fun onAddPageLeft() {
+                homeView.addPageLeft()
+                homeView.scrollToPage(0)
+            }
+
+            override fun onAddPageRight() {
+                homeView.addPageRight()
+                homeView.scrollToPage(homeView.pages.size - 1)
+            }
+
+            override fun onPickWidget() {
+                pickWidget()
+            }
+
+            override fun onOpenWallpaper() {
+                openWallpaperPicker()
+            }
+
+            override fun onOpenSettings() {
+                openSettings()
+            }
+
+            override fun dismiss() {
+                mainLayout.removeView(currentHomeMenu)
+                currentHomeMenu = null
+            }
+        })
+        currentHomeMenu = menu
+        mainLayout.addView(menu, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
+    }
+
+    private var currentHomeMenu: View? = null
+    private var currentAppDrawerMenu: View? = null
+
+    fun showAppDrawerMenu(anchor: View, app: AppItem) {
+        if (currentAppDrawerMenu != null) return
+        val menu = AppDrawerContextMenu(this, settingsManager, object : AppDrawerContextMenu.Callback {
+            override fun onAddToHome() {
+                spawnApp(app)
+                mainLayout.closeDrawer()
+            }
+
+            override fun onAppInfo() {
+                showAppInfo(HomeItem.createApp(app.packageName, app.className, 0f, 0f, 0))
+            }
+
+            override fun dismiss() {
+                mainLayout.removeView(currentAppDrawerMenu)
+                currentAppDrawerMenu = null
+            }
+        })
+        currentAppDrawerMenu = menu
+        menu.showAt(anchor, mainLayout)
     }
 
     private fun findNearestAvailable(occupied: Array<BooleanArray>, r: Int, c: Int, spanX: Int, spanY: Int): Pair<Int, Int>? {

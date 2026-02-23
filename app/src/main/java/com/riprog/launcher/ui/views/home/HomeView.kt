@@ -111,6 +111,14 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
         }
     }
 
+    fun addPageLeft() {
+        addPageAtIndex(0)
+    }
+
+    fun addPageRight() {
+        addPage()
+    }
+
     init {
         clipChildren = false
         clipToPadding = false

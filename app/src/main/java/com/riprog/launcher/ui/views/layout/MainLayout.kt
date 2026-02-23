@@ -44,6 +44,8 @@ class MainLayout(private val activity: MainActivity) : FrameLayout(activity) {
         longPressTriggered = true
         if (touchedView != null) {
             activity.freeformInteraction.showTransformOverlay(touchedView!!, startX, startY)
+        } else {
+            activity.showHomeMenu(startX, startY)
         }
     }
 

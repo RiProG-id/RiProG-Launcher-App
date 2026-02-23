@@ -18,21 +18,27 @@ import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
 import android.widget.*
+import androidx.recyclerview.widget.GridLayoutManager
+import androidx.recyclerview.widget.RecyclerView
 import java.util.*
 
 class DrawerView(context: Context) : LinearLayout(context) {
-    private val gridView: GridView
+    companion object {
+        private const val VIEW_TYPE_SEARCH = 0
+        private const val VIEW_TYPE_APP = 1
+    }
+    private val recyclerView: RecyclerView
     private val adapter: AppAdapter
     private var longClickListener: OnAppLongClickListener? = null
     private var allApps: List<AppItem> = ArrayList()
     private var filteredApps: MutableList<AppItem> = ArrayList()
     private var model: AppRepository? = null
     private val settingsManager: SettingsManager = SettingsManager(context)
-    private val searchBar: EditText
+    private lateinit var searchBar: EditText
     private val indexBar: IndexBar
 
     interface OnAppLongClickListener {
-        fun onAppLongClick(app: AppItem)
+        fun onAppLongClick(view: View, app: AppItem)
     }
 
     fun setOnAppLongClickListener(listener: OnAppLongClickListener?) {
@@ -50,39 +56,20 @@ class DrawerView(context: Context) : LinearLayout(context) {
         background = ThemeUtils.getGlassDrawable(context, settingsManager, 0f)
         setPadding(0, dpToPx(48), 0, 0)
 
-        val adaptiveColor = ThemeUtils.getAdaptiveColor(context, settingsManager, true)
-
-        searchBar = EditText(context)
-        searchBar.setHint(R.string.search_hint)
-        searchBar.setHintTextColor(adaptiveColor and 0x80FFFFFF.toInt())
-        searchBar.setTextColor(adaptiveColor)
-        searchBar.setBackgroundColor(context.getColor(R.color.search_background))
-        searchBar.setPadding(dpToPx(16), dpToPx(12), dpToPx(16), dpToPx(12))
-        searchBar.setCompoundDrawablesWithIntrinsicBounds(R.drawable.ic_search, 0, 0, 0)
-        searchBar.compoundDrawablePadding = dpToPx(12)
-        if (searchBar.compoundDrawables[0] != null) {
-            searchBar.compoundDrawables[0].setTint(adaptiveColor and 0x80FFFFFF.toInt())
-        }
-        searchBar.setSingleLine(true)
-        searchBar.gravity = Gravity.CENTER_VERTICAL
-        searchBar.addTextChangedListener(object : TextWatcher {
-            override fun beforeTextChanged(s: CharSequence, start: Int, count: Int, after: Int) {}
-            override fun onTextChanged(s: CharSequence, start: Int, before: Int, count: Int) {
-                filter(s.toString())
-            }
-            override fun afterTextChanged(s: Editable) {}
-        })
-        addView(searchBar)
-
         val contentFrame = FrameLayout(context)
         addView(contentFrame, LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f))
 
-        gridView = GridView(context)
-        gridView.numColumns = 4
-        gridView.verticalSpacing = dpToPx(16)
-        gridView.setPadding(dpToPx(8), dpToPx(16), dpToPx(32), dpToPx(16))
-        gridView.isVerticalScrollBarEnabled = false
-        contentFrame.addView(gridView)
+        recyclerView = RecyclerView(context)
+        val layoutManager = GridLayoutManager(context, 4)
+        layoutManager.spanSizeLookup = object : GridLayoutManager.SpanSizeLookup() {
+            override fun getSpanSize(position: Int): Int {
+                return if (adapter.getItemViewType(position) == VIEW_TYPE_SEARCH) 4 else 1
+            }
+        }
+        recyclerView.layoutManager = layoutManager
+        recyclerView.setPadding(dpToPx(8), dpToPx(16), dpToPx(32), dpToPx(16))
+        recyclerView.clipToPadding = false
+        contentFrame.addView(recyclerView)
 
         indexBar = IndexBar(context)
         indexBar.orientation = VERTICAL
@@ -114,28 +101,14 @@ class DrawerView(context: Context) : LinearLayout(context) {
         setupIndexBar()
 
         adapter = AppAdapter()
-        gridView.adapter = adapter
-
-        gridView.onItemClickListener = AdapterView.OnItemClickListener { _, _, position, _ ->
-            val item = filteredApps[position]
-            val intent = context.packageManager.getLaunchIntentForPackage(item.packageName)
-            if (intent != null) context.startActivity(intent)
-        }
-        gridView.onItemLongClickListener = AdapterView.OnItemLongClickListener { _, _, position, _ ->
-            if (longClickListener != null) {
-                val item = filteredApps[position]
-                longClickListener!!.onAppLongClick(item)
-                return@OnItemLongClickListener true
-            }
-            false
-        }
+        recyclerView.adapter = adapter
     }
 
     fun setApps(apps: List<AppItem>, model: AppRepository) {
         this.allApps = apps
         this.model = model
         sortAppsAlphabetically()
-        filter(searchBar.text.toString())
+        filter(if (::searchBar.isInitialized) searchBar.text.toString() else "")
     }
 
     private fun sortAppsAlphabetically() {
@@ -163,23 +136,30 @@ class DrawerView(context: Context) : LinearLayout(context) {
     private fun scrollToLetter(letter: String) {
         for (i in filteredApps.indices) {
             if (filteredApps[i].label.uppercase(Locale.getDefault()).startsWith(letter)) {
-                gridView.setSelection(i)
+                recyclerView.scrollToPosition(i + 1)
                 break
             }
         }
     }
 
     fun setColumns(columns: Int) {
-        gridView.numColumns = columns
+        (recyclerView.layoutManager as? GridLayoutManager)?.spanCount = columns
     }
 
     fun isAtTop(): Boolean {
-        if (gridView.childCount == 0) return true
-        return gridView.firstVisiblePosition == 0 && gridView.getChildAt(0).top >= gridView.paddingTop
+        val lm = recyclerView.layoutManager as? GridLayoutManager ?: return true
+        val pos = lm.findFirstVisibleItemPosition()
+        if (pos == 0) {
+            val v = lm.findViewByPosition(0)
+            return v != null && v.top >= recyclerView.paddingTop
+        }
+        return false
     }
 
     fun setAccentColor(color: Int) {
-        searchBar.setHintTextColor(color and 0x80FFFFFF.toInt())
+        if (::searchBar.isInitialized) {
+            searchBar.setHintTextColor(color and 0x80FFFFFF.toInt())
+        }
     }
 
     fun filter(query: String?) {
@@ -188,13 +168,17 @@ class DrawerView(context: Context) : LinearLayout(context) {
     }
 
     fun onOpen() {
-        searchBar.setText("")
-        searchBar.clearFocus()
+        if (::searchBar.isInitialized) {
+            searchBar.setText("")
+            searchBar.clearFocus()
+        }
         adapter.notifyDataSetChanged()
     }
 
     fun onClose() {
-        searchBar.setText("")
+        if (::searchBar.isInitialized) {
+            searchBar.setText("")
+        }
         filteredApps.clear()
         adapter.notifyDataSetChanged()
     }
@@ -205,33 +189,56 @@ class DrawerView(context: Context) : LinearLayout(context) {
         ).toInt()
     }
 
-    private class ViewHolder {
+    private inner class AppViewHolder(view: View) : RecyclerView.ViewHolder(view) {
         var icon: ImageView? = null
         var label: TextView? = null
         var lastScale: Float = 0f
     }
 
-    private inner class AppAdapter : BaseAdapter() {
-        override fun getCount(): Int {
-            return filteredApps.size
+    private inner class AppAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
+        override fun getItemViewType(position: Int): Int {
+            return if (position == 0) VIEW_TYPE_SEARCH else VIEW_TYPE_APP
         }
 
-        override fun getItem(position: Int): Any {
-            return filteredApps[position]
+        override fun getItemCount(): Int {
+            return filteredApps.size + 1
         }
 
-        override fun getItemId(position: Int): Long {
-            return position.toLong()
-        }
-
-        override fun getView(position: Int, convertView: View?, parent: ViewGroup): View {
-            var view = convertView
-            val holder: ViewHolder
-            val scale = settingsManager.iconScale
-            if (view == null) {
+        override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): RecyclerView.ViewHolder {
+            if (viewType == VIEW_TYPE_SEARCH) {
+                val adaptiveColor = ThemeUtils.getAdaptiveColor(context, settingsManager, true)
+                searchBar = EditText(context)
+                searchBar.setHint(R.string.search_hint)
+                searchBar.setHintTextColor(adaptiveColor and 0x80FFFFFF.toInt())
+                searchBar.setTextColor(adaptiveColor)
+                searchBar.setBackgroundColor(context.getColor(R.color.search_background))
+                searchBar.setPadding(dpToPx(16), dpToPx(12), dpToPx(16), dpToPx(12))
+                searchBar.setCompoundDrawablesWithIntrinsicBounds(R.drawable.ic_search, 0, 0, 0)
+                searchBar.compoundDrawablePadding = dpToPx(12)
+                if (searchBar.compoundDrawables[0] != null) {
+                    searchBar.compoundDrawables[0].setTint(adaptiveColor and 0x80FFFFFF.toInt())
+                }
+                searchBar.setSingleLine(true)
+                searchBar.gravity = Gravity.CENTER_VERTICAL
+                searchBar.addTextChangedListener(object : TextWatcher {
+                    override fun beforeTextChanged(s: CharSequence, start: Int, count: Int, after: Int) {}
+                    override fun onTextChanged(s: CharSequence, start: Int, before: Int, count: Int) {
+                        filter(s.toString())
+                    }
+                    override fun afterTextChanged(s: Editable) {}
+                })
+                val lp = RecyclerView.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+                lp.setMargins(0, 0, 0, dpToPx(16))
+                searchBar.layoutParams = lp
+                return object : RecyclerView.ViewHolder(searchBar) {}
+            } else {
+                val scale = settingsManager.iconScale
                 val itemLayout = LinearLayout(context)
                 itemLayout.orientation = VERTICAL
                 itemLayout.gravity = Gravity.CENTER
+                itemLayout.isClickable = true
+                itemLayout.isFocusable = true
+                itemLayout.setPadding(0, dpToPx(8), 0, dpToPx(8))
 
                 val icon = ImageView(context)
                 icon.scaleType = ImageView.ScaleType.FIT_CENTER
@@ -248,41 +255,55 @@ class DrawerView(context: Context) : LinearLayout(context) {
                 label.ellipsize = TextUtils.TruncateAt.END
                 itemLayout.addView(label)
 
-                view = itemLayout
-                holder = ViewHolder()
+                val holder = AppViewHolder(itemLayout)
                 holder.icon = icon
                 holder.label = label
                 holder.lastScale = scale
-                view.tag = holder
-            } else {
-                holder = view.tag as ViewHolder
-                if (holder.lastScale != scale) {
+                return holder
+            }
+        }
+
+        override fun onBindViewHolder(holder: RecyclerView.ViewHolder, position: Int) {
+            if (getItemViewType(position) == VIEW_TYPE_APP) {
+                val appHolder = holder as AppViewHolder
+                val item = filteredApps[position - 1]
+                val scale = settingsManager.iconScale
+
+                if (appHolder.lastScale != scale) {
                     val baseSize = resources.getDimensionPixelSize(R.dimen.grid_icon_size)
                     val size = (baseSize * scale).toInt()
-                    val lp = holder.icon!!.layoutParams
-                    if (lp.width != size) {
-                        lp.width = size
-                        lp.height = size
-                        holder.icon!!.layoutParams = lp
-                    }
-                    holder.label!!.setTextSize(TypedValue.COMPLEX_UNIT_SP, 10 * scale)
-                    holder.lastScale = scale
+                    val lp = appHolder.icon!!.layoutParams
+                    lp.width = size
+                    lp.height = size
+                    appHolder.icon!!.layoutParams = lp
+                    appHolder.label!!.setTextSize(TypedValue.COMPLEX_UNIT_SP, 10 * scale)
+                    appHolder.lastScale = scale
                 }
-            }
 
-            val item = filteredApps[position]
-            holder.label!!.text = item.label
-            holder.icon!!.setImageBitmap(null)
-            holder.icon!!.tag = item.packageName
-            if (model != null) {
-                model!!.loadIcon(item) { bitmap ->
-                    if (bitmap != null && item.packageName == holder.icon!!.tag) {
-                        holder.icon!!.setImageBitmap(bitmap)
+                appHolder.label!!.text = item.label
+                appHolder.icon!!.setImageBitmap(null)
+                appHolder.icon!!.tag = item.packageName
+                if (model != null) {
+                    model!!.loadIcon(item) { bitmap ->
+                        if (bitmap != null && item.packageName == appHolder.icon!!.tag) {
+                            appHolder.icon!!.setImageBitmap(bitmap)
+                        }
                     }
                 }
-            }
 
-            return view!!
+                appHolder.itemView.setOnClickListener {
+                    val intent = context.packageManager.getLaunchIntentForPackage(item.packageName)
+                    if (intent != null) context.startActivity(intent)
+                }
+
+                appHolder.itemView.setOnLongClickListener {
+                    if (longClickListener != null) {
+                        longClickListener!!.onAppLongClick(it, item)
+                        return@setOnLongClickListener true
+                    }
+                    false
+                }
+            }
         }
     }
 }

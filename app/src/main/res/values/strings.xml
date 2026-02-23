@@ -53,4 +53,6 @@
     <string name="action_later">Later</string>
     <string name="action_add_to_home">Add to Home</string>
     <string name="app_added_to_home">%1$s added to home</string>
+    <string name="action_add_page_left">Add Left</string>
+    <string name="action_add_page_right">Add Right</string>
 </resources>
