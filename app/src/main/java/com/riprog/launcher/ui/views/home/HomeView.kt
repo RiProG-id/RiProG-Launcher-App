@@ -349,19 +349,26 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
 
                         // Then snap to grid with animation
                         val merged = snapToGrid(item, newView)
-                        if (merged) return
+                        if (merged) {
+                            cleanupDraggingState()
+                            return
+                        }
                     }
                     activity.saveHomeState()
                 }
             }
-            draggingView = null
-            isEdgeScrolling = false
-            edgeHoldStart = 0
-            edgeScrollHandler.removeCallbacks(edgeScrollRunnable)
+            cleanupDraggingState()
             if (model != null && allApps != null) {
                 refreshIcons(model!!, allApps!!)
             }
         }
+    }
+
+    private fun cleanupDraggingState() {
+        draggingView = null
+        isEdgeScrolling = false
+        edgeHoldStart = 0
+        edgeScrollHandler.removeCallbacks(edgeScrollRunnable)
     }
 
     fun cancelDragging() {
@@ -372,11 +379,29 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
 
     fun removeItemView(item: HomeItem?) {
         if (item == null) return
+        // Remove from all pages
         for (page in pages) {
             for (i in page.childCount - 1 downTo 0) {
                 val child = page.getChildAt(i)
                 if (child.tag === item) {
                     page.removeView(child)
+                }
+            }
+        }
+        // Also check HomeView itself (could have dragging icons)
+        for (i in childCount - 1 downTo 0) {
+            val child = getChildAt(i)
+            if (child.tag === item) {
+                removeView(child)
+            }
+        }
+        // And check MainLayout (root)
+        val parentGroup = parent as? ViewGroup
+        if (parentGroup != null) {
+            for (i in parentGroup.childCount - 1 downTo 0) {
+                val child = parentGroup.getChildAt(i)
+                if (child.tag === item) {
+                    parentGroup.removeView(child)
                 }
             }
         }

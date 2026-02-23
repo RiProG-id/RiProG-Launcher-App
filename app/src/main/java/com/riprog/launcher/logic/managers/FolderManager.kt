@@ -59,15 +59,17 @@ class FolderManager(private val activity: MainActivity, private val settingsMana
                     MotionEvent.ACTION_DOWN -> {
                         startY = event.y
                         v.performClick()
+                        return true
                     }
+                    MotionEvent.ACTION_MOVE -> return true
                     MotionEvent.ACTION_UP -> {
                         if (event.y - startY > dpToPx(100f)) {
                             closeFolder()
-                            return true
                         }
+                        return true
                     }
                 }
-                return false
+                return true
             }
         })
 

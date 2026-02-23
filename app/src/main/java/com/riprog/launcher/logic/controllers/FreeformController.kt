@@ -267,8 +267,12 @@ class FreeformController(
 
                 val item = transformingView!!.tag as? HomeItem
                 if (item != null && activity is MainActivity) {
-                    activity.renderHomeItem(item)
-                    activity.saveHomeState()
+                    // Only re-render if the item is still in the home items list
+                    // This prevents ghost icons after a merge or removal
+                    if (activity.homeItems.contains(item)) {
+                        activity.renderHomeItem(item)
+                        activity.saveHomeState()
+                    }
                 }
             }
             transformingView = null
