@@ -364,9 +364,11 @@ class FolderManager(private val activity: MainActivity, private val settingsMana
         if (target == null || dragged == null || target === dragged) return
         val backupHomeItems = ArrayList(homeItems)
         val targetPage = target.page
+        var createdFolder: HomeItem? = null
 
         try {
             val folder = HomeItem.createFolder("", target.col, target.row, targetPage)
+            createdFolder = folder
             folder.folderItems.add(target)
             folder.folderItems.add(dragged)
             folder.rotation = 0f
@@ -376,7 +378,14 @@ class FolderManager(private val activity: MainActivity, private val settingsMana
 
             if (folder.folderItems.size != 2) throw IllegalStateException("Invalid folder state")
 
-            homeItems.removeAll { it === dragged || it === target }
+            // Atomic removal using iterator to be 100% sure
+            val it = homeItems.iterator()
+            while (it.hasNext()) {
+                val item = it.next()
+                if (item === dragged || item === target) {
+                    it.remove()
+                }
+            }
             homeItems.add(folder)
 
             activity.homeView.removeItemView(target)
@@ -387,6 +396,9 @@ class FolderManager(private val activity: MainActivity, private val settingsMana
         } catch (e: Exception) {
             homeItems.clear()
             homeItems.addAll(backupHomeItems)
+            if (createdFolder != null) activity.homeView.removeItemView(createdFolder)
+            activity.renderHomeItem(target)
+            activity.renderHomeItem(dragged)
             activity.homeView.refreshIcons(activity.model, activity.allApps)
         }
     }
@@ -400,7 +412,15 @@ class FolderManager(private val activity: MainActivity, private val settingsMana
 
         try {
             folder.folderItems.add(dragged)
-            homeItems.removeAll { it === dragged }
+
+            // Atomic removal
+            val it = homeItems.iterator()
+            while (it.hasNext()) {
+                val item = it.next()
+                if (item === dragged) {
+                    it.remove()
+                }
+            }
 
             activity.homeView.removeItemView(dragged)
             refreshFolderIconsOnHome(folder)

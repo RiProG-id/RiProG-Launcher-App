@@ -348,7 +348,8 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
                         newView.y = absY - (pages[targetPage].top + pagesContainer.translationY)
 
                         // Then snap to grid with animation
-                        snapToGrid(item, newView)
+                        val merged = snapToGrid(item, newView)
+                        if (merged) return
                     }
                     activity.saveHomeState()
                 }
@@ -445,7 +446,7 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
         }
     }
 
-    fun snapToGrid(item: HomeItem, v: View) {
+    fun snapToGrid(item: HomeItem, v: View): Boolean {
         val cellWidth = getCellWidth()
         val cellHeight = getCellHeight()
 
@@ -455,20 +456,22 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
             val midY = v.y + v.height / 2f
 
             var otherView: View? = null
-            val targetPageLayout = pages[item.page]
-            for (i in 0 until targetPageLayout.childCount) {
-                val child = targetPageLayout.getChildAt(i)
-                if (child === v) continue
+            val targetPageLayout = if (item.page < pages.size) pages[item.page] else null
+            if (targetPageLayout != null) {
+                for (i in 0 until targetPageLayout.childCount) {
+                    val child = targetPageLayout.getChildAt(i)
+                    if (child === v) continue
 
-                // Use a smaller hit area for folder creation (center 50%) to prevent accidental merges
-                val hitBufferX = child.width * 0.25f
-                val hitBufferY = child.height * 0.25f
+                    // Use a smaller hit area for folder creation (center 50%) to prevent accidental merges
+                    val hitBufferX = child.width * 0.25f
+                    val hitBufferY = child.height * 0.25f
 
-                if (midX >= child.x + hitBufferX && midX <= child.x + child.width - hitBufferX &&
-                    midY >= child.y + hitBufferY && midY <= child.y + child.height - hitBufferY
-                ) {
-                    otherView = child
-                    break
+                    if (midX >= child.x + hitBufferX && midX <= child.x + child.width - hitBufferX &&
+                        midY >= child.y + hitBufferY && midY <= child.y + child.height - hitBufferY
+                    ) {
+                        otherView = child
+                        break
+                    }
                 }
             }
 
@@ -477,10 +480,10 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
                 if (otherItem != null && otherItem !== item) {
                     if (otherItem.type == HomeItem.Type.APP) {
                         activity.folderManager.mergeToFolder(otherItem, item, activity.homeItems)
-                        return
+                        return true
                     } else if (otherItem.type == HomeItem.Type.FOLDER) {
                         activity.folderManager.addToFolder(otherItem, item, activity.homeItems)
-                        return
+                        return true
                     }
                 }
             }
@@ -525,6 +528,7 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
         if (context is MainActivity) {
             (context as MainActivity).saveHomeState()
         }
+        return false
     }
 
     fun scrollToPage(page: Int) {

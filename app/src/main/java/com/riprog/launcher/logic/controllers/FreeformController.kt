@@ -100,8 +100,8 @@ class FreeformController(
                 return mainLayout.findTouchedHomeItem(x, y, exclude)
             }
 
-            override fun onSnapToGrid(v: View) {
-                snapToGrid(v)
+            override fun onSnapToGrid(v: View): Boolean {
+                return snapToGrid(v)
             }
         })
 
@@ -130,16 +130,16 @@ class FreeformController(
         )
     }
 
-    private fun snapToGrid(v: View) {
-        val mainActivity = activity as? MainActivity ?: return
+    private fun snapToGrid(v: View): Boolean {
+        val mainActivity = activity as? MainActivity ?: return false
         val homeView = mainActivity.homeView
-        val item = v.tag as? HomeItem ?: return
+        val item = v.tag as? HomeItem ?: return false
 
         homeView.stopEdgeScroll()
 
         val cellWidth = homeView.getCellWidth()
         val cellHeight = homeView.getCellHeight()
-        if (cellWidth <= 0 || cellHeight <= 0) return
+        if (cellWidth <= 0 || cellHeight <= 0) return false
 
         val density = activity.resources.displayMetrics.density
         val horizontalPadding = HomeView.HORIZONTAL_PADDING_DP * density
@@ -171,7 +171,7 @@ class FreeformController(
                 midY >= oy + hitBufferY && midY <= oy + otherView.height - hitBufferY) {
                 if (handleFolderDrop(v, otherView)) {
                     closeTransformOverlay()
-                    return
+                    return true
                 }
             }
         }
@@ -208,6 +208,7 @@ class FreeformController(
                 .start()
         }
         mainActivity.saveHomeState()
+        return false
     }
 
     private fun saveTransform() {

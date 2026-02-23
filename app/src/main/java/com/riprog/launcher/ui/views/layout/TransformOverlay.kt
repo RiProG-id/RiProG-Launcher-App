@@ -72,7 +72,7 @@ class TransformOverlay(context: Context, private val targetView: View, private v
         fun onAppInfo()
         fun onCollision(otherView: View)
         fun findItemAt(x: Float, y: Float, exclude: View): View?
-        fun onSnapToGrid(v: View)
+        fun onSnapToGrid(v: View): Boolean
     }
 
     init {
