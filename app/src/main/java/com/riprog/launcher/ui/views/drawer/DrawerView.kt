@@ -37,6 +37,8 @@ class DrawerView(context: Context) : LinearLayout(context) {
     private val settingsManager: SettingsManager = SettingsManager(context)
     private lateinit var searchBar: EditText
     private val indexBar: IndexBar
+    private val letterPositions = mutableMapOf<String, Int>()
+    private var lastSelectedIndex = -1
 
     interface OnAppLongClickListener {
         fun onAppLongClick(view: View, app: AppItem)
@@ -79,6 +81,7 @@ class DrawerView(context: Context) : LinearLayout(context) {
         indexBar.setOnTouchListener { v: View, event: MotionEvent ->
             when (event.action) {
                 MotionEvent.ACTION_DOWN, MotionEvent.ACTION_MOVE -> {
+                    v.parent.requestDisallowInterceptTouchEvent(true)
                     if (event.action == MotionEvent.ACTION_DOWN) {
                         v.performClick()
                         recyclerView.stopScroll()
@@ -88,10 +91,12 @@ class DrawerView(context: Context) : LinearLayout(context) {
                     if (childCount > 0) {
                         val itemHeight = indexBar.height.toFloat() / childCount
                         val index = (y / itemHeight).toInt().coerceIn(0, childCount - 1)
-                        val child = indexBar.getChildAt(index)
-                        if (child is TextView) {
-                            highlightLetter(index)
-                            scrollToLetter(child.text.toString())
+                        if (index != lastSelectedIndex) {
+                            val child = indexBar.getChildAt(index)
+                            if (child is TextView) {
+                                highlightLetter(index)
+                                scrollToLetter(child.text.toString())
+                            }
                         }
                     }
                     return@setOnTouchListener true
@@ -137,15 +142,51 @@ class DrawerView(context: Context) : LinearLayout(context) {
             tv.gravity = Gravity.CENTER
             tv.setTextColor(adaptiveColor and 0x80FFFFFF.toInt())
             tv.setPadding(0, dpToPx(2), 0, dpToPx(2))
-            indexBar.addView(tv)
+            indexBar.addView(tv, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f))
+        }
+    }
+
+    private fun updateLetterPositions() {
+        letterPositions.clear()
+        for (i in filteredApps.indices) {
+            val label = filteredApps[i].label
+            if (label.isEmpty()) continue
+            val firstChar = label.first().uppercaseChar()
+            val key = if (firstChar.isLetter()) firstChar.toString() else "#"
+            if (!letterPositions.containsKey(key)) {
+                letterPositions[key] = i + 1
+            }
         }
     }
 
     private fun scrollToLetter(letter: String) {
-        for (i in filteredApps.indices) {
-            if (filteredApps[i].label.uppercase(Locale.getDefault()).startsWith(letter)) {
-                recyclerView.scrollToPosition(i + 1)
-                break
+        val pos = letterPositions[letter]
+        if (pos != null) {
+            (recyclerView.layoutManager as? GridLayoutManager)?.scrollToPositionWithOffset(pos, 0)
+        } else {
+            val alphabet = "#ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+            val index = alphabet.indexOf(letter)
+            if (index != -1) {
+                var targetPos = -1
+                for (i in index until alphabet.length) {
+                    val nextLetter = alphabet[i].toString()
+                    if (letterPositions.containsKey(nextLetter)) {
+                        targetPos = letterPositions[nextLetter]!!
+                        break
+                    }
+                }
+                if (targetPos == -1) {
+                    for (i in index downTo 0) {
+                        val prevLetter = alphabet[i].toString()
+                        if (letterPositions.containsKey(prevLetter)) {
+                            targetPos = letterPositions[prevLetter]!!
+                            break
+                        }
+                    }
+                }
+                if (targetPos != -1) {
+                    (recyclerView.layoutManager as? GridLayoutManager)?.scrollToPositionWithOffset(targetPos, 0)
+                }
             }
         }
     }
@@ -171,29 +212,40 @@ class DrawerView(context: Context) : LinearLayout(context) {
     }
 
     private fun highlightLetter(index: Int) {
+        if (index == lastSelectedIndex) return
         val adaptiveColor = ThemeUtils.getAdaptiveColor(context, settingsManager, true)
-        for (i in 0 until indexBar.childCount) {
-            val tv = indexBar.getChildAt(i) as? TextView ?: continue
-            if (i == index) {
-                tv.setTextColor(adaptiveColor)
-                tv.setTypeface(null, android.graphics.Typeface.BOLD)
-                tv.animate().scaleX(1.2f).scaleY(1.2f).setDuration(100).start()
-            } else if (tv.scaleX != 1.0f) {
-                tv.setTextColor(adaptiveColor and 0x80FFFFFF.toInt())
-                tv.setTypeface(null, android.graphics.Typeface.NORMAL)
-                tv.animate().scaleX(1.0f).scaleY(1.0f).setDuration(100).start()
+
+        if (lastSelectedIndex in 0 until indexBar.childCount) {
+            val prevTv = indexBar.getChildAt(lastSelectedIndex) as? TextView
+            prevTv?.let {
+                it.setTextColor(adaptiveColor and 0x80FFFFFF.toInt())
+                it.setTypeface(null, android.graphics.Typeface.NORMAL)
+                it.animate().scaleX(1.0f).scaleY(1.0f).setDuration(100).start()
             }
         }
+
+        if (index in 0 until indexBar.childCount) {
+            val currTv = indexBar.getChildAt(index) as? TextView
+            currTv?.let {
+                it.setTextColor(adaptiveColor)
+                it.setTypeface(null, android.graphics.Typeface.BOLD)
+                it.animate().scaleX(1.2f).scaleY(1.2f).setDuration(100).start()
+            }
+        }
+        lastSelectedIndex = index
     }
 
     private fun resetHighlight() {
-        val adaptiveColor = ThemeUtils.getAdaptiveColor(context, settingsManager, true)
-        for (i in 0 until indexBar.childCount) {
-            val tv = indexBar.getChildAt(i) as? TextView ?: continue
-            tv.setTextColor(adaptiveColor and 0x80FFFFFF.toInt())
-            tv.setTypeface(null, android.graphics.Typeface.NORMAL)
-            tv.animate().scaleX(1.0f).scaleY(1.0f).setDuration(100).start()
+        if (lastSelectedIndex != -1) {
+            val adaptiveColor = ThemeUtils.getAdaptiveColor(context, settingsManager, true)
+            val tv = indexBar.getChildAt(lastSelectedIndex) as? TextView
+            tv?.let {
+                it.setTextColor(adaptiveColor and 0x80FFFFFF.toInt())
+                it.setTypeface(null, android.graphics.Typeface.NORMAL)
+                it.animate().scaleX(1.0f).scaleY(1.0f).setDuration(100).start()
+            }
         }
+        lastSelectedIndex = -1
     }
 
     fun filter(query: String?) {
@@ -208,6 +260,7 @@ class DrawerView(context: Context) : LinearLayout(context) {
         filteredApps.clear()
         filteredApps.addAll(newFilteredApps)
         diffResult.dispatchUpdatesTo(adapter)
+        updateLetterPositions()
 
         if (hasFocus && ::searchBar.isInitialized && !searchBar.hasFocus()) {
             searchBar.requestFocus()
