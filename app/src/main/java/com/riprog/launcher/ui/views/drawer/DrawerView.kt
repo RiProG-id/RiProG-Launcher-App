@@ -77,27 +77,33 @@ class DrawerView(context: Context) : LinearLayout(context) {
         indexBar.orientation = VERTICAL
         indexBar.gravity = Gravity.CENTER
         indexBar.setOnTouchListener { v: View, event: MotionEvent ->
-            if (event.action == MotionEvent.ACTION_DOWN || event.action == MotionEvent.ACTION_MOVE) {
-                if (event.action == MotionEvent.ACTION_DOWN) {
-                    v.performClick()
-                }
-                val y = event.y
-                val childCount = indexBar.childCount
-                if (childCount > 0) {
-                    val itemHeight = indexBar.height.toFloat() / childCount
-                    val index = (y / itemHeight).toInt()
-                    if (index >= 0 && index < childCount) {
+            when (event.action) {
+                MotionEvent.ACTION_DOWN, MotionEvent.ACTION_MOVE -> {
+                    if (event.action == MotionEvent.ACTION_DOWN) {
+                        v.performClick()
+                        recyclerView.stopScroll()
+                    }
+                    val y = event.y
+                    val childCount = indexBar.childCount
+                    if (childCount > 0) {
+                        val itemHeight = indexBar.height.toFloat() / childCount
+                        val index = (y / itemHeight).toInt().coerceIn(0, childCount - 1)
                         val child = indexBar.getChildAt(index)
                         if (child is TextView) {
+                            highlightLetter(index)
                             scrollToLetter(child.text.toString())
                         }
                     }
+                    return@setOnTouchListener true
                 }
-                return@setOnTouchListener true
+                MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                    resetHighlight()
+                    return@setOnTouchListener true
+                }
             }
             false
         }
-        val indexParams = FrameLayout.LayoutParams(dpToPx(30), ViewGroup.LayoutParams.MATCH_PARENT)
+        val indexParams = FrameLayout.LayoutParams(dpToPx(40), ViewGroup.LayoutParams.MATCH_PARENT)
         indexParams.gravity = Gravity.END
         contentFrame.addView(indexBar, indexParams)
         setupIndexBar()
@@ -161,6 +167,32 @@ class DrawerView(context: Context) : LinearLayout(context) {
     fun setAccentColor(color: Int) {
         if (::searchBar.isInitialized) {
             searchBar.setHintTextColor(color and 0x80FFFFFF.toInt())
+        }
+    }
+
+    private fun highlightLetter(index: Int) {
+        val adaptiveColor = ThemeUtils.getAdaptiveColor(context, settingsManager, true)
+        for (i in 0 until indexBar.childCount) {
+            val tv = indexBar.getChildAt(i) as? TextView ?: continue
+            if (i == index) {
+                tv.setTextColor(adaptiveColor)
+                tv.setTypeface(null, android.graphics.Typeface.BOLD)
+                tv.animate().scaleX(1.2f).scaleY(1.2f).setDuration(100).start()
+            } else if (tv.scaleX != 1.0f) {
+                tv.setTextColor(adaptiveColor and 0x80FFFFFF.toInt())
+                tv.setTypeface(null, android.graphics.Typeface.NORMAL)
+                tv.animate().scaleX(1.0f).scaleY(1.0f).setDuration(100).start()
+            }
+        }
+    }
+
+    private fun resetHighlight() {
+        val adaptiveColor = ThemeUtils.getAdaptiveColor(context, settingsManager, true)
+        for (i in 0 until indexBar.childCount) {
+            val tv = indexBar.getChildAt(i) as? TextView ?: continue
+            tv.setTextColor(adaptiveColor and 0x80FFFFFF.toInt())
+            tv.setTypeface(null, android.graphics.Typeface.NORMAL)
+            tv.animate().scaleX(1.0f).scaleY(1.0f).setDuration(100).start()
         }
     }
 
