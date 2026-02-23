@@ -15,6 +15,7 @@ import android.text.TextWatcher
 import android.view.DragEvent
 import android.view.Gravity
 import android.view.MotionEvent
+import android.view.ViewTreeObserver
 import android.view.View
 import android.view.ViewGroup
 import android.view.inputmethod.EditorInfo
@@ -176,6 +177,27 @@ class FolderManager(private val activity: MainActivity, private val settingsMana
         val dragListener = View.OnDragListener { v, event ->
             when (event.action) {
                 DragEvent.ACTION_DRAG_STARTED -> true
+                DragEvent.ACTION_DRAG_LOCATION -> {
+                    val draggedView = event.localState as? View
+                    if (draggedView != null) {
+                        val gridLocation = IntArray(2)
+                        grid.getLocationInWindow(gridLocation)
+                        val containerLocation = IntArray(2)
+                        container.getLocationInWindow(containerLocation)
+
+                        val xInWindow = event.x + containerLocation[0]
+                        val yInWindow = event.y + containerLocation[1]
+
+                        val relativeX = xInWindow - gridLocation[0]
+                        val relativeY = yInWindow - gridLocation[1]
+
+                        val targetIndex = calculateTargetIndex(grid, relativeX, relativeY)
+                        if (targetIndex != -1 && targetIndex != grid.indexOfChild(draggedView)) {
+                            reorderGridVisually(grid, draggedView, targetIndex)
+                        }
+                    }
+                    true
+                }
                 DragEvent.ACTION_DROP -> {
                     val draggedView = event.localState as? View
                     val draggedItem = draggedView?.tag as? HomeItem
@@ -197,21 +219,16 @@ class FolderManager(private val activity: MainActivity, private val settingsMana
                         if (dropXInWindow >= overlayLocation[0] && dropXInWindow <= overlayLocation[0] + overlay.width &&
                             dropYInWindow >= overlayLocation[1] && dropYInWindow <= overlayLocation[1] + overlay.height) {
 
-                            val relativeX = dropXInWindow - gridLocation[0]
-                            val relativeY = dropYInWindow - gridLocation[1]
-                            val targetIndex = calculateTargetIndex(grid, relativeX, relativeY)
-                            val currentIndex = folderItem.folderItems.indexOf(draggedItem)
+                            val finalIndexInGrid = grid.indexOfChild(draggedView)
+                            val currentIndexInList = folderItem.folderItems.indexOf(draggedItem)
 
-                            if (currentIndex != -1 && targetIndex != currentIndex) {
-                                folderItem.folderItems.removeAt(currentIndex)
-                                val finalTarget = if (targetIndex > folderItem.folderItems.size) folderItem.folderItems.size else targetIndex
+                            if (currentIndexInList != -1 && finalIndexInGrid != currentIndexInList) {
+                                folderItem.folderItems.removeAt(currentIndexInList)
+                                val finalTarget = if (finalIndexInGrid > folderItem.folderItems.size) folderItem.folderItems.size else finalIndexInGrid
                                 folderItem.folderItems.add(finalTarget, draggedItem)
                                 activity.saveHomeState()
-                                // Re-open folder to refresh UI
-                                openFolder(folderItem, folderView, homeItems, allApps)
-                            } else {
-                                draggedView.visibility = View.VISIBLE
                             }
+                            draggedView.visibility = View.VISIBLE
                         } else {
                             // Dropped outside folder bounds -> Remove from folder
                             closeFolder()
@@ -263,12 +280,50 @@ class FolderManager(private val activity: MainActivity, private val settingsMana
         currentFolderOverlay = container
     }
 
+    private fun reorderGridVisually(grid: GridLayout, draggedView: View, targetIndex: Int) {
+        val currentIndex = grid.indexOfChild(draggedView)
+        if (currentIndex == -1 || targetIndex == -1 || currentIndex == targetIndex) return
+
+        val positions = mutableMapOf<View, Pair<Float, Float>>()
+        for (i in 0 until grid.childCount) {
+            val child = grid.getChildAt(i)
+            positions[child] = Pair(child.x, child.y)
+        }
+
+        grid.removeView(draggedView)
+        grid.addView(draggedView, targetIndex)
+
+        grid.viewTreeObserver.addOnPreDrawListener(object : ViewTreeObserver.OnPreDrawListener {
+            override fun onPreDraw(): Boolean {
+                grid.viewTreeObserver.removeOnPreDrawListener(this)
+                for (i in 0 until grid.childCount) {
+                    val child = grid.getChildAt(i)
+                    if (child === draggedView) continue
+                    val oldPos = positions[child]
+                    if (oldPos != null) {
+                        val newX = child.x
+                        val newY = child.y
+                        if (newX != oldPos.first || newY != oldPos.second) {
+                            child.x = oldPos.first
+                            child.y = oldPos.second
+                            child.animate().x(newX).y(newY).setDuration(150).start()
+                        }
+                    }
+                }
+                return true
+            }
+        })
+    }
+
     private fun calculateTargetIndex(grid: GridLayout, x: Float, y: Float): Int {
-        var closestIndex = grid.childCount
+        if (grid.childCount == 0) return 0
+
+        var closestIndex = -1
         var minDistance = Double.MAX_VALUE
 
         for (i in 0 until grid.childCount) {
             val child = grid.getChildAt(i)
+            // We should use the slots. Since it's a 4-column grid:
             val centerX = child.x + child.width / 2f
             val centerY = child.y + child.height / 2f
 
@@ -294,10 +349,11 @@ class FolderManager(private val activity: MainActivity, private val settingsMana
     }
 
     fun mergeToFolder(target: HomeItem?, dragged: HomeItem?, homeItems: MutableList<HomeItem>) {
-        if (target == null || dragged == null) return
+        if (target == null || dragged == null || target === dragged) return
         val targetPage = target.page
-        homeItems.remove(dragged)
-        homeItems.remove(target)
+
+        // Remove items from home screen list using identity check to prevent duplicates
+        homeItems.removeAll { it === dragged || it === target }
 
         val folder = HomeItem.createFolder("", target.col, target.row, targetPage)
         folder.folderItems.add(target)
@@ -315,8 +371,10 @@ class FolderManager(private val activity: MainActivity, private val settingsMana
     }
 
     fun addToFolder(folder: HomeItem?, dragged: HomeItem?, homeItems: MutableList<HomeItem>) {
-        if (folder == null || dragged == null) return
-        homeItems.remove(dragged)
+        if (folder == null || dragged == null || folder === dragged) return
+        if (folder.folderItems.any { it === dragged }) return
+
+        homeItems.removeAll { it === dragged }
         folder.folderItems.add(dragged)
 
         activity.homeView.removeItemView(dragged)
@@ -326,11 +384,15 @@ class FolderManager(private val activity: MainActivity, private val settingsMana
 
     fun removeFromFolder(folder: HomeItem, item: HomeItem, homeItems: MutableList<HomeItem>) {
         val page = folder.page
-        folder.folderItems.remove(item)
+        // Use removeAll with identity check to be sure we remove the correct item instance
+        folder.folderItems.removeAll { it === item }
+
+        // Dissolve folder if only 1 (or 0) items remain
         if (folder.folderItems.size <= 1) {
             if (folder.folderItems.size == 1) {
                 val lastItem = folder.folderItems[0]
-                homeItems.remove(folder)
+                homeItems.removeAll { it === folder }
+
                 lastItem.col = folder.col
                 lastItem.row = folder.row
                 lastItem.page = page
@@ -338,12 +400,15 @@ class FolderManager(private val activity: MainActivity, private val settingsMana
                 lastItem.scale = folder.scale
                 lastItem.tiltX = folder.tiltX
                 lastItem.tiltY = folder.tiltY
-                homeItems.add(lastItem)
+
+                if (!homeItems.contains(lastItem)) {
+                    homeItems.add(lastItem)
+                }
 
                 activity.homeView.removeItemView(folder)
                 activity.renderHomeItem(lastItem)
             } else {
-                homeItems.remove(folder)
+                homeItems.removeAll { it === folder }
                 activity.homeView.removeItemView(folder)
             }
         } else {

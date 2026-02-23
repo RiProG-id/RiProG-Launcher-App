@@ -27,6 +27,8 @@ class FolderViewFactory(private val context: Context, private val preferences: S
         container.setBackgroundColor(android.graphics.Color.TRANSPARENT)
 
         val previewContainer = FrameLayout(context)
+        previewContainer.isClickable = false
+        previewContainer.isFocusable = false
         val scale = preferences.iconScale
         val sizeW: Int
         val sizeH: Int
@@ -57,6 +59,8 @@ class FolderViewFactory(private val context: Context, private val preferences: S
         )
 
         val labelView = TextView(context)
+        labelView.isClickable = false
+        labelView.isFocusable = false
         labelView.tag = "item_label"
         labelView.setTextColor(ThemeUtils.getAdaptiveColor(context, preferences, isOnGlass))
         labelView.setTextSize(TypedValue.COMPLEX_UNIT_SP, 10 * scale)
