@@ -60,6 +60,25 @@ class SettingsActivity : Activity() {
             ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT
         ))
 
+        val closeBtn = ImageView(this)
+        closeBtn.setImageResource(android.R.drawable.ic_menu_close_clear_cancel)
+        val adaptiveColor = ThemeUtils.getAdaptiveColor(this, settingsManager, true)
+        closeBtn.setColorFilter(adaptiveColor)
+        closeBtn.alpha = 0.6f
+        closeBtn.setPadding(dpToPx(12), dpToPx(12), dpToPx(12), dpToPx(12))
+        closeBtn.setOnClickListener { finish() }
+        val closeLp = FrameLayout.LayoutParams(dpToPx(48), dpToPx(48), Gravity.TOP or Gravity.END)
+        rootContainer.addView(closeBtn, closeLp)
+
+        ViewCompat.setOnApplyWindowInsetsListener(closeBtn) { v, insets ->
+            val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
+            val lp = v.layoutParams as FrameLayout.LayoutParams
+            lp.topMargin = systemBars.top + dpToPx(16)
+            lp.rightMargin = dpToPx(16)
+            v.layoutParams = lp
+            insets
+        }
+
         ViewCompat.setOnApplyWindowInsetsListener(recyclerView) { v, insets ->
             val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
             v.setPadding(
