@@ -29,11 +29,8 @@ class SettingsManager(context: Context) {
             prefs.edit().putBoolean(KEY_FREEFORM_HOME, freeform).apply()
         }
 
-    var iconScale: Float
-        get() = prefs.getFloat(KEY_ICON_SCALE, 1.0f)
-        set(scale) {
-            prefs.edit().putFloat(KEY_ICON_SCALE, scale).apply()
-        }
+    val iconScale: Float
+        get() = 1.12f
 
     var isHideLabels: Boolean
         get() = prefs.getBoolean(KEY_HIDE_LABELS, false)
@@ -195,7 +192,6 @@ class SettingsManager(context: Context) {
         private const val KEY_USAGE_PREFIX = "usage_"
         private const val KEY_HOME_ITEMS = "home_items"
         private const val KEY_FREEFORM_HOME = "freeform_home"
-        private const val KEY_ICON_SCALE = "icon_scale"
         private const val KEY_THEME_MODE = "theme_mode"
         private const val KEY_LIQUID_GLASS = "liquid_glass"
         private const val KEY_DARKEN_WALLPAPER = "darken_wallpaper"

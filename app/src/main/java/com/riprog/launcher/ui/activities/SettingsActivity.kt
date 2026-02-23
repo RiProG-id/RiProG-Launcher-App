@@ -90,7 +90,6 @@ class SettingsActivity : Activity() {
         items.add(SettingItem(SettingType.TOGGLE, titleRes = R.string.setting_darken_wallpaper, summaryRes = R.string.setting_darken_wallpaper_summary, isChecked = settingsManager.isDarkenWallpaper) {
             settingsManager.isDarkenWallpaper = it
         })
-        items.add(SettingItem(SettingType.SCALE))
 
         items.add(SettingItem(SettingType.CATEGORY, titleString = getString(R.string.category_about), iconRes = R.drawable.ic_info))
         items.add(SettingItem(SettingType.ABOUT))
@@ -99,7 +98,7 @@ class SettingsActivity : Activity() {
     }
 
     private enum class SettingType {
-        TITLE, CATEGORY, TOGGLE, THEME, SCALE, ABOUT
+        TITLE, CATEGORY, TOGGLE, THEME, ABOUT
     }
 
     private data class SettingItem(
@@ -204,34 +203,6 @@ class SettingsActivity : Activity() {
                     item.layoutParams = lp
                     ThemeViewHolder(item, optionsLayout)
                 }
-                SettingType.SCALE -> {
-                    val item = LinearLayout(context)
-                    item.orientation = LinearLayout.VERTICAL
-                    item.setPadding(dpToPx(16), dpToPx(16), dpToPx(16), dpToPx(16))
-                    ThemeManager.applySettingItemStyle(context as Activity, item, settingsManager)
-
-                    val adaptiveColor = ThemeUtils.getAdaptiveColor(context, settingsManager, true)
-                    val titleView = TextView(context)
-                    titleView.setText(R.string.setting_scale)
-                    titleView.textSize = 18f
-                    titleView.setTextColor(adaptiveColor)
-                    item.addView(titleView)
-
-                    val seekBar = SeekBar(context)
-                    seekBar.max = 100
-                    item.addView(seekBar)
-
-                    val description = TextView(context)
-                    description.setText(R.string.setting_scale_summary)
-                    description.textSize = 12f
-                    description.setTextColor(adaptiveColor and 0xBBFFFFFF.toInt())
-                    item.addView(description)
-
-                    val lp = RecyclerView.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
-                    lp.bottomMargin = dpToPx(8)
-                    item.layoutParams = lp
-                    ScaleViewHolder(item, seekBar)
-                }
                 SettingType.ABOUT -> {
                     val aboutContent = TextView(context)
                     val adaptiveColor = ThemeUtils.getAdaptiveColor(context, settingsManager, true)
@@ -313,19 +284,6 @@ class SettingsActivity : Activity() {
                         option.gravity = Gravity.CENTER
                     }
                 }
-                SettingType.SCALE -> {
-                    val h = holder as ScaleViewHolder
-                    val currentScale = settingsManager.iconScale
-                    h.seekBar.progress = ((currentScale - 0.5f) / 1.0f * 100).toInt()
-                    h.seekBar.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
-                        override fun onProgressChanged(seekBar: SeekBar, progress: Int, fromUser: Boolean) {
-                            val scale = 0.5f + (progress / 100.0f) * 1.0f
-                            settingsManager.iconScale = scale
-                        }
-                        override fun onStartTrackingTouch(seekBar: SeekBar) {}
-                        override fun onStopTrackingTouch(seekBar: SeekBar) {}
-                    })
-                }
                 SettingType.ABOUT -> {
                     val tv = holder.itemView as TextView
                     tv.setText(R.string.about_content)
@@ -340,7 +298,6 @@ class SettingsActivity : Activity() {
     private class SimpleViewHolder(view: View) : RecyclerView.ViewHolder(view)
     private class ToggleViewHolder(view: View, val title: TextView, val summary: TextView, val toggle: Switch) : RecyclerView.ViewHolder(view)
     private class ThemeViewHolder(view: View, val options: LinearLayout) : RecyclerView.ViewHolder(view)
-    private class ScaleViewHolder(view: View, val seekBar: SeekBar) : RecyclerView.ViewHolder(view)
 
     private fun dpToPx(dp: Int): Int {
         return TypedValue.applyDimension(
