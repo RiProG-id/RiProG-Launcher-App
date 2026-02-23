@@ -74,6 +74,7 @@ class WidgetPickerActivity : Activity() {
         val adaptiveColor = ThemeUtils.getAdaptiveColor(this, settingsManager, true)
         closeBtn.setColorFilter(adaptiveColor)
         closeBtn.alpha = 0.6f
+        closeBtn.setPadding(dpToPx(12), dpToPx(12), dpToPx(12), dpToPx(12))
         closeBtn.setOnClickListener { finish() }
         val closeLp = FrameLayout.LayoutParams(dpToPx(48), dpToPx(48), Gravity.TOP or Gravity.END)
         rootContainer.addView(closeBtn, closeLp)
