@@ -19,6 +19,7 @@ import android.view.inputmethod.InputMethodManager
 import android.widget.FrameLayout
 import android.widget.ImageView
 import android.widget.LinearLayout
+import androidx.recyclerview.widget.RecyclerView
 import kotlin.math.abs
 import kotlin.math.sqrt
 
@@ -238,17 +239,18 @@ class MainLayout(private val activity: MainActivity) : FrameLayout(activity) {
         val yInRv = y - (rvLocation[1] - rootLocation[1])
 
         val pageView = rv.findChildViewUnder(xInRv, yInRv) ?: return null
-        val holder = rv.getChildViewHolder(pageView) as? HomeView.HomePagerAdapter.ViewHolder ?: return null
+        val position = rv.getChildAdapterPosition(pageView)
+        if (position == RecyclerView.NO_POSITION || position >= homeView.pages.size) return null
 
-        val pageLayout = holder.container
+        val page = homeView.pages[position]
         val pageLoc = IntArray(2)
-        pageLayout.getLocationInWindow(pageLoc)
+        page.getLocationInWindow(pageLoc)
 
         val adjustedX = x - (pageLoc[0] - rootLocation[0])
         val adjustedY = y - (pageLoc[1] - rootLocation[1])
 
-        for (i in pageLayout.childCount - 1 downTo 0) {
-            val child = pageLayout.getChildAt(i)
+        for (i in page.childCount - 1 downTo 0) {
+            val child = page.getChildAt(i)
             if (child === exclude) continue
 
             val item = child.tag as? HomeItem

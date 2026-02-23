@@ -784,13 +784,20 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
         pageIndicator.setAccentColor(color)
     }
 
+    private val pageWidth: Int
+        get() {
+            var w = width
+            if (w == 0) w = resources.displayMetrics.widthPixels
+            return w
+        }
+
     fun resolvePageIndex(x: Float): Int {
-        val lm = recyclerView.layoutManager as LinearLayoutManager
+        val lm = recyclerView.layoutManager as? LinearLayoutManager ?: return 0
         val first = lm.findFirstVisibleItemPosition()
         if (first == RecyclerView.NO_POSITION) return 0
 
         val firstView = lm.findViewByPosition(first) ?: return 0
-        val pageW = firstView.width
+        val pageW = if (firstView.width > 0) firstView.width else pageWidth
         if (pageW <= 0) return 0
 
         val scrollX = -firstView.left + first * pageW
@@ -810,7 +817,7 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
 
         override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
             val frame = FrameLayout(parent.context)
-            frame.layoutParams = ViewGroup.LayoutParams(parent.width, parent.height)
+            frame.layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
             frame.clipChildren = false
             frame.clipToPadding = false
             return ViewHolder(frame)

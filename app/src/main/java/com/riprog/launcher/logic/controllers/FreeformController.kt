@@ -173,15 +173,15 @@ class FreeformController(
         if (!preferences.isFreeformHome) {
             val targetPage = homeView.resolvePageIndex(v.x + v.width / 2f)
             val rv = homeView.recyclerView
-            val lm = rv.layoutManager as LinearLayoutManager
-            val pageView = lm.findViewByPosition(targetPage)
+            val lm = rv.layoutManager as? LinearLayoutManager
+            val pageView = lm?.findViewByPosition(targetPage)
 
             val relativeX = if (pageView != null) {
                 val loc = IntArray(2).apply { pageView.getLocationInWindow(this) }
                 val vLoc = IntArray(2).apply { v.getLocationInWindow(this) }
                 v.x - (loc[0] - (vLoc[0] - v.x))
             } else {
-                v.x - targetPage * rv.width
+                v.x - targetPage * (if (rv.width > 0) rv.width else activity.resources.displayMetrics.widthPixels)
             }
 
             val newCol = max(0, min(preferences.columns - item.spanX, ((relativeX - horizontalPadding) / cellWidth).roundToInt()))
@@ -238,15 +238,15 @@ class FreeformController(
             val horizontalPadding = HomeView.HORIZONTAL_PADDING_DP * density
 
             val rv = homeView.recyclerView
-            val lm = rv.layoutManager as LinearLayoutManager
-            val pageView = lm.findViewByPosition(targetPage)
+            val lm = rv.layoutManager as? LinearLayoutManager
+            val pageView = lm?.findViewByPosition(targetPage)
 
             val relativeX = if (pageView != null) {
                 val loc = IntArray(2).apply { pageView.getLocationInWindow(this) }
                 val rootLoc = IntArray(2).apply { rootLayout.getLocationInWindow(this) }
                 absX - (loc[0] - rootLoc[0])
             } else {
-                absX - targetPage * rv.width
+                absX - targetPage * (if (rv.width > 0) rv.width else activity.resources.displayMetrics.widthPixels)
             }
 
             item.col = (relativeX - horizontalPadding) / cellWidth
