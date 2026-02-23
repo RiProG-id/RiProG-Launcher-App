@@ -62,6 +62,9 @@ class MainLayout(private val activity: MainActivity) : FrameLayout(activity) {
         lastX = ev.x
         lastY = ev.y
 
+        if (activity.folderManager.isFolderOpen()) {
+            return false
+        }
         if (activity.freeformInteraction.isTransforming()) {
             return false
         }
@@ -96,7 +99,7 @@ class MainLayout(private val activity: MainActivity) : FrameLayout(activity) {
                 longPressTriggered = false
                 touchedView = findTouchedHomeItem(startX, startY)
                 longPressHandler.removeCallbacks(longPressRunnable)
-                if (!activity.freeformInteraction.isTransforming()) {
+                if (!activity.freeformInteraction.isTransforming() && !activity.folderManager.isFolderOpen()) {
                     longPressHandler.postDelayed(longPressRunnable, 400)
                 }
                 return false
@@ -135,6 +138,10 @@ class MainLayout(private val activity: MainActivity) : FrameLayout(activity) {
     override fun onTouchEvent(event: MotionEvent): Boolean {
         lastX = event.x
         lastY = event.y
+
+        if (activity.folderManager.isFolderOpen()) {
+            return false
+        }
 
         if (isDrawerOpen) {
             if (event.action == MotionEvent.ACTION_DOWN) {

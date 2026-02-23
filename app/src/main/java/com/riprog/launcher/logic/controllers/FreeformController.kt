@@ -149,9 +149,31 @@ class FreeformController(
         val midY = v.y + v.height / 2f
 
         val otherView = (rootLayout as? MainLayout)?.findTouchedHomeItem(midX, midY, v)
-        if (otherView != null && handleFolderDrop(v, otherView)) {
-            closeTransformOverlay()
-            return
+        if (otherView != null) {
+            val hitBufferX = otherView.width * 0.25f
+            val hitBufferY = otherView.height * 0.25f
+
+            // Check if drop is within the center area of the target to prevent accidental merges
+            // and we need to translate midX/midY to otherView's coordinate system
+            // findTouchedHomeItem already confirmed it's within bounds, now we check inner bounds
+
+            // Need absolute coordinates for otherView
+            var ox = otherView.x
+            var oy = otherView.y
+            var op = otherView.parent as? View
+            while (op != null && op !== rootLayout) {
+                ox += op.x
+                oy += op.y
+                op = op.parent as? View
+            }
+
+            if (midX >= ox + hitBufferX && midX <= ox + otherView.width - hitBufferX &&
+                midY >= oy + hitBufferY && midY <= oy + otherView.height - hitBufferY) {
+                if (handleFolderDrop(v, otherView)) {
+                    closeTransformOverlay()
+                    return
+                }
+            }
         }
 
         if (!preferences.isFreeformHome) {

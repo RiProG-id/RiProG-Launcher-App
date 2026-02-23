@@ -459,8 +459,13 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
             for (i in 0 until targetPageLayout.childCount) {
                 val child = targetPageLayout.getChildAt(i)
                 if (child === v) continue
-                if (midX >= child.x && midX <= child.x + child.width &&
-                    midY >= child.y && midY <= child.y + child.height
+
+                // Use a smaller hit area for folder creation (center 50%) to prevent accidental merges
+                val hitBufferX = child.width * 0.25f
+                val hitBufferY = child.height * 0.25f
+
+                if (midX >= child.x + hitBufferX && midX <= child.x + child.width - hitBufferX &&
+                    midY >= child.y + hitBufferY && midY <= child.y + child.height - hitBufferY
                 ) {
                     otherView = child
                     break

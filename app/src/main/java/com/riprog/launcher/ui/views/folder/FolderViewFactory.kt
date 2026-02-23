@@ -22,6 +22,9 @@ class FolderViewFactory(private val context: Context, private val preferences: S
         val container = LinearLayout(context)
         container.orientation = LinearLayout.VERTICAL
         container.gravity = Gravity.CENTER
+        container.isClickable = true
+        container.isFocusable = true
+        container.setBackgroundColor(android.graphics.Color.TRANSPARENT)
 
         val previewContainer = FrameLayout(context)
         val scale = preferences.iconScale
