@@ -663,6 +663,14 @@ class MainActivity : Activity() {
                 homeView.scrollToPage(homeView.pages.size - 1)
             }
 
+            override fun onRemovePage() {
+                homeView.onRemovePage()
+            }
+
+            override fun getPageCount(): Int {
+                return homeView.getPageCount()
+            }
+
             override fun onPickWidget() {
                 pickWidget()
             }

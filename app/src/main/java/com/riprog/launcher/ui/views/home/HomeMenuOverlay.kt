@@ -20,6 +20,8 @@ class HomeMenuOverlay(context: Context, private val settingsManager: SettingsMan
     interface Callback {
         fun onAddPageLeft()
         fun onAddPageRight()
+        fun onRemovePage()
+        fun getPageCount(): Int
         fun onPickWidget()
         fun onOpenWallpaper()
         fun onOpenSettings()
@@ -34,7 +36,7 @@ class HomeMenuOverlay(context: Context, private val settingsManager: SettingsMan
         setOnClickListener { callback.dismiss() }
 
         val grid = GridLayout(context)
-        grid.columnCount = 2
+        grid.columnCount = 3
         grid.alignmentMode = GridLayout.ALIGN_MARGINS
         grid.useDefaultMargins = false
 
@@ -42,30 +44,37 @@ class HomeMenuOverlay(context: Context, private val settingsManager: SettingsMan
 
         // Row 1
         grid.addView(createButton(R.drawable.ic_layout, context.getString(R.string.action_add_page_left), adaptiveColor) { callback.onAddPageLeft() })
+
+        val removeBtn = createButton(R.drawable.ic_remove, context.getString(R.string.layout_remove_page), adaptiveColor) { callback.onRemovePage() }
+        if (callback.getPageCount() <= 1) {
+            removeBtn.alpha = 0.4f
+            removeBtn.isClickable = false
+            removeBtn.isFocusable = false
+            val innerBtn = (removeBtn as ViewGroup).getChildAt(0)
+            innerBtn.isClickable = false
+            innerBtn.isFocusable = false
+        }
+        grid.addView(removeBtn)
+
         grid.addView(createButton(R.drawable.ic_layout, context.getString(R.string.action_add_page_right), adaptiveColor) { callback.onAddPageRight() })
 
         // Row 2
         grid.addView(createButton(R.drawable.ic_widgets, context.getString(R.string.menu_widgets), adaptiveColor) { callback.onPickWidget() })
         grid.addView(createButton(R.drawable.ic_wallpaper, context.getString(R.string.menu_wallpaper), adaptiveColor) { callback.onOpenWallpaper() })
-
-        // Row 3 - Centered (spans 2 columns)
-        val settingsBtn = createButton(R.drawable.ic_settings, context.getString(R.string.menu_settings), adaptiveColor) { callback.onOpenSettings() }
-        val settingsLp = GridLayout.LayoutParams(GridLayout.spec(2, 1), GridLayout.spec(0, 2))
-        settingsLp.setGravity(Gravity.CENTER)
-        grid.addView(settingsBtn, settingsLp)
+        grid.addView(createButton(R.drawable.ic_settings, context.getString(R.string.menu_settings), adaptiveColor) { callback.onOpenSettings() })
 
         val lp = LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT)
         lp.gravity = Gravity.CENTER
-        lp.setMargins(dpToPx(16), dpToPx(16), dpToPx(16), dpToPx(16))
+        lp.setMargins(dpToPx(8), dpToPx(8), dpToPx(8), dpToPx(8))
         addView(grid, lp)
     }
 
     private fun createButton(iconRes: Int, text: String, color: Int, onClick: () -> Unit): View {
         val container = FrameLayout(context)
         val containerLp = GridLayout.LayoutParams()
-        containerLp.width = dpToPx(110)
+        containerLp.width = dpToPx(100)
         containerLp.height = dpToPx(90)
-        containerLp.setMargins(dpToPx(8), dpToPx(8), dpToPx(8), dpToPx(8))
+        containerLp.setMargins(dpToPx(4), dpToPx(4), dpToPx(4), dpToPx(4))
         container.layoutParams = containerLp
 
         val btn = LinearLayout(context)
@@ -82,16 +91,16 @@ class HomeMenuOverlay(context: Context, private val settingsManager: SettingsMan
         val icon = ImageView(context)
         icon.setImageResource(iconRes)
         icon.setColorFilter(color)
-        btn.addView(icon, LinearLayout.LayoutParams(dpToPx(28), dpToPx(28)))
+        btn.addView(icon, LinearLayout.LayoutParams(dpToPx(24), dpToPx(24)))
 
         val label = TextView(context)
         label.text = text
         label.setTextColor(color)
-        label.textSize = 10f
+        label.textSize = 9f
         label.setTypeface(null, Typeface.BOLD)
         label.setPadding(dpToPx(4), dpToPx(8), dpToPx(4), 0)
         label.gravity = Gravity.CENTER
-        label.maxLines = 1
+        label.maxLines = 2
         btn.addView(label)
 
         container.addView(btn, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT))
