@@ -9,6 +9,7 @@ import android.annotation.SuppressLint
 import android.content.ClipData
 import android.content.Context
 import android.graphics.Typeface
+import android.os.Build
 import android.text.Editable
 import android.text.TextWatcher
 import android.view.DragEvent
@@ -30,8 +31,14 @@ class FolderManager(private val activity: MainActivity, private val settingsMana
 
     @SuppressLint("ClickableViewAccessibility")
     fun openFolder(folderItem: HomeItem, folderView: View?, homeItems: MutableList<HomeItem>, allApps: List<AppItem>) {
-        if (currentFolderOverlay != null) closeFolder()
-        ThemeUtils.applyWindowBlur(activity.window, true)
+        val wasOpen = currentFolderOverlay != null
+        if (wasOpen) {
+            val oldOverlay = currentFolderOverlay!!
+            currentFolderOverlay = null
+            activity.mainLayout.removeView(oldOverlay)
+        } else {
+            ThemeUtils.applyWindowBlur(activity.window, true)
+        }
 
         val container: FrameLayout = object : FrameLayout(activity) {
             override fun performClick(): Boolean {
@@ -67,6 +74,8 @@ class FolderManager(private val activity: MainActivity, private val settingsMana
         overlay.setPadding(dpToPx(24f), dpToPx(24f), dpToPx(24f), dpToPx(24f))
         overlay.elevation = dpToPx(16f).toFloat()
         overlay.gravity = Gravity.CENTER_HORIZONTAL
+        overlay.isClickable = true
+        overlay.isFocusable = true
         val adaptiveColor = ThemeUtils.getAdaptiveColor(activity, settingsManager, true)
 
         val titleText = TextView(activity)
@@ -151,7 +160,12 @@ class FolderManager(private val activity: MainActivity, private val settingsMana
             subView.setOnLongClickListener {
                 val data = ClipData.newPlainText("index", grid.indexOfChild(subView).toString())
                 val shadow = View.DragShadowBuilder(subView)
-                subView.startDragAndDrop(data, shadow, subView, 0)
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+                    subView.startDragAndDrop(data, shadow, subView, 0)
+                } else {
+                    @Suppress("DEPRECATION")
+                    subView.startDrag(data, shadow, subView, 0)
+                }
                 subView.visibility = View.INVISIBLE
                 true
             }
@@ -177,8 +191,11 @@ class FolderManager(private val activity: MainActivity, private val settingsMana
                         val dropXInWindow = x + containerLocation[0]
                         val dropYInWindow = y + containerLocation[1]
 
-                        if (dropXInWindow >= gridLocation[0] && dropXInWindow <= gridLocation[0] + grid.width &&
-                            dropYInWindow >= gridLocation[1] && dropYInWindow <= gridLocation[1] + grid.height) {
+                        val overlayLocation = IntArray(2)
+                        overlay.getLocationInWindow(overlayLocation)
+
+                        if (dropXInWindow >= overlayLocation[0] && dropXInWindow <= overlayLocation[0] + overlay.width &&
+                            dropYInWindow >= overlayLocation[1] && dropYInWindow <= overlayLocation[1] + overlay.height) {
 
                             val relativeX = dropXInWindow - gridLocation[0]
                             val relativeY = dropYInWindow - gridLocation[1]
