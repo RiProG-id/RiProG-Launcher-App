@@ -17,7 +17,9 @@ import android.view.Gravity
 import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
+import android.view.inputmethod.InputMethodManager
 import android.widget.*
+import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import java.util.*
@@ -55,6 +57,31 @@ class DrawerView(context: Context) : LinearLayout(context) {
         orientation = VERTICAL
         background = ThemeUtils.getGlassDrawable(context, settingsManager, 0f)
         setPadding(0, dpToPx(48), 0, 0)
+
+        val adaptiveColor = ThemeUtils.getAdaptiveColor(context, settingsManager, true)
+        searchBar = EditText(context)
+        searchBar.setHint(R.string.search_hint)
+        searchBar.setHintTextColor(adaptiveColor and 0x80FFFFFF.toInt())
+        searchBar.setTextColor(adaptiveColor)
+        searchBar.setBackgroundColor(context.getColor(R.color.search_background))
+        searchBar.setPadding(dpToPx(16), dpToPx(12), dpToPx(16), dpToPx(12))
+        searchBar.setCompoundDrawablesWithIntrinsicBounds(R.drawable.ic_search, 0, 0, 0)
+        searchBar.compoundDrawablePadding = dpToPx(12)
+        if (searchBar.compoundDrawables[0] != null) {
+            searchBar.compoundDrawables[0].setTint(adaptiveColor and 0x80FFFFFF.toInt())
+        }
+        searchBar.setSingleLine(true)
+        searchBar.gravity = Gravity.CENTER_VERTICAL
+        searchBar.addTextChangedListener(object : TextWatcher {
+            override fun beforeTextChanged(s: CharSequence, start: Int, count: Int, after: Int) {}
+            override fun onTextChanged(s: CharSequence, start: Int, before: Int, count: Int) {
+                filter(s.toString())
+            }
+            override fun afterTextChanged(s: Editable) {}
+        })
+        val searchLp = RecyclerView.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+        searchLp.setMargins(0, 0, 0, dpToPx(16))
+        searchBar.layoutParams = searchLp
 
         val contentFrame = FrameLayout(context)
         addView(contentFrame, LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f))
@@ -163,21 +190,46 @@ class DrawerView(context: Context) : LinearLayout(context) {
     }
 
     fun filter(query: String?) {
-        filteredApps = AppRepository.filterApps(allApps, query).toMutableList()
-        adapter.notifyDataSetChanged()
+        val oldList = ArrayList(filteredApps)
+        val newList = AppRepository.filterApps(allApps, query)
+
+        val diffResult = DiffUtil.calculateDiff(object : DiffUtil.Callback() {
+            override fun getOldListSize(): Int = oldList.size + 1
+            override fun getNewListSize(): Int = newList.size + 1
+
+            override fun areItemsTheSame(oldItemPosition: Int, newItemPosition: Int): Boolean {
+                if (oldItemPosition == 0 && newItemPosition == 0) return true
+                if (oldItemPosition == 0 || newItemPosition == 0) return false
+                return oldList[oldItemPosition - 1].packageName == newList[newItemPosition - 1].packageName
+            }
+
+            override fun areContentsTheSame(oldItemPosition: Int, newItemPosition: Int): Boolean {
+                if (oldItemPosition == 0 && newItemPosition == 0) return true
+                if (oldItemPosition == 0 || newItemPosition == 0) return false
+                return oldList[oldItemPosition - 1] == newList[newItemPosition - 1]
+            }
+        })
+
+        filteredApps.clear()
+        filteredApps.addAll(newList)
+        diffResult.dispatchUpdatesTo(adapter)
     }
 
     fun onOpen() {
         if (::searchBar.isInitialized) {
             searchBar.setText("")
-            searchBar.clearFocus()
+            searchBar.requestFocus()
+            val imm = context.getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
+            imm.showSoftInput(searchBar, InputMethodManager.SHOW_IMPLICIT)
         }
+        filteredApps = ArrayList(allApps)
         adapter.notifyDataSetChanged()
     }
 
     fun onClose() {
         if (::searchBar.isInitialized) {
             searchBar.setText("")
+            searchBar.clearFocus()
         }
         filteredApps.clear()
         adapter.notifyDataSetChanged()
@@ -206,30 +258,6 @@ class DrawerView(context: Context) : LinearLayout(context) {
 
         override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): RecyclerView.ViewHolder {
             if (viewType == VIEW_TYPE_SEARCH) {
-                val adaptiveColor = ThemeUtils.getAdaptiveColor(context, settingsManager, true)
-                searchBar = EditText(context)
-                searchBar.setHint(R.string.search_hint)
-                searchBar.setHintTextColor(adaptiveColor and 0x80FFFFFF.toInt())
-                searchBar.setTextColor(adaptiveColor)
-                searchBar.setBackgroundColor(context.getColor(R.color.search_background))
-                searchBar.setPadding(dpToPx(16), dpToPx(12), dpToPx(16), dpToPx(12))
-                searchBar.setCompoundDrawablesWithIntrinsicBounds(R.drawable.ic_search, 0, 0, 0)
-                searchBar.compoundDrawablePadding = dpToPx(12)
-                if (searchBar.compoundDrawables[0] != null) {
-                    searchBar.compoundDrawables[0].setTint(adaptiveColor and 0x80FFFFFF.toInt())
-                }
-                searchBar.setSingleLine(true)
-                searchBar.gravity = Gravity.CENTER_VERTICAL
-                searchBar.addTextChangedListener(object : TextWatcher {
-                    override fun beforeTextChanged(s: CharSequence, start: Int, count: Int, after: Int) {}
-                    override fun onTextChanged(s: CharSequence, start: Int, before: Int, count: Int) {
-                        filter(s.toString())
-                    }
-                    override fun afterTextChanged(s: Editable) {}
-                })
-                val lp = RecyclerView.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
-                lp.setMargins(0, 0, 0, dpToPx(16))
-                searchBar.layoutParams = lp
                 return object : RecyclerView.ViewHolder(searchBar) {}
             } else {
                 val scale = settingsManager.iconScale

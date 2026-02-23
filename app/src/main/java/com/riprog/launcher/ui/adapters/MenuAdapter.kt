@@ -16,7 +16,8 @@ import android.widget.FrameLayout
 
 class MenuAdapter(
     private val settingsManager: SettingsManager,
-    private val callback: Callback
+    private val callback: Callback,
+    private val isGrid: Boolean = true
 ) : RecyclerView.Adapter<MenuAdapter.ViewHolder>() {
 
     interface Callback {
@@ -45,25 +46,47 @@ class MenuAdapter(
         val context = parent.context
 
         val container = FrameLayout(context)
+        container.layoutParams = RecyclerView.LayoutParams(
+            ViewGroup.LayoutParams.MATCH_PARENT,
+            ViewGroup.LayoutParams.WRAP_CONTENT
+        )
+
         val btn = LinearLayout(context)
-        btn.orientation = LinearLayout.VERTICAL
-        btn.gravity = Gravity.CENTER
-        btn.background = ThemeUtils.getGlassDrawable(context, settingsManager, 16f)
+        btn.orientation = if (isGrid) LinearLayout.VERTICAL else LinearLayout.HORIZONTAL
+        btn.gravity = if (isGrid) Gravity.CENTER else Gravity.CENTER_VERTICAL
+        btn.background = ThemeUtils.getGlassDrawable(context, settingsManager, 12f)
         btn.isClickable = true
         btn.isFocusable = true
 
+        val p = if (isGrid) dpToPx(12, parent) else dpToPx(16, parent)
+        btn.setPadding(p, if (isGrid) p else dpToPx(12, parent), p, if (isGrid) p else dpToPx(12, parent))
+        if (isGrid) {
+            btn.minimumHeight = dpToPx(80, parent)
+        }
+
         val icon = ImageView(context)
-        btn.addView(icon, LinearLayout.LayoutParams(dpToPx(24, parent), dpToPx(24, parent)))
+        val iconSize = if (isGrid) dpToPx(28, parent) else dpToPx(24, parent)
+        btn.addView(icon, LinearLayout.LayoutParams(iconSize, iconSize))
 
         val label = TextView(context)
-        label.textSize = 9f
+        label.textSize = if (isGrid) 10f else 14f
         label.setTypeface(null, Typeface.BOLD)
-        label.setPadding(dpToPx(4, parent), dpToPx(8, parent), dpToPx(4, parent), 0)
-        label.gravity = Gravity.CENTER
-        label.maxLines = 2
-        btn.addView(label)
+        if (isGrid) {
+            label.setPadding(0, dpToPx(6, parent), 0, 0)
+            label.gravity = Gravity.CENTER
+        } else {
+            label.setPadding(dpToPx(16, parent), 0, 0, 0)
+            label.gravity = Gravity.CENTER_VERTICAL
+        }
+        label.maxLines = if (isGrid) 2 else 1
 
-        container.addView(btn, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
+        val btnLp = FrameLayout.LayoutParams(
+            ViewGroup.LayoutParams.MATCH_PARENT,
+            ViewGroup.LayoutParams.WRAP_CONTENT
+        )
+        val margin = dpToPx(4, parent)
+        btnLp.setMargins(margin, margin, margin, margin)
+        container.addView(btn, btnLp)
 
         return ViewHolder(container, btn, icon, label)
     }

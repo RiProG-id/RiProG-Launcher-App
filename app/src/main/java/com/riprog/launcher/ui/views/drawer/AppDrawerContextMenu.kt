@@ -39,7 +39,7 @@ class AppDrawerContextMenu(context: Context, private val settingsManager: Settin
                 }
                 callback.dismiss()
             }
-        })
+        }, isGrid = false)
         recyclerView.adapter = adapter
         recyclerView.layoutManager = LinearLayoutManager(context)
 
@@ -50,7 +50,11 @@ class AppDrawerContextMenu(context: Context, private val settingsManager: Settin
         )
         adapter.setItems(items)
 
-        addView(recyclerView, LayoutParams(dpToPx(160), LayoutParams.WRAP_CONTENT))
+        val menuContainer = FrameLayout(context)
+        menuContainer.elevation = dpToPx(8).toFloat()
+        menuContainer.addView(recyclerView, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT))
+
+        addView(menuContainer, LayoutParams(dpToPx(200), LayoutParams.WRAP_CONTENT))
     }
 
     fun showAt(anchorView: View, root: ViewGroup) {

@@ -31,13 +31,15 @@ class HomeMenuOverlay(context: Context, private val settingsManager: SettingsMan
     }
 
     init {
-        setBackgroundColor(0x33000000)
+        setBackgroundColor(0x66000000)
         // Consume all touches to block background interaction
         isClickable = true
         isFocusable = true
         setOnClickListener { callback.dismiss() }
 
         val recyclerView = RecyclerView(context)
+        recyclerView.setPadding(dpToPx(12), dpToPx(12), dpToPx(12), dpToPx(12))
+        recyclerView.clipToPadding = false
         val adapter = MenuAdapter(settingsManager, object : MenuAdapter.Callback {
             override fun onMenuItemClick(item: MenuAdapter.MenuItem) {
                 when (item.id) {
