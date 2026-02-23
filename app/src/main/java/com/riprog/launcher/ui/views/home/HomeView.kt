@@ -29,6 +29,7 @@ import androidx.recyclerview.widget.PagerSnapHelper
 import androidx.recyclerview.widget.RecyclerView
 import java.util.ArrayList
 import java.util.HashMap
+import kotlin.math.floor
 import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.roundToInt
@@ -800,10 +801,11 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
         val pageW = if (firstView.width > 0) firstView.width else pageWidth
         if (pageW <= 0) return 0
 
+        // Use scrollOffset calculation for better precision
         val scrollX = -firstView.left + first * pageW
         val relativeX = x + scrollX
-        val index = (relativeX / pageW).toInt()
-        return max(0, min(pages.size - 1, index))
+        val index = floor((relativeX / pageW).toDouble()).toInt()
+        return index.coerceIn(0, pages.size - 1)
     }
 
     private fun dpToPx(dp: Int): Int {
@@ -828,6 +830,10 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
             if (page.parent != null) (page.parent as ViewGroup).removeView(page)
             holder.container.removeAllViews()
             holder.container.addView(page, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT))
+        }
+
+        override fun onViewRecycled(holder: ViewHolder) {
+            holder.container.removeAllViews()
         }
 
         override fun getItemCount(): Int = pages.size

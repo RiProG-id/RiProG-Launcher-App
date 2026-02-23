@@ -176,12 +176,15 @@ class FreeformController(
             val lm = rv.layoutManager as? LinearLayoutManager
             val pageView = lm?.findViewByPosition(targetPage)
 
-            val relativeX = if (pageView != null) {
+            val relativeX = if (pageView != null && pageView.isAttachedToWindow) {
                 val loc = IntArray(2).apply { pageView.getLocationInWindow(this) }
-                val vLoc = IntArray(2).apply { v.getLocationInWindow(this) }
-                v.x - (loc[0] - (vLoc[0] - v.x))
+                val rootLoc = IntArray(2).apply { rootLayout.getLocationInWindow(this) }
+                v.x - (loc[0] - rootLoc[0])
             } else {
-                v.x - targetPage * (if (rv.width > 0) rv.width else activity.resources.displayMetrics.widthPixels)
+                val rvLoc = IntArray(2).apply { rv.getLocationInWindow(this) }
+                val rootLoc = IntArray(2).apply { rootLayout.getLocationInWindow(this) }
+                val pageW = if (rv.width > 0) rv.width else activity.resources.displayMetrics.widthPixels
+                v.x - (targetPage * pageW + (rvLoc[0] - rootLoc[0]))
             }
 
             val newCol = max(0, min(preferences.columns - item.spanX, ((relativeX - horizontalPadding) / cellWidth).roundToInt()))
@@ -241,12 +244,15 @@ class FreeformController(
             val lm = rv.layoutManager as? LinearLayoutManager
             val pageView = lm?.findViewByPosition(targetPage)
 
-            val relativeX = if (pageView != null) {
+            val relativeX = if (pageView != null && pageView.isAttachedToWindow) {
                 val loc = IntArray(2).apply { pageView.getLocationInWindow(this) }
                 val rootLoc = IntArray(2).apply { rootLayout.getLocationInWindow(this) }
                 absX - (loc[0] - rootLoc[0])
             } else {
-                absX - targetPage * (if (rv.width > 0) rv.width else activity.resources.displayMetrics.widthPixels)
+                val rvLoc = IntArray(2).apply { rv.getLocationInWindow(this) }
+                val rootLoc = IntArray(2).apply { rootLayout.getLocationInWindow(this) }
+                val pageW = if (rv.width > 0) rv.width else activity.resources.displayMetrics.widthPixels
+                absX - (targetPage * pageW + (rvLoc[0] - rootLoc[0]))
             }
 
             item.col = (relativeX - horizontalPadding) / cellWidth

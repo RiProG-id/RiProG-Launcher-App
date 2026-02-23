@@ -179,9 +179,9 @@ class FolderManager(private val activity: MainActivity, private val settingsMana
                             val targetIndex = recyclerView.getChildAdapterPosition(targetView)
                             val currentIndex = adapter.items.indexOf(draggedView.tag as HomeItem)
                             if (targetIndex != RecyclerView.NO_POSITION && targetIndex != currentIndex) {
-                                Collections.swap(adapter.items, currentIndex, targetIndex)
+                                val item = adapter.items.removeAt(currentIndex)
+                                adapter.items.add(targetIndex, item)
                                 adapter.notifyItemMoved(currentIndex, targetIndex)
-                                activity.saveHomeState()
                             }
                         }
                     }
@@ -210,6 +210,7 @@ class FolderManager(private val activity: MainActivity, private val settingsMana
                             dropYInWindow >= overlayLocation[1] && dropYInWindow <= overlayLocation[1] + overlay.height) {
                             draggedView.visibility = View.VISIBLE
                             adapter.notifyDataSetChanged()
+                            activity.saveHomeState()
                         } else {
                             closeFolder()
                             removeFromFolder(folderItem, draggedItem, homeItems)
@@ -252,6 +253,7 @@ class FolderManager(private val activity: MainActivity, private val settingsMana
                     val draggedView = event.localState as? View
                     draggedView?.visibility = View.VISIBLE
                     adapter.notifyDataSetChanged()
+                    activity.saveHomeState()
                     true
                 }
                 else -> true
@@ -439,17 +441,12 @@ class FolderManager(private val activity: MainActivity, private val settingsMana
     }
 
     fun refreshFolderIconsOnHome(folder: HomeItem) {
-        val rv = activity.homeView.recyclerView
-        for (i in 0 until rv.childCount) {
-            val pageHolder = rv.getChildViewHolder(rv.getChildAt(i)) as? HomeView.HomePagerAdapter.ViewHolder
-            if (pageHolder != null) {
-                val page = pageHolder.container
-                for (j in 0 until page.childCount) {
-                    val v = page.getChildAt(j)
-                    if (v.tag === folder) {
-                        val grid = findGridLayout(v as? ViewGroup ?: continue)
-                        if (grid != null) activity.refreshFolderPreview(folder, grid)
-                    }
+        for (page in activity.homeView.pages) {
+            for (j in 0 until page.childCount) {
+                val v = page.getChildAt(j)
+                if (v.tag === folder) {
+                    val grid = findGridLayout(v as? ViewGroup ?: continue)
+                    if (grid != null) activity.refreshFolderPreview(folder, grid)
                 }
             }
         }

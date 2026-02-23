@@ -237,13 +237,19 @@ class WidgetManager(
                     h.label.text = info.loadLabel(activity.packageManager)
                     h.size.text = activity.getString(R.string.widget_size_format, item.spanX, item.spanY)
 
+                    val providerStr = info.provider.flattenToString()
+                    h.preview.tag = providerStr
                     h.preview.setImageDrawable(null)
                     widgetPreviewExecutor.execute {
                         try {
                             var previewDrawable = info.loadPreviewImage(activity, 0)
                             if (previewDrawable == null) previewDrawable = info.loadIcon(activity, 0)
                             val finalDrawable = previewDrawable
-                            activity.runOnUiThread { h.preview.setImageDrawable(finalDrawable) }
+                            activity.runOnUiThread {
+                                if (h.preview.tag == providerStr) {
+                                    h.preview.setImageDrawable(finalDrawable)
+                                }
+                            }
                         } catch (ignored: Exception) {
                         }
                     }
