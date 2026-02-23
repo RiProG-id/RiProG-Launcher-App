@@ -18,6 +18,7 @@ import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
 import android.widget.*
+import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import java.util.*
@@ -60,6 +61,7 @@ class DrawerView(context: Context) : LinearLayout(context) {
         addView(contentFrame, LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f))
 
         recyclerView = RecyclerView(context)
+        recyclerView.descendantFocusability = ViewGroup.FOCUS_AFTER_DESCENDANTS
         val layoutManager = GridLayoutManager(context, 4)
         layoutManager.spanSizeLookup = object : GridLayoutManager.SpanSizeLookup() {
             override fun getSpanSize(position: Int): Int {
@@ -163,8 +165,51 @@ class DrawerView(context: Context) : LinearLayout(context) {
     }
 
     fun filter(query: String?) {
-        filteredApps = AppRepository.filterApps(allApps, query).toMutableList()
-        adapter.notifyDataSetChanged()
+        val hasFocus = if (::searchBar.isInitialized) searchBar.hasFocus() else false
+        val selectionStart = if (::searchBar.isInitialized) searchBar.selectionStart else -1
+        val selectionEnd = if (::searchBar.isInitialized) searchBar.selectionEnd else -1
+
+        val newFilteredApps = AppRepository.filterApps(allApps, query)
+        val diffCallback = AppDiffCallback(filteredApps, newFilteredApps)
+        val diffResult = DiffUtil.calculateDiff(diffCallback)
+
+        filteredApps.clear()
+        filteredApps.addAll(newFilteredApps)
+        diffResult.dispatchUpdatesTo(adapter)
+
+        if (hasFocus && ::searchBar.isInitialized && !searchBar.hasFocus()) {
+            searchBar.requestFocus()
+            if (selectionStart != -1 && selectionEnd != -1) {
+                searchBar.setSelection(
+                    selectionStart.coerceAtMost(searchBar.text.length),
+                    selectionEnd.coerceAtMost(searchBar.text.length)
+                )
+            }
+        }
+    }
+
+    private class AppDiffCallback(
+        private val oldList: List<AppItem>,
+        private val newList: List<AppItem>
+    ) : DiffUtil.Callback() {
+        override fun getOldListSize(): Int = oldList.size + 1
+        override fun getNewListSize(): Int = newList.size + 1
+
+        override fun areItemsTheSame(oldItemPosition: Int, newItemPosition: Int): Boolean {
+            if (oldItemPosition == 0 && newItemPosition == 0) return true
+            if (oldItemPosition == 0 || newItemPosition == 0) return false
+            val oldItem = oldList[oldItemPosition - 1]
+            val newItem = newList[newItemPosition - 1]
+            return oldItem.packageName == newItem.packageName && oldItem.className == newItem.className
+        }
+
+        override fun areContentsTheSame(oldItemPosition: Int, newItemPosition: Int): Boolean {
+            if (oldItemPosition == 0 && newItemPosition == 0) return true
+            if (oldItemPosition == 0 || newItemPosition == 0) return false
+            val oldItem = oldList[oldItemPosition - 1]
+            val newItem = newList[newItemPosition - 1]
+            return oldItem.label == newItem.label
+        }
     }
 
     fun onOpen() {
@@ -206,8 +251,13 @@ class DrawerView(context: Context) : LinearLayout(context) {
 
         override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): RecyclerView.ViewHolder {
             if (viewType == VIEW_TYPE_SEARCH) {
+                if (::searchBar.isInitialized) {
+                    (searchBar.parent as? ViewGroup)?.removeView(searchBar)
+                    return object : RecyclerView.ViewHolder(searchBar) {}
+                }
                 val adaptiveColor = ThemeUtils.getAdaptiveColor(context, settingsManager, true)
                 searchBar = EditText(context)
+                searchBar.id = View.generateViewId()
                 searchBar.setHint(R.string.search_hint)
                 searchBar.setHintTextColor(adaptiveColor and 0x80FFFFFF.toInt())
                 searchBar.setTextColor(adaptiveColor)
