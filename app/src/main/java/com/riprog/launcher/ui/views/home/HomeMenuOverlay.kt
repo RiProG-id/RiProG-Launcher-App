@@ -5,7 +5,9 @@ import android.graphics.Typeface
 import android.util.TypedValue
 import android.view.Gravity
 import android.view.View
+import android.view.ViewGroup
 import android.widget.FrameLayout
+import android.widget.GridLayout
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
@@ -26,40 +28,49 @@ class HomeMenuOverlay(context: Context, private val settingsManager: SettingsMan
 
     init {
         setBackgroundColor(0x33000000)
+        // Consume all touches to block background interaction
+        isClickable = true
+        isFocusable = true
         setOnClickListener { callback.dismiss() }
 
-        val container = LinearLayout(context)
-        container.orientation = LinearLayout.VERTICAL
-        container.gravity = Gravity.CENTER
+        val grid = GridLayout(context)
+        grid.columnCount = 2
+        grid.alignmentMode = GridLayout.ALIGN_MARGINS
+        grid.useDefaultMargins = false
 
         val adaptiveColor = ThemeUtils.getAdaptiveColor(context, settingsManager, true)
 
-        val pageRow = LinearLayout(context)
-        pageRow.orientation = LinearLayout.HORIZONTAL
-        pageRow.gravity = Gravity.CENTER
-        pageRow.addView(createButton(R.drawable.ic_layout, context.getString(R.string.action_add_page_left), adaptiveColor) { callback.onAddPageLeft() })
-        pageRow.addView(createButton(R.drawable.ic_layout, context.getString(R.string.action_add_page_right), adaptiveColor) { callback.onAddPageRight() })
-        container.addView(pageRow)
+        // Row 1
+        grid.addView(createButton(R.drawable.ic_layout, context.getString(R.string.action_add_page_left), adaptiveColor) { callback.onAddPageLeft() })
+        grid.addView(createButton(R.drawable.ic_layout, context.getString(R.string.action_add_page_right), adaptiveColor) { callback.onAddPageRight() })
 
-        val actionRow = LinearLayout(context)
-        actionRow.orientation = LinearLayout.HORIZONTAL
-        actionRow.gravity = Gravity.CENTER
-        actionRow.addView(createButton(R.drawable.ic_widgets, context.getString(R.string.menu_widgets), adaptiveColor) { callback.onPickWidget() })
-        actionRow.addView(createButton(R.drawable.ic_wallpaper, context.getString(R.string.menu_wallpaper), adaptiveColor) { callback.onOpenWallpaper() })
-        container.addView(actionRow)
+        // Row 2
+        grid.addView(createButton(R.drawable.ic_widgets, context.getString(R.string.menu_widgets), adaptiveColor) { callback.onPickWidget() })
+        grid.addView(createButton(R.drawable.ic_wallpaper, context.getString(R.string.menu_wallpaper), adaptiveColor) { callback.onOpenWallpaper() })
 
-        container.addView(createButton(R.drawable.ic_settings, context.getString(R.string.menu_settings), adaptiveColor) { callback.onOpenSettings() })
+        // Row 3 - Centered (spans 2 columns)
+        val settingsBtn = createButton(R.drawable.ic_settings, context.getString(R.string.menu_settings), adaptiveColor) { callback.onOpenSettings() }
+        val settingsLp = GridLayout.LayoutParams(GridLayout.spec(2, 1), GridLayout.spec(0, 2))
+        settingsLp.setGravity(Gravity.CENTER)
+        grid.addView(settingsBtn, settingsLp)
 
         val lp = LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT)
         lp.gravity = Gravity.CENTER
-        addView(container, lp)
+        lp.setMargins(dpToPx(16), dpToPx(16), dpToPx(16), dpToPx(16))
+        addView(grid, lp)
     }
 
     private fun createButton(iconRes: Int, text: String, color: Int, onClick: () -> Unit): View {
+        val container = FrameLayout(context)
+        val containerLp = GridLayout.LayoutParams()
+        containerLp.width = dpToPx(110)
+        containerLp.height = dpToPx(90)
+        containerLp.setMargins(dpToPx(8), dpToPx(8), dpToPx(8), dpToPx(8))
+        container.layoutParams = containerLp
+
         val btn = LinearLayout(context)
         btn.orientation = LinearLayout.VERTICAL
         btn.gravity = Gravity.CENTER
-        btn.setPadding(dpToPx(20), dpToPx(16), dpToPx(20), dpToPx(16))
         btn.background = ThemeUtils.getGlassDrawable(context, settingsManager, 16f)
         btn.isClickable = true
         btn.isFocusable = true
@@ -76,17 +87,19 @@ class HomeMenuOverlay(context: Context, private val settingsManager: SettingsMan
         val label = TextView(context)
         label.text = text
         label.setTextColor(color)
-        label.textSize = 11f
+        label.textSize = 10f
         label.setTypeface(null, Typeface.BOLD)
-        label.setPadding(0, dpToPx(8), 0, 0)
+        label.setPadding(dpToPx(4), dpToPx(8), dpToPx(4), 0)
+        label.gravity = Gravity.CENTER
+        label.maxLines = 1
         btn.addView(label)
 
-        val wrapper = FrameLayout(context)
-        val lp = LayoutParams(dpToPx(100), LayoutParams.WRAP_CONTENT)
-        lp.setMargins(dpToPx(8), dpToPx(8), dpToPx(8), dpToPx(8))
-        wrapper.addView(btn, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT))
-        wrapper.layoutParams = lp
-        return wrapper
+        container.addView(btn, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT))
+        return container
+    }
+
+    override fun performClick(): Boolean {
+        return super.performClick()
     }
 
     private fun dpToPx(dp: Int): Int {

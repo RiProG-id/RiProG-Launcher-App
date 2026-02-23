@@ -41,6 +41,9 @@ class MainLayout(private val activity: MainActivity) : FrameLayout(activity) {
     private var isDragging = false
 
     private val longPressRunnable = Runnable {
+        if (System.currentTimeMillis() - activity.lastOverlayDismissTime < 300) {
+            return@Runnable
+        }
         longPressTriggered = true
         if (touchedView != null) {
             activity.freeformInteraction.showTransformOverlay(touchedView!!, startX, startY)
@@ -57,7 +60,7 @@ class MainLayout(private val activity: MainActivity) : FrameLayout(activity) {
         lastX = ev.x
         lastY = ev.y
 
-        if (activity.folderManager.isFolderOpen()) {
+        if (activity.isAnyOverlayVisible()) {
             return false
         }
         if (activity.freeformInteraction.isTransforming()) {
@@ -94,7 +97,7 @@ class MainLayout(private val activity: MainActivity) : FrameLayout(activity) {
                 longPressTriggered = false
                 touchedView = findTouchedHomeItem(startX, startY)
                 longPressHandler.removeCallbacks(longPressRunnable)
-                if (!activity.freeformInteraction.isTransforming() && !activity.folderManager.isFolderOpen()) {
+                if (!activity.freeformInteraction.isTransforming() && !activity.isAnyOverlayVisible()) {
                     longPressHandler.postDelayed(longPressRunnable, 400)
                 }
                 return false
@@ -134,8 +137,8 @@ class MainLayout(private val activity: MainActivity) : FrameLayout(activity) {
         lastX = event.x
         lastY = event.y
 
-        if (activity.folderManager.isFolderOpen()) {
-            return false
+        if (activity.isAnyOverlayVisible()) {
+            return true // Consume all events to block underlying gestures
         }
 
         if (isDrawerOpen) {
@@ -321,8 +324,10 @@ class MainLayout(private val activity: MainActivity) : FrameLayout(activity) {
         activity.homeView.startDragging(v, lastX, lastY)
     }
 
-    fun closeDrawer() {
-        if (!isDrawerOpen) return
+    fun isDrawerOpen(): Boolean = isDrawerOpen
+
+    fun closeDrawer(): Boolean {
+        if (!isDrawerOpen) return false
         isDrawerOpen = false
         activity.drawerView.animate()
             .translationY(height / 4f)
@@ -340,6 +345,7 @@ class MainLayout(private val activity: MainActivity) : FrameLayout(activity) {
         activity.homeView.animate().alpha(1f).setDuration(200).start()
         val imm = context.getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager?
         imm?.hideSoftInputFromWindow(windowToken, 0)
+        return true
     }
 
     fun handleItemClick(v: View) {

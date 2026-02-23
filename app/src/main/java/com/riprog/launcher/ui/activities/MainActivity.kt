@@ -458,6 +458,17 @@ class MainActivity : Activity() {
         super.onTrimMemory(level)
     }
 
+    override fun onBackPressed() {
+        if (isAnyOverlayVisible()) {
+            dismissAllOverlays()
+            return
+        }
+        if (mainLayout.closeDrawer()) {
+            return
+        }
+        // Don't call super.onBackPressed() to prevent closing the launcher
+    }
+
     override fun onResume() {
         super.onResume()
         autoDimmingBackground?.updateDimVisibility()
@@ -616,8 +627,31 @@ class MainActivity : Activity() {
         if (intent != null) startActivity(intent)
     }
 
+    fun isAnyOverlayVisible(): Boolean {
+        return currentHomeMenu != null || currentAppDrawerMenu != null || folderManager.isFolderOpen()
+    }
+
+    var lastOverlayDismissTime: Long = 0
+
+    fun dismissAllOverlays() {
+        if (currentHomeMenu != null) {
+            mainLayout.removeView(currentHomeMenu)
+            currentHomeMenu = null
+            lastOverlayDismissTime = System.currentTimeMillis()
+        }
+        if (currentAppDrawerMenu != null) {
+            mainLayout.removeView(currentAppDrawerMenu)
+            currentAppDrawerMenu = null
+            lastOverlayDismissTime = System.currentTimeMillis()
+        }
+        if (folderManager.isFolderOpen()) {
+            folderManager.closeFolder()
+            lastOverlayDismissTime = System.currentTimeMillis()
+        }
+    }
+
     fun showHomeMenu(x: Float, y: Float) {
-        if (currentHomeMenu != null) return
+        if (isAnyOverlayVisible()) return
         val menu = HomeMenuOverlay(this, settingsManager, object : HomeMenuOverlay.Callback {
             override fun onAddPageLeft() {
                 homeView.addPageLeft()
@@ -642,8 +676,11 @@ class MainActivity : Activity() {
             }
 
             override fun dismiss() {
-                mainLayout.removeView(currentHomeMenu)
-                currentHomeMenu = null
+                if (currentHomeMenu != null) {
+                    mainLayout.removeView(currentHomeMenu)
+                    currentHomeMenu = null
+                    lastOverlayDismissTime = System.currentTimeMillis()
+                }
             }
         })
         currentHomeMenu = menu
@@ -654,7 +691,7 @@ class MainActivity : Activity() {
     private var currentAppDrawerMenu: View? = null
 
     fun showAppDrawerMenu(anchor: View, app: AppItem) {
-        if (currentAppDrawerMenu != null) return
+        if (isAnyOverlayVisible()) return
         val menu = AppDrawerContextMenu(this, settingsManager, object : AppDrawerContextMenu.Callback {
             override fun onAddToHome() {
                 spawnApp(app)
@@ -666,8 +703,11 @@ class MainActivity : Activity() {
             }
 
             override fun dismiss() {
-                mainLayout.removeView(currentAppDrawerMenu)
-                currentAppDrawerMenu = null
+                if (currentAppDrawerMenu != null) {
+                    mainLayout.removeView(currentAppDrawerMenu)
+                    currentAppDrawerMenu = null
+                    lastOverlayDismissTime = System.currentTimeMillis()
+                }
             }
         })
         currentAppDrawerMenu = menu

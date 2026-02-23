@@ -22,6 +22,9 @@ class AppDrawerContextMenu(context: Context, private val settingsManager: Settin
 
     init {
         setBackgroundColor(0x00000000)
+        // Consume all touches to block background interaction
+        isClickable = true
+        isFocusable = true
         setOnClickListener { callback.dismiss() }
 
         val menuLayout = LinearLayout(context)
@@ -79,6 +82,10 @@ class AppDrawerContextMenu(context: Context, private val settingsManager: Settin
         menuLayout.layoutParams = lp
 
         root.addView(this, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT))
+    }
+
+    override fun performClick(): Boolean {
+        return super.performClick()
     }
 
     private fun dpToPx(dp: Int): Int {
