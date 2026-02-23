@@ -227,41 +227,41 @@ class MainLayout(private val activity: MainActivity) : FrameLayout(activity) {
 
     fun findTouchedHomeItem(x: Float, y: Float, exclude: View? = null): View? {
         val homeView = activity.homeView
-        val pagesContainer = homeView.pagesContainer
+        val rv = homeView.recyclerView
 
-        // Strategy: First check current page, then check others
-        val currentIdx = homeView.currentPage
-        val indices = mutableListOf(currentIdx)
-        for (i in 0 until homeView.pages.size) {
-            if (i != currentIdx) indices.add(i)
-        }
+        val rvLocation = IntArray(2)
+        rv.getLocationInWindow(rvLocation)
+        val rootLocation = IntArray(2)
+        getLocationInWindow(rootLocation)
 
-        for (pageIdx in indices) {
-            if (pageIdx >= homeView.pages.size) continue
-            val pageLayout = homeView.pages[pageIdx]
+        val xInRv = x - (rvLocation[0] - rootLocation[0])
+        val yInRv = y - (rvLocation[1] - rootLocation[1])
 
-            val pageAbsX = pagesContainer.translationX + pageLayout.left
-            val pageAbsY = pagesContainer.translationY + pageLayout.top
+        val pageView = rv.findChildViewUnder(xInRv, yInRv) ?: return null
+        val holder = rv.getChildViewHolder(pageView) as? HomeView.HomePagerAdapter.ViewHolder ?: return null
 
-            val adjustedX = x - pageAbsX
-            val adjustedY = y - pageAbsY
+        val pageLayout = holder.container
+        val pageLoc = IntArray(2)
+        pageLayout.getLocationInWindow(pageLoc)
 
-            for (i in pageLayout.childCount - 1 downTo 0) {
-                val child = pageLayout.getChildAt(i)
-                if (child === exclude) continue
+        val adjustedX = x - (pageLoc[0] - rootLocation[0])
+        val adjustedY = y - (pageLoc[1] - rootLocation[1])
 
-                val item = child.tag as? HomeItem
-                val cellWidth = homeView.getCellWidth()
-                val cellHeight = homeView.getCellHeight()
+        for (i in pageLayout.childCount - 1 downTo 0) {
+            val child = pageLayout.getChildAt(i)
+            if (child === exclude) continue
 
-                val w = if (child.width > 0) child.width.toFloat() else (item?.spanX?.toFloat()?.times(cellWidth) ?: 0f)
-                val h = if (child.height > 0) child.height.toFloat() else (item?.spanY?.toFloat()?.times(cellHeight) ?: 0f)
+            val item = child.tag as? HomeItem
+            val cellWidth = homeView.getCellWidth()
+            val cellHeight = homeView.getCellHeight()
 
-                if (adjustedX >= child.x && adjustedX <= child.x + w &&
-                    adjustedY >= child.y && adjustedY <= child.y + h
-                ) {
-                    return child
-                }
+            val w = if (child.width > 0) child.width.toFloat() else (item?.spanX?.toFloat()?.times(cellWidth) ?: 0f)
+            val h = if (child.height > 0) child.height.toFloat() else (item?.spanY?.toFloat()?.times(cellHeight) ?: 0f)
+
+            if (adjustedX >= child.x && adjustedX <= child.x + w &&
+                adjustedY >= child.y && adjustedY <= child.y + h
+            ) {
+                return child
             }
         }
         return null

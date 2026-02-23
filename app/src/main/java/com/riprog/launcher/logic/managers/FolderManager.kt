@@ -4,6 +4,7 @@ import com.riprog.launcher.ui.activities.MainActivity
 import com.riprog.launcher.theme.ThemeUtils
 import com.riprog.launcher.data.model.HomeItem
 import com.riprog.launcher.data.model.AppItem
+import com.riprog.launcher.ui.views.home.HomeView
 
 import android.annotation.SuppressLint
 import android.content.ClipData
@@ -15,22 +16,23 @@ import android.text.TextWatcher
 import android.view.DragEvent
 import android.view.Gravity
 import android.view.MotionEvent
-import android.view.ViewTreeObserver
 import android.view.View
 import android.view.ViewGroup
 import android.view.inputmethod.EditorInfo
 import android.view.inputmethod.InputMethodManager
 import android.widget.EditText
 import android.widget.FrameLayout
-import android.widget.GridLayout
 import android.util.TypedValue
 import android.widget.LinearLayout
 import android.widget.TextView
+import android.widget.GridLayout
+import androidx.recyclerview.widget.GridLayoutManager
+import androidx.recyclerview.widget.RecyclerView
+import java.util.*
 
 class FolderManager(private val activity: MainActivity, private val settingsManager: SettingsManager) {
     private var currentFolderOverlay: View? = null
     private var isProcessingDrop = false
-    private var isReordering = false
 
     @SuppressLint("ClickableViewAccessibility")
     fun openFolder(folderItem: HomeItem, folderView: View?, homeItems: MutableList<HomeItem>, allApps: List<AppItem>) {
@@ -146,37 +148,11 @@ class FolderManager(private val activity: MainActivity, private val settingsMana
             }
         }
 
-        val grid = GridLayout(activity)
-        grid.columnCount = 4
-        grid.alignmentMode = GridLayout.ALIGN_MARGINS
-        grid.useDefaultMargins = true
-
-        val folderPadding = dpToPx(8f)
-        for (sub in folderItem.folderItems) {
-            val subView = activity.createAppView(sub) ?: continue
-            val glp = GridLayout.LayoutParams()
-            glp.setMargins(folderPadding, folderPadding, folderPadding, folderPadding)
-            subView.layoutParams = glp
-            subView.tag = sub
-            subView.setOnClickListener {
-                activity.handleAppLaunch(sub.packageName!!)
-                closeFolder()
-            }
-            subView.setOnLongClickListener {
-                val data = ClipData.newPlainText("index", grid.indexOfChild(subView).toString())
-                val shadow = View.DragShadowBuilder(subView)
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-                    subView.startDragAndDrop(data, shadow, subView, 0)
-                } else {
-                    @Suppress("DEPRECATION")
-                    subView.startDrag(data, shadow, subView, 0)
-                }
-                subView.visibility = View.INVISIBLE
-                true
-            }
-            grid.addView(subView)
-        }
-        overlay.addView(grid)
+        val recyclerView = RecyclerView(activity)
+        recyclerView.layoutManager = GridLayoutManager(activity, 4)
+        val adapter = FolderAdapter(folderItem.folderItems)
+        recyclerView.adapter = adapter
+        overlay.addView(recyclerView)
 
         val dragListener = View.OnDragListener { v, event ->
             when (event.action) {
@@ -187,20 +163,26 @@ class FolderManager(private val activity: MainActivity, private val settingsMana
                 DragEvent.ACTION_DRAG_LOCATION -> {
                     val draggedView = event.localState as? View
                     if (draggedView != null) {
-                        val gridLocation = IntArray(2)
-                        grid.getLocationInWindow(gridLocation)
+                        val rvLocation = IntArray(2)
+                        recyclerView.getLocationInWindow(rvLocation)
                         val containerLocation = IntArray(2)
                         container.getLocationInWindow(containerLocation)
 
                         val xInWindow = event.x + containerLocation[0]
                         val yInWindow = event.y + containerLocation[1]
 
-                        val relativeX = xInWindow - gridLocation[0]
-                        val relativeY = yInWindow - gridLocation[1]
+                        val relativeX = xInWindow - rvLocation[0]
+                        val relativeY = yInWindow - rvLocation[1]
 
-                        val targetIndex = calculateTargetIndex(grid, relativeX, relativeY)
-                        if (targetIndex != -1 && targetIndex != grid.indexOfChild(draggedView)) {
-                            reorderGridVisually(grid, draggedView, targetIndex)
+                        val targetView = recyclerView.findChildViewUnder(relativeX, relativeY)
+                        if (targetView != null) {
+                            val targetIndex = recyclerView.getChildAdapterPosition(targetView)
+                            val currentIndex = adapter.items.indexOf(draggedView.tag as HomeItem)
+                            if (targetIndex != RecyclerView.NO_POSITION && targetIndex != currentIndex) {
+                                Collections.swap(adapter.items, currentIndex, targetIndex)
+                                adapter.notifyItemMoved(currentIndex, targetIndex)
+                                activity.saveHomeState()
+                            }
                         }
                     }
                     true
@@ -215,8 +197,6 @@ class FolderManager(private val activity: MainActivity, private val settingsMana
                         val x = event.x
                         val y = event.y
 
-                        val gridLocation = IntArray(2)
-                        grid.getLocationInWindow(gridLocation)
                         val containerLocation = IntArray(2)
                         container.getLocationInWindow(containerLocation)
 
@@ -228,45 +208,41 @@ class FolderManager(private val activity: MainActivity, private val settingsMana
 
                         if (dropXInWindow >= overlayLocation[0] && dropXInWindow <= overlayLocation[0] + overlay.width &&
                             dropYInWindow >= overlayLocation[1] && dropYInWindow <= overlayLocation[1] + overlay.height) {
-
-                            val finalIndexInGrid = grid.indexOfChild(draggedView)
-                            val currentIndexInList = folderItem.folderItems.indexOf(draggedItem)
-
-                            if (currentIndexInList != -1 && finalIndexInGrid != currentIndexInList) {
-                                folderItem.folderItems.removeAt(currentIndexInList)
-                                val finalTarget = if (finalIndexInGrid > folderItem.folderItems.size) folderItem.folderItems.size else finalIndexInGrid
-                                folderItem.folderItems.add(finalTarget, draggedItem)
-                                activity.saveHomeState()
-                            }
                             draggedView.visibility = View.VISIBLE
+                            adapter.notifyDataSetChanged()
                         } else {
-                            // Dropped outside folder bounds -> Remove from folder
                             closeFolder()
                             removeFromFolder(folderItem, draggedItem, homeItems)
 
                             val targetPage = activity.homeView.currentPage
                             draggedItem.page = targetPage
 
-                            // Calculate dropped position in HomeView's current page coordinates
                             val homeLocation = IntArray(2)
                             activity.homeView.getLocationInWindow(homeLocation)
 
-                            val pagesContainer = activity.homeView.pagesContainer
-                            val currentPageLayout = activity.homeView.pages[targetPage]
+                            val rv = activity.homeView.recyclerView
+                            val layoutManager = rv.layoutManager as androidx.recyclerview.widget.LinearLayoutManager
+                            val currentPageView = layoutManager.findViewByPosition(targetPage)
 
                             val dropXOnHome = dropXInWindow - homeLocation[0]
                             val dropYOnHome = dropYInWindow - homeLocation[1]
 
-                            val relativeX = dropXOnHome - (pagesContainer.translationX + currentPageLayout.left)
-                            val relativeY = dropYOnHome - (pagesContainer.translationY + currentPageLayout.top)
+                            if (currentPageView != null) {
+                                val pageLoc = IntArray(2)
+                                currentPageView.getLocationInWindow(pageLoc)
+                                val relativeX = dropXInWindow - pageLoc[0]
+                                val relativeY = dropYInWindow - pageLoc[1]
 
-                            // Explicitly remove from parent before adding to HomeView
-                            (draggedView.parent as? ViewGroup)?.removeView(draggedView)
-                            activity.homeView.addItemView(draggedItem, draggedView)
-                            draggedView.x = relativeX - draggedView.width / 2f
-                            draggedView.y = relativeY - draggedView.height / 2f
+                                (draggedView.parent as? ViewGroup)?.removeView(draggedView)
+                                activity.homeView.addItemView(draggedItem, draggedView)
+                                draggedView.x = relativeX - draggedView.width / 2f
+                                draggedView.y = relativeY - draggedView.height / 2f
+                            } else {
+                                (draggedView.parent as? ViewGroup)?.removeView(draggedView)
+                                activity.homeView.addItemView(draggedItem, draggedView)
+                            }
+
                             draggedView.visibility = View.VISIBLE
-
                             activity.homeView.snapToGrid(draggedItem, draggedView)
                         }
                     }
@@ -275,6 +251,7 @@ class FolderManager(private val activity: MainActivity, private val settingsMana
                 DragEvent.ACTION_DRAG_ENDED -> {
                     val draggedView = event.localState as? View
                     draggedView?.visibility = View.VISIBLE
+                    adapter.notifyDataSetChanged()
                     true
                 }
                 else -> true
@@ -290,64 +267,46 @@ class FolderManager(private val activity: MainActivity, private val settingsMana
         currentFolderOverlay = container
     }
 
-    private fun reorderGridVisually(grid: GridLayout, draggedView: View, targetIndex: Int) {
-        if (isReordering) return
-        val currentIndex = grid.indexOfChild(draggedView)
-        if (currentIndex == -1 || targetIndex == -1 || currentIndex == targetIndex) return
-        if (targetIndex >= grid.childCount) return
-
-        isReordering = true
-        val positions = mutableMapOf<View, Pair<Float, Float>>()
-        for (i in 0 until grid.childCount) {
-            val child = grid.getChildAt(i)
-            positions[child] = Pair(child.x, child.y)
+    private inner class FolderAdapter(val items: MutableList<HomeItem>) : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
+        override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): RecyclerView.ViewHolder {
+            val folderPadding = dpToPx(8f)
+            val container = FrameLayout(parent.context)
+            val lp = RecyclerView.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+            lp.setMargins(folderPadding, folderPadding, folderPadding, folderPadding)
+            container.layoutParams = lp
+            return object : RecyclerView.ViewHolder(container) {}
         }
 
-        grid.removeView(draggedView)
-        grid.addView(draggedView, targetIndex)
+        override fun onBindViewHolder(holder: RecyclerView.ViewHolder, position: Int) {
+            val item = items[position]
+            val container = holder.itemView as FrameLayout
+            container.removeAllViews()
 
-        grid.viewTreeObserver.addOnPreDrawListener(object : ViewTreeObserver.OnPreDrawListener {
-            override fun onPreDraw(): Boolean {
-                grid.viewTreeObserver.removeOnPreDrawListener(this)
-                for (i in 0 until grid.childCount) {
-                    val child = grid.getChildAt(i)
-                    if (child === draggedView) continue
-                    val oldPos = positions[child]
-                    if (oldPos != null) {
-                        val newX = child.x
-                        val newY = child.y
-                        if (newX != oldPos.first || newY != oldPos.second) {
-                            child.x = oldPos.first
-                            child.y = oldPos.second
-                            child.animate().x(newX).y(newY).setDuration(150).start()
-                        }
-                    }
+            val subView = activity.createAppView(item)
+            if (subView != null) {
+                if (subView.parent != null) (subView.parent as ViewGroup).removeView(subView)
+                container.addView(subView)
+                subView.tag = item
+                subView.setOnClickListener {
+                    activity.handleAppLaunch(item.packageName!!)
+                    closeFolder()
                 }
-                isReordering = false
-                return true
-            }
-        })
-    }
-
-    private fun calculateTargetIndex(grid: GridLayout, x: Float, y: Float): Int {
-        if (grid.childCount == 0) return 0
-
-        var closestIndex = -1
-        var minDistance = Double.MAX_VALUE
-
-        for (i in 0 until grid.childCount) {
-            val child = grid.getChildAt(i)
-            // We should use the slots. Since it's a 4-column grid:
-            val centerX = child.x + child.width / 2f
-            val centerY = child.y + child.height / 2f
-
-            val dist = Math.sqrt(Math.pow((x - centerX).toDouble(), 2.0) + Math.pow((y - centerY).toDouble(), 2.0))
-            if (dist < minDistance) {
-                minDistance = dist
-                closestIndex = i
+                subView.setOnLongClickListener {
+                    val data = ClipData.newPlainText("index", position.toString())
+                    val shadow = View.DragShadowBuilder(subView)
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+                        subView.startDragAndDrop(data, shadow, subView, 0)
+                    } else {
+                        @Suppress("DEPRECATION")
+                        subView.startDrag(data, shadow, subView, 0)
+                    }
+                    subView.visibility = View.INVISIBLE
+                    true
+                }
             }
         }
-        return closestIndex
+
+        override fun getItemCount(): Int = items.size
     }
 
     fun closeFolder() {
@@ -380,7 +339,6 @@ class FolderManager(private val activity: MainActivity, private val settingsMana
 
             if (folder.folderItems.size != 2) throw IllegalStateException("Invalid folder state")
 
-            // Atomic removal using iterator to be 100% sure
             val it = homeItems.iterator()
             while (it.hasNext()) {
                 val item = it.next()
@@ -415,7 +373,6 @@ class FolderManager(private val activity: MainActivity, private val settingsMana
         try {
             folder.folderItems.add(dragged)
 
-            // Atomic removal
             val it = homeItems.iterator()
             while (it.hasNext()) {
                 val item = it.next()
@@ -482,16 +439,17 @@ class FolderManager(private val activity: MainActivity, private val settingsMana
     }
 
     fun refreshFolderIconsOnHome(folder: HomeItem) {
-        if (activity.homeView.childCount == 0) return
-        val pagesContainer = activity.homeView.getChildAt(0) as? ViewGroup ?: return
-        for (i in 0 until pagesContainer.childCount) {
-            val page = pagesContainer.getChildAt(i) as? ViewGroup ?: continue
-            for (j in 0 until page.childCount) {
-                val v = page.getChildAt(j)
-                if (v.tag === folder) {
-                    val grid = findGridLayout(v as? ViewGroup ?: continue)
-                    if (grid != null) activity.refreshFolderPreview(folder, grid)
-                    return
+        val rv = activity.homeView.recyclerView
+        for (i in 0 until rv.childCount) {
+            val pageHolder = rv.getChildViewHolder(rv.getChildAt(i)) as? HomeView.HomePagerAdapter.ViewHolder
+            if (pageHolder != null) {
+                val page = pageHolder.container
+                for (j in 0 until page.childCount) {
+                    val v = page.getChildAt(j)
+                    if (v.tag === folder) {
+                        val grid = findGridLayout(v as? ViewGroup ?: continue)
+                        if (grid != null) activity.refreshFolderPreview(folder, grid)
+                    }
                 }
             }
         }

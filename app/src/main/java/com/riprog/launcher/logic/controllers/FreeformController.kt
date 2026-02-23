@@ -11,6 +11,7 @@ import android.app.Activity
 import android.view.View
 import android.view.ViewGroup
 import android.widget.FrameLayout
+import androidx.recyclerview.widget.LinearLayoutManager
 import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.roundToInt
@@ -113,7 +114,6 @@ class FreeformController(
             val w = if (v.width > 0) v.width.toFloat() else if (item != null) cellWidth * item.spanX else 0f
             val h = if (v.height > 0) v.height.toFloat() else if (item != null) cellHeight * item.spanY else 0f
 
-            // Immediately set pivot to center
             v.pivotX = w / 2f
             v.pivotY = h / 2f
 
@@ -144,7 +144,6 @@ class FreeformController(
         val density = activity.resources.displayMetrics.density
         val horizontalPadding = HomeView.HORIZONTAL_PADDING_DP * density
 
-        // Find center of the view to determine target position
         val midX = v.x + v.width / 2f
         val midY = v.y + v.height / 2f
 
@@ -153,11 +152,6 @@ class FreeformController(
             val hitBufferX = otherView.width * 0.25f
             val hitBufferY = otherView.height * 0.25f
 
-            // Check if drop is within the center area of the target to prevent accidental merges
-            // and we need to translate midX/midY to otherView's coordinate system
-            // findTouchedHomeItem already confirmed it's within bounds, now we check inner bounds
-
-            // Need absolute coordinates for otherView
             var ox = otherView.x
             var oy = otherView.y
             var op = otherView.parent as? View
@@ -178,7 +172,17 @@ class FreeformController(
 
         if (!preferences.isFreeformHome) {
             val targetPage = homeView.resolvePageIndex(v.x + v.width / 2f)
-            val relativeX = v.x - (homeView.pages[targetPage].left + homeView.pagesContainer.translationX)
+            val rv = homeView.recyclerView
+            val lm = rv.layoutManager as LinearLayoutManager
+            val pageView = lm.findViewByPosition(targetPage)
+
+            val relativeX = if (pageView != null) {
+                val loc = IntArray(2).apply { pageView.getLocationInWindow(this) }
+                val vLoc = IntArray(2).apply { v.getLocationInWindow(this) }
+                v.x - (loc[0] - (vLoc[0] - v.x))
+            } else {
+                v.x - targetPage * rv.width
+            }
 
             val newCol = max(0, min(preferences.columns - item.spanX, ((relativeX - horizontalPadding) / cellWidth).roundToInt()))
             val newRow = max(0, min(HomeView.GRID_ROWS - item.spanY, (v.y / cellHeight).roundToInt()))
@@ -191,11 +195,17 @@ class FreeformController(
             item.tiltX = 0f
             item.tiltY = 0f
 
-            // Update page indicator to reflect target
             homeView.pageIndicator.setCurrentPage(targetPage)
 
-            // Animate to snapped position relative to current display (MainLayout coordinates)
-            val snappedX = newCol * cellWidth + horizontalPadding + (homeView.pages[targetPage].left + homeView.pagesContainer.translationX)
+            val snappedXOnPage = newCol * cellWidth + horizontalPadding
+            val snappedX = if (pageView != null) {
+                val loc = IntArray(2).apply { pageView.getLocationInWindow(this) }
+                val rootLoc = IntArray(2).apply { rootLayout.getLocationInWindow(this) }
+                snappedXOnPage + (loc[0] - rootLoc[0])
+            } else {
+                snappedXOnPage + targetPage * rv.width
+            }
+
             val snappedY = newRow * cellHeight
 
             v.animate()
@@ -226,7 +236,19 @@ class FreeformController(
         if (cellWidth > 0 && cellHeight > 0) {
             val density = activity.resources.displayMetrics.density
             val horizontalPadding = HomeView.HORIZONTAL_PADDING_DP * density
-            val relativeX = absX - (homeView.pages[targetPage].left + homeView.pagesContainer.translationX)
+
+            val rv = homeView.recyclerView
+            val lm = rv.layoutManager as LinearLayoutManager
+            val pageView = lm.findViewByPosition(targetPage)
+
+            val relativeX = if (pageView != null) {
+                val loc = IntArray(2).apply { pageView.getLocationInWindow(this) }
+                val rootLoc = IntArray(2).apply { rootLayout.getLocationInWindow(this) }
+                absX - (loc[0] - rootLoc[0])
+            } else {
+                absX - targetPage * rv.width
+            }
+
             item.col = (relativeX - horizontalPadding) / cellWidth
             item.row = transformingView!!.y / cellHeight
         }
@@ -267,8 +289,6 @@ class FreeformController(
 
                 val item = transformingView!!.tag as? HomeItem
                 if (item != null && activity is MainActivity) {
-                    // Only re-render if the item is still in the home items list
-                    // This prevents ghost icons after a merge or removal
                     if (activity.homeItems.contains(item)) {
                         activity.renderHomeItem(item)
                         activity.saveHomeState()

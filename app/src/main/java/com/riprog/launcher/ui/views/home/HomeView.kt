@@ -24,6 +24,9 @@ import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
+import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.PagerSnapHelper
+import androidx.recyclerview.widget.RecyclerView
 import java.util.ArrayList
 import java.util.HashMap
 import kotlin.math.max
@@ -31,7 +34,8 @@ import kotlin.math.min
 import kotlin.math.roundToInt
 
 class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
-    val pagesContainer: LinearLayout
+    val recyclerView: RecyclerView
+    val adapter: HomePagerAdapter
     val pageIndicator: PageIndicator
     val pages: MutableList<FrameLayout> = ArrayList()
     private val settingsManager: SettingsManager = SettingsManager(context)
@@ -82,11 +86,6 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
         page.clipChildren = false
         page.clipToPadding = false
         pages.add(index, page)
-        pagesContainer.addView(
-            page, index, LinearLayout.LayoutParams(
-                pageWidth, LayoutParams.MATCH_PARENT
-            )
-        )
 
         if (context is MainActivity) {
             val activity = context as MainActivity
@@ -103,6 +102,8 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
                 if (item != null) item.page = i
             }
         }
+
+        adapter.notifyItemInserted(index)
         pageIndicator.setPageCount(pages.size)
         pageIndicator.setCurrentPage(currentPage)
 
@@ -123,28 +124,49 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
         clipChildren = false
         clipToPadding = false
 
-        pagesContainer = LinearLayout(context)
-        pagesContainer.orientation = LinearLayout.HORIZONTAL
-        pagesContainer.setPadding(0, dpToPx(48), 0, 0)
-        pagesContainer.clipChildren = false
+        recyclerView = RecyclerView(context)
+        val layoutManager = LinearLayoutManager(context, LinearLayoutManager.HORIZONTAL, false)
+        recyclerView.layoutManager = layoutManager
+        recyclerView.setPadding(0, dpToPx(48), 0, 0)
+        recyclerView.clipChildren = false
+        recyclerView.clipToPadding = false
+
+        val snapHelper = PagerSnapHelper()
+        snapHelper.attachToRecyclerView(recyclerView)
+
+        recyclerView.addOnScrollListener(object : RecyclerView.OnScrollListener() {
+            override fun onScrollStateChanged(recyclerView: RecyclerView, newState: Int) {
+                if (newState == RecyclerView.SCROLL_STATE_IDLE) {
+                    val pos = layoutManager.findFirstCompletelyVisibleItemPosition()
+                    if (pos != RecyclerView.NO_POSITION) {
+                        currentPage = pos
+                        pageIndicator.setCurrentPage(currentPage)
+                        if (model != null && allApps != null) {
+                            refreshIcons(model!!, allApps!!)
+                        }
+                    }
+                }
+            }
+        })
 
         ViewCompat.setOnApplyWindowInsetsListener(this) { _, insets ->
             val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
             systemTopInset = systemBars.top
             systemBottomInset = systemBars.bottom
-            pagesContainer.setPadding(0, dpToPx(48) + systemTopInset, 0, 0)
+            recyclerView.setPadding(0, dpToPx(48) + systemTopInset, 0, 0)
             post { refreshLayout() }
             insets
         }
-        pagesContainer.clipToPadding = false
-        addView(pagesContainer, LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.MATCH_PARENT))
+        addView(recyclerView, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT))
+
+        adapter = HomePagerAdapter()
+        recyclerView.adapter = adapter
 
         pageIndicator = PageIndicator(context)
         val indicatorParams = LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT)
         indicatorParams.gravity = Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL
         indicatorParams.bottomMargin = dpToPx(80)
         addView(pageIndicator, indicatorParams)
-
 
         addPage()
         addPage()
@@ -165,7 +187,6 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
         lp.bottomMargin = dpToPx(120)
         addView(hint, lp)
 
-
         if (Math.random() < 0.3) {
             hint.animate().alpha(1f).setDuration(1000).setStartDelay(2000).withEndAction {
                 hint.animate().alpha(0f).setDuration(1000).setStartDelay(4000).withEndAction {
@@ -180,11 +201,7 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
         page.clipChildren = false
         page.clipToPadding = false
         pages.add(page)
-        pagesContainer.addView(
-            page, LinearLayout.LayoutParams(
-                pageWidth, LayoutParams.MATCH_PARENT
-            )
-        )
+        adapter.notifyItemInserted(pages.size - 1)
         pageIndicator.setPageCount(pages.size)
         pageIndicator.setCurrentPage(currentPage)
     }
@@ -233,9 +250,7 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
         val systemInsets = systemTopInset + systemBottomInset
         val usableHeight = height - topPadding - bottomPadding - dockHeight - indicatorHeight - systemInsets
 
-        val cw = getCellWidth()
         val ch = if (usableHeight > 0) usableHeight / GRID_ROWS.toFloat() else 0f
-
         return ch
     }
 
@@ -265,6 +280,7 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
             val density = resources.displayMetrics.density
             val minW = (cellWidth * item.spanX / density).toInt()
             val minH = (cellHeight * item.spanY / density).toInt()
+            @Suppress("DEPRECATION")
             view.updateAppWidgetSize(null, minW, minH, minW, minH)
         }
     }
@@ -279,8 +295,15 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
             var absY = v.y
             val p = v.parent as View?
             if (p != null) {
-                // If it was in MainLayout, we need absolute coordinates
-                // But startExternalDrag already sets v.x/v.y in MainLayout coordinates
+                // If it was in a page (which is now in RecyclerView), we need to account for its position
+                val pageLoc = IntArray(2)
+                (p as View).getLocationInWindow(pageLoc)
+                val homeLoc = IntArray(2)
+                this.getLocationInWindow(homeLoc)
+
+                absX += pageLoc[0] - homeLoc[0]
+                absY += pageLoc[1] - homeLoc[1]
+
                 (p as ViewGroup).removeView(v)
             }
             addView(v)
@@ -331,18 +354,16 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
             v.animate().scaleX(1.0f).scaleY(1.0f).alpha(1.0f).setDuration(150).start()
             val item = v.tag as HomeItem?
             if (item != null) {
-                val absX = v.x
-                val absY = v.y
+                val absXInWindow = IntArray(2).apply { v.getLocationInWindow(this) }[0]
+                val absYInWindow = IntArray(2).apply { v.getLocationInWindow(this) }[1]
 
-                val targetPage = resolvePageIndex(absX + v.width / 2f)
+                val targetPage = resolvePageIndex(v.x + v.width / 2f)
                 item.page = targetPage
 
                 removeView(v)
 
                 if (context is MainActivity) {
                     val activity = context as MainActivity
-
-                    // Final page resolution - update page indicator one last time
                     pageIndicator.setCurrentPage(targetPage)
 
                     if (!activity.homeItems.contains(item)) {
@@ -351,15 +372,20 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
 
                     val newView = activity.renderHomeItem(item)
                     if (newView != null) {
-                        // Immediately place at drop position relative to target page
-                        newView.x = absX - (pages[targetPage].left + pagesContainer.translationX)
-                        newView.y = absY - (pages[targetPage].top + pagesContainer.translationY)
-
-                        // Then snap to grid with animation
-                        val merged = snapToGrid(item, newView)
-                        if (merged) {
-                            cleanupDraggingState()
-                            return
+                        val pageLoc = IntArray(2)
+                        // We need to wait for the page to be bound/laid out if it's not visible
+                        recyclerView.scrollToPosition(targetPage)
+                        recyclerView.post {
+                            val holder = recyclerView.findViewHolderForAdapterPosition(targetPage) as? HomePagerAdapter.ViewHolder
+                            if (holder != null) {
+                                holder.container.getLocationInWindow(pageLoc)
+                                newView.x = absXInWindow - pageLoc[0].toFloat()
+                                newView.y = absYInWindow - pageLoc[1].toFloat()
+                                snapToGrid(item, newView)
+                            } else {
+                                // Fallback if holder is not available
+                                snapToGrid(item, newView)
+                            }
                         }
                     }
                     activity.saveHomeState()
@@ -387,7 +413,6 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
 
     fun removeItemView(item: HomeItem?) {
         if (item == null) return
-        // Remove from all pages
         for (page in pages) {
             for (i in page.childCount - 1 downTo 0) {
                 val child = page.getChildAt(i)
@@ -396,14 +421,12 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
                 }
             }
         }
-        // Also check HomeView itself (could have dragging icons)
         for (i in childCount - 1 downTo 0) {
             val child = getChildAt(i)
             if (child.tag === item) {
                 removeView(child)
             }
         }
-        // And check MainLayout (root)
         val parentGroup = parent as? ViewGroup
         if (parentGroup != null) {
             for (i in parentGroup.childCount - 1 downTo 0) {
@@ -414,7 +437,6 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
             }
         }
     }
-
 
     override fun onAddPage() {
         addPage()
@@ -448,8 +470,8 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
             }
         }
 
-        val page = pages.removeAt(index)
-        pagesContainer.removeView(page)
+        pages.removeAt(index)
+        adapter.notifyItemRemoved(index)
 
         for (i in pages.indices) {
             val p = pages[i]
@@ -495,7 +517,6 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
                     val child = targetPageLayout.getChildAt(i)
                     if (child === v) continue
 
-                    // Use a smaller hit area for folder creation (center 50%) to prevent accidental merges
                     val hitBufferX = child.width * 0.25f
                     val hitBufferY = child.height * 0.25f
 
@@ -567,17 +588,7 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
     fun scrollToPage(page: Int) {
         if (page < 0 || page >= pages.size) return
         currentPage = page
-        val targetX = page * width
-        pagesContainer.animate()
-            .translationX((-targetX).toFloat())
-            .setDuration(300)
-            .setInterpolator(android.view.animation.DecelerateInterpolator())
-            .withEndAction {
-                if (model != null && allApps != null) {
-                    refreshIcons(model!!, allApps!!)
-                }
-            }
-            .start()
+        recyclerView.smoothScrollToPosition(page)
         pageIndicator.setCurrentPage(page)
     }
 
@@ -603,9 +614,8 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
                 val item = view.tag as HomeItem?
                 if (item != null && item.type == HomeItem.Type.APP) {
                     if (view is ViewGroup) {
-                        val container = view
-                        val iv = findImageView(container)
-                        val tv = findTextView(container)
+                        val iv = findImageView(view)
+                        val tv = findTextView(view)
 
                         if (iv != null) {
                             val lp = iv.layoutParams
@@ -621,7 +631,6 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
                         }
 
                         val app = appMap[item.packageName]
-
                         if (iv != null && app != null) {
                             val finalApp = app
                             model.loadIcon(app) { bitmap ->
@@ -696,87 +705,6 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
         }
     }
 
-    private fun autoArrange(movedItem: HomeItem) {
-        if (settingsManager.isFreeformHome) return
-        val activity = context as? MainActivity ?: return
-        val items = activity.homeItems
-        val columns = settingsManager.columns
-
-        val pageItems = items.filter { it.page == movedItem.page && it !== movedItem }
-
-        val occupied = Array(GRID_ROWS) { BooleanArray(columns) }
-
-        for (item in pageItems) {
-            val rStart = max(0, item.row.roundToInt())
-            val rEnd = min(GRID_ROWS - 1, rStart + item.spanY - 1)
-            val cStart = max(0, item.col.roundToInt())
-            val cEnd = min(columns - 1, cStart + item.spanX - 1)
-
-            for (r in rStart..rEnd) {
-                for (c in cStart..cEnd) {
-                    if (r < GRID_ROWS && c < columns) occupied[r][c] = true
-                }
-            }
-        }
-
-        val overlappingItems = mutableListOf<HomeItem>()
-        for (item in pageItems) {
-            if (isOverlapping(movedItem, item)) {
-                overlappingItems.add(item)
-            }
-        }
-
-        if (overlappingItems.isNotEmpty()) {
-            val finalOccupied = Array(GRID_ROWS) { BooleanArray(columns) }
-            val mrStart = max(0, movedItem.row.roundToInt())
-            val mrEnd = min(GRID_ROWS - 1, mrStart + movedItem.spanY - 1)
-            val mcStart = max(0, movedItem.col.roundToInt())
-            val mcEnd = min(columns - 1, mcStart + movedItem.spanX - 1)
-            for (r in mrStart..mrEnd) {
-                for (c in mcStart..mcEnd) {
-                    if (r < GRID_ROWS && c < columns) finalOccupied[r][c] = true
-                }
-            }
-            for (item in pageItems) {
-                if (!overlappingItems.contains(item)) {
-                    val rStart = max(0, item.row.roundToInt())
-                    val rEnd = min(GRID_ROWS - 1, rStart + item.spanY - 1)
-                    val cStart = max(0, item.col.roundToInt())
-                    val cEnd = min(columns - 1, cStart + item.spanX - 1)
-                    for (r in rStart..rEnd) {
-                        for (c in cStart..cEnd) {
-                            if (r < GRID_ROWS && c < columns) finalOccupied[r][c] = true
-                        }
-                    }
-                }
-            }
-
-            for (item in overlappingItems) {
-                val newPos = findNearestAvailable(finalOccupied, item.row.roundToInt(), item.col.roundToInt(), item.spanX, item.spanY)
-                if (newPos != null) {
-                    item.row = newPos.first.toFloat()
-                    item.col = newPos.second.toFloat()
-                    for (r in newPos.first until newPos.first + item.spanY) {
-                        for (c in newPos.second until newPos.second + item.spanX) {
-                            if (r < GRID_ROWS && c < columns) finalOccupied[r][c] = true
-                        }
-                    }
-                    updateItemView(item)
-                } else {
-                    // No space on this page, move to next page
-                    val v = findViewForItem(item)
-                    if (v != null) {
-                        item.page = item.page + 1
-                        item.row = 0f
-                        item.col = 0f
-                        removeItemView(item)
-                        addItemView(item, v)
-                    }
-                }
-            }
-        }
-    }
-
     private fun resolveAllOverlaps(pageIndex: Int) {
         if (settingsManager.isFreeformHome) return
         val activity = context as? MainActivity ?: return
@@ -805,20 +733,6 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
             }
             updateItemView(item)
         }
-    }
-
-    private fun isOverlapping(a: HomeItem, b: HomeItem): Boolean {
-        val al = a.col.roundToInt()
-        val at = a.row.roundToInt()
-        val ar = al + a.spanX
-        val ab = at + a.spanY
-
-        val bl = b.col.roundToInt()
-        val bt = b.row.roundToInt()
-        val br = bl + b.spanX
-        val bb = bt + b.spanY
-
-        return !(al >= br || ar <= bl || at >= bb || ab <= bt)
     }
 
     private fun findNearestAvailable(occupied: Array<BooleanArray>, r: Int, c: Int, spanX: Int, spanY: Int): Pair<Int, Int>? {
@@ -871,23 +785,45 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
     }
 
     fun resolvePageIndex(x: Float): Int {
-        val scrollX = -pagesContainer.translationX
+        val lm = recyclerView.layoutManager as LinearLayoutManager
+        val first = lm.findFirstVisibleItemPosition()
+        if (first == RecyclerView.NO_POSITION) return 0
+
+        val firstView = lm.findViewByPosition(first) ?: return 0
+        val pageW = firstView.width
+        if (pageW <= 0) return 0
+
+        val scrollX = -firstView.left + first * pageW
         val relativeX = x + scrollX
-        val index = (relativeX / pageWidth).toInt()
+        val index = (relativeX / pageW).toInt()
         return max(0, min(pages.size - 1, index))
     }
-
-    private val pageWidth: Int
-        get() {
-            var w = width
-            if (w == 0) w = resources.displayMetrics.widthPixels
-            return w
-        }
 
     private fun dpToPx(dp: Int): Int {
         return TypedValue.applyDimension(
             TypedValue.COMPLEX_UNIT_DIP, dp.toFloat(), resources.displayMetrics
         ).toInt()
+    }
+
+    inner class HomePagerAdapter : RecyclerView.Adapter<HomePagerAdapter.ViewHolder>() {
+        inner class ViewHolder(val container: FrameLayout) : RecyclerView.ViewHolder(container)
+
+        override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
+            val frame = FrameLayout(parent.context)
+            frame.layoutParams = ViewGroup.LayoutParams(parent.width, parent.height)
+            frame.clipChildren = false
+            frame.clipToPadding = false
+            return ViewHolder(frame)
+        }
+
+        override fun onBindViewHolder(holder: ViewHolder, position: Int) {
+            val page = pages[position]
+            if (page.parent != null) (page.parent as ViewGroup).removeView(page)
+            holder.container.removeAllViews()
+            holder.container.addView(page, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT))
+        }
+
+        override fun getItemCount(): Int = pages.size
     }
 
     inner class PageIndicator(context: Context) : LinearLayout(context) {

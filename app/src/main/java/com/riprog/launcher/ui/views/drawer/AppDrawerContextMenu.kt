@@ -6,8 +6,9 @@ import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
 import android.widget.FrameLayout
-import android.widget.LinearLayout
 import android.widget.TextView
+import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.RecyclerView
 import com.riprog.launcher.R
 import com.riprog.launcher.logic.managers.SettingsManager
 import com.riprog.launcher.theme.ThemeUtils
@@ -20,6 +21,8 @@ class AppDrawerContextMenu(context: Context, private val settingsManager: Settin
         fun dismiss()
     }
 
+    private val recyclerView: RecyclerView
+
     init {
         setBackgroundColor(0x00000000)
         // Consume all touches to block background interaction
@@ -27,31 +30,48 @@ class AppDrawerContextMenu(context: Context, private val settingsManager: Settin
         isFocusable = true
         setOnClickListener { callback.dismiss() }
 
-        val menuLayout = LinearLayout(context)
-        menuLayout.orientation = LinearLayout.VERTICAL
-        menuLayout.background = ThemeUtils.getGlassDrawable(context, settingsManager, 12f)
-        menuLayout.setPadding(dpToPx(8), dpToPx(8), dpToPx(8), dpToPx(8))
-        menuLayout.elevation = dpToPx(8).toFloat()
+        recyclerView = RecyclerView(context)
+        recyclerView.layoutManager = LinearLayoutManager(context)
+        recyclerView.background = ThemeUtils.getGlassDrawable(context, settingsManager, 12f)
+        recyclerView.setPadding(dpToPx(8), dpToPx(8), dpToPx(8), dpToPx(8))
+        recyclerView.elevation = dpToPx(8).toFloat()
 
-        val adaptiveColor = ThemeUtils.getAdaptiveColor(context, settingsManager, true)
+        val items = mutableListOf<ContextMenuItem>()
+        items.add(ContextMenuItem(R.string.action_add_to_home) { callback.onAddToHome() })
+        items.add(ContextMenuItem(R.string.action_app_info) { callback.onAppInfo() })
 
-        menuLayout.addView(createMenuItem(R.string.action_add_to_home, adaptiveColor) { callback.onAddToHome() })
-        menuLayout.addView(createMenuItem(R.string.action_app_info, adaptiveColor) { callback.onAppInfo() })
+        recyclerView.adapter = ContextMenuAdapter(items)
 
-        addView(menuLayout, LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT))
+        addView(recyclerView, LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT))
     }
 
-    private fun createMenuItem(textRes: Int, color: Int, onClick: () -> Unit): View {
-        val tv = TextView(context)
-        tv.setText(textRes)
-        tv.setTextColor(color)
-        tv.textSize = 14f
-        tv.setPadding(dpToPx(16), dpToPx(12), dpToPx(16), dpToPx(12))
-        tv.setOnClickListener {
-            onClick()
-            callback.dismiss()
+    private data class ContextMenuItem(
+        val textRes: Int,
+        val onClick: () -> Unit
+    )
+
+    private inner class ContextMenuAdapter(val items: List<ContextMenuItem>) : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
+        override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): RecyclerView.ViewHolder {
+            val tv = TextView(parent.context)
+            tv.textSize = 14f
+            tv.setPadding(dpToPx(16), dpToPx(12), dpToPx(16), dpToPx(12))
+            tv.layoutParams = RecyclerView.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+            return object : RecyclerView.ViewHolder(tv) {}
         }
-        return tv
+
+        override fun onBindViewHolder(holder: RecyclerView.ViewHolder, position: Int) {
+            val item = items[position]
+            val tv = holder.itemView as TextView
+            val adaptiveColor = ThemeUtils.getAdaptiveColor(tv.context, settingsManager, true)
+            tv.setText(item.textRes)
+            tv.setTextColor(adaptiveColor)
+            tv.setOnClickListener {
+                item.onClick()
+                callback.dismiss()
+            }
+        }
+
+        override fun getItemCount(): Int = items.size
     }
 
     fun showAt(anchorView: View, root: ViewGroup) {
@@ -63,23 +83,22 @@ class AppDrawerContextMenu(context: Context, private val settingsManager: Settin
         val x = location[0] - rootLocation[0]
         val y = location[1] - rootLocation[1]
 
-        val menuLayout = getChildAt(0)
-        menuLayout.measure(MeasureSpec.UNSPECIFIED, MeasureSpec.UNSPECIFIED)
+        recyclerView.measure(MeasureSpec.UNSPECIFIED, MeasureSpec.UNSPECIFIED)
 
-        var posX = x + (anchorView.width - menuLayout.measuredWidth) / 2
-        var posY = y - menuLayout.measuredHeight - dpToPx(8)
+        var posX = x + (anchorView.width - recyclerView.measuredWidth) / 2
+        var posY = y - recyclerView.measuredHeight - dpToPx(8)
 
         if (posY < 0) {
             posY = y + anchorView.height + dpToPx(8)
         }
 
-        posX = posX.coerceIn(dpToPx(16), root.width - menuLayout.measuredWidth - dpToPx(16))
-        posY = posY.coerceIn(dpToPx(16), root.height - menuLayout.measuredHeight - dpToPx(16))
+        posX = posX.coerceIn(dpToPx(16), root.width - recyclerView.measuredWidth - dpToPx(16))
+        posY = posY.coerceIn(dpToPx(16), root.height - recyclerView.measuredHeight - dpToPx(16))
 
-        val lp = menuLayout.layoutParams as LayoutParams
+        val lp = recyclerView.layoutParams as LayoutParams
         lp.leftMargin = posX
         lp.topMargin = posY
-        menuLayout.layoutParams = lp
+        recyclerView.layoutParams = lp
 
         root.addView(this, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT))
     }
