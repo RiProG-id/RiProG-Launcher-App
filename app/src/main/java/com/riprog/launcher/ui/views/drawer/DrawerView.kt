@@ -195,6 +195,21 @@ class DrawerView(context: Context) : LinearLayout(context) {
         (recyclerView.layoutManager as? GridLayoutManager)?.spanCount = columns
     }
 
+    fun updateTheme() {
+        background = ThemeUtils.getGlassDrawable(context, settingsManager, 0f)
+        setupIndexBar()
+        if (::searchBar.isInitialized) {
+            val adaptiveColor = ThemeUtils.getAdaptiveColor(context, settingsManager, true)
+            searchBar.setHintTextColor(adaptiveColor and 0x80FFFFFF.toInt())
+            searchBar.setTextColor(adaptiveColor)
+            searchBar.setBackgroundColor(context.getColor(R.color.search_background))
+            if (searchBar.compoundDrawables[0] != null) {
+                searchBar.compoundDrawables[0].setTint(adaptiveColor and 0x80FFFFFF.toInt())
+            }
+        }
+        adapter.notifyDataSetChanged()
+    }
+
     fun isAtTop(): Boolean {
         val lm = recyclerView.layoutManager as? GridLayoutManager ?: return true
         val pos = lm.findFirstVisibleItemPosition()
@@ -399,10 +414,13 @@ class DrawerView(context: Context) : LinearLayout(context) {
         }
 
         override fun onBindViewHolder(holder: RecyclerView.ViewHolder, position: Int) {
+            val adaptiveColor = ThemeUtils.getAdaptiveColor(context, settingsManager, true)
             if (getItemViewType(position) == VIEW_TYPE_APP) {
                 val appHolder = holder as AppViewHolder
                 val item = filteredApps[position - 1]
                 val scale = settingsManager.iconScale
+
+                appHolder.label?.setTextColor(adaptiveColor)
 
                 if (appHolder.lastScale != scale) {
                     val baseSize = resources.getDimensionPixelSize(R.dimen.grid_icon_size)

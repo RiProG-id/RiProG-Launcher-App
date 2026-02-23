@@ -27,6 +27,8 @@ class SettingsActivity : Activity() {
 
     private lateinit var settingsManager: SettingsManager
     private lateinit var recyclerView: RecyclerView
+    private lateinit var rootContainer: FrameLayout
+    private lateinit var closeBtn: ImageView
 
     override fun attachBaseContext(newBase: Context) {
         val sm = SettingsManager(newBase)
@@ -45,7 +47,7 @@ class SettingsActivity : Activity() {
         WindowCompat.setDecorFitsSystemWindows(w, false)
         ThemeUtils.applyWindowBlur(w, settingsManager.isLiquidGlass)
 
-        val rootContainer = FrameLayout(this)
+        rootContainer = FrameLayout(this)
         rootContainer.background = ThemeUtils.getGlassDrawable(this, settingsManager, 0f)
 
         recyclerView = RecyclerView(this)
@@ -60,7 +62,7 @@ class SettingsActivity : Activity() {
             ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT
         ))
 
-        val closeBtn = ImageView(this)
+        closeBtn = ImageView(this)
         closeBtn.setImageResource(android.R.drawable.ic_menu_close_clear_cancel)
         val adaptiveColor = ThemeUtils.getAdaptiveColor(this, settingsManager, true)
         closeBtn.setColorFilter(adaptiveColor)
@@ -240,7 +242,20 @@ class SettingsActivity : Activity() {
         override fun onBindViewHolder(holder: RecyclerView.ViewHolder, position: Int) {
             val item = items[position]
             val adaptiveColor = ThemeUtils.getAdaptiveColor(this@SettingsActivity, settingsManager, true)
+
+            if (holder.itemView is LinearLayout && (item.type == SettingType.TOGGLE || item.type == SettingType.THEME)) {
+                ThemeManager.applySettingItemStyle(this@SettingsActivity, holder.itemView as LinearLayout, settingsManager)
+            }
+
             when (item.type) {
+                SettingType.TITLE -> {
+                    val h = holder as SimpleViewHolder
+                    val layout = h.itemView as LinearLayout
+                    val icon = layout.getChildAt(0) as ImageView
+                    val title = layout.getChildAt(1) as TextView
+                    icon.setColorFilter(adaptiveColor)
+                    title.setTextColor(adaptiveColor)
+                }
                 SettingType.CATEGORY -> {
                     val layout = holder.itemView as LinearLayout
                     layout.removeAllViews()
@@ -263,7 +278,9 @@ class SettingsActivity : Activity() {
                 SettingType.TOGGLE -> {
                     val h = holder as ToggleViewHolder
                     h.title.setText(item.titleRes)
+                    h.title.setTextColor(adaptiveColor)
                     h.summary.setText(item.summaryRes)
+                    h.summary.setTextColor(adaptiveColor and 0xBBFFFFFF.toInt())
                     h.toggle.isChecked = item.isChecked
                     h.itemView.setOnClickListener {
                         val newState = !h.toggle.isChecked
@@ -274,6 +291,8 @@ class SettingsActivity : Activity() {
                 }
                 SettingType.THEME -> {
                     val h = holder as ThemeViewHolder
+                    val titleView = h.itemView.findViewById<TextView>(android.R.id.text1) ?: (h.itemView as LinearLayout).getChildAt(0) as TextView
+                    titleView.setTextColor(adaptiveColor)
                     h.options.removeAllViews()
                     val modes = arrayOf(getString(R.string.theme_system), getString(R.string.theme_light), getString(R.string.theme_dark))
                     val values = arrayOf("system", "light", "dark")
@@ -309,6 +328,7 @@ class SettingsActivity : Activity() {
                 }
                 SettingType.ABOUT -> {
                     val tv = holder.itemView as TextView
+                    tv.setTextColor(adaptiveColor and 0xBBFFFFFF.toInt())
                     tv.setText(R.string.about_content)
                     Linkify.addLinks(tv, Linkify.WEB_URLS)
                     tv.movementMethod = LinkMovementMethod.getInstance()
@@ -320,6 +340,18 @@ class SettingsActivity : Activity() {
 
     private class SimpleViewHolder(view: View) : RecyclerView.ViewHolder(view)
     private class ToggleViewHolder(view: View, val title: TextView, val summary: TextView, val toggle: Switch) : RecyclerView.ViewHolder(view)
+    override fun onConfigurationChanged(newConfig: android.content.res.Configuration) {
+        super.onConfigurationChanged(newConfig)
+        ThemeUtils.updateStatusBarContrast(this)
+        ThemeUtils.applyWindowBlur(window, settingsManager.isLiquidGlass)
+
+        rootContainer.background = ThemeUtils.getGlassDrawable(this, settingsManager, 0f)
+        val adaptiveColor = ThemeUtils.getAdaptiveColor(this, settingsManager, true)
+        closeBtn.setColorFilter(adaptiveColor)
+
+        recyclerView.adapter?.notifyDataSetChanged()
+    }
+
     private class ThemeViewHolder(view: View, val options: LinearLayout) : RecyclerView.ViewHolder(view)
 
     private fun dpToPx(dp: Int): Int {

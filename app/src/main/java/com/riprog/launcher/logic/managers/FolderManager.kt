@@ -468,6 +468,23 @@ class FolderManager(private val activity: MainActivity, private val settingsMana
         return currentFolderOverlay != null
     }
 
+    fun updateTheme() {
+        val overlay = currentFolderOverlay ?: return
+        val linearLayout = (overlay as? ViewGroup)?.getChildAt(0) as? LinearLayout ?: return
+
+        linearLayout.background = ThemeUtils.getGlassDrawable(activity, settingsManager, 12f)
+        val adaptiveColor = ThemeUtils.getAdaptiveColor(activity, settingsManager, true)
+
+        for (i in 0 until linearLayout.childCount) {
+            val child = linearLayout.getChildAt(i)
+            if (child is TextView) {
+                child.setTextColor(adaptiveColor)
+            } else if (child is RecyclerView) {
+                child.adapter?.notifyDataSetChanged()
+            }
+        }
+    }
+
     private fun dpToPx(dp: Float): Int {
         return TypedValue.applyDimension(
             TypedValue.COMPLEX_UNIT_DIP, dp, activity.resources.displayMetrics

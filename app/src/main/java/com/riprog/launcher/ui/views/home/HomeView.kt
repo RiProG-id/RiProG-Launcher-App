@@ -628,6 +628,7 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
                         }
                         if (tv != null) {
                             tv.setTextSize(TypedValue.COMPLEX_UNIT_SP, 10 * scale)
+                            tv.setTextColor(context.getColor(R.color.foreground))
                             tv.visibility = if (settingsManager.isHideLabels) View.GONE else View.VISIBLE
                         }
 

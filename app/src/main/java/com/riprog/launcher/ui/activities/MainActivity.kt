@@ -475,6 +475,10 @@ class MainActivity : Activity() {
         autoDimmingBackground?.updateDimVisibility()
         homeView.refreshLayout()
         homeView.refreshIcons(model, allApps)
+        drawerView.updateTheme()
+        folderManager.updateTheme()
+        (currentHomeMenu as? HomeMenuOverlay)?.updateTheme()
+        (currentAppDrawerMenu as? AppDrawerContextMenu)?.updateTheme()
     }
 
     override fun onStart() {
@@ -490,6 +494,14 @@ class MainActivity : Activity() {
     override fun onDestroy() {
         super.onDestroy()
         if (appInstallReceiver != null) unregisterReceiver(appInstallReceiver)
+    }
+
+    override fun onConfigurationChanged(newConfig: android.content.res.Configuration) {
+        super.onConfigurationChanged(newConfig)
+        ThemeUtils.updateStatusBarContrast(this)
+        autoDimmingBackground?.updateDimVisibility()
+        homeView.refreshLayout()
+        homeView.refreshIcons(model, allApps)
     }
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {

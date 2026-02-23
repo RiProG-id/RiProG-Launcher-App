@@ -107,6 +107,11 @@ class AppDrawerContextMenu(context: Context, private val settingsManager: Settin
         return super.performClick()
     }
 
+    fun updateTheme() {
+        recyclerView.background = ThemeUtils.getGlassDrawable(context, settingsManager, 12f)
+        recyclerView.adapter?.notifyDataSetChanged()
+    }
+
     private fun dpToPx(dp: Int): Int {
         return TypedValue.applyDimension(
             TypedValue.COMPLEX_UNIT_DIP, dp.toFloat(), resources.displayMetrics

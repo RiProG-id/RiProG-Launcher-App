@@ -73,7 +73,7 @@ class HomeMenuOverlay(context: Context, private val settingsManager: SettingsMan
             val btn = LinearLayout(parent.context)
             btn.orientation = LinearLayout.VERTICAL
             btn.gravity = Gravity.CENTER
-            btn.background = ThemeUtils.getGlassDrawable(parent.context, settingsManager, 16f)
+            btn.background = ThemeUtils.getGlassDrawable(parent.context, settingsManager, 12f)
             btn.isClickable = true
             btn.isFocusable = true
 
@@ -95,6 +95,8 @@ class HomeMenuOverlay(context: Context, private val settingsManager: SettingsMan
         override fun onBindViewHolder(holder: MenuViewHolder, position: Int) {
             val item = items[position]
             val adaptiveColor = ThemeUtils.getAdaptiveColor(holder.itemView.context, settingsManager, true)
+
+            holder.btn.background = ThemeUtils.getGlassDrawable(holder.itemView.context, settingsManager, 12f)
 
             holder.icon.setImageResource(item.iconRes)
             holder.icon.setColorFilter(adaptiveColor)
@@ -121,6 +123,11 @@ class HomeMenuOverlay(context: Context, private val settingsManager: SettingsMan
     }
 
     private class MenuViewHolder(view: View, val btn: LinearLayout, val icon: ImageView, val label: TextView) : RecyclerView.ViewHolder(view)
+
+    fun updateTheme() {
+        val recyclerView = getChildAt(0) as? RecyclerView ?: return
+        recyclerView.adapter?.notifyDataSetChanged()
+    }
 
     override fun performClick(): Boolean {
         return super.performClick()

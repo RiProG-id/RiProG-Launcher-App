@@ -1,6 +1,7 @@
 package com.riprog.launcher.ui.activities
 
 import com.riprog.launcher.theme.ThemeUtils
+import com.riprog.launcher.theme.ThemeManager
 import com.riprog.launcher.logic.managers.SettingsManager
 import com.riprog.launcher.logic.utils.WidgetSizingUtils
 import com.riprog.launcher.R
@@ -30,6 +31,8 @@ class WidgetPickerActivity : Activity() {
 
     private lateinit var settingsManager: SettingsManager
     private lateinit var recyclerView: RecyclerView
+    private lateinit var rootContainer: FrameLayout
+    private lateinit var closeBtn: ImageView
     private lateinit var appWidgetManager: AppWidgetManager
     private val widgetPreviewExecutor = Executors.newFixedThreadPool(4)
 
@@ -45,7 +48,7 @@ class WidgetPickerActivity : Activity() {
         WindowCompat.setDecorFitsSystemWindows(w, false)
         ThemeUtils.applyWindowBlur(w, settingsManager.isLiquidGlass)
 
-        val rootContainer = FrameLayout(this)
+        rootContainer = FrameLayout(this)
         rootContainer.background = ThemeUtils.getGlassDrawable(this, settingsManager, 0f)
 
         recyclerView = RecyclerView(this)
@@ -69,7 +72,7 @@ class WidgetPickerActivity : Activity() {
             insets
         }
 
-        val closeBtn = ImageView(this)
+        closeBtn = ImageView(this)
         closeBtn.setImageResource(android.R.drawable.ic_menu_close_clear_cancel)
         val adaptiveColor = ThemeUtils.getAdaptiveColor(this, settingsManager, true)
         closeBtn.setColorFilter(adaptiveColor)
@@ -193,9 +196,9 @@ class WidgetPickerActivity : Activity() {
                 }
                 ItemType.HEADER -> {
                     val header = TextView(context)
-                    header.textSize = 12f
+                    header.textSize = 14f
                     header.setTypeface(null, Typeface.BOLD)
-                    header.setTextColor(secondaryColor)
+                    header.setTextColor(adaptiveColor)
                     header.isAllCaps = true
                     header.setPadding(0, dpToPx(24), 0, dpToPx(12))
                     SimpleViewHolder(header)
@@ -205,16 +208,7 @@ class WidgetPickerActivity : Activity() {
                     card.orientation = LinearLayout.HORIZONTAL
                     card.gravity = Gravity.CENTER_VERTICAL
                     card.setPadding(dpToPx(16), dpToPx(16), dpToPx(16), dpToPx(16))
-                    card.isClickable = true
-                    card.isFocusable = true
-
-                    val cardBg = GradientDrawable()
-                    val isNight = (context.resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) ==
-                            Configuration.UI_MODE_NIGHT_YES
-                    val cardColor = if (settingsManager.isLiquidGlass) 0x1AFFFFFF.toInt() else (if (isNight) 0x1AFFFFFF.toInt() else 0x0D000000.toInt())
-                    cardBg.setColor(cardColor)
-                    cardBg.cornerRadius = dpToPx(16).toFloat()
-                    card.background = cardBg
+                    ThemeManager.applySettingItemStyle(context as Activity, card, settingsManager)
 
                     val lp = RecyclerView.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
                     lp.bottomMargin = dpToPx(12)
@@ -248,15 +242,31 @@ class WidgetPickerActivity : Activity() {
 
         override fun onBindViewHolder(holder: RecyclerView.ViewHolder, position: Int) {
             val item = items[position]
+            val adaptiveColor = ThemeUtils.getAdaptiveColor(this@WidgetPickerActivity, settingsManager, true)
+            val secondaryColor = (adaptiveColor and 0x00FFFFFF) or 0x80000000.toInt()
+
             when (item.type) {
+                ItemType.TITLE -> {
+                    val h = holder as SimpleViewHolder
+                    val layout = h.itemView as LinearLayout
+                    val icon = layout.getChildAt(0) as ImageView
+                    val title = layout.getChildAt(1) as TextView
+                    icon.setColorFilter(adaptiveColor)
+                    title.setTextColor(adaptiveColor)
+                }
                 ItemType.HEADER -> {
-                    (holder.itemView as TextView).text = getAppName(item.packageName!!)
+                    val tv = holder.itemView as TextView
+                    tv.text = getAppName(item.packageName!!)
+                    tv.setTextColor(adaptiveColor)
                 }
                 ItemType.CARD -> {
                     val h = holder as CardViewHolder
                     val info = item.info!!
+                    ThemeManager.applySettingItemStyle(this@WidgetPickerActivity, h.itemView as LinearLayout, settingsManager)
                     h.label.text = info.loadLabel(packageManager)
+                    h.label.setTextColor(adaptiveColor)
                     h.size.text = getString(R.string.widget_size_format, item.spanX, item.spanY)
+                    h.size.setTextColor(secondaryColor)
 
                     val providerStr = info.provider.flattenToString()
                     h.preview.tag = providerStr
@@ -290,6 +300,17 @@ class WidgetPickerActivity : Activity() {
     }
 
     private class SimpleViewHolder(view: View) : RecyclerView.ViewHolder(view)
+    override fun onConfigurationChanged(newConfig: android.content.res.Configuration) {
+        super.onConfigurationChanged(newConfig)
+        ThemeUtils.applyWindowBlur(window, settingsManager.isLiquidGlass)
+
+        rootContainer.background = ThemeUtils.getGlassDrawable(this, settingsManager, 0f)
+        val adaptiveColor = ThemeUtils.getAdaptiveColor(this, settingsManager, true)
+        closeBtn.setColorFilter(adaptiveColor)
+
+        recyclerView.adapter?.notifyDataSetChanged()
+    }
+
     private class CardViewHolder(view: View, val preview: ImageView, val label: TextView, val size: TextView) : RecyclerView.ViewHolder(view)
 
     private fun dpToPx(dp: Int): Int {
