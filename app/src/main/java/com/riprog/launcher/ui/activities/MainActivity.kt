@@ -131,6 +131,7 @@ class MainActivity : Activity() {
 
         homeView.post {
             restoreHomeState()
+            homeView.refreshData(homeItems)
             showDefaultLauncherPrompt()
         }
     }
@@ -216,9 +217,7 @@ class MainActivity : Activity() {
         if (homeItems.isEmpty()) {
             setupDefaultHome()
         } else {
-            for (item in homeItems) {
-                renderHomeItem(item)
-            }
+            homeView.refreshData(homeItems)
         }
     }
 
@@ -227,68 +226,11 @@ class MainActivity : Activity() {
     }
 
     fun renderHomeItem(item: HomeItem?): View? {
-        if (item == null) return null
-        var view: View? = null
-        when (item.type) {
-            HomeItem.Type.APP -> view = createAppView(item)
-            HomeItem.Type.WIDGET -> view = createWidgetView(item)
-            HomeItem.Type.CLOCK -> view = createClockView(item)
-            HomeItem.Type.FOLDER -> view = folderUI.createFolderView(
-                item,
-                true,
-                homeView.getCellWidth().toInt(),
-                homeView.getCellHeight().toInt()
-            )
-            else -> {}
-        }
-        if (view != null) {
-            homeView.addItemView(item, view)
-            if (item.type == HomeItem.Type.FOLDER) {
-                val grid = findGridLayout(view as ViewGroup)
-                if (grid != null) refreshFolderPreview(item, grid)
-            }
-        }
-        return view
-    }
-
-    fun refreshFolderPreview(folder: HomeItem, grid: GridLayout) {
-        grid.removeAllViews()
-        if (folder.folderItems == null) return
-        val count = Math.min(folder.folderItems.size, 4)
-        val scale = settingsManager.iconScale
-        val size = (dpToPx(18) * scale).toInt()
-
-        for (i in 0 until count) {
-            val sub = folder.folderItems[i]
-            val packageName = sub.packageName ?: continue
-            val iv = ImageView(this)
-
-            val lp = GridLayout.LayoutParams(
-                GridLayout.spec(i / 2, GridLayout.CENTER, 1f),
-                GridLayout.spec(i % 2, GridLayout.CENTER, 1f)
-            )
-            lp.width = size
-            lp.height = size
-            iv.layoutParams = lp
-
-            model.loadIcon(AppItem.fromPackage(this, packageName)) { bitmap ->
-                iv.setImageBitmap(bitmap)
-            }
-            grid.addView(iv)
-        }
-    }
-
-    private fun findGridLayout(container: ViewGroup): GridLayout? {
-        for (i in 0 until container.childCount) {
-            val child = container.getChildAt(i)
-            if (child is GridLayout) return child
-            if (child is ViewGroup) {
-                val g = findGridLayout(child)
-                if (g != null) return g
-            }
-        }
+        // Legacy, now driven by refreshData
+        homeView.refreshData(homeItems)
         return null
     }
+
 
     fun createAppView(item: HomeItem): View {
         val container = LinearLayout(this)
@@ -344,11 +286,8 @@ class MainActivity : Activity() {
 
     fun removeHomeItem(item: HomeItem?, view: View?) {
         homeItems.remove(item)
-        if (view != null && view.parent is ViewGroup) {
-            (view.parent as ViewGroup).removeView(view)
-        }
         saveHomeState()
-        homeView.refreshIcons(model, allApps)
+        homeView.refreshData(homeItems)
     }
 
     fun showAppInfo(item: HomeItem?) {
@@ -437,7 +376,7 @@ class MainActivity : Activity() {
         model.loadApps { apps ->
             this.allApps = apps
             drawerView.setApps(apps, model)
-            homeView.refreshIcons(model, apps)
+            homeView.refreshData(homeItems)
         }
     }
 
@@ -472,8 +411,7 @@ class MainActivity : Activity() {
     override fun onResume() {
         super.onResume()
         autoDimmingBackground?.updateDimVisibility()
-        homeView.refreshLayout()
-        homeView.refreshIcons(model, allApps)
+        homeView.refreshData(homeItems)
     }
 
     override fun onStart() {
@@ -495,7 +433,7 @@ class MainActivity : Activity() {
         super.onActivityResult(requestCode, resultCode, data)
         if (requestCode == 100) {
             loadApps()
-            homeView.refreshLayout()
+            homeView.refreshData(homeItems)
             return
         }
         if (resultCode == RESULT_OK && data != null) {
@@ -660,7 +598,7 @@ class MainActivity : Activity() {
 
             override fun onAddPageRight() {
                 homeView.addPageRight()
-                homeView.scrollToPage(homeView.pages.size - 1)
+                homeView.scrollToPage(homeView.getPageCount() - 1)
             }
 
             override fun onRemovePage() {
@@ -806,7 +744,7 @@ class MainActivity : Activity() {
 
         val item = HomeItem.createApp(app.packageName, app.className, slot.third.toFloat(), slot.second.toFloat(), slot.first)
         homeItems.add(item)
-        renderHomeItem(item)
+        homeView.refreshData(homeItems)
         saveHomeState()
 
         homeView.scrollToPage(slot.first)

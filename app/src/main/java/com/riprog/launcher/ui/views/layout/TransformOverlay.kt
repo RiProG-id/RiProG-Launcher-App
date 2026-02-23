@@ -170,13 +170,13 @@ class TransformOverlay(context: Context, private val targetView: View, private v
                 val spans = WidgetSizingUtils.calculateWidgetSpan(activity, activity.homeView, info)
                 item.spanX = spans.first
                 item.spanY = spans.second
-                activity.homeView.updateViewPosition(item, targetView)
+                activity.homeView.refreshData(activity.homeItems)
             }
         } else if (item.type == HomeItem.Type.APP || item.type == HomeItem.Type.FOLDER) {
             item.spanX = 1
             item.spanY = 1
             if (context is MainActivity) {
-                (context as MainActivity).homeView.updateViewPosition(item, targetView)
+                (context as MainActivity).homeView.refreshData((context as MainActivity).homeItems)
             }
         }
 
@@ -527,7 +527,7 @@ class TransformOverlay(context: Context, private val targetView: View, private v
                 item.spanY = newSpanY
                 item.col = newCol.toFloat()
                 item.row = newRow.toFloat()
-                activity.homeView.updateViewPosition(item, targetView)
+                activity.homeView.refreshData(activity.homeItems)
             }
         }
     }

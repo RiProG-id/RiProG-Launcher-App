@@ -178,34 +178,16 @@ class FreeformController(
 
         if (!preferences.isFreeformHome) {
             val targetPage = homeView.resolvePageIndex(v.x + v.width / 2f)
-            val relativeX = v.x - (homeView.pages[targetPage].left + homeView.pagesContainer.translationX)
 
-            val newCol = max(0, min(preferences.columns - item.spanX, ((relativeX - horizontalPadding) / cellWidth).roundToInt()))
-            val newRow = max(0, min(HomeView.GRID_ROWS - item.spanY, (v.y / cellHeight).roundToInt()))
-
-            item.col = newCol.toFloat()
-            item.row = newRow.toFloat()
+            // Simplified for RV
             item.page = targetPage
             item.rotation = 0f
             item.scale = 1.0f
             item.tiltX = 0f
             item.tiltY = 0f
 
-            // Update page indicator to reflect target
             homeView.pageIndicator.setCurrentPage(targetPage)
-
-            // Animate to snapped position relative to current display (MainLayout coordinates)
-            val snappedX = newCol * cellWidth + horizontalPadding + (homeView.pages[targetPage].left + homeView.pagesContainer.translationX)
-            val snappedY = newRow * cellHeight
-
-            v.animate()
-                .x(snappedX)
-                .y(snappedY)
-                .rotation(0f)
-                .scaleX(1f)
-                .scaleY(1f)
-                .setDuration(200)
-                .start()
+            homeView.refreshData((activity as MainActivity).homeItems)
         }
         mainActivity.saveHomeState()
         return false
@@ -216,25 +198,17 @@ class FreeformController(
         val item = transformingView!!.tag as HomeItem? ?: return
 
         val homeView = (activity as? MainActivity)?.homeView ?: return
-        val cellWidth = homeView.getCellWidth()
-        val cellHeight = homeView.getCellHeight()
 
         val absX = transformingView!!.x
         val targetPage = homeView.resolvePageIndex(absX + transformingView!!.width / 2f)
         item.page = targetPage
 
-        if (cellWidth > 0 && cellHeight > 0) {
-            val density = activity.resources.displayMetrics.density
-            val horizontalPadding = HomeView.HORIZONTAL_PADDING_DP * density
-            val relativeX = absX - (homeView.pages[targetPage].left + homeView.pagesContainer.translationX)
-            item.col = (relativeX - horizontalPadding) / cellWidth
-            item.row = transformingView!!.y / cellHeight
-        }
-
         item.rotation = transformingView!!.rotation
         item.scale = transformingView!!.scaleX
         item.tiltX = transformingView!!.rotationX
         item.tiltY = transformingView!!.rotationY
+
+        homeView.refreshData((activity as MainActivity).homeItems)
         callback.onSaveState()
     }
 

@@ -7,13 +7,15 @@ import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
 import android.widget.FrameLayout
-import android.widget.GridLayout
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
+import androidx.recyclerview.widget.GridLayoutManager
+import androidx.recyclerview.widget.RecyclerView
 import com.riprog.launcher.R
 import com.riprog.launcher.logic.managers.SettingsManager
 import com.riprog.launcher.theme.ThemeUtils
+import com.riprog.launcher.ui.adapters.MenuAdapter
 
 class HomeMenuOverlay(context: Context, private val settingsManager: SettingsManager, private val callback: Callback) : FrameLayout(context) {
 
@@ -35,76 +37,38 @@ class HomeMenuOverlay(context: Context, private val settingsManager: SettingsMan
         isFocusable = true
         setOnClickListener { callback.dismiss() }
 
-        val grid = GridLayout(context)
-        grid.columnCount = 3
-        grid.alignmentMode = GridLayout.ALIGN_MARGINS
-        grid.useDefaultMargins = false
+        val recyclerView = RecyclerView(context)
+        val adapter = MenuAdapter(settingsManager, object : MenuAdapter.Callback {
+            override fun onMenuItemClick(item: MenuAdapter.MenuItem) {
+                when (item.id) {
+                    0 -> callback.onAddPageLeft()
+                    1 -> callback.onRemovePage()
+                    2 -> callback.onAddPageRight()
+                    3 -> callback.onPickWidget()
+                    4 -> callback.onOpenWallpaper()
+                    5 -> callback.onOpenSettings()
+                }
+                callback.dismiss()
+            }
+        })
+        recyclerView.adapter = adapter
+        recyclerView.layoutManager = GridLayoutManager(context, 3)
 
         val adaptiveColor = ThemeUtils.getAdaptiveColor(context, settingsManager, true)
+        val items = listOf(
+            MenuAdapter.MenuItem(0, R.drawable.ic_layout, context.getString(R.string.action_add_page_left), adaptiveColor),
+            MenuAdapter.MenuItem(1, R.drawable.ic_remove, context.getString(R.string.layout_remove_page), adaptiveColor, callback.getPageCount() > 1),
+            MenuAdapter.MenuItem(2, R.drawable.ic_layout, context.getString(R.string.action_add_page_right), adaptiveColor),
+            MenuAdapter.MenuItem(3, R.drawable.ic_widgets, context.getString(R.string.menu_widgets), adaptiveColor),
+            MenuAdapter.MenuItem(4, R.drawable.ic_wallpaper, context.getString(R.string.menu_wallpaper), adaptiveColor),
+            MenuAdapter.MenuItem(5, R.drawable.ic_settings, context.getString(R.string.menu_settings), adaptiveColor)
+        )
+        adapter.setItems(items)
 
-        // Row 1
-        grid.addView(createButton(R.drawable.ic_layout, context.getString(R.string.action_add_page_left), adaptiveColor) { callback.onAddPageLeft() })
-
-        val removeBtn = createButton(R.drawable.ic_remove, context.getString(R.string.layout_remove_page), adaptiveColor) { callback.onRemovePage() }
-        if (callback.getPageCount() <= 1) {
-            removeBtn.alpha = 0.4f
-            removeBtn.isClickable = false
-            removeBtn.isFocusable = false
-            val innerBtn = (removeBtn as ViewGroup).getChildAt(0)
-            innerBtn.isClickable = false
-            innerBtn.isFocusable = false
-        }
-        grid.addView(removeBtn)
-
-        grid.addView(createButton(R.drawable.ic_layout, context.getString(R.string.action_add_page_right), adaptiveColor) { callback.onAddPageRight() })
-
-        // Row 2
-        grid.addView(createButton(R.drawable.ic_widgets, context.getString(R.string.menu_widgets), adaptiveColor) { callback.onPickWidget() })
-        grid.addView(createButton(R.drawable.ic_wallpaper, context.getString(R.string.menu_wallpaper), adaptiveColor) { callback.onOpenWallpaper() })
-        grid.addView(createButton(R.drawable.ic_settings, context.getString(R.string.menu_settings), adaptiveColor) { callback.onOpenSettings() })
-
-        val lp = LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT)
+        val lp = LayoutParams(dpToPx(320), LayoutParams.WRAP_CONTENT)
         lp.gravity = Gravity.CENTER
         lp.setMargins(dpToPx(8), dpToPx(8), dpToPx(8), dpToPx(8))
-        addView(grid, lp)
-    }
-
-    private fun createButton(iconRes: Int, text: String, color: Int, onClick: () -> Unit): View {
-        val container = FrameLayout(context)
-        val containerLp = GridLayout.LayoutParams()
-        containerLp.width = dpToPx(100)
-        containerLp.height = dpToPx(90)
-        containerLp.setMargins(dpToPx(4), dpToPx(4), dpToPx(4), dpToPx(4))
-        container.layoutParams = containerLp
-
-        val btn = LinearLayout(context)
-        btn.orientation = LinearLayout.VERTICAL
-        btn.gravity = Gravity.CENTER
-        btn.background = ThemeUtils.getGlassDrawable(context, settingsManager, 16f)
-        btn.isClickable = true
-        btn.isFocusable = true
-        btn.setOnClickListener {
-            onClick()
-            callback.dismiss()
-        }
-
-        val icon = ImageView(context)
-        icon.setImageResource(iconRes)
-        icon.setColorFilter(color)
-        btn.addView(icon, LinearLayout.LayoutParams(dpToPx(24), dpToPx(24)))
-
-        val label = TextView(context)
-        label.text = text
-        label.setTextColor(color)
-        label.textSize = 9f
-        label.setTypeface(null, Typeface.BOLD)
-        label.setPadding(dpToPx(4), dpToPx(8), dpToPx(4), 0)
-        label.gravity = Gravity.CENTER
-        label.maxLines = 2
-        btn.addView(label)
-
-        container.addView(btn, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT))
-        return container
+        addView(recyclerView, lp)
     }
 
     override fun performClick(): Boolean {

@@ -8,9 +8,12 @@ import android.view.ViewGroup
 import android.widget.FrameLayout
 import android.widget.LinearLayout
 import android.widget.TextView
+import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.RecyclerView
 import com.riprog.launcher.R
 import com.riprog.launcher.logic.managers.SettingsManager
 import com.riprog.launcher.theme.ThemeUtils
+import com.riprog.launcher.ui.adapters.MenuAdapter
 
 class AppDrawerContextMenu(context: Context, private val settingsManager: SettingsManager, private val callback: Callback) : FrameLayout(context) {
 
@@ -27,31 +30,27 @@ class AppDrawerContextMenu(context: Context, private val settingsManager: Settin
         isFocusable = true
         setOnClickListener { callback.dismiss() }
 
-        val menuLayout = LinearLayout(context)
-        menuLayout.orientation = LinearLayout.VERTICAL
-        menuLayout.background = ThemeUtils.getGlassDrawable(context, settingsManager, 12f)
-        menuLayout.setPadding(dpToPx(8), dpToPx(8), dpToPx(8), dpToPx(8))
-        menuLayout.elevation = dpToPx(8).toFloat()
+        val recyclerView = RecyclerView(context)
+        val adapter = MenuAdapter(settingsManager, object : MenuAdapter.Callback {
+            override fun onMenuItemClick(item: MenuAdapter.MenuItem) {
+                when (item.id) {
+                    0 -> callback.onAddToHome()
+                    1 -> callback.onAppInfo()
+                }
+                callback.dismiss()
+            }
+        })
+        recyclerView.adapter = adapter
+        recyclerView.layoutManager = LinearLayoutManager(context)
 
         val adaptiveColor = ThemeUtils.getAdaptiveColor(context, settingsManager, true)
+        val items = listOf(
+            MenuAdapter.MenuItem(0, R.drawable.ic_layout, context.getString(R.string.action_add_to_home), adaptiveColor),
+            MenuAdapter.MenuItem(1, R.drawable.ic_info, context.getString(R.string.action_app_info), adaptiveColor)
+        )
+        adapter.setItems(items)
 
-        menuLayout.addView(createMenuItem(R.string.action_add_to_home, adaptiveColor) { callback.onAddToHome() })
-        menuLayout.addView(createMenuItem(R.string.action_app_info, adaptiveColor) { callback.onAppInfo() })
-
-        addView(menuLayout, LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT))
-    }
-
-    private fun createMenuItem(textRes: Int, color: Int, onClick: () -> Unit): View {
-        val tv = TextView(context)
-        tv.setText(textRes)
-        tv.setTextColor(color)
-        tv.textSize = 14f
-        tv.setPadding(dpToPx(16), dpToPx(12), dpToPx(16), dpToPx(12))
-        tv.setOnClickListener {
-            onClick()
-            callback.dismiss()
-        }
-        return tv
+        addView(recyclerView, LayoutParams(dpToPx(160), LayoutParams.WRAP_CONTENT))
     }
 
     fun showAt(anchorView: View, root: ViewGroup) {

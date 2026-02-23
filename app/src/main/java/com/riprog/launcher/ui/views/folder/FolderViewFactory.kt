@@ -12,9 +12,11 @@ import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
 import android.widget.FrameLayout
-import android.widget.GridLayout
 import android.widget.LinearLayout
 import android.widget.TextView
+import androidx.recyclerview.widget.GridLayoutManager
+import androidx.recyclerview.widget.RecyclerView
+import com.riprog.launcher.ui.adapters.UnifiedLauncherAdapter
 
 class FolderViewFactory(private val context: Context, private val preferences: SettingsManager) {
 
@@ -47,12 +49,18 @@ class FolderViewFactory(private val context: Context, private val preferences: S
         val padding = dpToPx(6f)
         previewContainer.setPadding(padding, padding, padding, padding)
 
-        val grid = GridLayout(context)
-        grid.tag = "folder_grid"
-        grid.columnCount = 2
-        grid.rowCount = 2
+        val recyclerView = RecyclerView(context)
+        recyclerView.tag = "folder_rv"
+        val adapter = UnifiedLauncherAdapter(preferences, null, object : UnifiedLauncherAdapter.Callback {
+            override fun onItemClick(item: Any, view: View) {}
+            override fun onItemLongClick(item: Any, view: View): Boolean = false
+        })
+        recyclerView.adapter = adapter
+        recyclerView.layoutManager = GridLayoutManager(context, 2)
+        adapter.setItems(item.folderItems.take(4))
+
         previewContainer.addView(
-            grid, FrameLayout.LayoutParams(
+            recyclerView, FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.MATCH_PARENT
             )

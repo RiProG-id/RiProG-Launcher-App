@@ -19,6 +19,7 @@ import android.view.inputmethod.InputMethodManager
 import android.widget.FrameLayout
 import android.widget.ImageView
 import android.widget.LinearLayout
+import androidx.recyclerview.widget.RecyclerView
 import kotlin.math.abs
 import kotlin.math.sqrt
 
@@ -174,7 +175,6 @@ class MainLayout(private val activity: MainActivity) : FrameLayout(activity) {
                 }
 
                 if (isDragging) {
-                    activity.homeView.handleDrag(event.x, event.y)
                     return true
                 }
 
@@ -205,7 +205,6 @@ class MainLayout(private val activity: MainActivity) : FrameLayout(activity) {
                     return true
                 }
                 if (isDragging) {
-                    activity.homeView.endDragging()
                     isDragging = false
                     return true
                 }
@@ -227,41 +226,28 @@ class MainLayout(private val activity: MainActivity) : FrameLayout(activity) {
 
     fun findTouchedHomeItem(x: Float, y: Float, exclude: View? = null): View? {
         val homeView = activity.homeView
-        val pagesContainer = homeView.pagesContainer
+        val rv = homeView.recyclerView
 
-        // Strategy: First check current page, then check others
-        val currentIdx = homeView.currentPage
-        val indices = mutableListOf(currentIdx)
-        for (i in 0 until homeView.pages.size) {
-            if (i != currentIdx) indices.add(i)
+        val pageView = rv.findChildViewUnder(x - rv.x, y - rv.y) ?: return null
+        if (pageView !is ViewGroup) return null
+
+        // In the new architecture, the page is a RecyclerView
+        val pageRv = findRecyclerViewInPage(pageView) ?: return null
+
+        val itemView = pageRv.findChildViewUnder(x - rv.x - pageView.x, y - rv.y - pageView.y)
+        if (itemView != null && itemView !== exclude) {
+            return itemView
         }
+        return null
+    }
 
-        for (pageIdx in indices) {
-            if (pageIdx >= homeView.pages.size) continue
-            val pageLayout = homeView.pages[pageIdx]
-
-            val pageAbsX = pagesContainer.translationX + pageLayout.left
-            val pageAbsY = pagesContainer.translationY + pageLayout.top
-
-            val adjustedX = x - pageAbsX
-            val adjustedY = y - pageAbsY
-
-            for (i in pageLayout.childCount - 1 downTo 0) {
-                val child = pageLayout.getChildAt(i)
-                if (child === exclude) continue
-
-                val item = child.tag as? HomeItem
-                val cellWidth = homeView.getCellWidth()
-                val cellHeight = homeView.getCellHeight()
-
-                val w = if (child.width > 0) child.width.toFloat() else (item?.spanX?.toFloat()?.times(cellWidth) ?: 0f)
-                val h = if (child.height > 0) child.height.toFloat() else (item?.spanY?.toFloat()?.times(cellHeight) ?: 0f)
-
-                if (adjustedX >= child.x && adjustedX <= child.x + w &&
-                    adjustedY >= child.y && adjustedY <= child.y + h
-                ) {
-                    return child
-                }
+    private fun findRecyclerViewInPage(viewGroup: ViewGroup): RecyclerView? {
+        for (i in 0 until viewGroup.childCount) {
+            val child = viewGroup.getChildAt(i)
+            if (child is RecyclerView) return child
+            if (child is ViewGroup) {
+                val rv = findRecyclerViewInPage(child)
+                if (rv != null) return rv
             }
         }
         return null
@@ -321,7 +307,6 @@ class MainLayout(private val activity: MainActivity) : FrameLayout(activity) {
         v.x = lastX - w / 2f
         v.y = lastY - h / 2f
 
-        activity.homeView.startDragging(v, lastX, lastY)
     }
 
     fun isDrawerOpen(): Boolean = isDrawerOpen
