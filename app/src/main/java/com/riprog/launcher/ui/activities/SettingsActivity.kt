@@ -39,17 +39,17 @@ class SettingsActivity : Activity() {
         ThemeManager.applyThemeMode(this, settingsManager.themeMode)
 
         val w = window
+        w.setFlags(WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS, WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS)
         w.statusBarColor = Color.TRANSPARENT
         w.navigationBarColor = Color.TRANSPARENT
         WindowCompat.setDecorFitsSystemWindows(w, false)
         ThemeUtils.applyWindowBlur(w, settingsManager.isLiquidGlass)
 
         val rootContainer = FrameLayout(this)
-        rootContainer.setBackgroundColor(Color.TRANSPARENT)
+        rootContainer.background = ThemeUtils.getGlassDrawable(this, settingsManager, 0f)
 
         recyclerView = RecyclerView(this)
         recyclerView.layoutManager = LinearLayoutManager(this)
-        recyclerView.background = ThemeUtils.getGlassDrawable(this, settingsManager)
         recyclerView.isVerticalScrollBarEnabled = false
         recyclerView.clipToPadding = false
 
