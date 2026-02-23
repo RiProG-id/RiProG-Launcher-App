@@ -126,7 +126,7 @@ class MainLayout(private val activity: MainActivity) : FrameLayout(activity) {
             MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
                 if (isDragging) return true
                 val duration = System.currentTimeMillis() - downTime
-                if (duration < 80) {
+                if (duration < 20) {
                     longPressHandler.removeCallbacks(longPressRunnable)
                     return false
                 }
@@ -216,7 +216,7 @@ class MainLayout(private val activity: MainActivity) : FrameLayout(activity) {
                     val finalDx = event.x - startX
                     val finalDy = event.y - startY
                     val dist = sqrt((finalDx * finalDx + finalDy * finalDy).toDouble()).toFloat()
-                    if (duration >= 80 && duration < 350 && dist < touchSlop) {
+                    if (duration >= 20 && duration < 350 && dist < touchSlop) {
                         if (touchedView != null) activity.handleItemClick(touchedView!!)
                         else performClick()
                     }
