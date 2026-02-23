@@ -44,13 +44,6 @@ class MainLayout(private val activity: MainActivity) : FrameLayout(activity) {
         longPressTriggered = true
         if (touchedView != null) {
             activity.freeformInteraction.showTransformOverlay(touchedView!!, startX, startY)
-        } else {
-            val cellWidth = activity.homeView.getCellWidth()
-            val cellHeight = activity.homeView.getCellHeight()
-            val horizontalPadding = dpToPx(HomeView.HORIZONTAL_PADDING_DP)
-            val col = (startX - horizontalPadding) / if (cellWidth > 0) cellWidth else 1.0f
-            val row = startY / if (cellHeight > 0) cellHeight else 1.0f
-            activity.showHomeContextMenu(col, row, activity.homeView.currentPage)
         }
     }
 
@@ -352,8 +345,6 @@ class MainLayout(private val activity: MainActivity) : FrameLayout(activity) {
         if (item.type == HomeItem.Type.APP) {
             val intent = activity.packageManager.getLaunchIntentForPackage(item.packageName!!)
             if (intent != null) activity.startActivity(intent)
-        } else if (item.type == HomeItem.Type.WIDGET) {
-            activity.showWidgetOptions(item, v)
         } else if (item.type == HomeItem.Type.FOLDER) {
             activity.folderManager.openFolder(item, v, activity.homeItems, activity.allApps)
         }

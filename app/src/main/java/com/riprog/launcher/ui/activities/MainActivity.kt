@@ -19,7 +19,6 @@ import com.riprog.launcher.R
 import com.riprog.launcher.LauncherApplication
 
 import android.app.Activity
-import android.app.AlertDialog
 import android.appwidget.AppWidgetHost
 import android.appwidget.AppWidgetHostView
 import android.appwidget.AppWidgetManager
@@ -91,19 +90,7 @@ class MainActivity : Activity() {
         drawerView.setColumns(settingsManager.columns)
         drawerView.setOnAppLongClickListener(object : DrawerView.OnAppLongClickListener {
             override fun onAppLongClick(app: AppItem) {
-                val options = arrayOf(getString(R.string.action_app_info), getString(R.string.action_add_to_home))
-                val dialog = AlertDialog.Builder(this@MainActivity, android.R.style.Theme_DeviceDefault_Dialog_Alert)
-                    .setTitle(app.label)
-                    .setItems(options) { _, which ->
-                        if (which == 0) {
-                            showAppInfo(HomeItem.createApp(app.packageName, app.className, 0f, 0f, 0))
-                        } else {
-                            mainLayout.closeDrawer()
-                            spawnApp(app)
-                        }
-                    }.create()
-                dialog.show()
-                if (dialog.window != null) dialog.window!!.setBackgroundDrawableResource(R.drawable.glass_bg)
+                // Legacy context menu removed
             }
         })
 
@@ -352,50 +339,6 @@ class MainActivity : Activity() {
         }
     }
 
-    fun showWidgetOptions(item: HomeItem, hostView: View) {
-        val options = arrayOf(getString(R.string.action_resize), getString(R.string.action_remove))
-        val dialog = AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert)
-            .setItems(options) { _, which ->
-                if (which == 0) showResizeDialog(item, hostView)
-                else removeHomeItem(item, hostView)
-            }.create()
-        dialog.show()
-        if (dialog.window != null) dialog.window!!.setBackgroundDrawableResource(R.drawable.glass_bg)
-    }
-
-    private fun showResizeDialog(item: HomeItem, hostView: View) {
-        val sizes = arrayOf("1x1", "2x1", "2x2", "4x2", "4x1")
-        val dialog = AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert)
-            .setTitle(R.string.title_resize_widget)
-            .setItems(sizes) { _, which ->
-                when (which) {
-                    0 -> {
-                        item.spanX = 1
-                        item.spanY = 1
-                    }
-                    1 -> {
-                        item.spanX = 2
-                        item.spanY = 1
-                    }
-                    2 -> {
-                        item.spanX = 2
-                        item.spanY = 2
-                    }
-                    3 -> {
-                        item.spanX = 4
-                        item.spanY = 2
-                    }
-                    4 -> {
-                        item.spanX = 4
-                        item.spanY = 1
-                    }
-                }
-                homeView.updateViewPosition(item, hostView)
-                saveHomeState()
-            }.create()
-        dialog.show()
-        if (dialog.window != null) dialog.window!!.setBackgroundDrawableResource(R.drawable.glass_bg)
-    }
 
     fun removeHomeItem(item: HomeItem?, view: View?) {
         homeItems.remove(item)
@@ -456,89 +399,6 @@ class MainActivity : Activity() {
         return null
     }
 
-    fun showHomeContextMenu(col: Float, row: Float, page: Int) {
-        lastGridCol = col
-        lastGridRow = row
-
-        val options: MutableList<String> = ArrayList()
-        val icons: MutableList<Int> = ArrayList()
-
-        options.add(getString(R.string.menu_widgets))
-        icons.add(R.drawable.ic_widgets)
-
-        options.add(getString(R.string.menu_wallpaper))
-        icons.add(R.drawable.ic_wallpaper)
-
-        options.add(getString(R.string.menu_settings))
-        icons.add(R.drawable.ic_settings)
-
-        options.add(getString(R.string.layout_add_page))
-        icons.add(R.drawable.ic_layout)
-
-        if (homeView.getPageCount() > 1) {
-            options.add(getString(R.string.layout_remove_page))
-            icons.add(R.drawable.ic_remove)
-        }
-
-        val adaptiveColor = ThemeUtils.getAdaptiveColor(this, settingsManager, true)
-
-        val adapter: ArrayAdapter<String> = object : ArrayAdapter<String>(this, android.R.layout.select_dialog_item, android.R.id.text1, options) {
-            override fun getView(position: Int, convertView: View?, parent: ViewGroup): View {
-                val view = super.getView(position, convertView, parent)
-                val tv = view.findViewById<TextView>(android.R.id.text1)
-                tv.setCompoundDrawablesWithIntrinsicBounds(icons[position].toInt(), 0, 0, 0)
-                tv.compoundDrawablePadding = dpToPx(16)
-                tv.setTextColor(adaptiveColor)
-                val d = tv.compoundDrawables[0]
-                d?.setTint(adaptiveColor)
-                return view
-            }
-        }
-
-        val dialog = AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert)
-            .setTitle(R.string.title_home_menu)
-            .setAdapter(adapter) { _, which ->
-                val selected = options[which]
-                if (selected == getString(R.string.menu_widgets)) {
-                    pickWidget()
-                } else if (selected == getString(R.string.menu_wallpaper)) {
-                    openWallpaperPicker()
-                } else if (selected == getString(R.string.menu_settings)) {
-                    openSettings()
-                } else if (selected == getString(R.string.layout_add_page)) {
-                    homeView.onAddPage()
-                } else if (selected == getString(R.string.layout_remove_page)) {
-                    homeView.onRemovePage()
-                }
-            }.create()
-
-        dialog.show()
-        if (dialog.window != null) {
-            dialog.window!!.setBackgroundDrawable(ThemeUtils.getGlassDrawable(this, settingsManager))
-            ThemeUtils.applyWindowBlur(dialog.window!!, settingsManager.isLiquidGlass)
-        }
-    }
-
-    private fun pickAppForHome(col: Float, row: Float, page: Int) {
-        if (allApps.isEmpty()) {
-            Toast.makeText(this, getString(R.string.apps_not_loaded), Toast.LENGTH_SHORT).show()
-            return
-        }
-        val labels = arrayOfNulls<String>(allApps.size)
-        for (i in allApps.indices) labels[i] = allApps[i].label
-
-        val dialog = AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert)
-            .setTitle(R.string.title_pick_app)
-            .setItems(labels) { _, which ->
-                val selected = allApps[which]
-                val item = HomeItem.createApp(selected.packageName, selected.className, col, row, page)
-                homeItems.add(item)
-                renderHomeItem(item)
-                saveHomeState()
-            }.create()
-        dialog.show()
-        if (dialog.window != null) dialog.window!!.setBackgroundDrawableResource(R.drawable.glass_bg)
-    }
 
     private fun openWallpaperPicker() {
         val intent = Intent(Intent.ACTION_SET_WALLPAPER)
