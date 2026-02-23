@@ -17,7 +17,9 @@ import android.text.util.Linkify
 import android.util.TypedValue
 import android.view.*
 import android.widget.*
+import androidx.core.view.ViewCompat
 import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 
@@ -37,35 +39,39 @@ class SettingsActivity : Activity() {
         ThemeManager.applyThemeMode(this, settingsManager.themeMode)
 
         val w = window
-        w.setFlags(WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS, WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS)
         w.statusBarColor = Color.TRANSPARENT
         w.navigationBarColor = Color.TRANSPARENT
-
         WindowCompat.setDecorFitsSystemWindows(w, false)
+        ThemeUtils.applyWindowBlur(w, settingsManager.isLiquidGlass)
 
         val rootContainer = FrameLayout(this)
-        rootContainer.setPadding(dpToPx(16), dpToPx(48), dpToPx(16), dpToPx(32))
-
-        rootContainer.setOnApplyWindowInsetsListener { v, insets ->
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                val systemInsets = insets.getInsets(WindowInsets.Type.systemBars())
-                v.setPadding(dpToPx(16), systemInsets.top + dpToPx(16), dpToPx(16), systemInsets.bottom + dpToPx(16))
-            } else {
-                v.setPadding(dpToPx(16), insets.systemWindowInsetTop + dpToPx(16), dpToPx(16), insets.systemWindowInsetBottom + dpToPx(16))
-            }
-            insets
-        }
+        rootContainer.setBackgroundColor(Color.TRANSPARENT)
 
         recyclerView = RecyclerView(this)
         recyclerView.layoutManager = LinearLayoutManager(this)
         recyclerView.background = ThemeUtils.getGlassDrawable(this, settingsManager)
         recyclerView.isVerticalScrollBarEnabled = false
-        recyclerView.setPadding(dpToPx(24), dpToPx(32), dpToPx(24), dpToPx(32))
         recyclerView.clipToPadding = false
-        rootContainer.addView(recyclerView)
+
+        // Initial padding
+        recyclerView.setPadding(dpToPx(24), dpToPx(32), dpToPx(24), dpToPx(32))
+
+        rootContainer.addView(recyclerView, FrameLayout.LayoutParams(
+            ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT
+        ))
+
+        ViewCompat.setOnApplyWindowInsetsListener(recyclerView) { v, insets ->
+            val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
+            v.setPadding(
+                dpToPx(24),
+                systemBars.top + dpToPx(32),
+                dpToPx(24),
+                systemBars.bottom + dpToPx(32)
+            )
+            insets
+        }
 
         setupAdapter()
-
         setContentView(rootContainer)
     }
 
@@ -118,6 +124,8 @@ class SettingsActivity : Activity() {
         override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): RecyclerView.ViewHolder {
             val context = parent.context
             val type = SettingType.values()[viewType]
+            val adaptiveColor = ThemeUtils.getAdaptiveColor(context, settingsManager, true)
+
             return when (type) {
                 SettingType.TITLE -> {
                     val titleLayout = LinearLayout(context)
@@ -125,7 +133,6 @@ class SettingsActivity : Activity() {
                     titleLayout.gravity = Gravity.CENTER_VERTICAL
                     titleLayout.setPadding(0, 0, 0, dpToPx(32))
 
-                    val adaptiveColor = ThemeUtils.getAdaptiveColor(context, settingsManager, true)
                     val titleIcon = ImageView(context)
                     titleIcon.setImageResource(R.drawable.ic_settings)
                     titleIcon.setColorFilter(adaptiveColor)
@@ -160,7 +167,6 @@ class SettingsActivity : Activity() {
                     val textParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
                     item.addView(textLayout, textParams)
 
-                    val adaptiveColor = ThemeUtils.getAdaptiveColor(context, settingsManager, true)
                     val titleView = TextView(context)
                     titleView.textSize = 18f
                     titleView.setTextColor(adaptiveColor)
@@ -186,7 +192,6 @@ class SettingsActivity : Activity() {
                     item.setPadding(dpToPx(16), dpToPx(16), dpToPx(16), dpToPx(16))
                     ThemeManager.applySettingItemStyle(context as Activity, item, settingsManager)
 
-                    val adaptiveColor = ThemeUtils.getAdaptiveColor(context, settingsManager, true)
                     val titleView = TextView(context)
                     titleView.setText(R.string.setting_theme_mode)
                     titleView.textSize = 18f
@@ -205,7 +210,6 @@ class SettingsActivity : Activity() {
                 }
                 SettingType.ABOUT -> {
                     val aboutContent = TextView(context)
-                    val adaptiveColor = ThemeUtils.getAdaptiveColor(context, settingsManager, true)
                     aboutContent.setTextColor(adaptiveColor and 0xBBFFFFFF.toInt())
                     aboutContent.textSize = 14f
                     aboutContent.setPadding(0, 0, 0, dpToPx(32))

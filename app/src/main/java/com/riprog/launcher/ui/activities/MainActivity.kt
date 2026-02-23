@@ -14,6 +14,7 @@ import com.riprog.launcher.logic.managers.SettingsManager
 import com.riprog.launcher.logic.managers.FolderManager
 import com.riprog.launcher.logic.controllers.FreeformController
 import com.riprog.launcher.logic.utils.WidgetSizingUtils
+import com.riprog.launcher.ui.activities.WidgetPickerActivity
 import com.riprog.launcher.data.repository.AppRepository
 import com.riprog.launcher.data.model.HomeItem
 import com.riprog.launcher.data.model.AppItem
@@ -498,6 +499,15 @@ class MainActivity : Activity() {
             homeView.refreshLayout()
             return
         }
+        if (requestCode == REQUEST_PICK_WIDGET_SCREEN && resultCode == RESULT_OK && data != null) {
+            val info = data.getParcelableExtra<AppWidgetProviderInfo>("EXTRA_WIDGET_INFO")
+            val spanX = data.getIntExtra("EXTRA_SPAN_X", 2)
+            val spanY = data.getIntExtra("EXTRA_SPAN_Y", 1)
+            if (info != null) {
+                spawnWidget(info, spanX, spanY)
+            }
+            return
+        }
         if (resultCode == RESULT_OK && data != null) {
             if (requestCode == REQUEST_PICK_APPWIDGET) {
                 configureWidget(data)
@@ -548,7 +558,8 @@ class MainActivity : Activity() {
     }
 
     fun pickWidget() {
-        widgetManager?.pickWidget(lastGridCol, lastGridRow)
+        val intent = Intent(this, WidgetPickerActivity::class.java)
+        startActivityForResult(intent, REQUEST_PICK_WIDGET_SCREEN)
     }
 
     fun spawnWidget(info: AppWidgetProviderInfo, spanX: Int, spanY: Int) {
@@ -828,6 +839,7 @@ class MainActivity : Activity() {
     companion object {
         private const val REQUEST_PICK_APPWIDGET = 1
         private const val REQUEST_CREATE_APPWIDGET = 2
+        private const val REQUEST_PICK_WIDGET_SCREEN = 3
         private const val APPWIDGET_HOST_ID = 1024
     }
 }
