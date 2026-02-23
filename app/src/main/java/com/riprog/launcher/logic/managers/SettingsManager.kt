@@ -97,26 +97,39 @@ class SettingsManager(context: Context) {
     fun saveHomeItems(items: List<HomeItem>) {
         val array = JSONArray()
         for (item in items) {
-            val obj = JSONObject()
-            try {
-                obj.put("type", item.type?.name)
-                obj.put("packageName", item.packageName)
-                obj.put("className", item.className)
-                obj.put("col", item.col.toDouble())
-                obj.put("row", item.row.toDouble())
-                obj.put("spanX", item.spanX)
-                obj.put("spanY", item.spanY)
-                obj.put("page", item.page)
-                obj.put("widgetId", item.widgetId)
-                obj.put("rotation", item.rotation.toDouble())
-                obj.put("scale", item.scale.toDouble())
-                obj.put("tiltX", item.tiltX.toDouble())
-                obj.put("tiltY", item.tiltY.toDouble())
-                array.put(obj)
-            } catch (ignored: JSONException) {
-            }
+            array.put(serializeItem(item))
         }
         prefs.edit().putString(KEY_HOME_ITEMS, array.toString()).apply()
+    }
+
+    private fun serializeItem(item: HomeItem): JSONObject {
+        val obj = JSONObject()
+        try {
+            obj.put("type", item.type?.name)
+            obj.put("packageName", item.packageName)
+            obj.put("className", item.className)
+            obj.put("folderName", item.folderName)
+            obj.put("col", item.col.toDouble())
+            obj.put("row", item.row.toDouble())
+            obj.put("spanX", item.spanX)
+            obj.put("spanY", item.spanY)
+            obj.put("page", item.page)
+            obj.put("widgetId", item.widgetId)
+            obj.put("rotation", item.rotation.toDouble())
+            obj.put("scale", item.scale.toDouble())
+            obj.put("tiltX", item.tiltX.toDouble())
+            obj.put("tiltY", item.tiltY.toDouble())
+
+            if (item.folderItems.isNotEmpty()) {
+                val folderArray = JSONArray()
+                for (subItem in item.folderItems) {
+                    folderArray.put(serializeItem(subItem))
+                }
+                obj.put("folderItems", folderArray)
+            }
+        } catch (ignored: JSONException) {
+        }
+        return obj
     }
 
     fun getHomeItems(): MutableList<HomeItem> {
@@ -125,41 +138,54 @@ class SettingsManager(context: Context) {
         try {
             val array = JSONArray(json)
             for (i in 0 until array.length()) {
-                val obj = array.getJSONObject(i)
-                if (!obj.has("type")) continue
-                val item = HomeItem()
-                try {
-                    item.type = HomeItem.Type.valueOf(obj.getString("type"))
-                } catch (e: Exception) {
-                    continue
-                }
-                item.packageName = obj.optString("packageName", "")
-                item.className = obj.optString("className", "")
-                if (obj.has("col")) {
-                    item.col = obj.optDouble("col", 0.0).toFloat()
-                } else {
-                    item.col = (obj.optDouble("x", 0.0) / 100.0).toFloat()
-                }
-                if (obj.has("row")) {
-                    item.row = obj.optDouble("row", 0.0).toFloat()
-                } else {
-                    item.row = (obj.optDouble("y", 0.0) / 100.0).toFloat()
-                }
-                item.spanX = obj.optInt("spanX", obj.optInt("width", 100) / 100)
-                item.spanY = obj.optInt("spanY", obj.optInt("height", 100) / 100)
-                if (item.spanX <= 0) item.spanX = 1
-                if (item.spanY <= 0) item.spanY = 1
-                item.page = obj.optInt("page", 0)
-                item.widgetId = obj.optInt("widgetId", -1)
-                item.rotation = obj.optDouble("rotation", 0.0).toFloat()
-                item.scale = obj.optDouble("scale", 1.0).toFloat()
-                item.tiltX = obj.optDouble("tiltX", 0.0).toFloat()
-                item.tiltY = obj.optDouble("tiltY", 0.0).toFloat()
-                items.add(item)
+                val item = deserializeItem(array.getJSONObject(i))
+                if (item != null) items.add(item)
             }
         } catch (ignored: Exception) {
         }
         return items
+    }
+
+    private fun deserializeItem(obj: JSONObject): HomeItem? {
+        if (!obj.has("type")) return null
+        val item = HomeItem()
+        try {
+            item.type = HomeItem.Type.valueOf(obj.getString("type"))
+        } catch (e: Exception) {
+            return null
+        }
+        item.packageName = if (obj.has("packageName")) obj.optString("packageName") else null
+        item.className = if (obj.has("className")) obj.optString("className") else null
+        item.folderName = if (obj.has("folderName")) obj.optString("folderName") else null
+        if (obj.has("col")) {
+            item.col = obj.optDouble("col", 0.0).toFloat()
+        } else {
+            item.col = (obj.optDouble("x", 0.0) / 100.0).toFloat()
+        }
+        if (obj.has("row")) {
+            item.row = obj.optDouble("row", 0.0).toFloat()
+        } else {
+            item.row = (obj.optDouble("y", 0.0) / 100.0).toFloat()
+        }
+        item.spanX = obj.optInt("spanX", obj.optInt("width", 100) / 100)
+        item.spanY = obj.optInt("spanY", obj.optInt("height", 100) / 100)
+        if (item.spanX <= 0) item.spanX = 1
+        if (item.spanY <= 0) item.spanY = 1
+        item.page = obj.optInt("page", 0)
+        item.widgetId = obj.optInt("widgetId", -1)
+        item.rotation = obj.optDouble("rotation", 0.0).toFloat()
+        item.scale = obj.optDouble("scale", 1.0).toFloat()
+        item.tiltX = obj.optDouble("tiltX", 0.0).toFloat()
+        item.tiltY = obj.optDouble("tiltY", 0.0).toFloat()
+
+        if (obj.has("folderItems")) {
+            val folderArray = obj.getJSONArray("folderItems")
+            for (i in 0 until folderArray.length()) {
+                val subItem = deserializeItem(folderArray.getJSONObject(i))
+                if (subItem != null) item.folderItems.add(subItem)
+            }
+        }
+        return item
     }
 
     companion object {

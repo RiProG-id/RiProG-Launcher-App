@@ -29,6 +29,8 @@ import android.widget.TextView
 
 class FolderManager(private val activity: MainActivity, private val settingsManager: SettingsManager) {
     private var currentFolderOverlay: View? = null
+    private var isProcessingDrop = false
+    private var isReordering = false
 
     @SuppressLint("ClickableViewAccessibility")
     fun openFolder(folderItem: HomeItem, folderView: View?, homeItems: MutableList<HomeItem>, allApps: List<AppItem>) {
@@ -176,7 +178,10 @@ class FolderManager(private val activity: MainActivity, private val settingsMana
 
         val dragListener = View.OnDragListener { v, event ->
             when (event.action) {
-                DragEvent.ACTION_DRAG_STARTED -> true
+                DragEvent.ACTION_DRAG_STARTED -> {
+                    isProcessingDrop = false
+                    true
+                }
                 DragEvent.ACTION_DRAG_LOCATION -> {
                     val draggedView = event.localState as? View
                     if (draggedView != null) {
@@ -199,6 +204,9 @@ class FolderManager(private val activity: MainActivity, private val settingsMana
                     true
                 }
                 DragEvent.ACTION_DROP -> {
+                    if (isProcessingDrop) return@OnDragListener false
+                    isProcessingDrop = true
+
                     val draggedView = event.localState as? View
                     val draggedItem = draggedView?.tag as? HomeItem
                     if (draggedItem != null) {
@@ -281,9 +289,12 @@ class FolderManager(private val activity: MainActivity, private val settingsMana
     }
 
     private fun reorderGridVisually(grid: GridLayout, draggedView: View, targetIndex: Int) {
+        if (isReordering) return
         val currentIndex = grid.indexOfChild(draggedView)
         if (currentIndex == -1 || targetIndex == -1 || currentIndex == targetIndex) return
+        if (targetIndex >= grid.childCount) return
 
+        isReordering = true
         val positions = mutableMapOf<View, Pair<Float, Float>>()
         for (i in 0 until grid.childCount) {
             val child = grid.getChildAt(i)
@@ -310,6 +321,7 @@ class FolderManager(private val activity: MainActivity, private val settingsMana
                         }
                     }
                 }
+                isReordering = false
                 return true
             }
         })
@@ -350,71 +362,101 @@ class FolderManager(private val activity: MainActivity, private val settingsMana
 
     fun mergeToFolder(target: HomeItem?, dragged: HomeItem?, homeItems: MutableList<HomeItem>) {
         if (target == null || dragged == null || target === dragged) return
+        val backupHomeItems = ArrayList(homeItems)
         val targetPage = target.page
 
-        // Remove items from home screen list using identity check to prevent duplicates
-        homeItems.removeAll { it === dragged || it === target }
+        try {
+            val folder = HomeItem.createFolder("", target.col, target.row, targetPage)
+            folder.folderItems.add(target)
+            folder.folderItems.add(dragged)
+            folder.rotation = 0f
+            folder.scale = 1.0f
+            folder.tiltX = 0f
+            folder.tiltY = 0f
 
-        val folder = HomeItem.createFolder("", target.col, target.row, targetPage)
-        folder.folderItems.add(target)
-        folder.folderItems.add(dragged)
-        folder.rotation = 0f
-        folder.scale = 1.0f
-        folder.tiltX = 0f
-        folder.tiltY = 0f
-        homeItems.add(folder)
+            if (folder.folderItems.size != 2) throw IllegalStateException("Invalid folder state")
 
-        activity.homeView.removeItemView(target)
-        activity.homeView.removeItemView(dragged)
-        activity.renderHomeItem(folder)
-        activity.saveHomeState()
+            homeItems.removeAll { it === dragged || it === target }
+            homeItems.add(folder)
+
+            activity.homeView.removeItemView(target)
+            activity.homeView.removeItemView(dragged)
+            if (activity.renderHomeItem(folder) == null) throw IllegalStateException("Failed to render folder")
+
+            activity.saveHomeState()
+        } catch (e: Exception) {
+            homeItems.clear()
+            homeItems.addAll(backupHomeItems)
+            activity.homeView.refreshIcons(activity.model, activity.allApps)
+        }
     }
 
     fun addToFolder(folder: HomeItem?, dragged: HomeItem?, homeItems: MutableList<HomeItem>) {
         if (folder == null || dragged == null || folder === dragged) return
         if (folder.folderItems.any { it === dragged }) return
 
-        homeItems.removeAll { it === dragged }
-        folder.folderItems.add(dragged)
+        val backupHomeItems = ArrayList(homeItems)
+        val backupFolderItems = ArrayList(folder.folderItems)
 
-        activity.homeView.removeItemView(dragged)
-        refreshFolderIconsOnHome(folder)
-        activity.saveHomeState()
+        try {
+            folder.folderItems.add(dragged)
+            homeItems.removeAll { it === dragged }
+
+            activity.homeView.removeItemView(dragged)
+            refreshFolderIconsOnHome(folder)
+            activity.saveHomeState()
+        } catch (e: Exception) {
+            folder.folderItems.clear()
+            folder.folderItems.addAll(backupFolderItems)
+            homeItems.clear()
+            homeItems.addAll(backupHomeItems)
+            activity.renderHomeItem(dragged)
+            refreshFolderIconsOnHome(folder)
+        }
     }
 
     fun removeFromFolder(folder: HomeItem, item: HomeItem, homeItems: MutableList<HomeItem>) {
+        val backupHomeItems = ArrayList(homeItems)
+        val backupFolderItems = ArrayList(folder.folderItems)
         val page = folder.page
-        // Use removeAll with identity check to be sure we remove the correct item instance
-        folder.folderItems.removeAll { it === item }
 
-        // Dissolve folder if only 1 (or 0) items remain
-        if (folder.folderItems.size <= 1) {
-            if (folder.folderItems.size == 1) {
-                val lastItem = folder.folderItems[0]
-                homeItems.removeAll { it === folder }
+        try {
+            folder.folderItems.removeAll { it === item }
 
-                lastItem.col = folder.col
-                lastItem.row = folder.row
-                lastItem.page = page
-                lastItem.rotation = folder.rotation
-                lastItem.scale = folder.scale
-                lastItem.tiltX = folder.tiltX
-                lastItem.tiltY = folder.tiltY
+            if (folder.folderItems.size <= 1) {
+                if (folder.folderItems.size == 1) {
+                    val lastItem = folder.folderItems[0]
+                    homeItems.removeAll { it === folder }
 
-                if (!homeItems.contains(lastItem)) {
-                    homeItems.add(lastItem)
+                    lastItem.col = folder.col
+                    lastItem.row = folder.row
+                    lastItem.page = page
+                    lastItem.rotation = folder.rotation
+                    lastItem.scale = folder.scale
+                    lastItem.tiltX = folder.tiltX
+                    lastItem.tiltY = folder.tiltY
+
+                    if (!homeItems.any { it === lastItem }) {
+                        homeItems.add(lastItem)
+                    }
+
+                    activity.homeView.removeItemView(folder)
+                    activity.renderHomeItem(lastItem)
+                } else {
+                    homeItems.removeAll { it === folder }
+                    activity.homeView.removeItemView(folder)
                 }
-
-                activity.homeView.removeItemView(folder)
-                activity.renderHomeItem(lastItem)
             } else {
-                homeItems.removeAll { it === folder }
-                activity.homeView.removeItemView(folder)
+                refreshFolderIconsOnHome(folder)
             }
-        } else {
-            refreshFolderIconsOnHome(folder)
+            activity.saveHomeState()
+        } catch (e: Exception) {
+            folder.folderItems.clear()
+            folder.folderItems.addAll(backupFolderItems)
+            homeItems.clear()
+            homeItems.addAll(backupHomeItems)
+            activity.homeView.refreshIcons(activity.model, activity.allApps)
         }
-        activity.saveHomeState()
     }
 
     fun refreshFolderIconsOnHome(folder: HomeItem) {

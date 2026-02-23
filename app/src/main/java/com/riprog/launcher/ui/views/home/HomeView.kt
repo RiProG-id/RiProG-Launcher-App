@@ -472,9 +472,9 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
                 }
             }
 
-            if (otherView != null && item.type == HomeItem.Type.APP) {
+            if (otherView != null && item.type == HomeItem.Type.APP && otherView.parent != null) {
                 val otherItem = otherView.tag as HomeItem?
-                if (otherItem != null) {
+                if (otherItem != null && otherItem !== item) {
                     if (otherItem.type == HomeItem.Type.APP) {
                         activity.folderManager.mergeToFolder(otherItem, item, activity.homeItems)
                         return
