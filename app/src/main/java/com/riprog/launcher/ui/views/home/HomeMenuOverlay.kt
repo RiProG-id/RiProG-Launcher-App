@@ -39,6 +39,8 @@ class HomeMenuOverlay(context: Context, private val settingsManager: SettingsMan
         val recyclerView = RecyclerView(context)
         recyclerView.layoutManager = GridLayoutManager(context, 3)
         recyclerView.setHasFixedSize(true)
+        recyclerView.clipToPadding = false
+        recyclerView.setPadding(dpToPx(8), dpToPx(8), dpToPx(8), dpToPx(8))
 
         val items = mutableListOf<MenuItem>()
         items.add(MenuItem(R.drawable.ic_layout, context.getString(R.string.action_add_page_left)) { callback.onAddPageLeft() })
@@ -74,6 +76,7 @@ class HomeMenuOverlay(context: Context, private val settingsManager: SettingsMan
             btn.orientation = LinearLayout.VERTICAL
             btn.gravity = Gravity.CENTER
             btn.background = ThemeUtils.getGlassDrawable(parent.context, settingsManager, 16f)
+            btn.elevation = dpToPx(6).toFloat()
             btn.isClickable = true
             btn.isFocusable = true
 

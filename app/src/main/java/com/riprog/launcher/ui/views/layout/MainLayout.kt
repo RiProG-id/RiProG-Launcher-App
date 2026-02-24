@@ -284,6 +284,7 @@ class MainLayout(private val activity: MainActivity) : FrameLayout(activity) {
             .start()
         activity.homeView.animate().alpha(0f).setDuration(250).start()
         activity.drawerView.onOpen()
+        activity.updateContentBlur()
     }
 
     fun startExternalDrag(v: View) {
@@ -345,6 +346,7 @@ class MainLayout(private val activity: MainActivity) : FrameLayout(activity) {
             .start()
         activity.homeView.visibility = View.VISIBLE
         activity.homeView.animate().alpha(1f).setDuration(200).start()
+        activity.updateContentBlur()
         val imm = context.getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager?
         imm?.hideSoftInputFromWindow(windowToken, 0)
         return true

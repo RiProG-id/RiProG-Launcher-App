@@ -663,7 +663,11 @@ class MainActivity : Activity() {
     }
 
     fun updateContentBlur() {
-        val blur = isAnyOverlayVisible() && settingsManager.isLiquidGlass
+        // Only apply global fullscreen blur for Folders and the App Drawer itself.
+        // Popup menus (Home Menu, Context Menu) should NOT trigger global blur.
+        val isDrawerOpen = if (::mainLayout.isInitialized) mainLayout.isDrawerOpen() else false
+        val blur = (folderManager.isFolderOpen() || isDrawerOpen) && settingsManager.isLiquidGlass
+
         ThemeUtils.applyBlurIfSupported(homeView, blur)
         ThemeUtils.applyBlurIfSupported(drawerView, blur)
         ThemeUtils.applyWindowBlur(window, blur)
