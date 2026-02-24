@@ -166,7 +166,7 @@ class WidgetPickerActivity : Activity() {
         override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): RecyclerView.ViewHolder {
             val context = parent.context
             val adaptiveColor = ThemeUtils.getAdaptiveColor(context, settingsManager, true)
-            val secondaryColor = (adaptiveColor and 0x00FFFFFF) or 0x80000000.toInt()
+            val secondaryColor = context.getColor(R.color.foreground_dim)
             val type = ItemType.values()[viewType]
 
             return when (type) {
@@ -209,9 +209,11 @@ class WidgetPickerActivity : Activity() {
                     card.isFocusable = true
 
                     val cardBg = GradientDrawable()
-                    val isNight = (context.resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) ==
-                            Configuration.UI_MODE_NIGHT_YES
-                    val cardColor = if (settingsManager.isLiquidGlass) 0x1AFFFFFF.toInt() else (if (isNight) 0x1AFFFFFF.toInt() else 0x0D000000.toInt())
+                    val cardColor = if (settingsManager.isLiquidGlass) {
+                        context.getColor(R.color.glass_background)
+                    } else {
+                        context.getColor(R.color.search_background)
+                    }
                     cardBg.setColor(cardColor)
                     cardBg.cornerRadius = dpToPx(16).toFloat()
                     card.background = cardBg

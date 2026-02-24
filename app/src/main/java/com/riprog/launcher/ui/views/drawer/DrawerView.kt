@@ -140,7 +140,7 @@ class DrawerView(context: Context) : LinearLayout(context) {
             tv.text = letter
             tv.textSize = 10f
             tv.gravity = Gravity.CENTER
-            tv.setTextColor(adaptiveColor and 0x80FFFFFF.toInt())
+            tv.setTextColor(context.getColor(R.color.foreground_dim))
             tv.setPadding(0, dpToPx(2), 0, dpToPx(2))
             indexBar.addView(tv, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f))
         }
@@ -218,7 +218,7 @@ class DrawerView(context: Context) : LinearLayout(context) {
         if (lastSelectedIndex in 0 until indexBar.childCount) {
             val prevTv = indexBar.getChildAt(lastSelectedIndex) as? TextView
             prevTv?.let {
-                it.setTextColor(adaptiveColor and 0x80FFFFFF.toInt())
+                it.setTextColor(context.getColor(R.color.foreground_dim))
                 it.setTypeface(null, android.graphics.Typeface.NORMAL)
                 it.animate().scaleX(1.0f).scaleY(1.0f).setDuration(100).start()
             }
@@ -237,10 +237,9 @@ class DrawerView(context: Context) : LinearLayout(context) {
 
     private fun resetHighlight() {
         if (lastSelectedIndex != -1) {
-            val adaptiveColor = ThemeUtils.getAdaptiveColor(context, settingsManager, true)
             val tv = indexBar.getChildAt(lastSelectedIndex) as? TextView
             tv?.let {
-                it.setTextColor(adaptiveColor and 0x80FFFFFF.toInt())
+                it.setTextColor(context.getColor(R.color.foreground_dim))
                 it.setTypeface(null, android.graphics.Typeface.NORMAL)
                 it.animate().scaleX(1.0f).scaleY(1.0f).setDuration(100).start()
             }
@@ -344,14 +343,14 @@ class DrawerView(context: Context) : LinearLayout(context) {
                 searchBar = EditText(context)
                 searchBar.id = View.generateViewId()
                 searchBar.setHint(R.string.search_hint)
-                searchBar.setHintTextColor(adaptiveColor and 0x80FFFFFF.toInt())
+                searchBar.setHintTextColor(context.getColor(R.color.foreground_dim))
                 searchBar.setTextColor(adaptiveColor)
                 searchBar.setBackgroundColor(context.getColor(R.color.search_background))
                 searchBar.setPadding(dpToPx(16), dpToPx(12), dpToPx(16), dpToPx(12))
                 searchBar.setCompoundDrawablesWithIntrinsicBounds(R.drawable.ic_search, 0, 0, 0)
                 searchBar.compoundDrawablePadding = dpToPx(12)
                 if (searchBar.compoundDrawables[0] != null) {
-                    searchBar.compoundDrawables[0].setTint(adaptiveColor and 0x80FFFFFF.toInt())
+                    searchBar.compoundDrawables[0].setTint(context.getColor(R.color.foreground_dim))
                 }
                 searchBar.setSingleLine(true)
                 searchBar.gravity = Gravity.CENTER_VERTICAL

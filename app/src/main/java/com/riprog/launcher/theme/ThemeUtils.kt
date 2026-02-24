@@ -28,15 +28,13 @@ object ThemeUtils {
 
     fun getGlassDrawable(context: Context, settingsManager: SettingsManager, cornerRadiusDp: Float): Drawable {
         val isLiquidGlass = settingsManager.isLiquidGlass
-        val isNight = (context.resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) ==
-                Configuration.UI_MODE_NIGHT_YES
 
         val gd = GradientDrawable()
         val backgroundColor: Int
         if (isLiquidGlass) {
-            backgroundColor = context.getColor(R.color.background)
+            backgroundColor = context.getColor(R.color.glass_background)
         } else {
-            backgroundColor = if (isNight) Color.BLACK else Color.WHITE
+            backgroundColor = context.getColor(R.color.background)
         }
 
         gd.setColor(backgroundColor)
@@ -50,31 +48,21 @@ object ThemeUtils {
     }
 
 
+    fun getOverlayBackground(context: Context): Int {
+        return context.getColor(R.color.overlay_background)
+    }
+
+
     fun getAdaptiveColor(context: Context, backgroundColor: Int): Int {
         val luminance = (0.2126 * Color.red(backgroundColor) +
                 0.7152 * Color.green(backgroundColor) +
                 0.0722 * Color.blue(backgroundColor)) / 255.0
-        return if (luminance > 0.5) context.getColor(R.color.foreground) else Color.WHITE
+        return if (luminance > 0.5) Color.BLACK else Color.WHITE
     }
 
 
     fun getAdaptiveColor(context: Context, settingsManager: SettingsManager, isOnGlass: Boolean): Int {
-        val isNight = (context.resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) ==
-                Configuration.UI_MODE_NIGHT_YES
-
-        if (isOnGlass) {
-            return if (settingsManager.isLiquidGlass) {
-                getAdaptiveColor(context, context.getColor(R.color.background))
-            } else {
-                if (isNight) Color.WHITE else Color.BLACK
-            }
-        } else {
-            return if (isNight) {
-                Color.WHITE
-            } else {
-                Color.BLACK
-            }
-        }
+        return context.getColor(R.color.foreground)
     }
 
 

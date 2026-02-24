@@ -51,7 +51,7 @@ class FolderManager(private val activity: MainActivity, private val settingsMana
                 return true
             }
         }
-        container.setBackgroundColor(0x33000000)
+        container.setBackgroundColor(ThemeUtils.getOverlayBackground(activity))
         container.setOnClickListener { closeFolder() }
 
         container.setOnTouchListener(object : View.OnTouchListener {

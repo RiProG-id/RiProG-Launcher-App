@@ -181,7 +181,7 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
         val hint = TextView(context)
         hint.text = context.getString(R.string.drawer_hint)
         hint.textSize = 12f
-        hint.setTextColor(Color.GRAY and 0x80FFFFFF.toInt())
+        hint.setTextColor(context.getColor(R.color.foreground_dim))
         hint.alpha = 0f
         val lp = LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT)
         lp.gravity = Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL
@@ -877,7 +877,7 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
                 if (i == current) {
                     shape.setColor(accentColor)
                 } else {
-                    shape.setColor(Color.GRAY and 0x80FFFFFF.toInt())
+                    shape.setColor(context.getColor(R.color.foreground_dim))
                 }
                 dot.background = shape
                 addView(dot)

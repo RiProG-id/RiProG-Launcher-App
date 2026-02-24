@@ -30,7 +30,7 @@ class HomeMenuOverlay(context: Context, private val settingsManager: SettingsMan
     }
 
     init {
-        setBackgroundColor(0x33000000)
+        setBackgroundColor(ThemeUtils.getOverlayBackground(context))
         // Consume all touches to block background interaction
         isClickable = true
         isFocusable = true

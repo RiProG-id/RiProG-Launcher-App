@@ -1,8 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="background">#80F5F5F5</color>
-    <color name="foreground">#111111</color>
-    <color name="foreground_dim">#444444</color>
+    <color name="background">#FFFFFF</color>
+    <color name="foreground">#000000</color>
+    <color name="foreground_dim">#80000000</color>
     <color name="search_background">#15000000</color>
-    <color name="glass_stroke">#20000000</color>
+    <color name="glass_background">#80FFFFFF</color>
+    <color name="glass_stroke">#30000000</color>
+    <color name="overlay_background">#40000000</color>
 </resources>
