@@ -20,19 +20,18 @@ object ThemeManager {
     fun applyThemeMode(context: Context, mode: String?) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             val uiModeManager = context.getSystemService(Context.UI_MODE_SERVICE) as UiModeManager
-            var nightMode = UiModeManager.MODE_NIGHT_AUTO
-            if ("light" == mode) nightMode = UiModeManager.MODE_NIGHT_NO
-            else if ("dark" == mode) nightMode = UiModeManager.MODE_NIGHT_YES
-
-            if (uiModeManager.nightMode != nightMode) {
-                uiModeManager.setApplicationNightMode(nightMode)
+            val nightMode = when (mode) {
+                "light" -> UiModeManager.MODE_NIGHT_NO
+                "dark" -> UiModeManager.MODE_NIGHT_YES
+                else -> UiModeManager.MODE_NIGHT_AUTO
             }
+            uiModeManager.setApplicationNightMode(nightMode)
         }
     }
 
 
     fun applyThemeToContext(base: Context, mode: String?): Context {
-        if ("system" == mode) return base
+        if (mode == null || "system" == mode) return base
 
         val config = Configuration(base.resources.configuration)
         if ("light" == mode) {
