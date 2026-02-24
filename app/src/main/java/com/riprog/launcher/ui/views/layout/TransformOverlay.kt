@@ -368,11 +368,13 @@ class TransformOverlay(context: Context, private val targetView: View, private v
                     val midX = targetView.x + targetView.width / 2f
                     val midY = targetView.y + targetView.height / 2f
 
-                    onSaveListener?.onSnapToGrid(targetView)
+                    val handled = onSaveListener?.onSnapToGrid(targetView) == true
 
-                    val other = onSaveListener?.findItemAt(midX, midY, targetView)
-                    if (other != null) {
-                        onSaveListener?.onCollision(other)
+                    if (!handled) {
+                        val other = onSaveListener?.findItemAt(midX, midY, targetView)
+                        if (other != null) {
+                            onSaveListener?.onCollision(other)
+                        }
                     }
                 }
                 activeHandle = -1

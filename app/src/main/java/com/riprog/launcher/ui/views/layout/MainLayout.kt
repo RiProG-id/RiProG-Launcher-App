@@ -65,7 +65,7 @@ class MainLayout(private val activity: MainActivity) : FrameLayout(activity) {
             return false
         }
         if (activity.freeformInteraction.isTransforming()) {
-            return false
+            return true
         }
         if (isDrawerOpen) {
             when (ev.action) {
@@ -109,7 +109,7 @@ class MainLayout(private val activity: MainActivity) : FrameLayout(activity) {
                 val dy = ev.y - startY
 
                 if (activity.freeformInteraction.isTransforming()) {
-                    return false
+                    return true
                 }
 
                 if (dy < -touchSlop && abs(dy.toDouble()) > abs(dx.toDouble())) {
@@ -179,7 +179,7 @@ class MainLayout(private val activity: MainActivity) : FrameLayout(activity) {
                     return true
                 }
 
-                if (!isGestureCanceled && (abs(dx.toDouble()) > touchSlop || abs(dy.toDouble()) > touchSlop)) {
+                if (!isGestureCanceled && !isDragging && !activity.freeformInteraction.isTransforming() && (abs(dx.toDouble()) > touchSlop || abs(dy.toDouble()) > touchSlop)) {
                     longPressHandler.removeCallbacks(longPressRunnable)
                     if (abs(dy.toDouble()) > abs(dx.toDouble())) {
                         if (dy < -touchSlop * 2) {

@@ -324,6 +324,7 @@ class FolderManager(private val activity: MainActivity, private val settingsMana
 
     fun mergeToFolder(target: HomeItem?, dragged: HomeItem?, homeItems: MutableList<HomeItem>) {
         if (target == null || dragged == null || target === dragged) return
+        if (!homeItems.contains(target)) return
         val backupHomeItems = ArrayList(homeItems)
         val targetPage = target.page
         var createdFolder: HomeItem? = null
