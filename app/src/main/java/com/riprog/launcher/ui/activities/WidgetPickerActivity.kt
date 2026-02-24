@@ -209,15 +209,18 @@ class WidgetPickerActivity : Activity() {
                     card.isFocusable = true
 
                     val cardBg = GradientDrawable()
-                    val cardColor = if (settingsManager.isLiquidGlass) {
+                    val isLiquid = settingsManager.isLiquidGlass
+                    val cardColor = if (isLiquid) {
                         context.getColor(R.color.item_background_glass)
                     } else {
-                        context.getColor(R.color.item_background)
+                        context.getColor(R.color.surface)
                     }
                     cardBg.setColor(cardColor)
                     cardBg.cornerRadius = dpToPx(16).toFloat()
-                    if (settingsManager.isLiquidGlass) {
+                    if (isLiquid) {
                         cardBg.setStroke(dpToPx(1), context.getColor(R.color.glass_stroke))
+                    } else {
+                        cardBg.setStroke(dpToPx(1), context.getColor(R.color.surface_stroke))
                     }
                     card.background = cardBg
 

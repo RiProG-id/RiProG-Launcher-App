@@ -66,12 +66,14 @@ object ThemeManager {
         val baseColor = if (settingsManager.isLiquidGlass) {
             context.getColor(R.color.item_background_glass)
         } else {
-            context.getColor(R.color.item_background)
+            context.getColor(R.color.surface)
         }
         shape.setColor(baseColor)
         shape.cornerRadius = radius
         if (settingsManager.isLiquidGlass) {
             shape.setStroke(dpToPx(context, 1), context.getColor(R.color.glass_stroke))
+        } else {
+            shape.setStroke(dpToPx(context, 1), context.getColor(R.color.surface_stroke))
         }
 
         val mask = GradientDrawable()

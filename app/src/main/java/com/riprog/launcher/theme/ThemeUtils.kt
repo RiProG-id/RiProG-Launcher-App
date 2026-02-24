@@ -36,7 +36,7 @@ object ThemeUtils {
         if (isLiquidGlass) {
             backgroundColor = context.getColor(R.color.background_glass)
         } else {
-            backgroundColor = context.getColor(R.color.background)
+            backgroundColor = context.getColor(R.color.surface)
         }
 
         val cornerRadiusPx = dpToPx(context, cornerRadiusDp).toFloat()
@@ -49,7 +49,7 @@ object ThemeUtils {
             reflectionDrawable.setCornerRadius(cornerRadiusPx)
             return reflectionDrawable
         } else {
-            gd.setStroke(0, 0)
+            gd.setStroke(dpToPx(context, 1f), context.getColor(R.color.surface_stroke))
             return gd
         }
     }

@@ -76,7 +76,8 @@ class HomeMenuOverlay(context: Context, private val settingsManager: SettingsMan
             btn.orientation = LinearLayout.VERTICAL
             btn.gravity = Gravity.CENTER
             btn.background = ThemeUtils.getGlassDrawable(parent.context, settingsManager, 16f)
-            btn.elevation = dpToPx(6).toFloat()
+            val isLiquid = settingsManager.isLiquidGlass
+            btn.elevation = if (isLiquid) dpToPx(6).toFloat() else dpToPx(2).toFloat()
             btn.isClickable = true
             btn.isFocusable = true
 
