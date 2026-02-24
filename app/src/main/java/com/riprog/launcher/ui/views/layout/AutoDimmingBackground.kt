@@ -19,7 +19,7 @@ class AutoDimmingBackground(private val context: Context, private val parentLayo
     private fun setupDimView() {
         dimView = View(context)
         dimView!!.setBackgroundColor(Color.BLACK)
-        dimView!!.alpha = 0.3f
+        dimView!!.alpha = 0f
         dimView!!.visibility = View.GONE
 
         val lp = FrameLayout.LayoutParams(
@@ -35,10 +35,12 @@ class AutoDimmingBackground(private val context: Context, private val parentLayo
                 Configuration.UI_MODE_NIGHT_YES
 
         if (isNight && settingsManager.isDarkenWallpaper) {
-            dimView!!.visibility = View.VISIBLE
-            dimView!!.animate().alpha(0.3f).setDuration(300).start()
+            if (dimView!!.visibility != View.VISIBLE) {
+                dimView!!.visibility = View.VISIBLE
+            }
+            dimView!!.animate().alpha(0.4f).setDuration(400).start()
         } else {
-            dimView!!.animate().alpha(0f).setDuration(300).withEndAction {
+            dimView!!.animate().alpha(0f).setDuration(400).withEndAction {
                 dimView!!.visibility = View.GONE
             }.start()
         }
