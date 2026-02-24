@@ -3,6 +3,7 @@ package com.riprog.launcher.theme
 import com.riprog.launcher.logic.managers.SettingsManager
 import com.riprog.launcher.R
 
+import androidx.appcompat.app.AppCompatDelegate
 import android.app.UiModeManager
 import android.content.Context
 import android.content.res.ColorStateList
@@ -18,31 +19,32 @@ object ThemeManager {
 
 
     fun applyThemeMode(context: Context, mode: String?) {
+        val nightMode = when (mode) {
+            "light" -> AppCompatDelegate.MODE_NIGHT_NO
+            "dark" -> AppCompatDelegate.MODE_NIGHT_YES
+            else -> AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM
+        }
+
+        if (AppCompatDelegate.getDefaultNightMode() != nightMode) {
+            AppCompatDelegate.setDefaultNightMode(nightMode)
+        }
+
+        // Still apply to UiModeManager on S+ for better system integration if needed,
+        // but AppCompatDelegate is the primary driver now.
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             val uiModeManager = context.getSystemService(Context.UI_MODE_SERVICE) as UiModeManager
-            var nightMode = UiModeManager.MODE_NIGHT_AUTO
-            if ("light" == mode) nightMode = UiModeManager.MODE_NIGHT_NO
-            else if ("dark" == mode) nightMode = UiModeManager.MODE_NIGHT_YES
-
-            if (uiModeManager.nightMode != nightMode) {
-                uiModeManager.setApplicationNightMode(nightMode)
+            val systemNightMode = when (mode) {
+                "light" -> UiModeManager.MODE_NIGHT_NO
+                "dark" -> UiModeManager.MODE_NIGHT_YES
+                else -> UiModeManager.MODE_NIGHT_AUTO
+            }
+            if (uiModeManager.nightMode != systemNightMode) {
+                uiModeManager.setApplicationNightMode(systemNightMode)
             }
         }
     }
 
 
-    fun applyThemeToContext(base: Context, mode: String?): Context {
-        if ("system" == mode) return base
-
-        val config = Configuration(base.resources.configuration)
-        if ("light" == mode) {
-            config.uiMode = (config.uiMode and Configuration.UI_MODE_NIGHT_MASK.inv()) or Configuration.UI_MODE_NIGHT_NO
-        } else if ("dark" == mode) {
-            config.uiMode = (config.uiMode and Configuration.UI_MODE_NIGHT_MASK.inv()) or Configuration.UI_MODE_NIGHT_YES
-        }
-
-        return base.createConfigurationContext(config)
-    }
 
 
     fun getSystemAccentColor(context: Context): Int? {

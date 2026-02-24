@@ -21,7 +21,7 @@ import com.riprog.launcher.data.model.AppItem
 import com.riprog.launcher.R
 import com.riprog.launcher.LauncherApplication
 
-import android.app.Activity
+import androidx.appcompat.app.AppCompatActivity
 import android.appwidget.AppWidgetHost
 import android.appwidget.AppWidgetHostView
 import android.appwidget.AppWidgetManager
@@ -45,7 +45,7 @@ import androidx.core.view.WindowCompat
 import android.widget.*
 import java.util.*
 
-class MainActivity : Activity() {
+class MainActivity : AppCompatActivity() {
 
     lateinit var model: AppRepository
     lateinit var settingsManager: SettingsManager
@@ -67,15 +67,10 @@ class MainActivity : Activity() {
     private var pendingSpanX: Int = 2
     private var pendingSpanY: Int = 1
 
-    override fun attachBaseContext(newBase: Context) {
-        val sm = SettingsManager(newBase)
-        super.attachBaseContext(ThemeManager.applyThemeToContext(newBase, sm.themeMode))
-    }
-
     override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
         settingsManager = SettingsManager(this)
         ThemeManager.applyThemeMode(this, settingsManager.themeMode)
+        super.onCreate(savedInstanceState)
         ThemeUtils.updateStatusBarContrast(this)
 
         val w = window
@@ -498,6 +493,7 @@ class MainActivity : Activity() {
 
     override fun onConfigurationChanged(newConfig: android.content.res.Configuration) {
         super.onConfigurationChanged(newConfig)
+        applyDynamicColors()
         ThemeUtils.updateStatusBarContrast(this)
         autoDimmingBackground?.updateDimVisibility()
         homeView.refreshLayout()

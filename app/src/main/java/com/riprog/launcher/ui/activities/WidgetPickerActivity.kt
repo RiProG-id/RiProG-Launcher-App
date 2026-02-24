@@ -6,6 +6,7 @@ import com.riprog.launcher.logic.managers.SettingsManager
 import com.riprog.launcher.logic.utils.WidgetSizingUtils
 import com.riprog.launcher.R
 
+import androidx.appcompat.app.AppCompatActivity
 import android.app.Activity
 import android.appwidget.AppWidgetManager
 import android.appwidget.AppWidgetProviderInfo
@@ -27,7 +28,7 @@ import androidx.recyclerview.widget.RecyclerView
 import java.util.*
 import java.util.concurrent.Executors
 
-class WidgetPickerActivity : Activity() {
+class WidgetPickerActivity : AppCompatActivity() {
 
     private lateinit var settingsManager: SettingsManager
     private lateinit var recyclerView: RecyclerView
@@ -37,8 +38,9 @@ class WidgetPickerActivity : Activity() {
     private val widgetPreviewExecutor = Executors.newFixedThreadPool(4)
 
     override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
         settingsManager = SettingsManager(this)
+        ThemeManager.applyThemeMode(this, settingsManager.themeMode)
+        super.onCreate(savedInstanceState)
         appWidgetManager = AppWidgetManager.getInstance(this)
 
         val w = window
