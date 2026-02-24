@@ -708,6 +708,7 @@ class MainActivity : Activity() {
                     currentHomeMenu = null
                     lastOverlayDismissTime = System.currentTimeMillis()
                 }
+                updateContentBlur()
             }
         })
         currentHomeMenu = menu
@@ -736,6 +737,7 @@ class MainActivity : Activity() {
                     currentAppDrawerMenu = null
                     lastOverlayDismissTime = System.currentTimeMillis()
                 }
+                updateContentBlur()
             }
         })
         currentAppDrawerMenu = menu
