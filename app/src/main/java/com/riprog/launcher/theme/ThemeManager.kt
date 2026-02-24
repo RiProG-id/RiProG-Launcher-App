@@ -17,7 +17,7 @@ import android.widget.LinearLayout
 object ThemeManager {
 
 
-    fun applyThemeMode(context: Context, mode: String?): Boolean {
+    fun applyThemeMode(context: Context, mode: String?) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             val uiModeManager = context.getSystemService(Context.UI_MODE_SERVICE) as UiModeManager
             val nightMode = when (mode) {
@@ -25,13 +25,8 @@ object ThemeManager {
                 "dark" -> UiModeManager.MODE_NIGHT_YES
                 else -> UiModeManager.MODE_NIGHT_AUTO
             }
-
-            if (uiModeManager.nightMode != nightMode) {
-                uiModeManager.setApplicationNightMode(nightMode)
-                return true
-            }
+            uiModeManager.setApplicationNightMode(nightMode)
         }
-        return false
     }
 
 
