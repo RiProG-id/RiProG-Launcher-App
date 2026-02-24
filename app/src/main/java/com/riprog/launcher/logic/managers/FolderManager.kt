@@ -41,8 +41,6 @@ class FolderManager(private val activity: MainActivity, private val settingsMana
             val oldOverlay = currentFolderOverlay!!
             currentFolderOverlay = null
             activity.mainLayout.removeView(oldOverlay)
-        } else {
-            ThemeUtils.applyWindowBlur(activity.window, true)
         }
 
         val container: FrameLayout = object : FrameLayout(activity) {
@@ -51,7 +49,7 @@ class FolderManager(private val activity: MainActivity, private val settingsMana
                 return true
             }
         }
-        container.setBackgroundColor(0x33000000)
+        container.setBackgroundColor(android.graphics.Color.TRANSPARENT)
         container.setOnClickListener { closeFolder() }
 
         container.setOnTouchListener(object : View.OnTouchListener {
@@ -267,6 +265,7 @@ class FolderManager(private val activity: MainActivity, private val settingsMana
 
         activity.mainLayout.addView(container, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
         currentFolderOverlay = container
+        activity.updateContentBlur()
     }
 
     private inner class FolderAdapter(val items: MutableList<HomeItem>) : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
@@ -316,7 +315,7 @@ class FolderManager(private val activity: MainActivity, private val settingsMana
             val overlay = currentFolderOverlay!!
             currentFolderOverlay = null
             activity.mainLayout.removeView(overlay)
-            ThemeUtils.applyWindowBlur(activity.window, false)
+            activity.updateContentBlur()
             val imm = activity.getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager?
             imm?.hideSoftInputFromWindow(activity.mainLayout.windowToken, 0)
             activity.homeView.refreshIcons(activity.model, activity.allApps)

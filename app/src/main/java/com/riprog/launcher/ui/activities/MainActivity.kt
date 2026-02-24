@@ -659,6 +659,14 @@ class MainActivity : Activity() {
             folderManager.closeFolder()
             lastOverlayDismissTime = System.currentTimeMillis()
         }
+        updateContentBlur()
+    }
+
+    fun updateContentBlur() {
+        val blur = isAnyOverlayVisible() && settingsManager.isLiquidGlass
+        ThemeUtils.applyBlurIfSupported(homeView, blur)
+        ThemeUtils.applyBlurIfSupported(drawerView, blur)
+        ThemeUtils.applyWindowBlur(window, blur)
     }
 
     fun showHomeMenu(x: Float, y: Float) {
@@ -704,6 +712,7 @@ class MainActivity : Activity() {
         })
         currentHomeMenu = menu
         mainLayout.addView(menu, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
+        updateContentBlur()
     }
 
     private var currentHomeMenu: View? = null
@@ -731,6 +740,7 @@ class MainActivity : Activity() {
         })
         currentAppDrawerMenu = menu
         menu.showAt(anchor, mainLayout)
+        updateContentBlur()
     }
 
     private fun findNearestAvailable(occupied: Array<BooleanArray>, r: Int, c: Int, spanX: Int, spanY: Int): Pair<Int, Int>? {
