@@ -23,11 +23,13 @@ import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import java.util.*
 
-class DrawerView(context: Context) : LinearLayout(context) {
+class DrawerView(context: Context) : FrameLayout(context) {
     companion object {
         private const val VIEW_TYPE_SEARCH = 0
         private const val VIEW_TYPE_APP = 1
     }
+    private val backgroundView: View
+    private val contentLayout: LinearLayout
     private val recyclerView: RecyclerView
     private val adapter: AppAdapter
     private var longClickListener: OnAppLongClickListener? = null
@@ -55,12 +57,19 @@ class DrawerView(context: Context) : LinearLayout(context) {
     }
 
     init {
-        orientation = VERTICAL
-        background = ThemeUtils.getGlassDrawable(context, settingsManager, 0f)
-        setPadding(0, dpToPx(48), 0, 0)
+        // Root is now FrameLayout. We add a dedicated background layer.
+        backgroundView = View(context)
+        backgroundView.background = ThemeUtils.getGlassDrawable(context, settingsManager, 0f)
+        addView(backgroundView, LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
+
+        // Content layer
+        contentLayout = LinearLayout(context)
+        contentLayout.orientation = LinearLayout.VERTICAL
+        contentLayout.setPadding(0, dpToPx(48), 0, 0)
+        addView(contentLayout, LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
 
         val contentFrame = FrameLayout(context)
-        addView(contentFrame, LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f))
+        contentLayout.addView(contentFrame, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f))
 
         recyclerView = RecyclerView(context)
         recyclerView.descendantFocusability = ViewGroup.FOCUS_AFTER_DESCENDANTS
@@ -76,7 +85,7 @@ class DrawerView(context: Context) : LinearLayout(context) {
         contentFrame.addView(recyclerView)
 
         indexBar = IndexBar(context)
-        indexBar.orientation = VERTICAL
+        indexBar.orientation = LinearLayout.VERTICAL
         indexBar.gravity = Gravity.CENTER
         indexBar.setOnTouchListener { v: View, event: MotionEvent ->
             when (event.action) {
@@ -312,6 +321,19 @@ class DrawerView(context: Context) : LinearLayout(context) {
         adapter.notifyDataSetChanged()
     }
 
+    fun refreshTheme() {
+        backgroundView.background = ThemeUtils.getGlassDrawable(context, settingsManager, 0f)
+        setupIndexBar()
+        if (::searchBar.isInitialized) {
+            searchBar.setHintTextColor(context.getColor(R.color.foreground_dim))
+            searchBar.setBackgroundColor(context.getColor(R.color.search_background))
+            if (searchBar.compoundDrawables[0] != null) {
+                searchBar.compoundDrawables[0].setTint(context.getColor(R.color.foreground_dim))
+            }
+        }
+        adapter.notifyDataSetChanged()
+    }
+
     private fun dpToPx(dp: Int): Int {
         return TypedValue.applyDimension(
             TypedValue.COMPLEX_UNIT_DIP, dp.toFloat(), resources.displayMetrics
@@ -368,7 +390,7 @@ class DrawerView(context: Context) : LinearLayout(context) {
             } else {
                 val scale = settingsManager.iconScale
                 val itemLayout = LinearLayout(context)
-                itemLayout.orientation = VERTICAL
+                itemLayout.orientation = LinearLayout.VERTICAL
                 itemLayout.gravity = Gravity.CENTER
                 itemLayout.isClickable = true
                 itemLayout.isFocusable = true

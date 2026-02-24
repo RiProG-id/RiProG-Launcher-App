@@ -498,6 +498,7 @@ class MainActivity : Activity() {
         if (requestCode == 100) {
             loadApps()
             homeView.refreshLayout()
+            drawerView.refreshTheme()
             return
         }
         if (requestCode == REQUEST_PICK_WIDGET_SCREEN && resultCode == RESULT_OK && data != null) {
@@ -676,8 +677,8 @@ class MainActivity : Activity() {
         // drawerView only blurs if a folder is open on top of it.
         ThemeUtils.applyBlurIfSupported(drawerView, isFolderOpen && isDrawerOpen && isLiquid)
 
-        // Window blur is reserved for folder overlays to emphasize focus.
-        ThemeUtils.applyWindowBlur(window, isFolderOpen && isLiquid)
+        // Apply window blur for both Folders and App Drawer in Liquid Glass mode.
+        ThemeUtils.applyWindowBlur(window, (isFolderOpen || isDrawerOpen) && isLiquid)
     }
 
     fun showHomeMenu(x: Float, y: Float) {
