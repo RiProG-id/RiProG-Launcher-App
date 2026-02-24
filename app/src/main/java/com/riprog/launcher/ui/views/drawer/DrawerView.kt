@@ -41,6 +41,7 @@ class DrawerView(context: Context) : FrameLayout(context) {
     private val indexBar: IndexBar
     private val letterPositions = mutableMapOf<String, Int>()
     private var lastSelectedIndex = -1
+    private var selectedLetter: String? = null
 
     interface OnAppLongClickListener {
         fun onAppLongClick(view: View, app: AppItem)
@@ -250,6 +251,8 @@ class DrawerView(context: Context) : FrameLayout(context) {
                 } else {
                     it.animate().scaleX(1.2f).scaleY(1.2f).setDuration(100).start()
                 }
+                selectedLetter = it.text.toString()
+                adapter.notifyItemRangeChanged(1, adapter.itemCount - 1, "FOCUS_CHANGE")
             }
         }
         lastSelectedIndex = index
@@ -269,6 +272,8 @@ class DrawerView(context: Context) : FrameLayout(context) {
                 }
             }
         }
+        selectedLetter = null
+        adapter.notifyItemRangeChanged(1, adapter.itemCount - 1, "FOCUS_CHANGE")
         lastSelectedIndex = -1
     }
 
@@ -371,6 +376,16 @@ class DrawerView(context: Context) : FrameLayout(context) {
             return filteredApps.size + 1
         }
 
+        private fun updateItemFocus(holder: AppViewHolder, position: Int) {
+            if (position == 0) return
+            val item = filteredApps[position - 1]
+            val firstChar = item.label.firstOrNull()?.uppercaseChar()
+            val itemLetter = if (firstChar != null && firstChar.isLetter()) firstChar.toString() else "#"
+
+            val isFocused = selectedLetter == null || itemLetter == selectedLetter
+            holder.itemView.alpha = if (isFocused) 1.0f else 0.3f
+        }
+
         override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): RecyclerView.ViewHolder {
             if (viewType == VIEW_TYPE_SEARCH) {
                 if (::searchBar.isInitialized) {
@@ -435,11 +450,23 @@ class DrawerView(context: Context) : FrameLayout(context) {
             }
         }
 
+        override fun onBindViewHolder(holder: RecyclerView.ViewHolder, position: Int, payloads: List<Any>) {
+            if (payloads.isNotEmpty() && payloads.contains("FOCUS_CHANGE")) {
+                if (holder is AppViewHolder) {
+                    updateItemFocus(holder, position)
+                }
+            } else {
+                super.onBindViewHolder(holder, position, payloads)
+            }
+        }
+
         override fun onBindViewHolder(holder: RecyclerView.ViewHolder, position: Int) {
             if (getItemViewType(position) == VIEW_TYPE_APP) {
                 val appHolder = holder as AppViewHolder
                 val item = filteredApps[position - 1]
                 val scale = settingsManager.iconScale
+
+                updateItemFocus(appHolder, position)
 
                 if (appHolder.lastScale != scale) {
                     val baseSize = resources.getDimensionPixelSize(R.dimen.grid_icon_size)
