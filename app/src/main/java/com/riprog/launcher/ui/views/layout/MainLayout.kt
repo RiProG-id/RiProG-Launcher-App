@@ -47,9 +47,9 @@ class MainLayout(private val activity: MainActivity) : FrameLayout(activity) {
         }
         longPressTriggered = true
         if (touchedView != null) {
-            activity.freeformInteraction.showTransformOverlay(touchedView!!, startX, startY)
+            activity.freeformInteraction.showTransformOverlay(touchedView!!, lastX, lastY)
         } else {
-            activity.showHomeMenu(startX, startY)
+            activity.showHomeMenu(lastX, lastY)
         }
     }
 
@@ -61,10 +61,14 @@ class MainLayout(private val activity: MainActivity) : FrameLayout(activity) {
         lastX = ev.x
         lastY = ev.y
 
-        if (activity.isAnyOverlayVisible()) {
-            return false
+        if (activity.freeformInteraction.isTransforming() && longPressTriggered) {
+            val action = ev.action and MotionEvent.ACTION_MASK
+            if (action == MotionEvent.ACTION_MOVE || action == MotionEvent.ACTION_UP || action == MotionEvent.ACTION_CANCEL) {
+                return true
+            }
         }
-        if (activity.freeformInteraction.isTransforming()) {
+
+        if (activity.isAnyOverlayVisible()) {
             return false
         }
         if (isDrawerOpen) {
@@ -108,10 +112,6 @@ class MainLayout(private val activity: MainActivity) : FrameLayout(activity) {
                 val dx = ev.x - startX
                 val dy = ev.y - startY
 
-                if (activity.freeformInteraction.isTransforming()) {
-                    return false
-                }
-
                 if (dy < -touchSlop && abs(dy.toDouble()) > abs(dx.toDouble())) {
                     longPressHandler.removeCallbacks(longPressRunnable)
                     return true
@@ -137,6 +137,14 @@ class MainLayout(private val activity: MainActivity) : FrameLayout(activity) {
     override fun onTouchEvent(event: MotionEvent): Boolean {
         lastX = event.x
         lastY = event.y
+
+        if (activity.freeformInteraction.isTransforming()) {
+            val action = event.action and MotionEvent.ACTION_MASK
+            if (action == MotionEvent.ACTION_MOVE || action == MotionEvent.ACTION_UP || action == MotionEvent.ACTION_CANCEL) {
+                activity.freeformInteraction.currentTransformOverlay?.dispatchTouchEvent(event)
+                return true
+            }
+        }
 
         if (activity.isAnyOverlayVisible()) {
             return true // Consume all events to block underlying gestures
@@ -169,11 +177,6 @@ class MainLayout(private val activity: MainActivity) : FrameLayout(activity) {
                 val dx = event.x - startX
                 val dy = event.y - startY
 
-                if (activity.freeformInteraction.isTransforming()) {
-                    activity.freeformInteraction.currentTransformOverlay?.dispatchTouchEvent(event)
-                    return true
-                }
-
                 if (isDragging) {
                     activity.homeView.handleDrag(event.x, event.y)
                     return true
@@ -201,10 +204,6 @@ class MainLayout(private val activity: MainActivity) : FrameLayout(activity) {
 
             MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
                 longPressHandler.removeCallbacks(longPressRunnable)
-                if (activity.freeformInteraction.isTransforming()) {
-                    activity.freeformInteraction.currentTransformOverlay?.dispatchTouchEvent(event)
-                    return true
-                }
                 if (isDragging) {
                     activity.homeView.endDragging()
                     isDragging = false
