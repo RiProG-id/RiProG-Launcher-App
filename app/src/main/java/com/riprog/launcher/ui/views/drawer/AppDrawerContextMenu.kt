@@ -13,11 +13,12 @@ import com.riprog.launcher.R
 import com.riprog.launcher.logic.managers.SettingsManager
 import com.riprog.launcher.theme.ThemeUtils
 
-class AppDrawerContextMenu(context: Context, private val settingsManager: SettingsManager, private val callback: Callback) : FrameLayout(context) {
+class AppDrawerContextMenu(context: Context, private val settingsManager: SettingsManager, private val isRemovable: Boolean, private val callback: Callback) : FrameLayout(context) {
 
     interface Callback {
         fun onAddToHome()
         fun onAppInfo()
+        fun onUninstall()
         fun dismiss()
     }
 
@@ -39,6 +40,9 @@ class AppDrawerContextMenu(context: Context, private val settingsManager: Settin
         val items = mutableListOf<ContextMenuItem>()
         items.add(ContextMenuItem(R.string.action_add_to_home) { callback.onAddToHome() })
         items.add(ContextMenuItem(R.string.action_app_info) { callback.onAppInfo() })
+        if (isRemovable) {
+            items.add(ContextMenuItem(R.string.drag_uninstall) { callback.onUninstall() })
+        }
 
         recyclerView.adapter = ContextMenuAdapter(items)
 

@@ -7,7 +7,8 @@ import android.content.pm.PackageManager
 class AppItem(
     val label: String,
     val packageName: String,
-    val className: String
+    val className: String,
+    val isSystemApp: Boolean = false
 ) {
 
     fun getComponentName(): ComponentName {

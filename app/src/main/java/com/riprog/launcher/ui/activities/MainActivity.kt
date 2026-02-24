@@ -113,6 +113,10 @@ class MainActivity : Activity() {
             override fun onShowAppInfo(item: HomeItem?) {
                 this@MainActivity.showAppInfo(item)
             }
+
+            override fun onUninstall(item: HomeItem?) {
+                this@MainActivity.uninstallApp(item?.packageName)
+            }
         })
 
         setContentView(mainLayout)
@@ -363,6 +367,18 @@ class MainActivity : Activity() {
             startActivity(intent)
         } catch (e: Exception) {
             Toast.makeText(this, getString(R.string.app_info_failed), Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    fun uninstallApp(packageName: String?) {
+        if (packageName.isNullOrEmpty()) return
+        try {
+            val intent = Intent(Intent.ACTION_DELETE)
+            intent.data = Uri.parse("package:$packageName")
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            startActivity(intent)
+        } catch (e: Exception) {
+            Toast.makeText(this, getString(R.string.uninstall_failed, e.message), Toast.LENGTH_SHORT).show()
         }
     }
 
@@ -733,7 +749,7 @@ class MainActivity : Activity() {
 
     fun showAppDrawerMenu(anchor: View, app: AppItem) {
         if (isAnyOverlayVisible()) return
-        val menu = AppDrawerContextMenu(this, settingsManager, object : AppDrawerContextMenu.Callback {
+        val menu = AppDrawerContextMenu(this, settingsManager, !app.isSystemApp, object : AppDrawerContextMenu.Callback {
             override fun onAddToHome() {
                 spawnApp(app)
                 mainLayout.closeDrawer()
@@ -741,6 +757,10 @@ class MainActivity : Activity() {
 
             override fun onAppInfo() {
                 showAppInfo(HomeItem.createApp(app.packageName, app.className, 0f, 0f, 0))
+            }
+
+            override fun onUninstall() {
+                uninstallApp(app.packageName)
             }
 
             override fun dismiss() {

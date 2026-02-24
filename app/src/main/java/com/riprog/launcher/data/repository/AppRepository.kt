@@ -66,10 +66,12 @@ class AppRepository(context: Context) {
 
             for (info in infos) {
                 if (info.activityInfo.packageName != selfPackage) {
+                    val isSystemApp = (info.activityInfo.applicationInfo.flags and android.content.pm.ApplicationInfo.FLAG_SYSTEM) != 0
                     val item = AppItem(
                         info.loadLabel(pm).toString(),
                         info.activityInfo.packageName,
-                        info.activityInfo.name
+                        info.activityInfo.name,
+                        isSystemApp
                     )
                     apps.add(item)
                 }
