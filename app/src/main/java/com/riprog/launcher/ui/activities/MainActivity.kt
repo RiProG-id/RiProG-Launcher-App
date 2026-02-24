@@ -28,6 +28,7 @@ import android.appwidget.AppWidgetManager
 import android.appwidget.AppWidgetProviderInfo
 import android.content.BroadcastReceiver
 import android.content.Context
+import android.content.res.Configuration
 import android.content.Intent
 import android.content.IntentFilter
 import android.graphics.Color
@@ -66,6 +67,7 @@ class MainActivity : Activity() {
     private var lastGridRow: Float = 0f
     private var pendingSpanX: Int = 2
     private var pendingSpanY: Int = 1
+    private var appliedThemeMode: String? = null
 
     override fun attachBaseContext(newBase: Context) {
         val sm = SettingsManager(newBase)
@@ -75,7 +77,8 @@ class MainActivity : Activity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         settingsManager = SettingsManager(this)
-        ThemeManager.applyThemeMode(this, settingsManager.themeMode)
+        appliedThemeMode = settingsManager.themeMode
+        ThemeManager.applyThemeMode(this, appliedThemeMode)
         ThemeUtils.updateStatusBarContrast(this)
 
         val w = window
@@ -472,9 +475,20 @@ class MainActivity : Activity() {
 
     override fun onResume() {
         super.onResume()
+        if (appliedThemeMode != settingsManager.themeMode) {
+            recreate()
+            return
+        }
         autoDimmingBackground?.updateDimVisibility()
         homeView.refreshLayout()
         homeView.refreshIcons(model, allApps)
+    }
+
+    override fun onConfigurationChanged(newConfig: Configuration) {
+        super.onConfigurationChanged(newConfig)
+        if (settingsManager.themeMode == "system") {
+            recreate()
+        }
     }
 
     override fun onStart() {

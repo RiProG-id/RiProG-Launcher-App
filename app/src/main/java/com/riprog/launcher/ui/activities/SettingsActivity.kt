@@ -7,6 +7,7 @@ import com.riprog.launcher.R
 
 import android.app.Activity
 import android.content.Context
+import android.content.res.Configuration
 import android.graphics.Color
 import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
@@ -27,6 +28,7 @@ class SettingsActivity : Activity() {
 
     private lateinit var settingsManager: SettingsManager
     private lateinit var recyclerView: RecyclerView
+    private var appliedThemeMode: String? = null
 
     override fun attachBaseContext(newBase: Context) {
         val sm = SettingsManager(newBase)
@@ -36,7 +38,8 @@ class SettingsActivity : Activity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         settingsManager = SettingsManager(this)
-        ThemeManager.applyThemeMode(this, settingsManager.themeMode)
+        appliedThemeMode = settingsManager.themeMode
+        ThemeManager.applyThemeMode(this, appliedThemeMode)
 
         val w = window
         w.setFlags(WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS, WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS)
@@ -92,6 +95,13 @@ class SettingsActivity : Activity() {
 
         setupAdapter()
         setContentView(rootContainer)
+    }
+
+    override fun onConfigurationChanged(newConfig: Configuration) {
+        super.onConfigurationChanged(newConfig)
+        if (settingsManager.themeMode == "system") {
+            recreate()
+        }
     }
 
     private fun setupAdapter() {
@@ -297,9 +307,13 @@ class SettingsActivity : Activity() {
                         }
 
                         option.setOnClickListener {
-                            settingsManager.themeMode = values[index]
-                            ThemeManager.applyThemeMode(this@SettingsActivity, values[index])
-                            recreate()
+                            val newValue = values[index]
+                            if (settingsManager.themeMode != newValue) {
+                                settingsManager.themeMode = newValue
+                                ThemeManager.applyThemeMode(this@SettingsActivity, newValue)
+                                appliedThemeMode = newValue
+                                recreate()
+                            }
                         }
 
                         val lp = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)

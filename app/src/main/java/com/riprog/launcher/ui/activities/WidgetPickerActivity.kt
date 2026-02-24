@@ -1,6 +1,7 @@
 package com.riprog.launcher.ui.activities
 
 import com.riprog.launcher.theme.ThemeUtils
+import com.riprog.launcher.theme.ThemeManager
 import com.riprog.launcher.logic.managers.SettingsManager
 import com.riprog.launcher.logic.utils.WidgetSizingUtils
 import com.riprog.launcher.R
@@ -32,10 +33,18 @@ class WidgetPickerActivity : Activity() {
     private lateinit var recyclerView: RecyclerView
     private lateinit var appWidgetManager: AppWidgetManager
     private val widgetPreviewExecutor = Executors.newFixedThreadPool(4)
+    private var appliedThemeMode: String? = null
+
+    override fun attachBaseContext(newBase: Context) {
+        val sm = SettingsManager(newBase)
+        super.attachBaseContext(ThemeManager.applyThemeToContext(newBase, sm.themeMode))
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         settingsManager = SettingsManager(this)
+        appliedThemeMode = settingsManager.themeMode
+        ThemeManager.applyThemeMode(this, appliedThemeMode)
         appWidgetManager = AppWidgetManager.getInstance(this)
 
         val w = window
@@ -90,6 +99,20 @@ class WidgetPickerActivity : Activity() {
 
         loadWidgets()
         setContentView(rootContainer)
+    }
+
+    override fun onResume() {
+        super.onResume()
+        if (appliedThemeMode != settingsManager.themeMode) {
+            recreate()
+        }
+    }
+
+    override fun onConfigurationChanged(newConfig: Configuration) {
+        super.onConfigurationChanged(newConfig)
+        if (settingsManager.themeMode == "system") {
+            recreate()
+        }
     }
 
     private fun loadWidgets() {
