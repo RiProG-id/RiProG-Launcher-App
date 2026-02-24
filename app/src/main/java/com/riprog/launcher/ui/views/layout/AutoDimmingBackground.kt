@@ -38,11 +38,20 @@ class AutoDimmingBackground(private val context: Context, private val parentLayo
             if (dimView!!.visibility != View.VISIBLE) {
                 dimView!!.visibility = View.VISIBLE
             }
-            dimView!!.animate().alpha(0.4f).setDuration(400).start()
+            if (settingsManager.isLiquidGlass) {
+                dimView!!.alpha = 0.4f
+            } else {
+                dimView!!.animate().alpha(0.4f).setDuration(400).start()
+            }
         } else {
-            dimView!!.animate().alpha(0f).setDuration(400).withEndAction {
+            if (settingsManager.isLiquidGlass) {
+                dimView!!.alpha = 0f
                 dimView!!.visibility = View.GONE
-            }.start()
+            } else {
+                dimView!!.animate().alpha(0f).setDuration(400).withEndAction {
+                    dimView!!.visibility = View.GONE
+                }.start()
+            }
         }
     }
 }

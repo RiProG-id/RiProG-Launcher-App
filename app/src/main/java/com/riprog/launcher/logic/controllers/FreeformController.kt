@@ -211,14 +211,22 @@ class FreeformController(
 
             val snappedY = newRow * cellHeight
 
-            v.animate()
-                .x(snappedX)
-                .y(snappedY)
-                .rotation(0f)
-                .scaleX(1f)
-                .scaleY(1f)
-                .setDuration(200)
-                .start()
+            if (preferences.isLiquidGlass) {
+                v.x = snappedX
+                v.y = snappedY
+                v.rotation = 0f
+                v.scaleX = 1f
+                v.scaleY = 1f
+            } else {
+                v.animate()
+                    .x(snappedX)
+                    .y(snappedY)
+                    .rotation(0f)
+                    .scaleX(1f)
+                    .scaleY(1f)
+                    .setDuration(200)
+                    .start()
+            }
         }
         mainActivity.saveHomeState()
         return false

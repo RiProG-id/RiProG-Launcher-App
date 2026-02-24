@@ -223,13 +223,19 @@ class DrawerView(context: Context) : FrameLayout(context) {
     private fun highlightLetter(index: Int) {
         if (index == lastSelectedIndex) return
         val adaptiveColor = ThemeUtils.getAdaptiveColor(context, settingsManager, true)
+        val isLiquid = settingsManager.isLiquidGlass
 
         if (lastSelectedIndex in 0 until indexBar.childCount) {
             val prevTv = indexBar.getChildAt(lastSelectedIndex) as? TextView
             prevTv?.let {
                 it.setTextColor(context.getColor(R.color.foreground_dim))
                 it.setTypeface(null, android.graphics.Typeface.NORMAL)
-                it.animate().scaleX(1.0f).scaleY(1.0f).setDuration(100).start()
+                if (isLiquid) {
+                    it.scaleX = 1.0f
+                    it.scaleY = 1.0f
+                } else {
+                    it.animate().scaleX(1.0f).scaleY(1.0f).setDuration(100).start()
+                }
             }
         }
 
@@ -238,7 +244,12 @@ class DrawerView(context: Context) : FrameLayout(context) {
             currTv?.let {
                 it.setTextColor(adaptiveColor)
                 it.setTypeface(null, android.graphics.Typeface.BOLD)
-                it.animate().scaleX(1.2f).scaleY(1.2f).setDuration(100).start()
+                if (isLiquid) {
+                    it.scaleX = 1.2f
+                    it.scaleY = 1.2f
+                } else {
+                    it.animate().scaleX(1.2f).scaleY(1.2f).setDuration(100).start()
+                }
             }
         }
         lastSelectedIndex = index
@@ -250,7 +261,12 @@ class DrawerView(context: Context) : FrameLayout(context) {
             tv?.let {
                 it.setTextColor(context.getColor(R.color.foreground_dim))
                 it.setTypeface(null, android.graphics.Typeface.NORMAL)
-                it.animate().scaleX(1.0f).scaleY(1.0f).setDuration(100).start()
+                if (settingsManager.isLiquidGlass) {
+                    it.scaleX = 1.0f
+                    it.scaleY = 1.0f
+                } else {
+                    it.animate().scaleX(1.0f).scaleY(1.0f).setDuration(100).start()
+                }
             }
         }
         lastSelectedIndex = -1

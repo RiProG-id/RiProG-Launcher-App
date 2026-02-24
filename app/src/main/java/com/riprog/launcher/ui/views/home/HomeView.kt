@@ -188,7 +188,7 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
         lp.bottomMargin = dpToPx(120)
         addView(hint, lp)
 
-        if (Math.random() < 0.3) {
+        if (Math.random() < 0.3 && !settingsManager.isLiquidGlass) {
             hint.animate().alpha(1f).setDuration(1000).setStartDelay(2000).withEndAction {
                 hint.animate().alpha(0f).setDuration(1000).setStartDelay(4000).withEndAction {
                     removeView(hint)
@@ -312,7 +312,13 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
             v.y = absY
         }
 
-        v.animate().scaleX(1.1f).scaleY(1.1f).alpha(0.8f).setDuration(150).start()
+        if (settingsManager.isLiquidGlass) {
+            v.scaleX = 1.1f
+            v.scaleY = 1.1f
+            v.alpha = 0.8f
+        } else {
+            v.animate().scaleX(1.1f).scaleY(1.1f).alpha(0.8f).setDuration(150).start()
+        }
         v.performHapticFeedback(android.view.HapticFeedbackConstants.LONG_PRESS)
     }
 
@@ -352,7 +358,13 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
     fun endDragging() {
         if (draggingView != null) {
             val v = draggingView!!
-            v.animate().scaleX(1.0f).scaleY(1.0f).alpha(1.0f).setDuration(150).start()
+            if (settingsManager.isLiquidGlass) {
+                v.scaleX = 1.0f
+                v.scaleY = 1.0f
+                v.alpha = 1.0f
+            } else {
+                v.animate().scaleX(1.0f).scaleY(1.0f).alpha(1.0f).setDuration(150).start()
+            }
             val item = v.tag as HomeItem?
             if (item != null) {
                 val absXInWindow = IntArray(2).apply { v.getLocationInWindow(this) }[0]
@@ -573,11 +585,16 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
             item.tiltX = 0f
             item.tiltY = 0f
 
-            v.animate()
-                .x(item.col * cellWidth + horizontalPadding)
-                .y(item.row * cellHeight)
-                .setDuration(200)
-                .start()
+            if (settingsManager.isLiquidGlass) {
+                v.x = item.col * cellWidth + horizontalPadding
+                v.y = item.row * cellHeight
+            } else {
+                v.animate()
+                    .x(item.col * cellWidth + horizontalPadding)
+                    .y(item.row * cellHeight)
+                    .setDuration(200)
+                    .start()
+            }
         }
 
         if (context is MainActivity) {
