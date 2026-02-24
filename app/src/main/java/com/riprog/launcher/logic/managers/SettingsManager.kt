@@ -11,6 +11,20 @@ import org.json.JSONObject
 class SettingsManager(context: Context) {
     private val prefs: SharedPreferences = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
 
+    init {
+        if (!prefs.contains(KEY_FIRST_RUN)) {
+            prefs.edit().apply {
+                putString(KEY_THEME_MODE, "system")
+                putBoolean(KEY_LIQUID_GLASS, false)
+                putBoolean(KEY_DARKEN_WALLPAPER, false)
+                putBoolean(KEY_FREEFORM_HOME, false)
+                putBoolean(KEY_HIDE_LABELS, false)
+                putBoolean(KEY_FIRST_RUN, true)
+                apply()
+            }
+        }
+    }
+
     var columns: Int
         get() = prefs.getInt(KEY_COLUMNS, 4)
         set(columns) {
@@ -199,5 +213,6 @@ class SettingsManager(context: Context) {
         private const val KEY_DRAWER_OPEN_COUNT = "drawer_open_count"
         private const val KEY_DEFAULT_PROMPT_TIMESTAMP = "default_prompt_ts"
         private const val KEY_DEFAULT_PROMPT_COUNT = "default_prompt_count"
+        private const val KEY_FIRST_RUN = "first_run_init"
     }
 }
