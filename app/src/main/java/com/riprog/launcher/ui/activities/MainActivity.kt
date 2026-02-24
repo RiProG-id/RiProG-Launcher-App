@@ -158,7 +158,8 @@ class MainActivity : Activity() {
         prompt.background = ThemeUtils.getGlassDrawable(this, settingsManager, 28f)
         prompt.setPadding(dpToPx(24), dpToPx(24), dpToPx(24), dpToPx(24))
         prompt.gravity = Gravity.CENTER
-        prompt.elevation = dpToPx(8).toFloat()
+        val isLiquid = settingsManager.isLiquidGlass
+        prompt.elevation = if (isLiquid) dpToPx(8).toFloat() else dpToPx(2).toFloat()
 
         val title = TextView(this)
         title.setText(R.string.prompt_default_launcher_title)

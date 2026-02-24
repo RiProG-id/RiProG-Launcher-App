@@ -2,6 +2,8 @@
 <resources>
     <color name="background">#000000</color>
     <color name="background_glass">#99000000</color>
+    <color name="surface">#121212</color>
+    <color name="surface_stroke">#1F1F1F</color>
     <color name="foreground">#FFFFFF</color>
     <color name="foreground_dim">#AAAAAA</color>
     <color name="item_background">#1AFFFFFF</color>

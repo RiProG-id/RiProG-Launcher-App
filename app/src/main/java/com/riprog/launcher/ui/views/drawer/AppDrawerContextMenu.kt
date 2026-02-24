@@ -61,7 +61,8 @@ class AppDrawerContextMenu(context: Context, private val settingsManager: Settin
             tv.textSize = 14f
             tv.setPadding(dpToPx(16), dpToPx(12), dpToPx(16), dpToPx(12))
             tv.background = ThemeUtils.getGlassDrawable(parent.context, settingsManager, 12f)
-            tv.elevation = dpToPx(4).toFloat()
+            val isLiquid = settingsManager.isLiquidGlass
+            tv.elevation = if (isLiquid) dpToPx(4).toFloat() else dpToPx(2).toFloat()
 
             container.addView(tv, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
             return object : RecyclerView.ViewHolder(container) {}
