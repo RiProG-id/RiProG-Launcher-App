@@ -274,15 +274,23 @@ class MainLayout(private val activity: MainActivity) : FrameLayout(activity) {
         isDrawerOpen = true
         activity.settingsManager.drawerOpenCount = activity.settingsManager.drawerOpenCount + 1
         activity.drawerView.visibility = View.VISIBLE
-        activity.drawerView.alpha = 0f
-        activity.drawerView.translationY = height / 4f
-        activity.drawerView.animate()
-            .translationY(0f)
-            .alpha(1f)
-            .setDuration(250)
-            .setInterpolator(android.view.animation.DecelerateInterpolator())
-            .start()
-        activity.homeView.animate().alpha(0f).setDuration(250).start()
+
+        if (activity.settingsManager.isLiquidGlass) {
+            activity.drawerView.alpha = 1f
+            activity.drawerView.translationY = 0f
+            activity.homeView.alpha = 0f
+        } else {
+            activity.drawerView.alpha = 0f
+            activity.drawerView.translationY = height / 4f
+            activity.drawerView.animate()
+                .translationY(0f)
+                .alpha(1f)
+                .setDuration(250)
+                .setInterpolator(android.view.animation.DecelerateInterpolator())
+                .start()
+            activity.homeView.animate().alpha(0f).setDuration(250).start()
+        }
+
         activity.drawerView.onOpen()
         activity.updateContentBlur()
     }
@@ -332,20 +340,30 @@ class MainLayout(private val activity: MainActivity) : FrameLayout(activity) {
     fun closeDrawer(): Boolean {
         if (!isDrawerOpen) return false
         isDrawerOpen = false
-        activity.drawerView.animate()
-            .translationY(height / 4f)
-            .alpha(0f)
-            .setDuration(200)
-            .setInterpolator(android.view.animation.AccelerateInterpolator())
-            .withEndAction {
-                activity.drawerView.visibility = View.GONE
-                activity.homeView.visibility = View.VISIBLE
-                activity.drawerView.onClose()
-                System.gc()
-            }
-            .start()
-        activity.homeView.visibility = View.VISIBLE
-        activity.homeView.animate().alpha(1f).setDuration(200).start()
+
+        if (activity.settingsManager.isLiquidGlass) {
+            activity.drawerView.visibility = View.GONE
+            activity.homeView.visibility = View.VISIBLE
+            activity.homeView.alpha = 1f
+            activity.drawerView.onClose()
+            System.gc()
+        } else {
+            activity.drawerView.animate()
+                .translationY(height / 4f)
+                .alpha(0f)
+                .setDuration(200)
+                .setInterpolator(android.view.animation.AccelerateInterpolator())
+                .withEndAction {
+                    activity.drawerView.visibility = View.GONE
+                    activity.homeView.visibility = View.VISIBLE
+                    activity.drawerView.onClose()
+                    System.gc()
+                }
+                .start()
+            activity.homeView.visibility = View.VISIBLE
+            activity.homeView.animate().alpha(1f).setDuration(200).start()
+        }
+
         activity.updateContentBlur()
         val imm = context.getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager?
         imm?.hideSoftInputFromWindow(windowToken, 0)
