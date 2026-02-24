@@ -130,9 +130,9 @@ class DrawerView(context: Context) : LinearLayout(context) {
         }
     }
 
-    private fun setupIndexBar() {
+    private fun setupIndexBar(config: android.content.res.Configuration? = null) {
         indexBar.removeAllViews()
-        val adaptiveColor = ThemeUtils.getAdaptiveColor(context, settingsManager, true)
+        val adaptiveColor = ThemeUtils.getAdaptiveColor(context, settingsManager, true, config)
         val alphabet = "#ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("".toRegex()).dropLastWhile { it.isEmpty() }.toTypedArray()
         for (letter in alphabet) {
             if (letter.isEmpty()) continue
@@ -195,11 +195,11 @@ class DrawerView(context: Context) : LinearLayout(context) {
         (recyclerView.layoutManager as? GridLayoutManager)?.spanCount = columns
     }
 
-    fun updateTheme() {
-        background = ThemeUtils.getGlassDrawable(context, settingsManager, 0f)
-        setupIndexBar()
+    fun updateTheme(config: android.content.res.Configuration? = null) {
+        background = ThemeUtils.getGlassDrawable(context, settingsManager, 0f, config)
+        setupIndexBar(config)
         if (::searchBar.isInitialized) {
-            val adaptiveColor = ThemeUtils.getAdaptiveColor(context, settingsManager, true)
+            val adaptiveColor = ThemeUtils.getAdaptiveColor(context, settingsManager, true, config)
             searchBar.setHintTextColor(adaptiveColor and 0x80FFFFFF.toInt())
             searchBar.setTextColor(adaptiveColor)
             searchBar.setBackgroundColor(context.getColor(R.color.search_background))

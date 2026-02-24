@@ -59,9 +59,9 @@ object ThemeManager {
     }
 
 
-    fun applySettingItemStyle(context: Context, item: LinearLayout, settingsManager: SettingsManager) {
-        item.isClickable = true
-        item.isFocusable = true
+    fun applySettingItemStyle(context: Context, item: LinearLayout, settingsManager: SettingsManager, isClickable: Boolean = true) {
+        item.isClickable = isClickable
+        item.isFocusable = isClickable
 
         val radius = dpToPx(context, 12).toFloat()
         val isNight = (context.resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) ==

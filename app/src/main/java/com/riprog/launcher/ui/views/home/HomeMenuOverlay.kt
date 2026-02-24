@@ -124,7 +124,7 @@ class HomeMenuOverlay(context: Context, private val settingsManager: SettingsMan
 
     private class MenuViewHolder(view: View, val btn: LinearLayout, val icon: ImageView, val label: TextView) : RecyclerView.ViewHolder(view)
 
-    fun updateTheme() {
+    fun updateTheme(config: android.content.res.Configuration? = null) {
         val recyclerView = getChildAt(0) as? RecyclerView ?: return
         recyclerView.adapter?.notifyDataSetChanged()
     }

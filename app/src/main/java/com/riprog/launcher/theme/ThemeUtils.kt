@@ -26,10 +26,10 @@ object ThemeUtils {
     }
 
 
-    fun getGlassDrawable(context: Context, settingsManager: SettingsManager, cornerRadiusDp: Float): Drawable {
+    fun getGlassDrawable(context: Context, settingsManager: SettingsManager, cornerRadiusDp: Float, config: Configuration? = null): Drawable {
         val isLiquidGlass = settingsManager.isLiquidGlass
-        val isNight = (context.resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) ==
-                Configuration.UI_MODE_NIGHT_YES
+        val uiMode = config?.uiMode ?: context.resources.configuration.uiMode
+        val isNight = (uiMode and Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES
 
         val gd = GradientDrawable()
         val backgroundColor: Int
@@ -58,9 +58,9 @@ object ThemeUtils {
     }
 
 
-    fun getAdaptiveColor(context: Context, settingsManager: SettingsManager, isOnGlass: Boolean): Int {
-        val isNight = (context.resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) ==
-                Configuration.UI_MODE_NIGHT_YES
+    fun getAdaptiveColor(context: Context, settingsManager: SettingsManager, isOnGlass: Boolean, config: Configuration? = null): Int {
+        val uiMode = config?.uiMode ?: context.resources.configuration.uiMode
+        val isNight = (uiMode and Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES
 
         if (isOnGlass) {
             return if (settingsManager.isLiquidGlass) {
@@ -104,11 +104,11 @@ object ThemeUtils {
     }
 
 
-    fun updateStatusBarContrast(activity: Activity) {
+    fun updateStatusBarContrast(activity: Activity, config: Configuration? = null) {
         val window = activity.window
         val controller = WindowCompat.getInsetsController(window, window.decorView)
-        val isNight = (activity.resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) ==
-                Configuration.UI_MODE_NIGHT_YES
+        val uiMode = config?.uiMode ?: activity.resources.configuration.uiMode
+        val isNight = (uiMode and Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES
         controller.isAppearanceLightStatusBars = !isNight
     }
 

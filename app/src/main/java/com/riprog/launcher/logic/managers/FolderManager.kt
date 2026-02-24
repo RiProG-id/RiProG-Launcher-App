@@ -468,12 +468,12 @@ class FolderManager(private val activity: MainActivity, private val settingsMana
         return currentFolderOverlay != null
     }
 
-    fun updateTheme() {
+    fun updateTheme(config: android.content.res.Configuration? = null) {
         val overlay = currentFolderOverlay ?: return
         val linearLayout = (overlay as? ViewGroup)?.getChildAt(0) as? LinearLayout ?: return
 
-        linearLayout.background = ThemeUtils.getGlassDrawable(activity, settingsManager, 12f)
-        val adaptiveColor = ThemeUtils.getAdaptiveColor(activity, settingsManager, true)
+        linearLayout.background = ThemeUtils.getGlassDrawable(activity, settingsManager, 12f, config)
+        val adaptiveColor = ThemeUtils.getAdaptiveColor(activity, settingsManager, true, config)
 
         for (i in 0 until linearLayout.childCount) {
             val child = linearLayout.getChildAt(i)

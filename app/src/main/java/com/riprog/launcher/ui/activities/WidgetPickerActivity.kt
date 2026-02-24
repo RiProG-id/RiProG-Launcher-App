@@ -304,12 +304,14 @@ class WidgetPickerActivity : AppCompatActivity() {
     private class SimpleViewHolder(view: View) : RecyclerView.ViewHolder(view)
     override fun onConfigurationChanged(newConfig: android.content.res.Configuration) {
         super.onConfigurationChanged(newConfig)
+        updateAllUI(newConfig)
+    }
+
+    private fun updateAllUI(config: android.content.res.Configuration? = null) {
         ThemeUtils.applyWindowBlur(window, settingsManager.isLiquidGlass)
-
-        rootContainer.background = ThemeUtils.getGlassDrawable(this, settingsManager, 0f)
-        val adaptiveColor = ThemeUtils.getAdaptiveColor(this, settingsManager, true)
+        rootContainer.background = ThemeUtils.getGlassDrawable(this, settingsManager, 0f, config)
+        val adaptiveColor = ThemeUtils.getAdaptiveColor(this, settingsManager, true, config)
         closeBtn.setColorFilter(adaptiveColor)
-
         recyclerView.adapter?.notifyDataSetChanged()
     }
 

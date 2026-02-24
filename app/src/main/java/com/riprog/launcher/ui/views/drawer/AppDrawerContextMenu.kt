@@ -107,8 +107,8 @@ class AppDrawerContextMenu(context: Context, private val settingsManager: Settin
         return super.performClick()
     }
 
-    fun updateTheme() {
-        recyclerView.background = ThemeUtils.getGlassDrawable(context, settingsManager, 12f)
+    fun updateTheme(config: android.content.res.Configuration? = null) {
+        recyclerView.background = ThemeUtils.getGlassDrawable(context, settingsManager, 12f, config)
         recyclerView.adapter?.notifyDataSetChanged()
     }
 

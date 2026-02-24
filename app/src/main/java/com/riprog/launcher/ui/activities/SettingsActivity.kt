@@ -207,7 +207,7 @@ class SettingsActivity : AppCompatActivity() {
                     val item = LinearLayout(context)
                     item.orientation = LinearLayout.VERTICAL
                     item.setPadding(dpToPx(16), dpToPx(16), dpToPx(16), dpToPx(16))
-                    ThemeManager.applySettingItemStyle(context as Activity, item, settingsManager)
+                    ThemeManager.applySettingItemStyle(context as Activity, item, settingsManager, false)
 
                     val titleView = TextView(context)
                     titleView.setText(R.string.setting_theme_mode)
@@ -240,7 +240,7 @@ class SettingsActivity : AppCompatActivity() {
             val adaptiveColor = ThemeUtils.getAdaptiveColor(this@SettingsActivity, settingsManager, true)
 
             if (holder.itemView is LinearLayout && (item.type == SettingType.TOGGLE || item.type == SettingType.THEME)) {
-                ThemeManager.applySettingItemStyle(this@SettingsActivity, holder.itemView as LinearLayout, settingsManager)
+                ThemeManager.applySettingItemStyle(this@SettingsActivity, holder.itemView as LinearLayout, settingsManager, item.type == SettingType.TOGGLE)
             }
 
             when (item.type) {
@@ -314,6 +314,7 @@ class SettingsActivity : AppCompatActivity() {
                         option.setOnClickListener {
                             settingsManager.themeMode = values[index]
                             ThemeManager.applyThemeMode(this@SettingsActivity, values[index])
+                            updateAllUI()
                         }
 
                         val lp = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
@@ -340,12 +341,12 @@ class SettingsActivity : AppCompatActivity() {
         updateAllUI()
     }
 
-    private fun updateAllUI() {
-        ThemeUtils.updateStatusBarContrast(this)
+    private fun updateAllUI(config: android.content.res.Configuration? = null) {
+        ThemeUtils.updateStatusBarContrast(this, config)
         ThemeUtils.applyWindowBlur(window, settingsManager.isLiquidGlass)
 
-        rootContainer.background = ThemeUtils.getGlassDrawable(this, settingsManager, 0f)
-        val adaptiveColor = ThemeUtils.getAdaptiveColor(this, settingsManager, true)
+        rootContainer.background = ThemeUtils.getGlassDrawable(this, settingsManager, 0f, config)
+        val adaptiveColor = ThemeUtils.getAdaptiveColor(this, settingsManager, true, config)
         closeBtn.setColorFilter(adaptiveColor)
 
         recyclerView.adapter?.notifyDataSetChanged()

@@ -494,10 +494,14 @@ class MainActivity : AppCompatActivity() {
     override fun onConfigurationChanged(newConfig: android.content.res.Configuration) {
         super.onConfigurationChanged(newConfig)
         applyDynamicColors()
-        ThemeUtils.updateStatusBarContrast(this)
-        autoDimmingBackground?.updateDimVisibility()
+        ThemeUtils.updateStatusBarContrast(this, newConfig)
+        autoDimmingBackground?.updateDimVisibility(newConfig)
         homeView.refreshLayout()
         homeView.refreshIcons(model, allApps)
+        drawerView.updateTheme(newConfig)
+        folderManager.updateTheme(newConfig)
+        (currentHomeMenu as? HomeMenuOverlay)?.updateTheme(newConfig)
+        (currentAppDrawerMenu as? AppDrawerContextMenu)?.updateTheme(newConfig)
     }
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {

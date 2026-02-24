@@ -29,10 +29,9 @@ class AutoDimmingBackground(private val context: Context, private val parentLayo
         parentLayout.addView(dimView, 0, lp)
     }
 
-    fun updateDimVisibility() {
-        val isNight = (context.resources.configuration.uiMode and
-                Configuration.UI_MODE_NIGHT_MASK) ==
-                Configuration.UI_MODE_NIGHT_YES
+    fun updateDimVisibility(config: Configuration? = null) {
+        val uiMode = config?.uiMode ?: context.resources.configuration.uiMode
+        val isNight = (uiMode and Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES
 
         if (isNight && settingsManager.isDarkenWallpaper) {
             dimView!!.visibility = View.VISIBLE
