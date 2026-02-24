@@ -28,6 +28,8 @@ object ThemeUtils {
 
     fun getGlassDrawable(context: Context, settingsManager: SettingsManager, cornerRadiusDp: Float): Drawable {
         val isLiquidGlass = settingsManager.isLiquidGlass
+        val isNight = (context.resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) ==
+                Configuration.UI_MODE_NIGHT_YES
 
         val gd = GradientDrawable()
         val backgroundColor: Int
@@ -37,16 +39,19 @@ object ThemeUtils {
             backgroundColor = context.getColor(R.color.background)
         }
 
+        val cornerRadiusPx = dpToPx(context, cornerRadiusDp).toFloat()
         gd.setColor(backgroundColor)
-        gd.cornerRadius = dpToPx(context, cornerRadiusDp).toFloat()
+        gd.cornerRadius = cornerRadiusPx
 
         if (isLiquidGlass) {
             gd.setStroke(dpToPx(context, 1.5f), context.getColor(R.color.glass_stroke))
+            val reflectionDrawable = GlassReflectionDrawable(gd, isNight)
+            reflectionDrawable.setCornerRadius(cornerRadiusPx)
+            return reflectionDrawable
         } else {
             gd.setStroke(0, 0)
+            return gd
         }
-
-        return gd
     }
 
 
