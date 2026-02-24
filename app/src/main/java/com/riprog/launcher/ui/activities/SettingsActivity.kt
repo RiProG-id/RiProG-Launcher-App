@@ -3,6 +3,7 @@ package com.riprog.launcher.ui.activities
 import com.riprog.launcher.theme.ThemeUtils
 import com.riprog.launcher.theme.ThemeManager
 import com.riprog.launcher.logic.managers.SettingsManager
+import com.riprog.launcher.ui.views.layout.AutoDimmingBackground
 import com.riprog.launcher.R
 
 import android.app.Activity
@@ -27,6 +28,7 @@ class SettingsActivity : Activity() {
 
     private lateinit var settingsManager: SettingsManager
     private lateinit var recyclerView: RecyclerView
+    private var autoDimmingBackground: AutoDimmingBackground? = null
 
     override fun attachBaseContext(newBase: Context) {
         val sm = SettingsManager(newBase)
@@ -46,7 +48,16 @@ class SettingsActivity : Activity() {
         ThemeUtils.applyWindowBlur(w, settingsManager.isLiquidGlass)
 
         val rootContainer = FrameLayout(this)
-        rootContainer.background = ThemeUtils.getGlassDrawable(this, settingsManager, 0f)
+
+        // Add dimming layer at the very bottom
+        autoDimmingBackground = AutoDimmingBackground(this, rootContainer, settingsManager)
+
+        // Add content layer with glass background
+        val contentLayer = FrameLayout(this)
+        contentLayer.background = ThemeUtils.getGlassDrawable(this, settingsManager, 0f)
+        rootContainer.addView(contentLayer, FrameLayout.LayoutParams(
+            ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT
+        ))
 
         recyclerView = RecyclerView(this)
         recyclerView.layoutManager = LinearLayoutManager(this)
@@ -56,7 +67,7 @@ class SettingsActivity : Activity() {
         // Initial padding
         recyclerView.setPadding(dpToPx(24), dpToPx(32), dpToPx(24), dpToPx(32))
 
-        rootContainer.addView(recyclerView, FrameLayout.LayoutParams(
+        contentLayer.addView(recyclerView, FrameLayout.LayoutParams(
             ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT
         ))
 
@@ -68,7 +79,7 @@ class SettingsActivity : Activity() {
         closeBtn.setPadding(dpToPx(12), dpToPx(12), dpToPx(12), dpToPx(12))
         closeBtn.setOnClickListener { finish() }
         val closeLp = FrameLayout.LayoutParams(dpToPx(48), dpToPx(48), Gravity.TOP or Gravity.END)
-        rootContainer.addView(closeBtn, closeLp)
+        contentLayer.addView(closeBtn, closeLp)
 
         ViewCompat.setOnApplyWindowInsetsListener(closeBtn) { v, insets ->
             val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
@@ -94,6 +105,11 @@ class SettingsActivity : Activity() {
         setContentView(rootContainer)
     }
 
+    override fun onResume() {
+        super.onResume()
+        autoDimmingBackground?.updateDimVisibility()
+    }
+
     private fun setupAdapter() {
         val items = mutableListOf<SettingItem>()
         items.add(SettingItem(SettingType.TITLE))
@@ -114,6 +130,7 @@ class SettingsActivity : Activity() {
         })
         items.add(SettingItem(SettingType.TOGGLE, titleRes = R.string.setting_darken_wallpaper, summaryRes = R.string.setting_darken_wallpaper_summary, isChecked = settingsManager.isDarkenWallpaper) {
             settingsManager.isDarkenWallpaper = it
+            autoDimmingBackground?.updateDimVisibility()
         })
 
         items.add(SettingItem(SettingType.CATEGORY, titleString = getString(R.string.category_about), iconRes = R.drawable.ic_info))
