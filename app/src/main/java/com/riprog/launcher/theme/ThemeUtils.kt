@@ -49,7 +49,12 @@ object ThemeUtils {
             reflectionDrawable.setCornerRadius(cornerRadiusPx)
             return reflectionDrawable
         } else {
-            gd.setStroke(dpToPx(context, 1f), context.getColor(R.color.surface_stroke))
+            // Avoid stroke for full-screen containers in pure mode to ensure 100% clean background.
+            if (cornerRadiusDp > 0) {
+                gd.setStroke(dpToPx(context, 1f), context.getColor(R.color.surface_stroke))
+            } else {
+                gd.setStroke(0, 0)
+            }
             return gd
         }
     }

@@ -664,14 +664,20 @@ class MainActivity : Activity() {
     }
 
     fun updateContentBlur() {
-        // Only apply global fullscreen blur for Folders and the App Drawer itself.
-        // Popup menus (Home Menu, Context Menu) should NOT trigger global blur.
+        // Only apply global fullscreen blur for deep UI layers.
+        // We must ensure the active foreground layer (Drawer) remains sharp.
         val isDrawerOpen = if (::mainLayout.isInitialized) mainLayout.isDrawerOpen() else false
-        val blur = (folderManager.isFolderOpen() || isDrawerOpen) && settingsManager.isLiquidGlass
+        val isFolderOpen = folderManager.isFolderOpen()
+        val isLiquid = settingsManager.isLiquidGlass
 
-        ThemeUtils.applyBlurIfSupported(homeView, blur)
-        ThemeUtils.applyBlurIfSupported(drawerView, blur)
-        ThemeUtils.applyWindowBlur(window, blur)
+        // homeView blurs if drawer or folder is open to show depth.
+        ThemeUtils.applyBlurIfSupported(homeView, (isDrawerOpen || isFolderOpen) && isLiquid)
+
+        // drawerView only blurs if a folder is open on top of it.
+        ThemeUtils.applyBlurIfSupported(drawerView, isFolderOpen && isDrawerOpen && isLiquid)
+
+        // Window blur is reserved for folder overlays to emphasize focus.
+        ThemeUtils.applyWindowBlur(window, isFolderOpen && isLiquid)
     }
 
     fun showHomeMenu(x: Float, y: Float) {
