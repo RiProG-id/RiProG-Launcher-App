@@ -209,11 +209,16 @@ class WidgetPickerActivity : Activity() {
                     card.isFocusable = true
 
                     val cardBg = GradientDrawable()
-                    val isNight = (context.resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) ==
-                            Configuration.UI_MODE_NIGHT_YES
-                    val cardColor = if (settingsManager.isLiquidGlass) 0x1AFFFFFF.toInt() else (if (isNight) 0x1AFFFFFF.toInt() else 0x0D000000.toInt())
+                    val cardColor = if (settingsManager.isLiquidGlass) {
+                        context.getColor(R.color.item_background_glass)
+                    } else {
+                        context.getColor(R.color.item_background)
+                    }
                     cardBg.setColor(cardColor)
                     cardBg.cornerRadius = dpToPx(16).toFloat()
+                    if (settingsManager.isLiquidGlass) {
+                        cardBg.setStroke(dpToPx(1), context.getColor(R.color.glass_stroke))
+                    }
                     card.background = cardBg
 
                     val lp = RecyclerView.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)

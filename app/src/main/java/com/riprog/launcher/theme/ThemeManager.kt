@@ -61,30 +61,24 @@ object ThemeManager {
         item.isFocusable = true
 
         val radius = dpToPx(context, 12).toFloat()
-        val isNight = (context.resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) ==
-                Configuration.UI_MODE_NIGHT_YES
 
         val shape = GradientDrawable()
         val baseColor = if (settingsManager.isLiquidGlass) {
-            if (isNight) 0x26FFFFFF.toInt() else 0x1A000000.toInt()
+            context.getColor(R.color.item_background_glass)
         } else {
-            if (isNight) 0x1AFFFFFF.toInt() else 0x0D000000.toInt()
+            context.getColor(R.color.item_background)
         }
         shape.setColor(baseColor)
         shape.cornerRadius = radius
         if (settingsManager.isLiquidGlass) {
-            shape.setStroke(dpToPx(context, 1), 0x20FFFFFF.toInt())
+            shape.setStroke(dpToPx(context, 1), context.getColor(R.color.glass_stroke))
         }
 
         val mask = GradientDrawable()
         mask.setColor(Color.BLACK)
         mask.cornerRadius = radius
 
-        val rippleColor = try {
-            context.getColor(R.color.search_background)
-        } catch (e: Exception) {
-            0x40FFFFFF.toInt()
-        }
+        val rippleColor = context.getColor(R.color.search_background)
 
         item.background = RippleDrawable(
             ColorStateList.valueOf(rippleColor),

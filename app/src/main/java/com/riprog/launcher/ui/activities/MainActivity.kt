@@ -155,7 +155,7 @@ class MainActivity : Activity() {
 
         val prompt = LinearLayout(this)
         prompt.orientation = LinearLayout.VERTICAL
-        prompt.setBackgroundResource(R.drawable.glass_bg)
+        prompt.background = ThemeUtils.getGlassDrawable(this, settingsManager, 28f)
         prompt.setPadding(dpToPx(24), dpToPx(24), dpToPx(24), dpToPx(24))
         prompt.gravity = Gravity.CENTER
         prompt.elevation = dpToPx(8).toFloat()
@@ -188,7 +188,7 @@ class MainActivity : Activity() {
         val btnSet = TextView(this)
         btnSet.setText(R.string.action_set_default)
         btnSet.setPadding(dpToPx(16), dpToPx(8), dpToPx(16), dpToPx(8))
-        btnSet.setTextColor(getColor(android.R.color.holo_blue_dark))
+        btnSet.setTextColor(getColor(R.color.accent_blue))
         btnSet.setTypeface(null, Typeface.BOLD)
         btnSet.setOnClickListener {
             mainLayout.removeView(prompt)

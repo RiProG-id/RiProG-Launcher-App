@@ -210,7 +210,7 @@ class SettingsActivity : Activity() {
 
                     val summaryView = TextView(context)
                     summaryView.textSize = 14f
-                    summaryView.setTextColor(adaptiveColor and 0xBBFFFFFF.toInt())
+                    summaryView.setTextColor(context.getColor(R.color.foreground_dim))
                     textLayout.addView(summaryView)
 
                     val toggle = Switch(context)
@@ -246,7 +246,8 @@ class SettingsActivity : Activity() {
                 }
                 SettingType.ABOUT -> {
                     val aboutContent = TextView(context)
-                    aboutContent.setTextColor(adaptiveColor and 0xBBFFFFFF.toInt())
+                    aboutContent.setTextColor(context.getColor(R.color.foreground_dim))
+                    aboutContent.setLinkTextColor(context.getColor(R.color.accent_blue))
                     aboutContent.textSize = 14f
                     aboutContent.setPadding(0, 0, 0, dpToPx(32))
                     SimpleViewHolder(aboutContent)
@@ -304,7 +305,7 @@ class SettingsActivity : Activity() {
                         option.textSize = 14f
 
                         val isSelected = values[i] == current
-                        option.setTextColor(if (isSelected) adaptiveColor else adaptiveColor and 0xBBFFFFFF.toInt())
+                        option.setTextColor(if (isSelected) adaptiveColor else this@SettingsActivity.getColor(R.color.foreground_dim))
 
                         if (isSelected) {
                             val gd = GradientDrawable()

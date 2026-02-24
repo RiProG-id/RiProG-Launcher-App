@@ -28,15 +28,13 @@ object ThemeUtils {
 
     fun getGlassDrawable(context: Context, settingsManager: SettingsManager, cornerRadiusDp: Float): Drawable {
         val isLiquidGlass = settingsManager.isLiquidGlass
-        val isNight = (context.resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) ==
-                Configuration.UI_MODE_NIGHT_YES
 
         val gd = GradientDrawable()
         val backgroundColor: Int
         if (isLiquidGlass) {
-            backgroundColor = context.getColor(R.color.background)
+            backgroundColor = context.getColor(R.color.background_glass)
         } else {
-            backgroundColor = if (isNight) Color.BLACK else Color.WHITE
+            backgroundColor = context.getColor(R.color.background)
         }
 
         gd.setColor(backgroundColor)
@@ -44,6 +42,8 @@ object ThemeUtils {
 
         if (isLiquidGlass) {
             gd.setStroke(dpToPx(context, 1.5f), context.getColor(R.color.glass_stroke))
+        } else {
+            gd.setStroke(0, 0)
         }
 
         return gd
@@ -64,7 +64,7 @@ object ThemeUtils {
 
         if (isOnGlass) {
             return if (settingsManager.isLiquidGlass) {
-                getAdaptiveColor(context, context.getColor(R.color.background))
+                getAdaptiveColor(context, context.getColor(R.color.background_glass))
             } else {
                 if (isNight) Color.WHITE else Color.BLACK
             }
