@@ -641,7 +641,7 @@ class MainActivity : Activity() {
     }
 
     fun isAnyOverlayVisible(): Boolean {
-        return currentHomeMenu != null || currentAppDrawerMenu != null || folderManager.isFolderOpen()
+        return currentHomeMenu != null || currentAppDrawerMenu != null || folderManager.isFolderOpen() || freeformInteraction.isTransforming()
     }
 
     var lastOverlayDismissTime: Long = 0
@@ -659,6 +659,10 @@ class MainActivity : Activity() {
         }
         if (folderManager.isFolderOpen()) {
             folderManager.closeFolder()
+            lastOverlayDismissTime = System.currentTimeMillis()
+        }
+        if (freeformInteraction.isTransforming()) {
+            freeformInteraction.closeTransformOverlay()
             lastOverlayDismissTime = System.currentTimeMillis()
         }
         updateContentBlur()

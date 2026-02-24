@@ -374,6 +374,8 @@ class TransformOverlay(context: Context, private val targetView: View, private v
                         val other = onSaveListener?.findItemAt(midX, midY, targetView)
                         if (other != null) {
                             onSaveListener?.onCollision(other)
+                        } else {
+                            onSaveListener?.onSave()
                         }
                     }
                 }
