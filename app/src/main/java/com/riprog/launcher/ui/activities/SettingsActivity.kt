@@ -298,8 +298,10 @@ class SettingsActivity : Activity() {
 
                         option.setOnClickListener {
                             settingsManager.themeMode = values[index]
-                            ThemeManager.applyThemeMode(this@SettingsActivity, values[index])
-                            recreate()
+                            val changed = ThemeManager.applyThemeMode(this@SettingsActivity, values[index])
+                            if (!changed) {
+                                recreate()
+                            }
                         }
 
                         val lp = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
