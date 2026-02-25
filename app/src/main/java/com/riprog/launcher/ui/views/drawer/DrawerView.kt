@@ -60,7 +60,7 @@ class DrawerView(context: Context) : FrameLayout(context) {
     init {
         // Root is now FrameLayout. We add a dedicated background layer.
         backgroundView = View(context)
-        backgroundView.background = ThemeUtils.getGlassDrawable(context, settingsManager, 0f)
+        backgroundView.background = ThemeUtils.getThemedSurface(context, settingsManager, 0f)
         addView(backgroundView, LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
 
         // Content layer
@@ -232,10 +232,10 @@ class DrawerView(context: Context) : FrameLayout(context) {
                 it.setTextColor(context.getColor(R.color.foreground_dim))
                 it.setTypeface(null, android.graphics.Typeface.NORMAL)
                 if (isLiquid) {
+                    it.animate().scaleX(1.0f).scaleY(1.0f).setDuration(100).start()
+                } else {
                     it.scaleX = 1.0f
                     it.scaleY = 1.0f
-                } else {
-                    it.animate().scaleX(1.0f).scaleY(1.0f).setDuration(100).start()
                 }
             }
         }
@@ -246,10 +246,10 @@ class DrawerView(context: Context) : FrameLayout(context) {
                 it.setTextColor(adaptiveColor)
                 it.setTypeface(null, android.graphics.Typeface.BOLD)
                 if (isLiquid) {
+                    it.animate().scaleX(1.2f).scaleY(1.2f).setDuration(100).start()
+                } else {
                     it.scaleX = 1.2f
                     it.scaleY = 1.2f
-                } else {
-                    it.animate().scaleX(1.2f).scaleY(1.2f).setDuration(100).start()
                 }
                 selectedLetter = it.text.toString()
                 adapter.notifyItemRangeChanged(1, adapter.itemCount - 1, "FOCUS_CHANGE")
@@ -265,10 +265,10 @@ class DrawerView(context: Context) : FrameLayout(context) {
                 it.setTextColor(context.getColor(R.color.foreground_dim))
                 it.setTypeface(null, android.graphics.Typeface.NORMAL)
                 if (settingsManager.isLiquidGlass) {
+                    it.animate().scaleX(1.0f).scaleY(1.0f).setDuration(100).start()
+                } else {
                     it.scaleX = 1.0f
                     it.scaleY = 1.0f
-                } else {
-                    it.animate().scaleX(1.0f).scaleY(1.0f).setDuration(100).start()
                 }
             }
         }
@@ -343,7 +343,7 @@ class DrawerView(context: Context) : FrameLayout(context) {
     }
 
     fun refreshTheme() {
-        backgroundView.background = ThemeUtils.getGlassDrawable(context, settingsManager, 0f)
+        backgroundView.background = ThemeUtils.getThemedSurface(context, settingsManager, 0f)
         setupIndexBar()
         if (::searchBar.isInitialized) {
             searchBar.setHintTextColor(context.getColor(R.color.foreground_dim))

@@ -126,7 +126,7 @@ class TransformOverlay(context: Context, private val targetView: View, private v
         container.orientation = LinearLayout.HORIZONTAL
         container.gravity = Gravity.CENTER
         container.setPadding(dpToPx(12f), dpToPx(6f), dpToPx(12f), dpToPx(6f))
-        container.background = ThemeUtils.getGlassDrawable(context, settingsManager, 12f)
+        container.background = ThemeUtils.getThemedSurface(context, settingsManager, 12f)
 
         addButton(container, R.string.action_remove, adaptiveColor) { onSaveListener?.onRemove() }
         addButton(container, R.string.action_reset, adaptiveColor) { reset() }

@@ -46,6 +46,11 @@ class GlassReflectionDrawable(
         reflectionPaint.shader = shader
     }
 
+    private val highlightPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        style = Paint.Style.STROKE
+        strokeWidth = 2f
+    }
+
     override fun draw(canvas: Canvas) {
         val bounds = bounds
         if (bounds.isEmpty) return
@@ -53,7 +58,25 @@ class GlassReflectionDrawable(
         // 1. Draw base glass background
         baseDrawable.draw(canvas)
 
-        // Reflection shimmer (Step 2) is now fully removed to ensure a static UI.
+        // 2. Draw static reflection highlight for surface depth
+        val width = bounds.width().toFloat()
+        val height = bounds.height().toFloat()
+
+        highlightPaint.shader = LinearGradient(
+            0f, 0f, width, height,
+            intArrayOf(
+                if (isNight) 0x33FFFFFF else 0x66FFFFFF,
+                0x00FFFFFF,
+                0x00FFFFFF
+            ),
+            floatArrayOf(0f, 0.4f, 1f),
+            Shader.TileMode.CLAMP
+        )
+
+        val rect = RectF(0f, 0f, width, height)
+        val path = Path()
+        path.addRoundRect(rect, cornerRadius, cornerRadius, Path.Direction.CW)
+        canvas.drawPath(path, highlightPaint)
     }
 
     override fun setAlpha(alpha: Int) {

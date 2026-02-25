@@ -46,7 +46,7 @@ class WidgetPickerActivity : Activity() {
         ThemeUtils.applyWindowBlur(w, settingsManager.isLiquidGlass)
 
         val rootContainer = FrameLayout(this)
-        rootContainer.background = ThemeUtils.getGlassDrawable(this, settingsManager, 0f)
+        rootContainer.background = ThemeUtils.getThemedSurface(this, settingsManager, 0f)
 
         recyclerView = RecyclerView(this)
         recyclerView.layoutManager = LinearLayoutManager(this)

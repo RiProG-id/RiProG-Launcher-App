@@ -54,7 +54,7 @@ class SettingsActivity : Activity() {
 
         // Add content layer with glass background
         val contentLayer = FrameLayout(this)
-        contentLayer.background = ThemeUtils.getGlassDrawable(this, settingsManager, 0f)
+        contentLayer.background = ThemeUtils.getThemedSurface(this, settingsManager, 0f)
         rootContainer.addView(contentLayer, FrameLayout.LayoutParams(
             ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT
         ))

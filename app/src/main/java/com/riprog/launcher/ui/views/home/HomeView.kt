@@ -323,11 +323,11 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
         }
 
         if (settingsManager.isLiquidGlass) {
+            v.animate().scaleX(1.1f).scaleY(1.1f).alpha(0.8f).setDuration(150).start()
+        } else {
             v.scaleX = 1.1f
             v.scaleY = 1.1f
             v.alpha = 0.8f
-        } else {
-            v.animate().scaleX(1.1f).scaleY(1.1f).alpha(0.8f).setDuration(150).start()
         }
         v.performHapticFeedback(android.view.HapticFeedbackConstants.LONG_PRESS)
     }
@@ -389,11 +389,11 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
         if (draggingView != null) {
             val v = draggingView!!
             if (settingsManager.isLiquidGlass) {
+                v.animate().scaleX(1.0f).scaleY(1.0f).alpha(1.0f).setDuration(150).start()
+            } else {
                 v.scaleX = 1.0f
                 v.scaleY = 1.0f
                 v.alpha = 1.0f
-            } else {
-                v.animate().scaleX(1.0f).scaleY(1.0f).alpha(1.0f).setDuration(150).start()
             }
             val item = v.tag as HomeItem?
             if (item != null) {
@@ -618,14 +618,14 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
             item.tiltY = 0f
 
             if (settingsManager.isLiquidGlass) {
-                v.x = item.col * cellWidth + horizontalPadding
-                v.y = item.row * cellHeight
-            } else {
                 v.animate()
                     .x(item.col * cellWidth + horizontalPadding)
                     .y(item.row * cellHeight)
                     .setDuration(200)
                     .start()
+            } else {
+                v.x = item.col * cellWidth + horizontalPadding
+                v.y = item.row * cellHeight
             }
         }
 

@@ -40,7 +40,9 @@ class HomeMenuOverlay(context: Context, private val settingsManager: SettingsMan
         recyclerView.layoutManager = GridLayoutManager(context, 3)
         recyclerView.setHasFixedSize(true)
         recyclerView.clipToPadding = false
-        recyclerView.setPadding(dpToPx(8), dpToPx(8), dpToPx(8), dpToPx(8))
+        recyclerView.setPadding(dpToPx(12), dpToPx(12), dpToPx(12), dpToPx(12))
+        recyclerView.background = ThemeUtils.getThemedSurface(context, settingsManager, 24f)
+        recyclerView.elevation = if (settingsManager.isLiquidGlass) dpToPx(12).toFloat() else dpToPx(2).toFloat()
 
         val items = mutableListOf<MenuItem>()
         items.add(MenuItem(R.drawable.ic_layout, context.getString(R.string.action_add_page_left)) { callback.onAddPageLeft() })
@@ -67,17 +69,10 @@ class HomeMenuOverlay(context: Context, private val settingsManager: SettingsMan
 
     private inner class MenuAdapter(val items: List<MenuItem>) : RecyclerView.Adapter<MenuViewHolder>() {
         override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): MenuViewHolder {
-            val container = FrameLayout(parent.context)
-            val containerLp = RecyclerView.LayoutParams(dpToPx(100), dpToPx(90))
-            containerLp.setMargins(dpToPx(4), dpToPx(4), dpToPx(4), dpToPx(4))
-            container.layoutParams = containerLp
-
             val btn = LinearLayout(parent.context)
             btn.orientation = LinearLayout.VERTICAL
             btn.gravity = Gravity.CENTER
-            btn.background = ThemeUtils.getGlassDrawable(parent.context, settingsManager, 16f)
-            val isLiquid = settingsManager.isLiquidGlass
-            btn.elevation = if (isLiquid) dpToPx(6).toFloat() else dpToPx(2).toFloat()
+            btn.layoutParams = RecyclerView.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dpToPx(80))
             btn.isClickable = true
             btn.isFocusable = true
 
@@ -92,8 +87,7 @@ class HomeMenuOverlay(context: Context, private val settingsManager: SettingsMan
             label.maxLines = 2
             btn.addView(label)
 
-            container.addView(btn, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT))
-            return MenuViewHolder(container, btn, icon, label)
+            return MenuViewHolder(btn, btn, icon, label)
         }
 
         override fun onBindViewHolder(holder: MenuViewHolder, position: Int) {

@@ -155,7 +155,7 @@ class MainActivity : Activity() {
 
         val prompt = LinearLayout(this)
         prompt.orientation = LinearLayout.VERTICAL
-        prompt.background = ThemeUtils.getGlassDrawable(this, settingsManager, 28f)
+        prompt.background = ThemeUtils.getThemedSurface(this, settingsManager, 28f)
         prompt.setPadding(dpToPx(24), dpToPx(24), dpToPx(24), dpToPx(24))
         prompt.gravity = Gravity.CENTER
         val isLiquid = settingsManager.isLiquidGlass

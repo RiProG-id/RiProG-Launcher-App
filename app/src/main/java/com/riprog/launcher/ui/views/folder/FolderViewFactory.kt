@@ -43,7 +43,7 @@ class FolderViewFactory(private val context: Context, private val preferences: S
         }
 
         previewContainer.layoutParams = LinearLayout.LayoutParams(sizeW, sizeH)
-        previewContainer.background = ThemeUtils.getGlassDrawable(context, preferences, 12f)
+        previewContainer.background = ThemeUtils.getThemedSurface(context, preferences, 12f)
         val padding = dpToPx(6f)
         previewContainer.setPadding(padding, padding, padding, padding)
 

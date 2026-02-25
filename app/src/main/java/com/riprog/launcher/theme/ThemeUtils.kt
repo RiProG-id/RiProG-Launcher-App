@@ -21,12 +21,12 @@ import androidx.core.view.WindowCompat
 object ThemeUtils {
 
 
-    fun getGlassDrawable(context: Context, settingsManager: SettingsManager): Drawable {
-        return getGlassDrawable(context, settingsManager, 28f)
+    fun getThemedSurface(context: Context, settingsManager: SettingsManager): Drawable {
+        return getThemedSurface(context, settingsManager, 28f)
     }
 
 
-    fun getGlassDrawable(context: Context, settingsManager: SettingsManager, cornerRadiusDp: Float): Drawable {
+    fun getThemedSurface(context: Context, settingsManager: SettingsManager, cornerRadiusDp: Float): Drawable {
         val isLiquidGlass = settingsManager.isLiquidGlass
         val isNight = (context.resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) ==
                 Configuration.UI_MODE_NIGHT_YES
@@ -49,7 +49,7 @@ object ThemeUtils {
             reflectionDrawable.setCornerRadius(cornerRadiusPx)
             return reflectionDrawable
         } else {
-            // Avoid stroke for full-screen containers in pure mode to ensure 100% clean background.
+            // Pure mode: Solid background with subtle outline where appropriate.
             if (cornerRadiusDp > 0) {
                 gd.setStroke(dpToPx(context, 1f), context.getColor(R.color.surface_stroke))
             } else {

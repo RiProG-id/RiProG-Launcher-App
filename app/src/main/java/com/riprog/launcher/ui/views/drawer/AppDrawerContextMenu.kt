@@ -32,9 +32,10 @@ class AppDrawerContextMenu(context: Context, private val settingsManager: Settin
 
         recyclerView = RecyclerView(context)
         recyclerView.layoutManager = LinearLayoutManager(context)
-        recyclerView.setBackgroundColor(android.graphics.Color.TRANSPARENT)
+        recyclerView.background = ThemeUtils.getThemedSurface(context, settingsManager, 12f)
         recyclerView.clipToPadding = false
-        recyclerView.setPadding(0, 0, 0, 0)
+        recyclerView.setPadding(dpToPx(4), dpToPx(4), dpToPx(4), dpToPx(4))
+        recyclerView.elevation = if (settingsManager.isLiquidGlass) dpToPx(8).toFloat() else dpToPx(2).toFloat()
 
         val items = mutableListOf<ContextMenuItem>()
         items.add(ContextMenuItem(R.string.action_add_to_home) { callback.onAddToHome() })
@@ -52,26 +53,17 @@ class AppDrawerContextMenu(context: Context, private val settingsManager: Settin
 
     private inner class ContextMenuAdapter(val items: List<ContextMenuItem>) : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
         override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): RecyclerView.ViewHolder {
-            val container = FrameLayout(parent.context)
-            val lp = RecyclerView.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
-            lp.setMargins(dpToPx(4), dpToPx(4), dpToPx(4), dpToPx(4))
-            container.layoutParams = lp
-
             val tv = TextView(parent.context)
             tv.textSize = 14f
             tv.setPadding(dpToPx(16), dpToPx(12), dpToPx(16), dpToPx(12))
-            tv.background = ThemeUtils.getGlassDrawable(parent.context, settingsManager, 12f)
-            val isLiquid = settingsManager.isLiquidGlass
-            tv.elevation = if (isLiquid) dpToPx(4).toFloat() else dpToPx(2).toFloat()
+            tv.layoutParams = RecyclerView.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
 
-            container.addView(tv, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
-            return object : RecyclerView.ViewHolder(container) {}
+            return object : RecyclerView.ViewHolder(tv) {}
         }
 
         override fun onBindViewHolder(holder: RecyclerView.ViewHolder, position: Int) {
             val item = items[position]
-            val container = holder.itemView as FrameLayout
-            val tv = container.getChildAt(0) as TextView
+            val tv = holder.itemView as TextView
             val adaptiveColor = ThemeUtils.getAdaptiveColor(tv.context, settingsManager, true)
             tv.setText(item.textRes)
             tv.setTextColor(adaptiveColor)

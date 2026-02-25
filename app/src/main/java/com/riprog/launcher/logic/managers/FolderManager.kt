@@ -74,11 +74,13 @@ class FolderManager(private val activity: MainActivity, private val settingsMana
             }
         })
 
+        val isLiquid = settingsManager.isLiquidGlass
+
         val overlay = LinearLayout(activity)
         overlay.orientation = LinearLayout.VERTICAL
-        overlay.background = ThemeUtils.getGlassDrawable(activity, settingsManager, 12f)
+        overlay.background = ThemeUtils.getThemedSurface(activity, settingsManager, 12f)
+        overlay.elevation = if (isLiquid) dpToPx(16f).toFloat() else dpToPx(2f).toFloat()
         overlay.setPadding(dpToPx(24f), dpToPx(24f), dpToPx(24f), dpToPx(24f))
-        overlay.elevation = dpToPx(16f).toFloat()
         overlay.gravity = Gravity.CENTER_HORIZONTAL
         overlay.isClickable = true
         overlay.isFocusable = true
@@ -319,6 +321,10 @@ class FolderManager(private val activity: MainActivity, private val settingsMana
 
             val packageName = item.packageName ?: return
             val app = activity.allApps.find { it.packageName == packageName }
+
+            val adaptiveColor = ThemeUtils.getAdaptiveColor(activity, settingsManager, true)
+            labelView.setTextColor(adaptiveColor)
+
             if (app != null) {
                 activity.model.loadIcon(app) { bitmap -> iconView.setImageBitmap(bitmap) }
                 labelView.text = app.label

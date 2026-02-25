@@ -288,10 +288,6 @@ class MainLayout(private val activity: MainActivity) : FrameLayout(activity) {
         activity.drawerView.visibility = View.VISIBLE
 
         if (activity.settingsManager.isLiquidGlass) {
-            activity.drawerView.alpha = 1f
-            activity.drawerView.translationY = 0f
-            activity.homeView.alpha = 0f
-        } else {
             activity.drawerView.alpha = 0f
             activity.drawerView.translationY = height / 4f
             activity.drawerView.animate()
@@ -301,6 +297,10 @@ class MainLayout(private val activity: MainActivity) : FrameLayout(activity) {
                 .setInterpolator(android.view.animation.DecelerateInterpolator())
                 .start()
             activity.homeView.animate().alpha(0f).setDuration(250).start()
+        } else {
+            activity.drawerView.alpha = 1f
+            activity.drawerView.translationY = 0f
+            activity.homeView.alpha = 0f
         }
 
         activity.drawerView.onOpen()
@@ -354,12 +354,6 @@ class MainLayout(private val activity: MainActivity) : FrameLayout(activity) {
         isDrawerOpen = false
 
         if (activity.settingsManager.isLiquidGlass) {
-            activity.drawerView.visibility = View.GONE
-            activity.homeView.visibility = View.VISIBLE
-            activity.homeView.alpha = 1f
-            activity.drawerView.onClose()
-            System.gc()
-        } else {
             activity.drawerView.animate()
                 .translationY(height / 4f)
                 .alpha(0f)
@@ -374,6 +368,12 @@ class MainLayout(private val activity: MainActivity) : FrameLayout(activity) {
                 .start()
             activity.homeView.visibility = View.VISIBLE
             activity.homeView.animate().alpha(1f).setDuration(200).start()
+        } else {
+            activity.drawerView.visibility = View.GONE
+            activity.homeView.visibility = View.VISIBLE
+            activity.homeView.alpha = 1f
+            activity.drawerView.onClose()
+            System.gc()
         }
 
         activity.updateContentBlur()
