@@ -2,6 +2,7 @@ package com.riprog.launcher.ui.activities
 
 import com.riprog.launcher.theme.ThemeUtils
 import com.riprog.launcher.theme.ThemeManager
+import com.riprog.launcher.theme.ThemeStyle
 import com.riprog.launcher.logic.managers.SettingsManager
 import com.riprog.launcher.ui.views.layout.AutoDimmingBackground
 import com.riprog.launcher.R
@@ -110,6 +111,12 @@ class SettingsActivity : Activity() {
         autoDimmingBackground?.updateDimVisibility()
     }
 
+    override fun onConfigurationChanged(newConfig: android.content.res.Configuration) {
+        super.onConfigurationChanged(newConfig)
+        ThemeManager.applyThemeMode(this, settingsManager.themeMode)
+        recreate()
+    }
+
     private fun setupAdapter() {
         val items = mutableListOf<SettingItem>()
         items.add(SettingItem(SettingType.TITLE))
@@ -124,10 +131,14 @@ class SettingsActivity : Activity() {
 
         items.add(SettingItem(SettingType.CATEGORY, titleString = getString(R.string.category_appearance), iconRes = R.drawable.ic_wallpaper))
         items.add(SettingItem(SettingType.THEME))
-        items.add(SettingItem(SettingType.TOGGLE, titleRes = R.string.setting_liquid_glass, summaryRes = R.string.setting_liquid_glass_summary, isChecked = settingsManager.isLiquidGlass) {
-            settingsManager.isLiquidGlass = it
-            recreate()
-        })
+        items.add(SettingItem(SettingType.STYLE))
+
+        if (settingsManager.themeStyle == ThemeStyle.MATERIAL) {
+            items.add(SettingItem(SettingType.TOGGLE, titleRes = R.string.setting_material_you_icons, summaryRes = R.string.setting_material_you_icons_summary, isChecked = settingsManager.isMaterialYouIcons) {
+                settingsManager.isMaterialYouIcons = it
+            })
+        }
+
         items.add(SettingItem(SettingType.TOGGLE, titleRes = R.string.setting_darken_wallpaper, summaryRes = R.string.setting_darken_wallpaper_summary, isChecked = settingsManager.isDarkenWallpaper) {
             settingsManager.isDarkenWallpaper = it
             autoDimmingBackground?.updateDimVisibility()
@@ -140,7 +151,7 @@ class SettingsActivity : Activity() {
     }
 
     private enum class SettingType {
-        TITLE, CATEGORY, TOGGLE, THEME, ABOUT
+        TITLE, CATEGORY, TOGGLE, THEME, STYLE, ABOUT
     }
 
     private data class SettingItem(
@@ -222,14 +233,14 @@ class SettingsActivity : Activity() {
                     item.layoutParams = lp
                     ToggleViewHolder(item, titleView, summaryView, toggle)
                 }
-                SettingType.THEME -> {
+                SettingType.THEME, SettingType.STYLE -> {
                     val item = LinearLayout(context)
                     item.orientation = LinearLayout.VERTICAL
                     item.setPadding(dpToPx(16), dpToPx(16), dpToPx(16), dpToPx(16))
                     ThemeManager.applySettingItemStyle(context as Activity, item, settingsManager)
 
                     val titleView = TextView(context)
-                    titleView.setText(R.string.setting_theme_mode)
+                    titleView.setText(if (type == SettingType.THEME) R.string.setting_theme_mode else R.string.setting_theme_style)
                     titleView.textSize = 18f
                     titleView.setTextColor(adaptiveColor)
                     item.addView(titleView)
@@ -317,6 +328,40 @@ class SettingsActivity : Activity() {
                         option.setOnClickListener {
                             settingsManager.themeMode = values[index]
                             ThemeManager.applyThemeMode(this@SettingsActivity, values[index])
+                            recreate()
+                        }
+
+                        val lp = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
+                        h.options.addView(option, lp)
+                        option.gravity = Gravity.CENTER
+                    }
+                }
+                SettingType.STYLE -> {
+                    val h = holder as ThemeViewHolder
+                    h.options.removeAllViews()
+                    val styles = arrayOf(getString(R.string.theme_style_standard), getString(R.string.theme_style_liquid_glass), getString(R.string.theme_style_material))
+                    val values = arrayOf(ThemeStyle.STANDARD, ThemeStyle.LIQUID_GLASS, ThemeStyle.MATERIAL)
+                    val current = settingsManager.themeStyle
+
+                    for (i in styles.indices) {
+                        val index = i
+                        val option = TextView(this@SettingsActivity)
+                        option.text = styles[i]
+                        option.setPadding(dpToPx(8), dpToPx(8), dpToPx(8), dpToPx(8))
+                        option.textSize = 12f
+
+                        val isSelected = values[i] == current
+                        option.setTextColor(if (isSelected) adaptiveColor else this@SettingsActivity.getColor(R.color.foreground_dim))
+
+                        if (isSelected) {
+                            val gd = GradientDrawable()
+                            gd.setColor(getColor(R.color.search_background))
+                            gd.cornerRadius = dpToPx(8).toFloat()
+                            option.background = gd
+                        }
+
+                        option.setOnClickListener {
+                            settingsManager.themeStyle = values[index]
                             recreate()
                         }
 

@@ -9,8 +9,8 @@ android {
         applicationId = "com.riprog.launcher"
         minSdk = 23
         targetSdk = 35
-        versionCode = 300
-        versionName = "3.0.0"
+        versionCode = 310
+        versionName = "3.1.0"
     }
 
     signingConfigs {
@@ -47,5 +47,6 @@ android {
 dependencies {
     implementation("androidx.core:core-ktx:1.15.0")
     implementation("androidx.recyclerview:recyclerview:1.3.2")
+    implementation("com.google.android.material:material:1.12.0")
     testImplementation("junit:junit:4.13.2")
 }

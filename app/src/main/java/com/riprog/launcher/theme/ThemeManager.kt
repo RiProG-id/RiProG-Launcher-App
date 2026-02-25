@@ -55,6 +55,14 @@ object ThemeManager {
         return null
     }
 
+    fun getIconTint(context: Context): Int {
+        return getSystemAccentColor(context) ?: context.getColor(R.color.accent_blue)
+    }
+
+    fun isMaterialYouIconsEnabled(settingsManager: SettingsManager): Boolean {
+        return settingsManager.themeStyle == ThemeStyle.MATERIAL && settingsManager.isMaterialYouIcons
+    }
+
 
     fun applySettingItemStyle(context: Context, item: LinearLayout, settingsManager: SettingsManager) {
         item.isClickable = true

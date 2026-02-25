@@ -1,6 +1,7 @@
 package com.riprog.launcher
 
 import com.riprog.launcher.data.repository.AppRepository
+import com.google.android.material.color.DynamicColors
 
 import android.app.Application
 
@@ -10,6 +11,7 @@ class LauncherApplication : Application() {
 
     override fun onCreate() {
         super.onCreate()
+        DynamicColors.applyToActivitiesIfAvailable(this)
         model = AppRepository(this)
     }
 

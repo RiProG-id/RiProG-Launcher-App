@@ -2,6 +2,7 @@ package com.riprog.launcher.logic.managers
 
 import com.riprog.launcher.ui.activities.MainActivity
 import com.riprog.launcher.theme.ThemeUtils
+import com.riprog.launcher.theme.ThemeManager
 import com.riprog.launcher.data.model.HomeItem
 import com.riprog.launcher.data.model.AppItem
 import com.riprog.launcher.ui.views.home.HomeView
@@ -326,7 +327,11 @@ class FolderManager(private val activity: MainActivity, private val settingsMana
             labelView.setTextColor(adaptiveColor)
 
             if (app != null) {
-                activity.model.loadIcon(app) { bitmap -> iconView.setImageBitmap(bitmap) }
+                activity.model.loadIcon(
+                    app,
+                    ThemeManager.isMaterialYouIconsEnabled(settingsManager),
+                    ThemeManager.getIconTint(activity)
+                ) { bitmap -> iconView.setImageBitmap(bitmap) }
                 labelView.text = app.label
             } else {
                 iconView.setImageResource(android.R.drawable.sym_def_app_icon)

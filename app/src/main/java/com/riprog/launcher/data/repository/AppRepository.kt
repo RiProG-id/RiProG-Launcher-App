@@ -6,10 +6,12 @@ import android.content.ComponentCallbacks2
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
-import android.graphics.Bitmap
-import android.graphics.Canvas
+import android.graphics.*
+import android.graphics.drawable.AdaptiveIconDrawable
 import android.graphics.drawable.BitmapDrawable
 import android.graphics.drawable.Drawable
+import android.graphics.drawable.GradientDrawable
+import android.os.Build
 import android.os.Handler
 import android.os.Looper
 import android.util.LruCache
@@ -81,15 +83,17 @@ class AppRepository(context: Context) {
         }
     }
 
-    fun loadIcon(item: AppItem, listener: OnIconLoadedListener) {
+    fun loadIcon(item: AppItem, isMaterialYou: Boolean = false, tintColor: Int = Color.TRANSPARENT, listener: OnIconLoadedListener) {
+        val cacheKey = if (isMaterialYou) item.packageName + "_my_" + tintColor else item.packageName
+
         synchronized(pendingListeners) {
-            val cached = iconCache[item.packageName]
+            val cached = iconCache[cacheKey]
             if (cached != null) {
                 listener.onIconLoaded(cached)
                 return
             }
 
-            var listeners = pendingListeners[item.packageName]
+            var listeners = pendingListeners[cacheKey]
             if (listeners != null) {
                 listeners.add(listener)
                 return
@@ -97,16 +101,29 @@ class AppRepository(context: Context) {
 
             listeners = ArrayList()
             listeners.add(listener)
-            pendingListeners[item.packageName] = listeners
+            pendingListeners[cacheKey] = listeners
         }
 
         executor.execute {
             var bitmap: Bitmap? = null
             try {
-                val drawable = pm.getApplicationIcon(item.packageName)
+                var drawable = pm.getApplicationIcon(item.packageName)
+
+                if (isMaterialYou && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && drawable is AdaptiveIconDrawable) {
+                    val monochrome = drawable.monochrome
+                    if (monochrome != null) {
+                        drawable = monochrome.mutate()
+                        drawable.setTint(tintColor)
+
+                        // For simplicity, we just tint the monochrome layer.
+                        // To make it look like a real themed icon, it usually needs a background.
+                        // But many systems just use the monochrome layer on a themed circle.
+                    }
+                }
+
                 bitmap = drawableToBitmap(drawable)
                 if (bitmap != null) {
-                    iconCache.put(item.packageName, bitmap)
+                    iconCache.put(cacheKey, bitmap)
                 }
             } catch (ignored: PackageManager.NameNotFoundException) {
             }
@@ -115,7 +132,7 @@ class AppRepository(context: Context) {
             mainHandler.post {
                 val listeners: MutableList<OnIconLoadedListener>?
                 synchronized(pendingListeners) {
-                    listeners = pendingListeners.remove(item.packageName)
+                    listeners = pendingListeners.remove(cacheKey)
                 }
                 if (listeners != null) {
                     for (l in listeners) {

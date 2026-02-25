@@ -1,6 +1,8 @@
 package com.riprog.launcher.ui.views.drawer
 
 import com.riprog.launcher.theme.ThemeUtils
+import com.riprog.launcher.theme.ThemeManager
+import com.riprog.launcher.theme.ThemeStyle
 import com.riprog.launcher.logic.managers.SettingsManager
 import com.riprog.launcher.data.repository.AppRepository
 import com.riprog.launcher.data.model.AppItem
@@ -483,7 +485,11 @@ class DrawerView(context: Context) : FrameLayout(context) {
                 appHolder.icon!!.setImageBitmap(null)
                 appHolder.icon!!.tag = item.packageName
                 if (model != null) {
-                    model!!.loadIcon(item) { bitmap ->
+                    model!!.loadIcon(
+                        item,
+                        ThemeManager.isMaterialYouIconsEnabled(settingsManager),
+                        ThemeManager.getIconTint(context)
+                    ) { bitmap ->
                         if (bitmap != null && item.packageName == appHolder.icon!!.tag) {
                             appHolder.icon!!.setImageBitmap(bitmap)
                         }

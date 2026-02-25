@@ -9,6 +9,7 @@ import com.riprog.launcher.ui.views.drawer.DrawerView
 import com.riprog.launcher.ui.views.drawer.AppDrawerContextMenu
 import com.riprog.launcher.theme.ThemeUtils
 import com.riprog.launcher.theme.ThemeManager
+import com.riprog.launcher.theme.ThemeStyle
 import com.riprog.launcher.logic.managers.WidgetManager
 import com.riprog.launcher.logic.managers.SettingsManager
 import com.riprog.launcher.logic.managers.FolderManager
@@ -273,7 +274,11 @@ class MainActivity : Activity() {
             lp.height = size
             iv.layoutParams = lp
 
-            model.loadIcon(AppItem.fromPackage(this, packageName)) { bitmap ->
+            model.loadIcon(
+                AppItem.fromPackage(this, packageName),
+                ThemeManager.isMaterialYouIconsEnabled(settingsManager),
+                ThemeManager.getIconTint(this)
+            ) { bitmap ->
                 iv.setImageBitmap(bitmap)
             }
             grid.addView(iv)
@@ -316,7 +321,11 @@ class MainActivity : Activity() {
         val packageName = item.packageName ?: return container
         val app = findApp(packageName)
         if (app != null) {
-            model.loadIcon(app) { bitmap -> iconView.setImageBitmap(bitmap) }
+            model.loadIcon(
+                app,
+                ThemeManager.isMaterialYouIconsEnabled(settingsManager),
+                ThemeManager.getIconTint(this)
+            ) { bitmap -> iconView.setImageBitmap(bitmap) }
             labelView.text = app.label
         } else {
             iconView.setImageResource(android.R.drawable.sym_def_app_icon)
@@ -427,13 +436,14 @@ class MainActivity : Activity() {
     private fun applyDynamicColors() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             try {
-                val accentColor = resources.getColor(android.R.color.system_accent1_400, theme)
+                val accentColor = ThemeManager.getSystemAccentColor(this) ?: resources.getColor(android.R.color.system_accent1_400, theme)
                 homeView.setAccentColor(accentColor)
                 drawerView.setAccentColor(accentColor)
             } catch (ignored: Exception) {
             }
         }
     }
+
 
     private fun loadApps() {
         model.loadApps { apps ->
@@ -493,12 +503,27 @@ class MainActivity : Activity() {
         if (appInstallReceiver != null) unregisterReceiver(appInstallReceiver)
     }
 
+    override fun onConfigurationChanged(newConfig: android.content.res.Configuration) {
+        super.onConfigurationChanged(newConfig)
+        ThemeManager.applyThemeMode(this, settingsManager.themeMode)
+        applyDynamicColors()
+
+        // Refresh UI components for the new configuration
+        homeView.refreshLayout()
+        homeView.refreshIcons(model, allApps)
+        drawerView.refreshTheme()
+        autoDimmingBackground?.updateDimVisibility()
+        ThemeUtils.updateStatusBarContrast(this)
+
+        // Update window background
+        window.decorView.background = ThemeUtils.getThemedSurface(this, settingsManager, 0f)
+    }
+
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
         if (requestCode == 100) {
-            loadApps()
-            homeView.refreshLayout()
-            drawerView.refreshTheme()
+            // Theme or settings might have changed
+            recreate()
             return
         }
         if (requestCode == REQUEST_PICK_WIDGET_SCREEN && resultCode == RESULT_OK && data != null) {

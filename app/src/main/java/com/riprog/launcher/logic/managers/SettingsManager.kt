@@ -1,6 +1,7 @@
 package com.riprog.launcher.logic.managers
 
 import com.riprog.launcher.data.model.HomeItem
+import com.riprog.launcher.theme.ThemeStyle
 
 import android.content.Context
 import android.content.SharedPreferences
@@ -15,13 +16,21 @@ class SettingsManager(context: Context) {
         if (!prefs.contains(KEY_FIRST_RUN)) {
             prefs.edit().apply {
                 putString(KEY_THEME_MODE, "system")
-                putBoolean(KEY_LIQUID_GLASS, false)
+                putString(KEY_THEME_STYLE, ThemeStyle.STANDARD.name)
+                putBoolean(KEY_MATERIAL_YOU_ICONS, false)
                 putBoolean(KEY_DARKEN_WALLPAPER, false)
                 putBoolean(KEY_FREEFORM_HOME, false)
                 putBoolean(KEY_HIDE_LABELS, false)
                 putBoolean(KEY_FIRST_RUN, true)
                 apply()
             }
+        }
+
+        // Migration from old Liquid Glass toggle
+        if (!prefs.contains(KEY_THEME_STYLE)) {
+            val isLiquidGlass = prefs.getBoolean(KEY_LIQUID_GLASS, false)
+            val style = if (isLiquidGlass) ThemeStyle.LIQUID_GLASS.name else ThemeStyle.STANDARD.name
+            prefs.edit().putString(KEY_THEME_STYLE, style).apply()
         }
     }
 
@@ -58,11 +67,27 @@ class SettingsManager(context: Context) {
             prefs.edit().putString(KEY_THEME_MODE, mode).apply()
         }
 
-    var isLiquidGlass: Boolean
-        get() = prefs.getBoolean(KEY_LIQUID_GLASS, false)
-        set(enabled) {
-            prefs.edit().putBoolean(KEY_LIQUID_GLASS, enabled).apply()
+    var themeStyle: ThemeStyle
+        get() {
+            val name = prefs.getString(KEY_THEME_STYLE, ThemeStyle.STANDARD.name)
+            return try {
+                ThemeStyle.valueOf(name!!)
+            } catch (e: Exception) {
+                ThemeStyle.STANDARD
+            }
         }
+        set(style) {
+            prefs.edit().putString(KEY_THEME_STYLE, style.name).apply()
+        }
+
+    var isMaterialYouIcons: Boolean
+        get() = prefs.getBoolean(KEY_MATERIAL_YOU_ICONS, false)
+        set(enabled) {
+            prefs.edit().putBoolean(KEY_MATERIAL_YOU_ICONS, enabled).apply()
+        }
+
+    val isLiquidGlass: Boolean
+        get() = themeStyle == ThemeStyle.LIQUID_GLASS
 
     var isDarkenWallpaper: Boolean
         get() = prefs.getBoolean(KEY_DARKEN_WALLPAPER, false)
@@ -207,6 +232,8 @@ class SettingsManager(context: Context) {
         private const val KEY_HOME_ITEMS = "home_items"
         private const val KEY_FREEFORM_HOME = "freeform_home"
         private const val KEY_THEME_MODE = "theme_mode"
+        private const val KEY_THEME_STYLE = "theme_style"
+        private const val KEY_MATERIAL_YOU_ICONS = "material_you_icons"
         private const val KEY_LIQUID_GLASS = "liquid_glass"
         private const val KEY_DARKEN_WALLPAPER = "darken_wallpaper"
         private const val KEY_HIDE_LABELS = "hide_labels"

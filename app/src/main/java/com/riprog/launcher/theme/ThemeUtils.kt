@@ -2,6 +2,7 @@ package com.riprog.launcher.theme
 
 import com.riprog.launcher.logic.managers.SettingsManager
 import com.riprog.launcher.R
+import com.google.android.material.color.MaterialColors
 
 import android.app.Activity
 import android.content.Context
@@ -27,35 +28,44 @@ object ThemeUtils {
 
 
     fun getThemedSurface(context: Context, settingsManager: SettingsManager, cornerRadiusDp: Float): Drawable {
-        val isLiquidGlass = settingsManager.isLiquidGlass
+        val themeStyle = settingsManager.themeStyle
         val isNight = (context.resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) ==
                 Configuration.UI_MODE_NIGHT_YES
 
         val gd = GradientDrawable()
-        val backgroundColor: Int
-        if (isLiquidGlass) {
-            backgroundColor = context.getColor(R.color.background_glass)
-        } else {
-            backgroundColor = context.getColor(R.color.surface)
+        val backgroundColor: Int = when (themeStyle) {
+            ThemeStyle.LIQUID_GLASS -> context.getColor(R.color.background_glass)
+            ThemeStyle.MATERIAL -> {
+                MaterialColors.getColor(context, com.google.android.material.R.attr.colorSurfaceContainer, context.getColor(R.color.surface))
+            }
+            else -> context.getColor(R.color.surface)
         }
 
         val cornerRadiusPx = dpToPx(context, cornerRadiusDp).toFloat()
         gd.setColor(backgroundColor)
         gd.cornerRadius = cornerRadiusPx
 
-        if (isLiquidGlass) {
-            gd.setStroke(dpToPx(context, 1.5f), context.getColor(R.color.glass_stroke))
-            val reflectionDrawable = GlassReflectionDrawable(gd, isNight)
-            reflectionDrawable.setCornerRadius(cornerRadiusPx)
-            return reflectionDrawable
-        } else {
-            // Pure mode: Solid background with subtle outline where appropriate.
-            if (cornerRadiusDp > 0) {
-                gd.setStroke(dpToPx(context, 1.2f), context.getColor(R.color.surface_stroke))
-            } else {
-                gd.setStroke(0, 0)
+        return when (themeStyle) {
+            ThemeStyle.LIQUID_GLASS -> {
+                gd.setStroke(dpToPx(context, 1.5f), context.getColor(R.color.glass_stroke))
+                val reflectionDrawable = GlassReflectionDrawable(gd, isNight)
+                reflectionDrawable.setCornerRadius(cornerRadiusPx)
+                reflectionDrawable
             }
-            return gd
+            ThemeStyle.MATERIAL -> {
+                val materialDrawable = MaterialSurfaceDrawable(gd, isNight)
+                materialDrawable.setCornerRadius(cornerRadiusPx)
+                materialDrawable
+            }
+            else -> {
+                // Pure mode: Solid background with subtle outline where appropriate.
+                if (cornerRadiusDp > 0) {
+                    gd.setStroke(dpToPx(context, 1.2f), context.getColor(R.color.surface_stroke))
+                } else {
+                    gd.setStroke(0, 0)
+                }
+                gd
+            }
         }
     }
 
@@ -71,9 +81,14 @@ object ThemeUtils {
     fun getAdaptiveColor(context: Context, settingsManager: SettingsManager, isOnGlass: Boolean): Int {
         val isNight = (context.resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) ==
                 Configuration.UI_MODE_NIGHT_YES
+        val themeStyle = settingsManager.themeStyle
+
+        if (themeStyle == ThemeStyle.MATERIAL) {
+            return MaterialColors.getColor(context, com.google.android.material.R.attr.colorOnSurface, if (isNight) Color.WHITE else Color.BLACK)
+        }
 
         if (isOnGlass) {
-            return if (settingsManager.isLiquidGlass) {
+            return if (themeStyle == ThemeStyle.LIQUID_GLASS) {
                 getAdaptiveColor(context, context.getColor(R.color.background_glass))
             } else {
                 if (isNight) Color.WHITE else Color.BLACK

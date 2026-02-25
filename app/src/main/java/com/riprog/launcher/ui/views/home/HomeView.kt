@@ -2,6 +2,8 @@ package com.riprog.launcher.ui.views.home
 
 import com.riprog.launcher.ui.activities.MainActivity
 import com.riprog.launcher.logic.managers.SettingsManager
+import com.riprog.launcher.theme.ThemeManager
+import com.riprog.launcher.theme.ThemeStyle
 import com.riprog.launcher.data.repository.AppRepository
 import com.riprog.launcher.data.model.HomeItem
 import com.riprog.launcher.data.model.AppItem
@@ -9,6 +11,7 @@ import com.riprog.launcher.callback.PageActionCallback
 import com.riprog.launcher.R
 
 import android.appwidget.AppWidgetHostView
+import android.os.Build
 import android.content.Context
 import android.content.ContextWrapper
 import android.graphics.Color
@@ -684,7 +687,11 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
                         val app = appMap[item.packageName]
                         if (iv != null && app != null) {
                             val finalApp = app
-                            model.loadIcon(app) { bitmap ->
+                            model.loadIcon(
+                                app,
+                                ThemeManager.isMaterialYouIconsEnabled(settingsManager),
+                                ThemeManager.getIconTint(context)
+                            ) { bitmap ->
                                 if (bitmap != null) {
                                     iv.setImageBitmap(bitmap)
                                     if (tv != null) tv.text = finalApp.label

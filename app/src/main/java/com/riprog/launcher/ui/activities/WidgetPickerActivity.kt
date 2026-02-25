@@ -92,6 +92,11 @@ class WidgetPickerActivity : Activity() {
         setContentView(rootContainer)
     }
 
+    override fun onConfigurationChanged(newConfig: Configuration) {
+        super.onConfigurationChanged(newConfig)
+        recreate()
+    }
+
     private fun loadWidgets() {
         val providers = appWidgetManager.installedProviders ?: return
 
