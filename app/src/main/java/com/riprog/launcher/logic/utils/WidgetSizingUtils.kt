@@ -26,16 +26,9 @@ object WidgetSizingUtils {
             val screenWidth = dm.widthPixels
             val screenHeight = dm.heightPixels
 
-            val horizontalPadding = 16 * density * 2
+            val horizontalPadding = HomeView.HORIZONTAL_PADDING_DP * density * 2
             cellWidth = if (screenWidth > horizontalPadding) (screenWidth - horizontalPadding) / maxColumns.toFloat() else 0f
-
-            // Alignment with HomeView.getCellHeight()
-            val topPadding = 48 * density
-            val bottomPadding = 16 * density
-            val indicatorHeight = 20 * density // Matches HomeView.kt
-            val systemInsets = 72 * density // Combined status bar and nav bar estimation
-            val usableHeight = screenHeight - topPadding - bottomPadding - indicatorHeight - systemInsets
-            cellHeight = if (usableHeight > 0) usableHeight / maxRows.toFloat() else 0f
+            cellHeight = cellWidth
         }
 
         var spanX: Int

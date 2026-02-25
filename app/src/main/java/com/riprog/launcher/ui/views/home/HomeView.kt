@@ -266,15 +266,7 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
     }
 
     fun getCellHeight(): Float {
-        val topPadding = dpToPx(32)
-        val bottomPadding = dpToPx(8)
-        val dockHeight = 0
-        val indicatorHeight = dpToPx(16)
-        val systemInsets = systemTopInset + systemBottomInset
-        val usableHeight = height - topPadding - bottomPadding - dockHeight - indicatorHeight - systemInsets
-
-        val ch = if (usableHeight > 0) usableHeight / GRID_ROWS.toFloat() else 0f
-        return ch
+        return getCellWidth()
     }
 
     fun updateViewPosition(item: HomeItem, view: View) {
