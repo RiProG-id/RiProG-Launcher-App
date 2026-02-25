@@ -103,7 +103,7 @@ class MainLayout(private val activity: MainActivity) : FrameLayout(activity) {
                 touchedView = findTouchedHomeItem(startX, startY)
                 longPressHandler.removeCallbacks(longPressRunnable)
                 if (!activity.freeformInteraction.isTransforming() && !activity.isAnyOverlayVisible()) {
-                    longPressHandler.postDelayed(longPressRunnable, 400)
+                    longPressHandler.postDelayed(longPressRunnable, ViewConfiguration.getLongPressTimeout().toLong())
                 }
                 return false
             }
@@ -123,10 +123,10 @@ class MainLayout(private val activity: MainActivity) : FrameLayout(activity) {
             }
 
             MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                longPressHandler.removeCallbacks(longPressRunnable)
                 if (isDragging) return true
                 val duration = System.currentTimeMillis() - downTime
                 if (duration < 20) {
-                    longPressHandler.removeCallbacks(longPressRunnable)
                     return false
                 }
             }
@@ -214,7 +214,7 @@ class MainLayout(private val activity: MainActivity) : FrameLayout(activity) {
                     val finalDx = event.x - startX
                     val finalDy = event.y - startY
                     val dist = sqrt((finalDx * finalDx + finalDy * finalDy).toDouble()).toFloat()
-                    if (duration >= 20 && duration < 350 && dist < touchSlop) {
+                    if (duration >= 20 && duration < ViewConfiguration.getLongPressTimeout() && dist < touchSlop) {
                         if (touchedView != null) activity.handleItemClick(touchedView!!)
                         else performClick()
                     }
