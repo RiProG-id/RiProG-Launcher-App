@@ -219,8 +219,8 @@ class TransformOverlay(context: Context, private val targetView: View, private v
         val foregroundColor = ThemeUtils.getAdaptiveColor(context, settingsManager, false)
         paint.color = foregroundColor
         paint.style = Paint.Style.STROKE
-        paint.strokeWidth = dpToPx(1f).toFloat()
-        paint.alpha = 60
+        paint.strokeWidth = dpToPx(1.2f).toFloat()
+        paint.alpha = 80
 
         // Only show directional guide lines (rectangle) for widgets in freeform mode
         if (isFreeform && isWidget) {
@@ -262,8 +262,8 @@ class TransformOverlay(context: Context, private val targetView: View, private v
 
         paint.style = Paint.Style.STROKE
         paint.color = foregroundColor
-        paint.strokeWidth = dpToPx(1f).toFloat()
-        paint.alpha = if (isPrimary) 200 else 150
+        paint.strokeWidth = dpToPx(1.2f).toFloat()
+        paint.alpha = if (isPrimary) 220 else 170
         canvas.drawCircle(cx, cy, radius, paint)
     }
 

@@ -208,21 +208,7 @@ class WidgetPickerActivity : Activity() {
                     card.isClickable = true
                     card.isFocusable = true
 
-                    val cardBg = GradientDrawable()
-                    val isLiquid = settingsManager.isLiquidGlass
-                    val cardColor = if (isLiquid) {
-                        context.getColor(R.color.item_background_glass)
-                    } else {
-                        context.getColor(R.color.surface)
-                    }
-                    cardBg.setColor(cardColor)
-                    cardBg.cornerRadius = dpToPx(16).toFloat()
-                    if (isLiquid) {
-                        cardBg.setStroke(dpToPx(1), context.getColor(R.color.glass_stroke))
-                    } else {
-                        cardBg.setStroke(dpToPx(1), context.getColor(R.color.surface_stroke))
-                    }
-                    card.background = cardBg
+                    card.background = ThemeUtils.getThemedSurface(context, settingsManager, 16f)
 
                     val lp = RecyclerView.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
                     lp.bottomMargin = dpToPx(12)

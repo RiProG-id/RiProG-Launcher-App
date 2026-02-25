@@ -40,9 +40,9 @@ class HomeMenuOverlay(context: Context, private val settingsManager: SettingsMan
         recyclerView.layoutManager = GridLayoutManager(context, 3)
         recyclerView.setHasFixedSize(true)
         recyclerView.clipToPadding = false
-        recyclerView.setPadding(dpToPx(12), dpToPx(12), dpToPx(12), dpToPx(12))
-        recyclerView.background = ThemeUtils.getThemedSurface(context, settingsManager, 24f)
-        recyclerView.elevation = if (settingsManager.isLiquidGlass) dpToPx(12).toFloat() else dpToPx(2).toFloat()
+        recyclerView.setPadding(dpToPx(8), dpToPx(8), dpToPx(8), dpToPx(8))
+        recyclerView.background = null
+        recyclerView.elevation = 0f
 
         val items = mutableListOf<MenuItem>()
         items.add(MenuItem(R.drawable.ic_layout, context.getString(R.string.action_add_page_left)) { callback.onAddPageLeft() })
@@ -72,7 +72,12 @@ class HomeMenuOverlay(context: Context, private val settingsManager: SettingsMan
             val btn = LinearLayout(parent.context)
             btn.orientation = LinearLayout.VERTICAL
             btn.gravity = Gravity.CENTER
-            btn.layoutParams = RecyclerView.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dpToPx(80))
+            val lp = RecyclerView.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dpToPx(80))
+            lp.setMargins(dpToPx(4), dpToPx(4), dpToPx(4), dpToPx(4))
+            btn.layoutParams = lp
+            btn.background = ThemeUtils.getThemedSurface(parent.context, settingsManager, 16f)
+            val isLiquid = settingsManager.isLiquidGlass
+            btn.elevation = if (isLiquid) dpToPx(6).toFloat() else dpToPx(2).toFloat()
             btn.isClickable = true
             btn.isFocusable = true
 

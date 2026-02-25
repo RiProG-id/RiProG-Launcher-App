@@ -51,7 +51,7 @@ object ThemeUtils {
         } else {
             // Pure mode: Solid background with subtle outline where appropriate.
             if (cornerRadiusDp > 0) {
-                gd.setStroke(dpToPx(context, 1f), context.getColor(R.color.surface_stroke))
+                gd.setStroke(dpToPx(context, 1.2f), context.getColor(R.color.surface_stroke))
             } else {
                 gd.setStroke(0, 0)
             }

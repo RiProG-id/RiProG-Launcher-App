@@ -3,7 +3,7 @@
     <color name="background">#000000</color>
     <color name="background_glass">#99000000</color>
     <color name="surface">#000000</color>
-    <color name="surface_stroke">#333333</color>
+    <color name="surface_stroke">#4D4D4D</color>
     <color name="foreground">#FFFFFF</color>
     <color name="foreground_dim">#AAAAAA</color>
     <color name="item_background">#1AFFFFFF</color>
