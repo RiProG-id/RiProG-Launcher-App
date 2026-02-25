@@ -123,10 +123,23 @@ class MainLayout(private val activity: MainActivity) : FrameLayout(activity) {
             }
 
             MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                longPressHandler.removeCallbacks(longPressRunnable)
                 if (isDragging) return true
                 val duration = System.currentTimeMillis() - downTime
+                if (duration in 20..350) {
+                    val finalDx = ev.x - startX
+                    val finalDy = ev.y - startY
+                    val dist = sqrt((finalDx * finalDx + finalDy * finalDy).toDouble()).toFloat()
+                    if (dist < touchSlop && touchedView != null) {
+                        val item = touchedView!!.tag as? HomeItem
+                        if (item != null && (item.type == HomeItem.Type.APP || item.type == HomeItem.Type.FOLDER)) {
+                            handleItemClick(touchedView!!)
+                            isGestureCanceled = true
+                            return true
+                        }
+                    }
+                }
                 if (duration < 20) {
-                    longPressHandler.removeCallbacks(longPressRunnable)
                     return false
                 }
             }
