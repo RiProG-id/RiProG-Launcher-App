@@ -43,6 +43,9 @@ class HomeItem {
 
     var layoutLocked: Boolean = false
 
+    var anchorX: Float = 0f
+    var anchorY: Float = 0f
+
     companion object {
 
         fun createApp(packageName: String, className: String, col: Float, row: Float, page: Int): HomeItem {

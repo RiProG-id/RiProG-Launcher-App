@@ -166,6 +166,10 @@ class FreeformController(
             v.y - (rv.paddingTop + (rvLoc[1] - rootLoc[1]))
         }
 
+        // Permanent Grid Anchor: Calculate visual center once on release
+        item.anchorX = vBounds.centerX()
+        item.anchorY = vBounds.centerY()
+
         // 1) Calculate nearest grid area & 2) Snap object CENTER to grid CENTER
         val newSpanX = (vBounds.width() / cellWidth).roundToInt().coerceIn(1, preferences.columns)
         val newSpanY = (vBounds.height() / cellHeight).roundToInt().coerceIn(1, HomeView.GRID_ROWS)
@@ -173,8 +177,8 @@ class FreeformController(
         item.spanX = newSpanX.toFloat()
         item.spanY = newSpanY.toFloat()
 
-        val newCol = max(0, min(preferences.columns - newSpanX, ((relativeX + vBounds.centerX() - horizontalPadding - (cellWidth * newSpanX / 2f)) / cellWidth).roundToInt()))
-        val newRow = max(0, min(HomeView.GRID_ROWS - newSpanY, ((relativeY + vBounds.centerY() - (cellHeight * newSpanY / 2f)) / cellHeight).roundToInt()))
+        val newCol = max(0, min(preferences.columns - newSpanX, ((relativeX + item.anchorX - horizontalPadding - (cellWidth * newSpanX / 2f)) / cellWidth).roundToInt()))
+        val newRow = max(0, min(HomeView.GRID_ROWS - newSpanY, ((relativeY + item.anchorY - (cellHeight * newSpanY / 2f)) / cellHeight).roundToInt()))
 
         item.col = newCol.toFloat()
         item.row = newRow.toFloat()
@@ -274,10 +278,16 @@ class FreeformController(
 
             val sX = (transformingView!!.width / cellWidth).roundToInt().coerceIn(1, preferences.columns)
             val sY = (transformingView!!.height / cellHeight).roundToInt().coerceIn(1, HomeView.GRID_ROWS)
+
+            // Permanent Grid Anchor on save
+            val vBounds = WidgetSizingUtils.getVisualBounds(transformingView!!)
+            item.anchorX = vBounds.centerX()
+            item.anchorY = vBounds.centerY()
+
             item.spanX = sX.toFloat()
             item.spanY = sY.toFloat()
-            item.col = max(0, min(preferences.columns - sX, ((relativeX - horizontalPadding) / cellWidth).roundToInt())).toFloat()
-            item.row = max(0, min(HomeView.GRID_ROWS - sY, (relativeY / cellHeight).roundToInt())).toFloat()
+            item.col = max(0, min(preferences.columns - sX, ((relativeX + item.anchorX - horizontalPadding - (cellWidth * sX / 2f)) / cellWidth).roundToInt())).toFloat()
+            item.row = max(0, min(HomeView.GRID_ROWS - sY, ((relativeY + item.anchorY - (cellHeight * sY / 2f)) / cellHeight).roundToInt())).toFloat()
         }
 
         item.layoutLocked = true

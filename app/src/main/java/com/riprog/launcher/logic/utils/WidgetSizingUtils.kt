@@ -103,36 +103,50 @@ object WidgetSizingUtils {
         val vWidth = if (view.width > 0) view.width.toFloat() else if (lp != null && lp.width > 0) lp.width.toFloat() else 0f
         val vHeight = if (view.height > 0) view.height.toFloat() else if (lp != null && lp.height > 0) lp.height.toFloat() else 0f
 
-        if (view !is ViewGroup) return RectF(0f, 0f, vWidth, vHeight)
+        if (view !is ViewGroup || view.childCount == 0) return RectF(0f, 0f, vWidth, vHeight)
 
         var minX = Float.MAX_VALUE
         var minY = Float.MAX_VALUE
         var maxX = Float.MIN_VALUE
         var maxY = Float.MIN_VALUE
-        var hasVisibleChildren = false
+        var hasVisibleContent = false
 
-        for (i in 0 until view.childCount) {
-            val child = view.getChildAt(i)
-            if (child.visibility == View.VISIBLE) {
-                val clp = child.layoutParams
-                val cw = if (child.width > 0) child.width.toFloat() else if (clp != null && clp.width > 0) clp.width.toFloat() else if (clp != null && clp.width == -1) vWidth else 0f
-                val ch = if (child.height > 0) child.height.toFloat() else if (clp != null && clp.height > 0) clp.height.toFloat() else if (clp != null && clp.height == -1) vHeight else 0f
+        fun collectBounds(vg: ViewGroup, offsetX: Float, offsetY: Float) {
+            for (i in 0 until vg.childCount) {
+                val child = vg.getChildAt(i)
+                if (child.visibility != View.VISIBLE) continue
 
-                if (cw > 0 && ch > 0) {
-                    if (child is TextView && view.tag is HomeItem) {
-                        val type = (view.tag as HomeItem).type
-                        if (type == HomeItem.Type.APP || type == HomeItem.Type.FOLDER) continue
+                if (child is ViewGroup) {
+                    collectBounds(child, offsetX + child.x, offsetY + child.y)
+                } else {
+                    val cw = child.width.toFloat()
+                    val ch = child.height.toFloat()
+                    if (cw > 0 && ch > 0) {
+                        // Skip labels for apps/folders to get true icon bounds
+                        if (child is TextView && view.tag is HomeItem) {
+                            val type = (view.tag as HomeItem).type
+                            if (type == HomeItem.Type.APP || type == HomeItem.Type.FOLDER) continue
+                        }
+                        minX = min(minX, offsetX + child.x)
+                        minY = min(minY, offsetY + child.y)
+                        maxX = max(maxX, offsetX + child.x + cw)
+                        maxY = max(maxY, offsetY + child.y + ch)
+                        hasVisibleContent = true
                     }
-                    minX = min(minX, child.x)
-                    minY = min(minY, child.y)
-                    maxX = max(maxX, child.x + cw)
-                    maxY = max(maxY, child.y + ch)
-                    hasVisibleChildren = true
                 }
             }
         }
 
-        if (!hasVisibleChildren) return RectF(0f, 0f, vWidth, vHeight)
-        return RectF(minX, minY, maxX, maxY)
+        collectBounds(view, 0f, 0f)
+
+        if (!hasVisibleContent) return RectF(0f, 0f, vWidth, vHeight)
+
+        // Ensure we don't return bounds larger than the actual view
+        return RectF(
+            max(0f, minX),
+            max(0f, minY),
+            min(vWidth, maxX),
+            min(vHeight, maxY)
+        )
     }
 }

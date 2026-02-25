@@ -274,9 +274,15 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
         val cellHeight = getCellHeight()
         val horizontalPadding = dpToPx(HORIZONTAL_PADDING_DP)
 
-        val vBounds = WidgetSizingUtils.getVisualBounds(view)
-        val vCenterX = if (vBounds.width() > 0) vBounds.centerX() else (item.spanX * cellWidth) / 2f
-        val vCenterY = if (vBounds.height() > 0) vBounds.centerY() else (item.spanY * cellHeight) / 2f
+        // Permanent Grid Anchor: Use stored anchor if available to prevent drift
+        val vCenterX = if (item.anchorX > 0) item.anchorX else {
+            val vBounds = WidgetSizingUtils.getVisualBounds(view)
+            if (vBounds.width() > 0) vBounds.centerX() else (item.spanX * cellWidth) / 2f
+        }
+        val vCenterY = if (item.anchorY > 0) item.anchorY else {
+            val vBounds = WidgetSizingUtils.getVisualBounds(view)
+            if (vBounds.height() > 0) vBounds.centerY() else (item.spanY * cellHeight) / 2f
+        }
 
         val targetX = (item.col + item.spanX / 2f) * cellWidth + horizontalPadding - vCenterX
         val targetY = (item.row + item.spanY / 2f) * cellHeight - vCenterY
@@ -602,9 +608,13 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
         item.spanX = item.spanX.roundToInt().toFloat()
         item.spanY = item.spanY.roundToInt().toFloat()
 
-        // Snap based on visual center of the item relative to grid
-        var targetCol = ((v.x + vBounds.centerX() - horizontalPadding - (cellWidth * item.spanX / 2f)) / cellWidth).roundToInt()
-        var targetRow = ((v.y + vBounds.centerY() - (cellHeight * item.spanY / 2f)) / cellHeight).roundToInt()
+        // Permanent Grid Anchor: Calculate visual center once on release
+        item.anchorX = vBounds.centerX()
+        item.anchorY = vBounds.centerY()
+
+        // Snap based on visual center of the item relative to grid center
+        var targetCol = ((v.x + item.anchorX - horizontalPadding - (cellWidth * item.spanX / 2f)) / cellWidth).roundToInt()
+        var targetRow = ((v.y + item.anchorY - (cellHeight * item.spanY / 2f)) / cellHeight).roundToInt()
 
         item.col = max(0, min(settingsManager.columns - item.spanX.roundToInt(), targetCol)).toFloat()
         item.row = max(0, min(GRID_ROWS - item.spanY.roundToInt(), targetRow)).toFloat()
@@ -806,6 +816,7 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
                         updateViewPosition(item, v)
                     }
                 }
+                resolveOverlapsIterative(i)
             }
             if (context is MainActivity) {
                 (context as MainActivity).saveHomeState()
