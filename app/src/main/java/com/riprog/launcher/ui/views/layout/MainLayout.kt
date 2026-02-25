@@ -214,7 +214,8 @@ class MainLayout(private val activity: MainActivity) : FrameLayout(activity) {
                     val finalDx = event.x - startX
                     val finalDy = event.y - startY
                     val dist = sqrt((finalDx * finalDx + finalDy * finalDy).toDouble()).toFloat()
-                    if (duration >= 20 && duration < ViewConfiguration.getLongPressTimeout() && dist < touchSlop) {
+                    // Tap detection: must not have triggered long press or other gestures, and move distance must be within threshold
+                    if (duration >= 20 && !longPressTriggered && !isGestureCanceled && dist < touchSlop * 3) {
                         if (touchedView != null) activity.handleItemClick(touchedView!!)
                         else performClick()
                     }
