@@ -124,12 +124,8 @@ class MainLayout(private val activity: MainActivity) : FrameLayout(activity) {
             }
 
             MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                longPressHandler.removeCallbacks(longPressRunnable)
                 if (isDragging) return true
-                val duration = System.currentTimeMillis() - downTime
-                if (duration < 20) {
-                    longPressHandler.removeCallbacks(longPressRunnable)
-                    return false
-                }
             }
         }
         return isDragging
