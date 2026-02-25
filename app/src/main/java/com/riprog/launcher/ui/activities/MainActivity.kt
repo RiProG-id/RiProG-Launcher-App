@@ -844,18 +844,33 @@ class MainActivity : Activity() {
     }
 
     fun spawnApp(app: AppItem) {
-        var slot = findFirstAvailableSlot(1, 1)
+        val sX = 1
+        val sY = 1
+        var col = 0f
+        var row = 0f
+        var page = homeView.currentPage
+
+        val slot = findFirstAvailableSlot(sX, sY)
         if (slot == null) {
-            homeView.addPage()
-            slot = Triple(homeView.getPageCount() - 1, 0, 0)
+            if (!settingsManager.isFreeformHome) {
+                Toast.makeText(this, R.string.page_full, Toast.LENGTH_SHORT).show()
+                return
+            } else {
+                col = (settingsManager.columns - sX) / 2f
+                row = (HomeView.GRID_ROWS - sY) / 2f
+            }
+        } else {
+            page = slot.first
+            row = slot.second.toFloat()
+            col = slot.third.toFloat()
         }
 
-        val item = HomeItem.createApp(app.packageName, app.className, slot.third.toFloat(), slot.second.toFloat(), slot.first)
+        val item = HomeItem.createApp(app.packageName, app.className, col, row, page)
         homeItems.add(item)
         renderHomeItem(item)
         saveHomeState()
 
-        homeView.scrollToPage(slot.first)
+        homeView.scrollToPage(page)
         Toast.makeText(this, getString(R.string.app_added_to_home, app.label), Toast.LENGTH_SHORT).show()
     }
 
