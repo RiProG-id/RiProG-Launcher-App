@@ -103,7 +103,7 @@ class MainLayout(private val activity: MainActivity) : FrameLayout(activity) {
                 touchedView = findTouchedHomeItem(startX, startY)
                 longPressHandler.removeCallbacks(longPressRunnable)
                 if (!activity.freeformInteraction.isTransforming() && !activity.isAnyOverlayVisible()) {
-                    longPressHandler.postDelayed(longPressRunnable, 400)
+                    longPressHandler.postDelayed(longPressRunnable, ViewConfiguration.getLongPressTimeout().toLong())
                 }
                 return false
             }
@@ -116,7 +116,8 @@ class MainLayout(private val activity: MainActivity) : FrameLayout(activity) {
                     longPressHandler.removeCallbacks(longPressRunnable)
                     return true
                 }
-                if (abs(dx.toDouble()) > touchSlop || abs(dy.toDouble()) > touchSlop) {
+                val dist = sqrt((dx * dx + dy * dy).toDouble()).toFloat()
+                if (dist > touchSlop) {
                     longPressHandler.removeCallbacks(longPressRunnable)
                 }
                 return isDragging
@@ -182,7 +183,8 @@ class MainLayout(private val activity: MainActivity) : FrameLayout(activity) {
                     return true
                 }
 
-                if (!isGestureCanceled && (abs(dx.toDouble()) > touchSlop || abs(dy.toDouble()) > touchSlop)) {
+                val dist = sqrt((dx * dx + dy * dy).toDouble()).toFloat()
+                if (!isGestureCanceled && dist > touchSlop) {
                     longPressHandler.removeCallbacks(longPressRunnable)
                     if (abs(dy.toDouble()) > abs(dx.toDouble())) {
                         if (dy < -touchSlop * 2) {
@@ -214,7 +216,8 @@ class MainLayout(private val activity: MainActivity) : FrameLayout(activity) {
                     val finalDx = event.x - startX
                     val finalDy = event.y - startY
                     val dist = sqrt((finalDx * finalDx + finalDy * finalDy).toDouble()).toFloat()
-                    if (duration >= 20 && duration < 350 && dist < touchSlop) {
+                    val clickThreshold = ViewConfiguration.getLongPressTimeout() + 50
+                    if (duration >= 20 && duration < clickThreshold && dist < touchSlop) {
                         if (touchedView != null) activity.handleItemClick(touchedView!!)
                         else performClick()
                     }
