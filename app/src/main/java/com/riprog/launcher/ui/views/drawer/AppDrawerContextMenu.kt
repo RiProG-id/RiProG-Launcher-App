@@ -12,6 +12,7 @@ import androidx.recyclerview.widget.RecyclerView
 import com.riprog.launcher.R
 import com.riprog.launcher.logic.managers.SettingsManager
 import com.riprog.launcher.theme.ThemeUtils
+import com.riprog.launcher.theme.ThemeStyle
 
 class AppDrawerContextMenu(context: Context, private val settingsManager: SettingsManager, private val callback: Callback) : FrameLayout(context) {
 
@@ -64,7 +65,8 @@ class AppDrawerContextMenu(context: Context, private val settingsManager: Settin
         override fun onBindViewHolder(holder: RecyclerView.ViewHolder, position: Int) {
             val item = items[position]
             val tv = holder.itemView as TextView
-            val adaptiveColor = ThemeUtils.getAdaptiveColor(tv.context, settingsManager, true)
+            val isMaterial = settingsManager.themeStyle == ThemeStyle.MATERIAL
+            val adaptiveColor = if (isMaterial) ThemeUtils.getOnSurfaceColor(tv.context) else ThemeUtils.getAdaptiveColor(tv.context, settingsManager, true)
             tv.setText(item.textRes)
             tv.setTextColor(adaptiveColor)
             tv.setOnClickListener {

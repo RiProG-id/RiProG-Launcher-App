@@ -35,9 +35,7 @@ object ThemeUtils {
         val gd = GradientDrawable()
         val backgroundColor: Int = when (themeStyle) {
             ThemeStyle.LIQUID_GLASS -> context.getColor(R.color.background_glass)
-            ThemeStyle.MATERIAL -> {
-                MaterialColors.getColor(context, com.google.android.material.R.attr.colorSurfaceContainer, context.getColor(R.color.surface))
-            }
+            ThemeStyle.MATERIAL -> getSurfaceContainerColor(context)
             else -> context.getColor(R.color.surface)
         }
 
@@ -84,7 +82,7 @@ object ThemeUtils {
         val themeStyle = settingsManager.themeStyle
 
         if (themeStyle == ThemeStyle.MATERIAL) {
-            return MaterialColors.getColor(context, com.google.android.material.R.attr.colorOnSurface, if (isNight) Color.WHITE else Color.BLACK)
+            return getOnSurfaceColor(context)
         }
 
         if (isOnGlass) {
@@ -128,6 +126,79 @@ object ThemeUtils {
         }
     }
 
+
+    fun getBackgroundColor(context: Context): Int {
+        val isNight = (context.resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES
+        val fallback = if (isNight) Color.parseColor("#141218") else Color.parseColor("#FEF7FF")
+        return MaterialColors.getColor(context, android.R.attr.colorBackground, fallback)
+    }
+
+    fun getOnBackgroundColor(context: Context): Int {
+        val isNight = (context.resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES
+        val fallback = if (isNight) Color.parseColor("#E6E1E9") else Color.parseColor("#1D1B20")
+        // colorOnBackground is not in android.R.attr usually, it's M3.
+        return MaterialColors.getColor(context, com.google.android.material.R.attr.colorOnSurface, fallback)
+    }
+
+    fun getSurfaceColor(context: Context): Int {
+        val isNight = (context.resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES
+        val fallback = if (isNight) Color.parseColor("#141218") else Color.parseColor("#FEF7FF")
+        return MaterialColors.getColor(context, com.google.android.material.R.attr.colorSurface, fallback)
+    }
+
+    fun getOnSurfaceColor(context: Context): Int {
+        val isNight = (context.resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES
+        val fallback = if (isNight) Color.parseColor("#E6E1E9") else Color.parseColor("#1D1B20")
+        return MaterialColors.getColor(context, com.google.android.material.R.attr.colorOnSurface, fallback)
+    }
+
+    fun getSurfaceVariantColor(context: Context): Int {
+        val isNight = (context.resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES
+        val fallback = if (isNight) Color.parseColor("#49454F") else Color.parseColor("#E7E0EC")
+        return MaterialColors.getColor(context, com.google.android.material.R.attr.colorSurfaceVariant, fallback)
+    }
+
+    fun getOnSurfaceVariantColor(context: Context): Int {
+        val isNight = (context.resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES
+        val fallback = if (isNight) Color.parseColor("#CAC4D0") else Color.parseColor("#49454F")
+        return MaterialColors.getColor(context, com.google.android.material.R.attr.colorOnSurfaceVariant, fallback)
+    }
+
+    fun getSurfaceContainerColor(context: Context): Int {
+        val isNight = (context.resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES
+        val fallback = if (isNight) Color.parseColor("#211F26") else Color.parseColor("#F3EDF7")
+        return MaterialColors.getColor(context, com.google.android.material.R.attr.colorSurfaceContainer, fallback)
+    }
+
+    fun getPrimaryColor(context: Context): Int {
+        val isNight = (context.resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES
+        val fallback = if (isNight) Color.parseColor("#D0BCFF") else Color.parseColor("#6750A4")
+        return MaterialColors.getColor(context, com.google.android.material.R.attr.colorPrimary, fallback)
+    }
+
+    fun getOnPrimaryColor(context: Context): Int {
+        val isNight = (context.resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES
+        val fallback = if (isNight) Color.parseColor("#381E72") else Color.parseColor("#FFFFFF")
+        return MaterialColors.getColor(context, com.google.android.material.R.attr.colorOnPrimary, fallback)
+    }
+
+    fun getSecondaryContainerColor(context: Context): Int {
+        val isNight = (context.resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES
+        val fallback = if (isNight) Color.parseColor("#332D41") else Color.parseColor("#E8DEF8")
+        return MaterialColors.getColor(context, com.google.android.material.R.attr.colorSecondaryContainer, fallback)
+    }
+
+    fun getOnSecondaryContainerColor(context: Context): Int {
+        val isNight = (context.resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES
+        val fallback = if (isNight) Color.parseColor("#E8DEF8") else Color.parseColor("#1D192B")
+        return MaterialColors.getColor(context, com.google.android.material.R.attr.colorOnSecondaryContainer, fallback)
+    }
+
+    fun getOutlineColor(context: Context): Int {
+        val isNight = (context.resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES
+        val fallback = if (isNight) Color.parseColor("#938F99") else Color.parseColor("#79747E")
+        return MaterialColors.getColor(context, com.google.android.material.R.attr.colorOutline, fallback)
+    }
 
     fun updateStatusBarContrast(activity: Activity) {
         val window = activity.window

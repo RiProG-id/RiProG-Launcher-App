@@ -11,6 +11,7 @@ import com.riprog.launcher.R
 import android.content.Context
 import android.content.Intent
 import android.graphics.Color
+import android.graphics.drawable.GradientDrawable
 import android.text.Editable
 import android.text.TextUtils
 import android.text.TextWatcher
@@ -144,7 +145,9 @@ class DrawerView(context: Context) : FrameLayout(context) {
 
     private fun setupIndexBar() {
         indexBar.removeAllViews()
-        val adaptiveColor = ThemeUtils.getAdaptiveColor(context, settingsManager, true)
+        val isMaterial = settingsManager.themeStyle == ThemeStyle.MATERIAL
+        val dimColor = if (isMaterial) ThemeUtils.getOnSurfaceVariantColor(context) else context.getColor(R.color.foreground_dim)
+
         val alphabet = "#ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("".toRegex()).dropLastWhile { it.isEmpty() }.toTypedArray()
         for (letter in alphabet) {
             if (letter.isEmpty()) continue
@@ -152,7 +155,7 @@ class DrawerView(context: Context) : FrameLayout(context) {
             tv.text = letter
             tv.textSize = 10f
             tv.gravity = Gravity.CENTER
-            tv.setTextColor(context.getColor(R.color.foreground_dim))
+            tv.setTextColor(dimColor)
             tv.setPadding(0, dpToPx(2), 0, dpToPx(2))
             indexBar.addView(tv, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f))
         }
@@ -225,13 +228,15 @@ class DrawerView(context: Context) : FrameLayout(context) {
 
     private fun highlightLetter(index: Int) {
         if (index == lastSelectedIndex) return
+        val isMaterial = settingsManager.themeStyle == ThemeStyle.MATERIAL
         val adaptiveColor = ThemeUtils.getAdaptiveColor(context, settingsManager, true)
+        val dimColor = if (isMaterial) ThemeUtils.getOnSurfaceVariantColor(context) else context.getColor(R.color.foreground_dim)
         val isLiquid = settingsManager.isLiquidGlass
 
         if (lastSelectedIndex in 0 until indexBar.childCount) {
             val prevTv = indexBar.getChildAt(lastSelectedIndex) as? TextView
             prevTv?.let {
-                it.setTextColor(context.getColor(R.color.foreground_dim))
+                it.setTextColor(dimColor)
                 it.setTypeface(null, android.graphics.Typeface.NORMAL)
                 if (isLiquid) {
                     it.animate().scaleX(1.0f).scaleY(1.0f).setDuration(100).start()
@@ -262,9 +267,11 @@ class DrawerView(context: Context) : FrameLayout(context) {
 
     private fun resetHighlight() {
         if (lastSelectedIndex != -1) {
+            val isMaterial = settingsManager.themeStyle == ThemeStyle.MATERIAL
+            val dimColor = if (isMaterial) ThemeUtils.getOnSurfaceVariantColor(context) else context.getColor(R.color.foreground_dim)
             val tv = indexBar.getChildAt(lastSelectedIndex) as? TextView
             tv?.let {
-                it.setTextColor(context.getColor(R.color.foreground_dim))
+                it.setTextColor(dimColor)
                 it.setTypeface(null, android.graphics.Typeface.NORMAL)
                 if (settingsManager.isLiquidGlass) {
                     it.animate().scaleX(1.0f).scaleY(1.0f).setDuration(100).start()
@@ -345,13 +352,28 @@ class DrawerView(context: Context) : FrameLayout(context) {
     }
 
     fun refreshTheme() {
+        val isMaterial = settingsManager.themeStyle == ThemeStyle.MATERIAL
         backgroundView.background = ThemeUtils.getThemedSurface(context, settingsManager, 0f)
         setupIndexBar()
         if (::searchBar.isInitialized) {
-            searchBar.setHintTextColor(context.getColor(R.color.foreground_dim))
-            searchBar.setBackgroundColor(context.getColor(R.color.search_background))
+            val hintColor = if (isMaterial) ThemeUtils.getOnSurfaceVariantColor(context) else context.getColor(R.color.foreground_dim)
+            val bgColor = if (isMaterial) ThemeUtils.getSurfaceVariantColor(context) else context.getColor(R.color.search_background)
+            val textColor = if (isMaterial) ThemeUtils.getOnSurfaceColor(context) else ThemeUtils.getAdaptiveColor(context, settingsManager, true)
+
+            searchBar.setHintTextColor(hintColor)
+            searchBar.setTextColor(textColor)
+
+            if (isMaterial) {
+                val gd = GradientDrawable()
+                gd.setColor(bgColor)
+                gd.cornerRadius = dpToPx(28).toFloat()
+                searchBar.background = gd
+            } else {
+                searchBar.setBackgroundColor(bgColor)
+            }
+
             if (searchBar.compoundDrawables[0] != null) {
-                searchBar.compoundDrawables[0].setTint(context.getColor(R.color.foreground_dim))
+                searchBar.compoundDrawables[0].setTint(hintColor)
             }
         }
         adapter.notifyDataSetChanged()
@@ -394,18 +416,32 @@ class DrawerView(context: Context) : FrameLayout(context) {
                     (searchBar.parent as? ViewGroup)?.removeView(searchBar)
                     return object : RecyclerView.ViewHolder(searchBar) {}
                 }
+                val isMaterial = settingsManager.themeStyle == ThemeStyle.MATERIAL
                 val adaptiveColor = ThemeUtils.getAdaptiveColor(context, settingsManager, true)
+                val hintColor = if (isMaterial) ThemeUtils.getOnSurfaceVariantColor(context) else context.getColor(R.color.foreground_dim)
+                val bgColor = if (isMaterial) ThemeUtils.getSurfaceVariantColor(context) else context.getColor(R.color.search_background)
+                val textColor = if (isMaterial) ThemeUtils.getOnSurfaceColor(context) else adaptiveColor
+
                 searchBar = EditText(context)
                 searchBar.id = View.generateViewId()
                 searchBar.setHint(R.string.search_hint)
-                searchBar.setHintTextColor(context.getColor(R.color.foreground_dim))
-                searchBar.setTextColor(adaptiveColor)
-                searchBar.setBackgroundColor(context.getColor(R.color.search_background))
+                searchBar.setHintTextColor(hintColor)
+                searchBar.setTextColor(textColor)
+
+                if (isMaterial) {
+                    val gd = GradientDrawable()
+                    gd.setColor(bgColor)
+                    gd.cornerRadius = dpToPx(28).toFloat()
+                    searchBar.background = gd
+                } else {
+                    searchBar.setBackgroundColor(bgColor)
+                }
+
                 searchBar.setPadding(dpToPx(16), dpToPx(12), dpToPx(16), dpToPx(12))
                 searchBar.setCompoundDrawablesWithIntrinsicBounds(R.drawable.ic_search, 0, 0, 0)
                 searchBar.compoundDrawablePadding = dpToPx(12)
                 if (searchBar.compoundDrawables[0] != null) {
-                    searchBar.compoundDrawables[0].setTint(context.getColor(R.color.foreground_dim))
+                    searchBar.compoundDrawables[0].setTint(hintColor)
                 }
                 searchBar.setSingleLine(true)
                 searchBar.gravity = Gravity.CENTER_VERTICAL

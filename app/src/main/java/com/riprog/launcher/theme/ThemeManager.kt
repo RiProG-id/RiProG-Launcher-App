@@ -72,11 +72,17 @@ object ThemeManager {
 
         val shape = ThemeUtils.getThemedSurface(context, settingsManager, 12f)
 
+        val isMaterial = settingsManager.themeStyle == ThemeStyle.MATERIAL
+
         val mask = GradientDrawable()
         mask.setColor(Color.BLACK)
         mask.cornerRadius = radius
 
-        val rippleColor = context.getColor(R.color.search_background)
+        val rippleColor = if (isMaterial) {
+            ThemeUtils.getOnSurfaceColor(context) and 0x1AFFFFFF // ~10% alpha
+        } else {
+            context.getColor(R.color.search_background)
+        }
 
         item.background = RippleDrawable(
             ColorStateList.valueOf(rippleColor),

@@ -19,6 +19,7 @@ import android.text.util.Linkify
 import android.util.TypedValue
 import android.view.*
 import android.widget.*
+import com.google.android.material.materialswitch.MaterialSwitch
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
@@ -171,7 +172,9 @@ class SettingsActivity : Activity() {
         override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): RecyclerView.ViewHolder {
             val context = parent.context
             val type = SettingType.values()[viewType]
-            val adaptiveColor = ThemeUtils.getAdaptiveColor(context, settingsManager, true)
+            val isMaterial = settingsManager.themeStyle == ThemeStyle.MATERIAL
+            val adaptiveColor = if (isMaterial) ThemeUtils.getOnSurfaceColor(context) else ThemeUtils.getAdaptiveColor(context, settingsManager, true)
+            val dimColor = if (isMaterial) ThemeUtils.getOnSurfaceVariantColor(context) else context.getColor(R.color.foreground_dim)
 
             return when (type) {
                 SettingType.TITLE -> {
@@ -221,10 +224,10 @@ class SettingsActivity : Activity() {
 
                     val summaryView = TextView(context)
                     summaryView.textSize = 14f
-                    summaryView.setTextColor(context.getColor(R.color.foreground_dim))
+                    summaryView.setTextColor(dimColor)
                     textLayout.addView(summaryView)
 
-                    val toggle = Switch(context)
+                    val toggle = MaterialSwitch(context)
                     toggle.isClickable = false
                     item.addView(toggle)
 
@@ -257,8 +260,9 @@ class SettingsActivity : Activity() {
                 }
                 SettingType.ABOUT -> {
                     val aboutContent = TextView(context)
-                    aboutContent.setTextColor(context.getColor(R.color.foreground_dim))
-                    aboutContent.setLinkTextColor(context.getColor(R.color.accent_blue))
+                    val accentColor = if (isMaterial) ThemeUtils.getPrimaryColor(context) else context.getColor(R.color.accent_blue)
+                    aboutContent.setTextColor(dimColor)
+                    aboutContent.setLinkTextColor(accentColor)
                     aboutContent.textSize = 14f
                     aboutContent.setPadding(0, 0, 0, dpToPx(32))
                     SimpleViewHolder(aboutContent)
@@ -268,7 +272,11 @@ class SettingsActivity : Activity() {
 
         override fun onBindViewHolder(holder: RecyclerView.ViewHolder, position: Int) {
             val item = items[position]
-            val adaptiveColor = ThemeUtils.getAdaptiveColor(this@SettingsActivity, settingsManager, true)
+            val isMaterial = settingsManager.themeStyle == ThemeStyle.MATERIAL
+            val adaptiveColor = if (isMaterial) ThemeUtils.getOnSurfaceColor(this@SettingsActivity) else ThemeUtils.getAdaptiveColor(this@SettingsActivity, settingsManager, true)
+            val dimColor = if (isMaterial) ThemeUtils.getOnSurfaceVariantColor(this@SettingsActivity) else getColor(R.color.foreground_dim)
+            val accentColor = if (isMaterial) ThemeUtils.getPrimaryColor(this@SettingsActivity) else getColor(R.color.accent_blue)
+
             when (item.type) {
                 SettingType.CATEGORY -> {
                     val layout = holder.itemView as LinearLayout
@@ -316,11 +324,12 @@ class SettingsActivity : Activity() {
                         option.textSize = 14f
 
                         val isSelected = values[i] == current
-                        option.setTextColor(if (isSelected) adaptiveColor else this@SettingsActivity.getColor(R.color.foreground_dim))
+                        option.setTextColor(if (isSelected) adaptiveColor else dimColor)
 
                         if (isSelected) {
                             val gd = GradientDrawable()
-                            gd.setColor(getColor(R.color.search_background))
+                            val selectBg = if (isMaterial) ThemeUtils.getSecondaryContainerColor(this@SettingsActivity) else getColor(R.color.search_background)
+                            gd.setColor(selectBg)
                             gd.cornerRadius = dpToPx(8).toFloat()
                             option.background = gd
                         }
@@ -351,11 +360,12 @@ class SettingsActivity : Activity() {
                         option.textSize = 12f
 
                         val isSelected = values[i] == current
-                        option.setTextColor(if (isSelected) adaptiveColor else this@SettingsActivity.getColor(R.color.foreground_dim))
+                        option.setTextColor(if (isSelected) adaptiveColor else dimColor)
 
                         if (isSelected) {
                             val gd = GradientDrawable()
-                            gd.setColor(getColor(R.color.search_background))
+                            val selectBg = if (isMaterial) ThemeUtils.getSecondaryContainerColor(this@SettingsActivity) else getColor(R.color.search_background)
+                            gd.setColor(selectBg)
                             gd.cornerRadius = dpToPx(8).toFloat()
                             option.background = gd
                         }
@@ -382,7 +392,7 @@ class SettingsActivity : Activity() {
     }
 
     private class SimpleViewHolder(view: View) : RecyclerView.ViewHolder(view)
-    private class ToggleViewHolder(view: View, val title: TextView, val summary: TextView, val toggle: Switch) : RecyclerView.ViewHolder(view)
+    private class ToggleViewHolder(view: View, val title: TextView, val summary: TextView, val toggle: MaterialSwitch) : RecyclerView.ViewHolder(view)
     private class ThemeViewHolder(view: View, val options: LinearLayout) : RecyclerView.ViewHolder(view)
 
     private fun dpToPx(dp: Int): Int {

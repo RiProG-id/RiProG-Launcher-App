@@ -1,6 +1,7 @@
 package com.riprog.launcher.ui.activities
 
 import com.riprog.launcher.theme.ThemeUtils
+import com.riprog.launcher.theme.ThemeStyle
 import com.riprog.launcher.logic.managers.SettingsManager
 import com.riprog.launcher.logic.utils.WidgetSizingUtils
 import com.riprog.launcher.R
@@ -170,8 +171,9 @@ class WidgetPickerActivity : Activity() {
 
         override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): RecyclerView.ViewHolder {
             val context = parent.context
-            val adaptiveColor = ThemeUtils.getAdaptiveColor(context, settingsManager, true)
-            val secondaryColor = (adaptiveColor and 0x00FFFFFF) or 0x80000000.toInt()
+            val isMaterial = settingsManager.themeStyle == ThemeStyle.MATERIAL
+            val adaptiveColor = if (isMaterial) ThemeUtils.getOnSurfaceColor(context) else ThemeUtils.getAdaptiveColor(context, settingsManager, true)
+            val secondaryColor = if (isMaterial) ThemeUtils.getOnSurfaceVariantColor(context) else (adaptiveColor and 0x00FFFFFF) or 0x80000000.toInt()
             val type = ItemType.values()[viewType]
 
             return when (type) {

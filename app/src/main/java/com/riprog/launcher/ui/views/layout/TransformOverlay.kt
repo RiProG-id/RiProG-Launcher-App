@@ -1,6 +1,7 @@
 package com.riprog.launcher.ui.views.layout
 
 import com.riprog.launcher.theme.ThemeUtils
+import com.riprog.launcher.theme.ThemeStyle
 import com.riprog.launcher.logic.managers.SettingsManager
 import com.riprog.launcher.logic.utils.WidgetSizingUtils
 import com.riprog.launcher.data.model.HomeItem
@@ -120,7 +121,8 @@ class TransformOverlay(context: Context, private val targetView: View, private v
     }
 
     private fun setupButtons() {
-        val adaptiveColor = ThemeUtils.getAdaptiveColor(context, settingsManager, true)
+        val isMaterial = settingsManager.themeStyle == ThemeStyle.MATERIAL
+        val adaptiveColor = if (isMaterial) ThemeUtils.getOnSurfaceColor(context) else ThemeUtils.getAdaptiveColor(context, settingsManager, true)
 
         val container = LinearLayout(context)
         container.orientation = LinearLayout.HORIZONTAL
@@ -255,8 +257,11 @@ class TransformOverlay(context: Context, private val targetView: View, private v
     }
 
     private fun drawHandle(canvas: Canvas, cx: Float, cy: Float, radius: Float, isPrimary: Boolean, foregroundColor: Int) {
+        val isMaterial = settingsManager.themeStyle == ThemeStyle.MATERIAL
+        val handleColor = if (isMaterial) ThemeUtils.getSurfaceColor(context) else Color.WHITE
+
         paint.style = Paint.Style.FILL
-        paint.color = Color.WHITE
+        paint.color = handleColor
         paint.alpha = if (isPrimary) 200 else 120
         canvas.drawCircle(cx, cy, radius, paint)
 

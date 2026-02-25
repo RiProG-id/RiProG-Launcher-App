@@ -25,25 +25,8 @@ class MaterialSurfaceDrawable(
         if (bounds.isEmpty) return
 
         // 1. Draw base Material surface
+        // The baseDrawable color is already set to M3 Surface Container in ThemeUtils
         baseDrawable.draw(canvas)
-
-        // 2. Add subtle Material 3 depth effect (optional, but keep structure)
-        // Unlike Liquid Glass, Material You uses color tonal levels.
-        // We can add a very faint top-down gradient to simulate M3 elevation.
-
-        val width = bounds.width().toFloat()
-        val height = bounds.height().toFloat()
-
-        val paint = Paint(Paint.ANTI_ALIAS_FLAG)
-        paint.style = Paint.Style.FILL
-
-        // Subtle elevation overlay
-        val overlayAlpha = if (isNight) 0x0D else 0x08 // 5% or 3%
-        paint.color = Color.WHITE
-        paint.alpha = overlayAlpha
-
-        val rect = RectF(0f, 0f, width, height)
-        canvas.drawRoundRect(rect, cornerRadius, cornerRadius, paint)
     }
 
     override fun setAlpha(alpha: Int) {

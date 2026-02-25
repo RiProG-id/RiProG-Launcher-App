@@ -15,6 +15,7 @@ import androidx.recyclerview.widget.RecyclerView
 import com.riprog.launcher.R
 import com.riprog.launcher.logic.managers.SettingsManager
 import com.riprog.launcher.theme.ThemeUtils
+import com.riprog.launcher.theme.ThemeStyle
 
 class HomeMenuOverlay(context: Context, private val settingsManager: SettingsManager, private val callback: Callback) : FrameLayout(context) {
 
@@ -97,7 +98,8 @@ class HomeMenuOverlay(context: Context, private val settingsManager: SettingsMan
 
         override fun onBindViewHolder(holder: MenuViewHolder, position: Int) {
             val item = items[position]
-            val adaptiveColor = ThemeUtils.getAdaptiveColor(holder.itemView.context, settingsManager, true)
+            val isMaterial = settingsManager.themeStyle == ThemeStyle.MATERIAL
+            val adaptiveColor = if (isMaterial) ThemeUtils.getOnSurfaceColor(holder.itemView.context) else ThemeUtils.getAdaptiveColor(holder.itemView.context, settingsManager, true)
 
             holder.icon.setImageResource(item.iconRes)
             holder.icon.setColorFilter(adaptiveColor)

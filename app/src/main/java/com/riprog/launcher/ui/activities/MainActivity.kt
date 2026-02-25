@@ -162,18 +162,23 @@ class MainActivity : Activity() {
         val isLiquid = settingsManager.isLiquidGlass
         prompt.elevation = if (isLiquid) dpToPx(8).toFloat() else dpToPx(2).toFloat()
 
+        val isMaterial = settingsManager.themeStyle == ThemeStyle.MATERIAL
+        val textColor = if (isMaterial) ThemeUtils.getOnSurfaceColor(this) else getColor(R.color.foreground)
+        val textDimColor = if (isMaterial) ThemeUtils.getOnSurfaceVariantColor(this) else getColor(R.color.foreground_dim)
+        val accentColor = if (isMaterial) ThemeUtils.getPrimaryColor(this) else getColor(R.color.accent_blue)
+
         val title = TextView(this)
         title.setText(R.string.prompt_default_launcher_title)
         title.textSize = 18f
         title.setTypeface(null, Typeface.BOLD)
-        title.setTextColor(getColor(R.color.foreground))
+        title.setTextColor(textColor)
         prompt.addView(title)
 
         val message = TextView(this)
         message.setText(R.string.prompt_default_launcher_message)
         message.setPadding(0, dpToPx(8), 0, dpToPx(16))
         message.gravity = Gravity.CENTER
-        message.setTextColor(getColor(R.color.foreground_dim))
+        message.setTextColor(textDimColor)
         prompt.addView(message)
 
         val buttons = LinearLayout(this)
@@ -183,14 +188,14 @@ class MainActivity : Activity() {
         val btnLater = TextView(this)
         btnLater.setText(R.string.action_later)
         btnLater.setPadding(dpToPx(16), dpToPx(8), dpToPx(16), dpToPx(8))
-        btnLater.setTextColor(getColor(R.color.foreground))
+        btnLater.setTextColor(textColor)
         btnLater.setOnClickListener { mainLayout.removeView(prompt) }
         buttons.addView(btnLater)
 
         val btnSet = TextView(this)
         btnSet.setText(R.string.action_set_default)
         btnSet.setPadding(dpToPx(16), dpToPx(8), dpToPx(16), dpToPx(8))
-        btnSet.setTextColor(getColor(R.color.accent_blue))
+        btnSet.setTextColor(accentColor)
         btnSet.setTypeface(null, Typeface.BOLD)
         btnSet.setOnClickListener {
             mainLayout.removeView(prompt)
@@ -311,8 +316,11 @@ class MainActivity : Activity() {
         val iconParams = LinearLayout.LayoutParams(size, size)
         iconView.layoutParams = iconParams
 
+        val isMaterial = settingsManager.themeStyle == ThemeStyle.MATERIAL
+        val labelColor = if (isMaterial) ThemeUtils.getOnBackgroundColor(this) else getColor(R.color.foreground)
+
         val labelView = TextView(this)
-        labelView.setTextColor(getColor(R.color.foreground))
+        labelView.setTextColor(labelColor)
         labelView.setTextSize(TypedValue.COMPLEX_UNIT_SP, 10 * scale)
         labelView.gravity = Gravity.CENTER
         labelView.maxLines = 1
@@ -376,18 +384,22 @@ class MainActivity : Activity() {
     }
 
     private fun createClockView(item: HomeItem): View {
+        val isMaterial = settingsManager.themeStyle == ThemeStyle.MATERIAL
+        val textColor = if (isMaterial) ThemeUtils.getOnBackgroundColor(this) else getColor(R.color.foreground)
+        val textDimColor = if (isMaterial) ThemeUtils.getOnSurfaceVariantColor(this) else getColor(R.color.foreground_dim)
+
         val clockRoot = LinearLayout(this)
         clockRoot.orientation = LinearLayout.VERTICAL
         clockRoot.gravity = Gravity.CENTER
 
         val tvTime = TextView(this)
         tvTime.textSize = 64f
-        tvTime.setTextColor(getColor(R.color.foreground))
+        tvTime.setTextColor(textColor)
         tvTime.typeface = Typeface.create("sans-serif-thin", Typeface.NORMAL)
 
         val tvDate = TextView(this)
         tvDate.textSize = 18f
-        tvDate.setTextColor(getColor(R.color.foreground_dim))
+        tvDate.setTextColor(textDimColor)
         tvDate.gravity = Gravity.CENTER
 
         clockRoot.addView(tvTime)

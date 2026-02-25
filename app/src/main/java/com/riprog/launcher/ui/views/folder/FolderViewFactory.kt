@@ -1,6 +1,7 @@
 package com.riprog.launcher.ui.views.folder
 
 import com.riprog.launcher.theme.ThemeUtils
+import com.riprog.launcher.theme.ThemeStyle
 import com.riprog.launcher.logic.managers.SettingsManager
 import com.riprog.launcher.data.model.HomeItem
 import com.riprog.launcher.R
@@ -58,11 +59,14 @@ class FolderViewFactory(private val context: Context, private val preferences: S
             )
         )
 
+        val isMaterial = preferences.themeStyle == ThemeStyle.MATERIAL
+        val labelColor = if (isMaterial) ThemeUtils.getOnBackgroundColor(context) else ThemeUtils.getAdaptiveColor(context, preferences, isOnGlass)
+
         val labelView = TextView(context)
         labelView.isClickable = false
         labelView.isFocusable = false
         labelView.tag = "item_label"
-        labelView.setTextColor(ThemeUtils.getAdaptiveColor(context, preferences, isOnGlass))
+        labelView.setTextColor(labelColor)
         labelView.setTextSize(TypedValue.COMPLEX_UNIT_SP, 10 * scale)
         labelView.gravity = Gravity.CENTER
         labelView.maxLines = 1

@@ -3,6 +3,7 @@ package com.riprog.launcher.logic.managers
 import com.riprog.launcher.ui.activities.MainActivity
 import com.riprog.launcher.theme.ThemeUtils
 import com.riprog.launcher.theme.ThemeManager
+import com.riprog.launcher.theme.ThemeStyle
 import com.riprog.launcher.data.model.HomeItem
 import com.riprog.launcher.data.model.AppItem
 import com.riprog.launcher.ui.views.home.HomeView
@@ -85,7 +86,8 @@ class FolderManager(private val activity: MainActivity, private val settingsMana
         overlay.gravity = Gravity.CENTER_HORIZONTAL
         overlay.isClickable = true
         overlay.isFocusable = true
-        val adaptiveColor = ThemeUtils.getAdaptiveColor(activity, settingsManager, true)
+        val isMaterial = settingsManager.themeStyle == ThemeStyle.MATERIAL
+        val adaptiveColor = if (isMaterial) ThemeUtils.getOnSurfaceColor(activity) else ThemeUtils.getAdaptiveColor(activity, settingsManager, true)
 
         val titleText = TextView(activity)
         titleText.text = if (folderItem.folderName == null || folderItem.folderName!!.isEmpty()) "Folder" else folderItem.folderName
@@ -323,7 +325,8 @@ class FolderManager(private val activity: MainActivity, private val settingsMana
             val packageName = item.packageName ?: return
             val app = activity.allApps.find { it.packageName == packageName }
 
-            val adaptiveColor = ThemeUtils.getAdaptiveColor(activity, settingsManager, true)
+            val isMaterial = settingsManager.themeStyle == ThemeStyle.MATERIAL
+            val adaptiveColor = if (isMaterial) ThemeUtils.getOnSurfaceColor(activity) else ThemeUtils.getAdaptiveColor(activity, settingsManager, true)
             labelView.setTextColor(adaptiveColor)
 
             if (app != null) {

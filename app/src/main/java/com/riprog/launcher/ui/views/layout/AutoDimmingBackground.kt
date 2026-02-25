@@ -1,6 +1,9 @@
 package com.riprog.launcher.ui.views.layout
 
 import com.riprog.launcher.logic.managers.SettingsManager
+import com.riprog.launcher.theme.ThemeStyle
+import com.riprog.launcher.theme.ThemeUtils
+import com.google.android.material.color.MaterialColors
 
 import android.content.Context
 import android.content.res.Configuration
@@ -18,7 +21,14 @@ class AutoDimmingBackground(private val context: Context, private val parentLayo
 
     private fun setupDimView() {
         dimView = View(context)
-        dimView!!.setBackgroundColor(Color.BLACK)
+        val isMaterial = settingsManager.themeStyle == ThemeStyle.MATERIAL
+        val dimColor = if (isMaterial) {
+            // colorScrim might be missing, use a safe alternative
+            MaterialColors.getColor(context, com.google.android.material.R.attr.colorOnSurface, Color.BLACK)
+        } else {
+            Color.BLACK
+        }
+        dimView!!.setBackgroundColor(dimColor)
         dimView!!.alpha = 0f
         dimView!!.visibility = View.GONE
 

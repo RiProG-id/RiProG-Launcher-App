@@ -4,6 +4,7 @@ import com.riprog.launcher.ui.activities.MainActivity
 import com.riprog.launcher.logic.managers.SettingsManager
 import com.riprog.launcher.theme.ThemeManager
 import com.riprog.launcher.theme.ThemeStyle
+import com.riprog.launcher.theme.ThemeUtils
 import com.riprog.launcher.data.repository.AppRepository
 import com.riprog.launcher.data.model.HomeItem
 import com.riprog.launcher.data.model.AppItem
@@ -191,10 +192,13 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
     private fun addDrawerHint() {
         if (settingsManager.drawerOpenCount >= 5) return
 
+        val isMaterial = settingsManager.themeStyle == ThemeStyle.MATERIAL
+        val hintColor = if (isMaterial) ThemeUtils.getOnSurfaceVariantColor(context) else Color.GRAY and 0x80FFFFFF.toInt()
+
         val hint = TextView(context)
         hint.text = context.getString(R.string.drawer_hint)
         hint.textSize = 12f
-        hint.setTextColor(Color.GRAY and 0x80FFFFFF.toInt())
+        hint.setTextColor(hintColor)
         hint.alpha = 0f
         val lp = LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT)
         lp.gravity = Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL
@@ -680,6 +684,9 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
                             }
                         }
                         if (tv != null) {
+                            val isMaterial = settingsManager.themeStyle == ThemeStyle.MATERIAL
+                            val labelColor = if (isMaterial) ThemeUtils.getOnBackgroundColor(context) else context.getColor(R.color.foreground)
+                            tv.setTextColor(labelColor)
                             tv.setTextSize(TypedValue.COMPLEX_UNIT_SP, 10 * scale)
                             tv.visibility = if (settingsManager.isHideLabels) View.GONE else View.VISIBLE
                         }
@@ -925,6 +932,10 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
 
         private fun updateDots() {
             removeAllViews()
+            val isMaterial = settingsManager.themeStyle == ThemeStyle.MATERIAL
+            val activeColor = if (isMaterial) ThemeUtils.getPrimaryColor(context) else accentColor
+            val inactiveColor = if (isMaterial) ThemeUtils.getSecondaryContainerColor(context) else Color.GRAY and 0x80FFFFFF.toInt()
+
             for (i in 0 until count) {
                 val dot = View(context)
                 val size = dpToPx(6)
@@ -935,9 +946,9 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
                 val shape = GradientDrawable()
                 shape.shape = GradientDrawable.OVAL
                 if (i == current) {
-                    shape.setColor(accentColor)
+                    shape.setColor(activeColor)
                 } else {
-                    shape.setColor(Color.GRAY and 0x80FFFFFF.toInt())
+                    shape.setColor(inactiveColor)
                 }
                 dot.background = shape
                 addView(dot)
