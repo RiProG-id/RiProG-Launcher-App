@@ -149,26 +149,6 @@ class FreeformController(
         val midX = v.x + vBounds.centerX()
         val midY = v.y + vBounds.centerY()
 
-        val otherView = (rootLayout as? MainLayout)?.findTouchedHomeItem(midX, midY, v)
-        if (otherView != null) {
-            val cBounds = WidgetSizingUtils.getVisualBounds(otherView)
-            var ox = otherView.x + cBounds.left
-            var oy = otherView.y + cBounds.top
-            var op = otherView.parent as? View
-            while (op != null && op !== rootLayout) {
-                ox += op.x
-                oy += op.y
-                op = op.parent as? View
-            }
-
-            if (midX >= ox && midX <= ox + cBounds.width() &&
-                midY >= oy && midY <= oy + cBounds.height()) {
-                if (!preferences.isFreeformHome && handleFolderDrop(v, otherView)) {
-                    closeTransformOverlay()
-                    return true
-                }
-            }
-        }
 
         val targetPage = homeView.resolvePageIndex(v.x + vBounds.centerX())
         val rv = homeView.recyclerView
@@ -196,68 +176,29 @@ class FreeformController(
             v.y - (rv.paddingTop + (rvLoc[1] - rootLoc[1]))
         }
 
+        item.page = targetPage
+
         if (preferences.isFreeformHome) {
             item.col = (relativeX + vBounds.centerX() - horizontalPadding - (cellWidth * item.spanX / 2f)) / cellWidth
             item.row = (relativeY + vBounds.centerY() - (cellHeight * item.spanY / 2f)) / cellHeight
             item.spanX = v.width / cellWidth
             item.spanY = v.height / cellHeight
-            item.page = targetPage
         } else {
-            val newSpanX = (vBounds.width() / cellWidth).roundToInt().coerceIn(1, preferences.columns)
-            val newSpanY = (vBounds.height() / cellHeight).roundToInt().coerceIn(1, HomeView.GRID_ROWS)
+            // Update spans (rounding to grid units)
+            item.spanX = (vBounds.width() / cellWidth).roundToInt().coerceAtLeast(1).toFloat()
+            item.spanY = (vBounds.height() / cellHeight).roundToInt().coerceAtLeast(1).toFloat()
 
-            item.spanX = newSpanX.toFloat()
-            item.spanY = newSpanY.toFloat()
+            // Use exact float positions to comply with "Store exact position" rule.
+            // No auto-snap, no grid normalization, no collision resolver.
+            item.col = (relativeX + vBounds.centerX() - horizontalPadding - (cellWidth * item.spanX / 2f)) / cellWidth
+            item.row = (relativeY + vBounds.centerY() - (cellHeight * item.spanY / 2f)) / cellHeight
 
-            val newCol = max(0, min(preferences.columns - newSpanX, ((relativeX + vBounds.centerX() - horizontalPadding - (cellWidth * newSpanX / 2f)) / cellWidth).roundToInt()))
-            val newRow = max(0, min(HomeView.GRID_ROWS - newSpanY, ((relativeY + vBounds.centerY() - (cellHeight * newSpanY / 2f)) / cellHeight).roundToInt()))
-
-            item.col = newCol.toFloat()
-            item.row = newRow.toFloat()
-            item.page = targetPage
             item.rotation = 0f
             item.scale = 1.0f
             item.tiltX = 0f
             item.tiltY = 0f
 
             homeView.pageIndicator.setCurrentPage(targetPage)
-
-            val pos = homeView.getSnapPosition(item, v)
-            val snappedXOnPage = pos.first
-            val snappedX = if (pageView != null) {
-                val loc = IntArray(2).apply { pageView.getLocationInWindow(this) }
-                val rootLoc = IntArray(2).apply { rootLayout.getLocationInWindow(this) }
-                snappedXOnPage + (loc[0] - rootLoc[0])
-            } else {
-                snappedXOnPage + targetPage * rv.width
-            }
-
-            val snappedY = if (pageView != null) {
-                val loc = IntArray(2).apply { pageView.getLocationInWindow(this) }
-                val rootLoc = IntArray(2).apply { rootLayout.getLocationInWindow(this) }
-                pos.second + (loc[1] - rootLoc[1])
-            } else {
-                val rvLoc = IntArray(2).apply { rv.getLocationInWindow(this) }
-                val rootLoc = IntArray(2).apply { rootLayout.getLocationInWindow(this) }
-                pos.second + (rv.paddingTop + (rvLoc[1] - rootLoc[1]))
-            }
-
-            if (preferences.isLiquidGlass) {
-                v.x = snappedX
-                v.y = snappedY
-                v.rotation = 0f
-                v.scaleX = 1f
-                v.scaleY = 1f
-            } else {
-                v.animate()
-                    .x(snappedX)
-                    .y(snappedY)
-                    .rotation(0f)
-                    .scaleX(1f)
-                    .scaleY(1f)
-                    .setDuration(200)
-                    .start()
-            }
         }
         mainActivity.saveHomeState()
         return false
@@ -315,8 +256,8 @@ class FreeformController(
                 val sY = (transformingView!!.height / cellHeight).roundToInt().coerceIn(1, HomeView.GRID_ROWS)
                 item.spanX = sX.toFloat()
                 item.spanY = sY.toFloat()
-                item.col = max(0, min(preferences.columns - sX, ((relativeX - horizontalPadding) / cellWidth).roundToInt())).toFloat()
-                item.row = max(0, min(HomeView.GRID_ROWS - sY, (relativeY / cellHeight).roundToInt())).toFloat()
+                item.col = (relativeX - horizontalPadding) / cellWidth
+                item.row = relativeY / cellHeight
             }
         }
 
