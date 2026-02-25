@@ -23,6 +23,7 @@ import android.view.inputmethod.InputMethodManager
 import android.widget.EditText
 import android.widget.FrameLayout
 import android.util.TypedValue
+import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.GridLayout
@@ -148,6 +149,7 @@ class FolderManager(private val activity: MainActivity, private val settingsMana
 
         val recyclerView = RecyclerView(activity)
         recyclerView.layoutManager = GridLayoutManager(activity, 4)
+        recyclerView.itemAnimator?.moveDuration = 150
         val adapter = FolderAdapter(folderItem.folderItems)
         recyclerView.adapter = adapter
         overlay.addView(recyclerView)
@@ -160,7 +162,9 @@ class FolderManager(private val activity: MainActivity, private val settingsMana
                 }
                 DragEvent.ACTION_DRAG_LOCATION -> {
                     val draggedView = event.localState as? View
-                    if (draggedView != null) {
+                    val draggedItem = draggedView?.tag as? HomeItem
+                    if (draggedItem != null) {
+                        adapter.draggedItem = draggedItem
                         val rvLocation = IntArray(2)
                         recyclerView.getLocationInWindow(rvLocation)
                         val containerLocation = IntArray(2)
@@ -175,11 +179,12 @@ class FolderManager(private val activity: MainActivity, private val settingsMana
                         val targetView = recyclerView.findChildViewUnder(relativeX, relativeY)
                         if (targetView != null) {
                             val targetIndex = recyclerView.getChildAdapterPosition(targetView)
-                            val currentIndex = adapter.items.indexOf(draggedView.tag as HomeItem)
+                            val currentIndex = adapter.items.indexOf(draggedItem)
                             if (targetIndex != RecyclerView.NO_POSITION && targetIndex != currentIndex) {
                                 val item = adapter.items.removeAt(currentIndex)
                                 adapter.items.add(targetIndex, item)
                                 adapter.notifyItemMoved(currentIndex, targetIndex)
+                                refreshFolderIconsOnHome(folderItem)
                             }
                         }
                     }
@@ -206,8 +211,12 @@ class FolderManager(private val activity: MainActivity, private val settingsMana
 
                         if (dropXInWindow >= overlayLocation[0] && dropXInWindow <= overlayLocation[0] + overlay.width &&
                             dropYInWindow >= overlayLocation[1] && dropYInWindow <= overlayLocation[1] + overlay.height) {
+                            adapter.draggedItem = null
                             draggedView.visibility = View.VISIBLE
-                            adapter.notifyDataSetChanged()
+                            val pos = adapter.items.indexOf(draggedItem)
+                            if (pos != RecyclerView.NO_POSITION) {
+                                adapter.notifyItemChanged(pos)
+                            }
                             activity.saveHomeState()
                         } else {
                             closeFolder()
@@ -249,8 +258,15 @@ class FolderManager(private val activity: MainActivity, private val settingsMana
                 }
                 DragEvent.ACTION_DRAG_ENDED -> {
                     val draggedView = event.localState as? View
+                    adapter.draggedItem = null
                     draggedView?.visibility = View.VISIBLE
-                    adapter.notifyDataSetChanged()
+                    val draggedItem = draggedView?.tag as? HomeItem
+                    if (draggedItem != null) {
+                        val pos = adapter.items.indexOf(draggedItem)
+                        if (pos != RecyclerView.NO_POSITION) {
+                            adapter.notifyItemChanged(pos)
+                        }
+                    }
                     activity.saveHomeState()
                     true
                 }
@@ -268,42 +284,76 @@ class FolderManager(private val activity: MainActivity, private val settingsMana
         activity.updateContentBlur()
     }
 
-    private inner class FolderAdapter(val items: MutableList<HomeItem>) : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
-        override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): RecyclerView.ViewHolder {
+    private inner class FolderViewHolder(val container: FrameLayout) : RecyclerView.ViewHolder(container) {
+        fun bind(item: HomeItem, isDragged: Boolean, onLongClick: (View) -> Unit) {
+            val subView = if (container.childCount > 0) {
+                container.getChildAt(0)
+            } else {
+                val v = activity.createAppView(item)
+                container.addView(v)
+                v
+            }
+
+            if (subView.tag != item) {
+                updateAppView(subView, item)
+                subView.tag = item
+            }
+
+            subView.visibility = if (isDragged) View.INVISIBLE else View.VISIBLE
+
+            subView.setOnClickListener {
+                activity.handleAppLaunch(item.packageName!!)
+                closeFolder()
+            }
+
+            subView.setOnLongClickListener {
+                onLongClick(subView)
+                true
+            }
+        }
+
+        private fun updateAppView(view: View, item: HomeItem) {
+            val layout = view as? LinearLayout ?: return
+            val iconView = layout.getChildAt(0) as? ImageView ?: return
+            val labelView = layout.getChildAt(1) as? TextView ?: return
+
+            val packageName = item.packageName ?: return
+            val app = activity.allApps.find { it.packageName == packageName }
+            if (app != null) {
+                activity.model.loadIcon(app) { bitmap -> iconView.setImageBitmap(bitmap) }
+                labelView.text = app.label
+            } else {
+                iconView.setImageResource(android.R.drawable.sym_def_app_icon)
+                labelView.text = "..."
+            }
+        }
+    }
+
+    private inner class FolderAdapter(val items: MutableList<HomeItem>) : RecyclerView.Adapter<FolderViewHolder>() {
+        var draggedItem: HomeItem? = null
+
+        override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): FolderViewHolder {
             val folderPadding = dpToPx(8f)
             val container = FrameLayout(parent.context)
             val lp = RecyclerView.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT)
             lp.setMargins(folderPadding, folderPadding, folderPadding, folderPadding)
             container.layoutParams = lp
-            return object : RecyclerView.ViewHolder(container) {}
+            return FolderViewHolder(container)
         }
 
-        override fun onBindViewHolder(holder: RecyclerView.ViewHolder, position: Int) {
+        override fun onBindViewHolder(holder: FolderViewHolder, position: Int) {
             val item = items[position]
-            val container = holder.itemView as FrameLayout
-            container.removeAllViews()
-
-            val subView = activity.createAppView(item)
-            if (subView != null) {
-                if (subView.parent != null) (subView.parent as ViewGroup).removeView(subView)
-                container.addView(subView)
-                subView.tag = item
-                subView.setOnClickListener {
-                    activity.handleAppLaunch(item.packageName!!)
-                    closeFolder()
+            holder.bind(item, item === draggedItem) { view ->
+                val data = ClipData.newPlainText("index", holder.adapterPosition.toString())
+                val shadow = View.DragShadowBuilder(view)
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+                    view.startDragAndDrop(data, shadow, view, 0)
+                } else {
+                    @Suppress("DEPRECATION")
+                    view.startDrag(data, shadow, view, 0)
                 }
-                subView.setOnLongClickListener {
-                    val data = ClipData.newPlainText("index", position.toString())
-                    val shadow = View.DragShadowBuilder(subView)
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-                        subView.startDragAndDrop(data, shadow, subView, 0)
-                    } else {
-                        @Suppress("DEPRECATION")
-                        subView.startDrag(data, shadow, subView, 0)
-                    }
-                    subView.visibility = View.INVISIBLE
-                    true
-                }
+                draggedItem = item
+                view.visibility = View.INVISIBLE
             }
         }
 
