@@ -269,6 +269,24 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
         return getCellWidth()
     }
 
+    fun getSnapPosition(item: HomeItem, view: View): Pair<Float, Float> {
+        val cellWidth = getCellWidth()
+        val cellHeight = getCellHeight()
+        val horizontalPadding = dpToPx(HORIZONTAL_PADDING_DP)
+
+        if (settingsManager.isFreeformHome) {
+            return Pair(item.col * cellWidth + horizontalPadding, item.row * cellHeight)
+        } else {
+            val vBounds = WidgetSizingUtils.getVisualBounds(view)
+            val vCenterX = if (vBounds.width() > 0) vBounds.centerX() else (item.spanX * cellWidth) / 2f
+            val vCenterY = if (vBounds.height() > 0) vBounds.centerY() else (item.spanY * cellHeight) / 2f
+
+            val targetX = (item.col + item.spanX / 2f) * cellWidth + horizontalPadding - vCenterX
+            val targetY = (item.row + item.spanY / 2f) * cellHeight - vCenterY
+            return Pair(targetX, targetY)
+        }
+    }
+
     fun updateViewPosition(item: HomeItem, view: View) {
         val cellWidth = getCellWidth()
         val cellHeight = getCellHeight()
@@ -281,9 +299,9 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
         val lp = LayoutParams((cellWidth * item.spanX).toInt(), (cellHeight * item.spanY).toInt())
         view.layoutParams = lp
 
-        val horizontalPadding = dpToPx(HORIZONTAL_PADDING_DP)
-        view.x = item.col * cellWidth + horizontalPadding
-        view.y = item.row * cellHeight
+        val pos = getSnapPosition(item, view)
+        view.x = pos.first
+        view.y = pos.second
 
         view.rotation = item.rotation
         view.scaleX = item.scale
@@ -631,9 +649,10 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
             item.tiltY = 0f
 
             if (settingsManager.isLiquidGlass) {
+                val pos = getSnapPosition(item, v)
                 v.animate()
-                    .x(item.col * cellWidth + horizontalPadding)
-                    .y(item.row * cellHeight)
+                    .x(pos.first)
+                    .y(pos.second)
                     .setDuration(200)
                     .withEndAction { updateViewPosition(item, v) }
                     .start()
@@ -835,6 +854,9 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
                 }
             }
             post { resolveAllOverlaps(pageIndex + 1) }
+        }
+        if (context is MainActivity) {
+            (context as MainActivity).saveHomeState()
         }
     }
 

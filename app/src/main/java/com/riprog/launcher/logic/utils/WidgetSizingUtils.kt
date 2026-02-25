@@ -99,27 +99,40 @@ object WidgetSizingUtils {
     }
 
     fun getVisualBounds(view: View): RectF {
-        if (view !is ViewGroup) return RectF(0f, 0f, view.width.toFloat(), view.height.toFloat())
+        val lp = view.layoutParams
+        val vWidth = if (view.width > 0) view.width.toFloat() else if (lp != null && lp.width > 0) lp.width.toFloat() else 0f
+        val vHeight = if (view.height > 0) view.height.toFloat() else if (lp != null && lp.height > 0) lp.height.toFloat() else 0f
+
+        if (view !is ViewGroup) return RectF(0f, 0f, vWidth, vHeight)
+
         var minX = Float.MAX_VALUE
         var minY = Float.MAX_VALUE
         var maxX = Float.MIN_VALUE
         var maxY = Float.MIN_VALUE
         var hasVisibleChildren = false
+
         for (i in 0 until view.childCount) {
             val child = view.getChildAt(i)
-            if (child.visibility == View.VISIBLE && child.width > 0 && child.height > 0) {
-                if (child is TextView && view.tag is HomeItem) {
-                    val type = (view.tag as HomeItem).type
-                    if (type == HomeItem.Type.APP || type == HomeItem.Type.FOLDER) continue
+            if (child.visibility == View.VISIBLE) {
+                val clp = child.layoutParams
+                val cw = if (child.width > 0) child.width.toFloat() else if (clp != null && clp.width > 0) clp.width.toFloat() else if (clp != null && clp.width == -1) vWidth else 0f
+                val ch = if (child.height > 0) child.height.toFloat() else if (clp != null && clp.height > 0) clp.height.toFloat() else if (clp != null && clp.height == -1) vHeight else 0f
+
+                if (cw > 0 && ch > 0) {
+                    if (child is TextView && view.tag is HomeItem) {
+                        val type = (view.tag as HomeItem).type
+                        if (type == HomeItem.Type.APP || type == HomeItem.Type.FOLDER) continue
+                    }
+                    minX = min(minX, child.x)
+                    minY = min(minY, child.y)
+                    maxX = max(maxX, child.x + cw)
+                    maxY = max(maxY, child.y + ch)
+                    hasVisibleChildren = true
                 }
-                minX = min(minX, child.x)
-                minY = min(minY, child.y)
-                maxX = max(maxX, child.x + child.width)
-                maxY = max(maxY, child.y + child.height)
-                hasVisibleChildren = true
             }
         }
-        if (!hasVisibleChildren) return RectF(0f, 0f, view.width.toFloat(), view.height.toFloat())
+
+        if (!hasVisibleChildren) return RectF(0f, 0f, vWidth, vHeight)
         return RectF(minX, minY, maxX, maxY)
     }
 }

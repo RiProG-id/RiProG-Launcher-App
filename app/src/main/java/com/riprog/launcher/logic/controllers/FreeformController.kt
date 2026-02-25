@@ -222,7 +222,8 @@ class FreeformController(
 
             homeView.pageIndicator.setCurrentPage(targetPage)
 
-            val snappedXOnPage = newCol * cellWidth + horizontalPadding
+            val pos = homeView.getSnapPosition(item, v)
+            val snappedXOnPage = pos.first
             val snappedX = if (pageView != null) {
                 val loc = IntArray(2).apply { pageView.getLocationInWindow(this) }
                 val rootLoc = IntArray(2).apply { rootLayout.getLocationInWindow(this) }
@@ -231,7 +232,15 @@ class FreeformController(
                 snappedXOnPage + targetPage * rv.width
             }
 
-            val snappedY = newRow * cellHeight
+            val snappedY = if (pageView != null) {
+                val loc = IntArray(2).apply { pageView.getLocationInWindow(this) }
+                val rootLoc = IntArray(2).apply { rootLayout.getLocationInWindow(this) }
+                pos.second + (loc[1] - rootLoc[1])
+            } else {
+                val rvLoc = IntArray(2).apply { rv.getLocationInWindow(this) }
+                val rootLoc = IntArray(2).apply { rootLayout.getLocationInWindow(this) }
+                pos.second + (rv.paddingTop + (rvLoc[1] - rootLoc[1]))
+            }
 
             if (preferences.isLiquidGlass) {
                 v.x = snappedX
