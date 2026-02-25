@@ -56,15 +56,15 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
     private var edgeHoldStart: Long = 0
     private val edgeScrollRunnable: Runnable = object : Runnable {
         override fun run() {
-            if (draggingView != null) {
-                if (lastX < width * 0.05f) {
+            if (draggingView != null && isEdgeScrolling) {
+                if (lastX < width * 0.10f) {
                     if (currentPage > 0) {
                         scrollToPage(currentPage - 1)
                         edgeHoldStart = 0
                     } else {
                         handleEdgePageCreation()
                     }
-                } else if (lastX > width * 0.95f) {
+                } else if (lastX > width * 0.90f) {
                     if (currentPage < pages.size - 1) {
                         scrollToPage(currentPage + 1)
                         edgeHoldStart = 0
@@ -73,11 +73,13 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
                     }
                 } else {
                     edgeHoldStart = 0
+                    stopEdgeEffect()
                 }
-                edgeScrollHandler.postDelayed(this, 400)
+                edgeScrollHandler.postDelayed(this, 1000)
             } else {
                 isEdgeScrolling = false
                 edgeHoldStart = 0
+                stopEdgeEffect()
             }
         }
     }
@@ -211,10 +213,10 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
         if (edgeHoldStart == 0L) {
             edgeHoldStart = System.currentTimeMillis()
         } else if (System.currentTimeMillis() - edgeHoldStart > 1000) {
-            if (lastX < width * 0.05f && currentPage == 0) {
+            if (lastX < width * 0.10f && currentPage == 0) {
                 addPageAtIndex(0)
                 scrollToPage(0)
-            } else if (lastX > width * 0.95f && currentPage == pages.size - 1) {
+            } else if (lastX > width * 0.90f && currentPage == pages.size - 1) {
                 addPage()
                 scrollToPage(pages.size - 1)
             }
@@ -332,22 +334,41 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
             lastY = y
             checkEdgeScroll(x)
 
-            val resolvedPage = resolvePageIndex(draggingView!!.x + draggingView!!.width / 2f)
+            val resolvedPage = resolvePageIndex(x)
             pageIndicator.setCurrentPage(resolvedPage)
         }
     }
 
     fun checkEdgeScroll(x: Float) {
         lastX = x
-        if (x < width * 0.05f || x > width * 0.95f) {
+        if (x < width * 0.10f || x > width * 0.90f) {
             if (!isEdgeScrolling) {
                 isEdgeScrolling = true
-                edgeScrollHandler.postDelayed(edgeScrollRunnable, 300)
+                edgeScrollHandler.postDelayed(edgeScrollRunnable, 600)
+                animateEdgeEffect(x < width * 0.5f)
             }
         } else {
             isEdgeScrolling = false
             edgeScrollHandler.removeCallbacks(edgeScrollRunnable)
+            stopEdgeEffect()
         }
+    }
+
+    private fun animateEdgeEffect(isLeft: Boolean) {
+        val shift = if (isLeft) width * 0.05f else -width * 0.05f
+        recyclerView.animate()
+            .translationX(shift)
+            .setDuration(300)
+            .setInterpolator(android.view.animation.DecelerateInterpolator())
+            .start()
+    }
+
+    private fun stopEdgeEffect() {
+        recyclerView.animate()
+            .translationX(0f)
+            .setDuration(200)
+            .setInterpolator(android.view.animation.AccelerateInterpolator())
+            .start()
     }
 
     fun stopEdgeScroll() {
@@ -416,12 +437,14 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
         isEdgeScrolling = false
         edgeHoldStart = 0
         edgeScrollHandler.removeCallbacks(edgeScrollRunnable)
+        stopEdgeEffect()
     }
 
     fun cancelDragging() {
         draggingView = null
         isEdgeScrolling = false
         edgeScrollHandler.removeCallbacks(edgeScrollRunnable)
+        stopEdgeEffect()
     }
 
     fun removeItemView(item: HomeItem?) {
@@ -608,6 +631,7 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
         currentPage = page
         recyclerView.smoothScrollToPosition(page)
         pageIndicator.setCurrentPage(page)
+        stopEdgeEffect()
     }
 
     override fun getPageCount(): Int {
@@ -818,9 +842,12 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
         val pageW = if (firstView.width > 0) firstView.width else pageWidth
         if (pageW <= 0) return 0
 
+        // Account for edge preview translation
+        val adjustedX = x - recyclerView.translationX
+
         // Use scrollOffset calculation for better precision
         val scrollX = -firstView.left + first * pageW
-        val relativeX = x + scrollX
+        val relativeX = adjustedX + scrollX
         val index = floor((relativeX / pageW).toDouble()).toInt()
         return index.coerceIn(0, pages.size - 1)
     }
