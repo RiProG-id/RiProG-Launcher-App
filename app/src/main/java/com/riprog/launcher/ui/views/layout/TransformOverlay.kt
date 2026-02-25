@@ -403,6 +403,7 @@ class TransformOverlay(context: Context, private val targetView: View, private v
                 performClick()
                 activeHandle = findHandle(x, y)
                 if (activeHandle != ACTION_OUTSIDE) {
+                    (context as? MainActivity)?.homeView?.unlockLayout()
                     if (activeHandle == ACTION_MOVE && onSaveListener != null) {
                         onSaveListener.onMoveStart(x, y)
                     }

@@ -316,9 +316,12 @@ class FreeformController(
                 val sY = (transformingView!!.height / cellHeight).roundToInt().coerceIn(1, HomeView.GRID_ROWS)
                 item.spanX = sX.toFloat()
                 item.spanY = sY.toFloat()
-                // Ensure saved position is grid-aligned for non-freeform mode
-                item.col = max(0, min(preferences.columns - sX, ((relativeX - horizontalPadding) / cellWidth).roundToInt())).toFloat()
-                item.row = max(0, min(HomeView.GRID_ROWS - sY, (relativeY / cellHeight).roundToInt())).toFloat()
+
+                val vBounds = WidgetSizingUtils.getVisualBounds(transformingView!!)
+
+                // Ensure saved position is grid-aligned for non-freeform mode using center-based logic
+                item.col = max(0, min(preferences.columns - sX, ((relativeX + vBounds.centerX() - horizontalPadding - (cellWidth * sX / 2f)) / cellWidth).roundToInt())).toFloat()
+                item.row = max(0, min(HomeView.GRID_ROWS - sY, ((relativeY + vBounds.centerY() - (cellHeight * sY / 2f)) / cellHeight).roundToInt())).toFloat()
             }
         }
 
