@@ -562,6 +562,7 @@ class MainActivity : Activity() {
         homeItems.add(item)
         renderHomeItem(item)
         saveHomeState()
+        homeView.lockLayout()
         homeView.scrollToPage(page)
     }
 
@@ -604,6 +605,7 @@ class MainActivity : Activity() {
             homeItems.add(item)
             renderHomeItem(item)
             saveHomeState()
+            homeView.lockLayout()
             homeView.scrollToPage(page)
         } else {
             val intent = Intent(AppWidgetManager.ACTION_APPWIDGET_BIND)
@@ -869,6 +871,7 @@ class MainActivity : Activity() {
         homeItems.add(item)
         renderHomeItem(item)
         saveHomeState()
+        homeView.lockLayout()
 
         homeView.scrollToPage(page)
         Toast.makeText(this, getString(R.string.app_added_to_home, app.label), Toast.LENGTH_SHORT).show()

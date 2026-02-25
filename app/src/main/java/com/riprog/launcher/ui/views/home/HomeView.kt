@@ -48,6 +48,7 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
     private var systemBottomInset = 0
     var currentPage: Int = 0
         private set
+    var isLayoutLocked: Boolean = false
     private var accentColor = Color.WHITE
     private var model: AppRepository? = null
     private var allApps: List<AppItem>? = null
@@ -319,6 +320,7 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
     }
 
     fun startDragging(v: View, x: Float, y: Float) {
+        unlockLayout()
         draggingView = v
         lastX = x
         lastY = y
@@ -653,6 +655,7 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
         if (context is MainActivity) {
             (context as MainActivity).saveHomeState()
         }
+        lockLayout()
         return false
     }
 
@@ -746,6 +749,8 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
 
     fun refreshLayout() {
         post {
+            if (isLayoutLocked && !settingsManager.isFreeformHome) return@post
+
             // Home layout is fully static outside edit mode.
             // Just ensure all views are at their stored positions.
             for (page in pages) {
@@ -754,9 +759,6 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
                     val item = v.tag as HomeItem?
                     if (item != null) updateViewPosition(item, v)
                 }
-            }
-            if (context is MainActivity) {
-                (context as MainActivity).saveHomeState()
             }
         }
     }
@@ -808,6 +810,16 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
     private fun updateItemView(item: HomeItem) {
         val v = findViewForItem(item)
         if (v != null) updateViewPosition(item, v)
+    }
+
+    fun lockLayout() {
+        if (!settingsManager.isFreeformHome) {
+            isLayoutLocked = true
+        }
+    }
+
+    fun unlockLayout() {
+        isLayoutLocked = false
     }
 
     fun setAccentColor(color: Int) {

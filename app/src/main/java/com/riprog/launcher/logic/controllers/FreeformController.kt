@@ -36,6 +36,7 @@ class FreeformController(
     }
 
     fun showTransformOverlay(v: View, initialTouchX: Float = -1f, initialTouchY: Float = -1f) {
+        (activity as? MainActivity)?.homeView?.unlockLayout()
         if (currentTransformOverlay != null) {
             if (transformingView === v) return
             closeTransformOverlay()
@@ -259,6 +260,7 @@ class FreeformController(
             }
         }
         mainActivity.saveHomeState()
+        homeView.lockLayout()
         return false
     }
 
@@ -325,6 +327,7 @@ class FreeformController(
         item.tiltX = transformingView!!.rotationX
         item.tiltY = transformingView!!.rotationY
         callback.onSaveState()
+        (activity as? MainActivity)?.homeView?.lockLayout()
     }
 
     private fun handleFolderDrop(draggedView: View, targetView: View): Boolean {
