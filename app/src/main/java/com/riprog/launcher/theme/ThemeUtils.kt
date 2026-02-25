@@ -1,24 +1,28 @@
 package com.riprog.launcher.theme
 
 import com.riprog.launcher.logic.managers.SettingsManager
+import com.riprog.launcher.theme.modules.LiquidGlassTheme
+import com.riprog.launcher.theme.modules.StandardTheme
+import com.riprog.launcher.theme.modules.ThemeModule
 import com.riprog.launcher.R
 
 import android.app.Activity
 import android.content.Context
-import android.content.res.Configuration
 import android.graphics.Color
 import android.graphics.RenderEffect
 import android.graphics.Shader
 import android.graphics.drawable.Drawable
-import android.graphics.drawable.GradientDrawable
 import android.os.Build
-import android.util.TypedValue
 import android.view.View
 import android.view.Window
 import android.view.WindowManager
 import androidx.core.view.WindowCompat
 
 object ThemeUtils {
+
+    private fun getModule(settingsManager: SettingsManager): ThemeModule {
+        return if (settingsManager.isLiquidGlass) LiquidGlassTheme else StandardTheme
+    }
 
 
     fun getThemedSurface(context: Context, settingsManager: SettingsManager): Drawable {
@@ -27,36 +31,7 @@ object ThemeUtils {
 
 
     fun getThemedSurface(context: Context, settingsManager: SettingsManager, cornerRadiusDp: Float): Drawable {
-        val isLiquidGlass = settingsManager.isLiquidGlass
-        val isNight = (context.resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) ==
-                Configuration.UI_MODE_NIGHT_YES
-
-        val gd = GradientDrawable()
-        val backgroundColor: Int
-        if (isLiquidGlass) {
-            backgroundColor = context.getColor(R.color.background_glass)
-        } else {
-            backgroundColor = context.getColor(R.color.surface)
-        }
-
-        val cornerRadiusPx = dpToPx(context, cornerRadiusDp).toFloat()
-        gd.setColor(backgroundColor)
-        gd.cornerRadius = cornerRadiusPx
-
-        if (isLiquidGlass) {
-            gd.setStroke(dpToPx(context, 1.5f), context.getColor(R.color.glass_stroke))
-            val reflectionDrawable = GlassReflectionDrawable(gd, isNight)
-            reflectionDrawable.setCornerRadius(cornerRadiusPx)
-            return reflectionDrawable
-        } else {
-            // Pure mode: Solid background with subtle outline where appropriate.
-            if (cornerRadiusDp > 0) {
-                gd.setStroke(dpToPx(context, 1.2f), context.getColor(R.color.surface_stroke))
-            } else {
-                gd.setStroke(0, 0)
-            }
-            return gd
-        }
+        return getModule(settingsManager).getThemedSurface(context, cornerRadiusDp)
     }
 
 
@@ -69,22 +44,7 @@ object ThemeUtils {
 
 
     fun getAdaptiveColor(context: Context, settingsManager: SettingsManager, isOnGlass: Boolean): Int {
-        val isNight = (context.resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) ==
-                Configuration.UI_MODE_NIGHT_YES
-
-        if (isOnGlass) {
-            return if (settingsManager.isLiquidGlass) {
-                getAdaptiveColor(context, context.getColor(R.color.background_glass))
-            } else {
-                if (isNight) Color.WHITE else Color.BLACK
-            }
-        } else {
-            return if (isNight) {
-                Color.WHITE
-            } else {
-                Color.BLACK
-            }
-        }
+        return getModule(settingsManager).getAdaptiveColor(context, isOnGlass)
     }
 
 
@@ -117,12 +77,8 @@ object ThemeUtils {
     fun updateStatusBarContrast(activity: Activity) {
         val window = activity.window
         val controller = WindowCompat.getInsetsController(window, window.decorView)
-        val isNight = (activity.resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) ==
-                Configuration.UI_MODE_NIGHT_YES
+        val isNight = (activity.resources.configuration.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK) ==
+                android.content.res.Configuration.UI_MODE_NIGHT_YES
         controller.isAppearanceLightStatusBars = !isNight
-    }
-
-    private fun dpToPx(context: Context, dp: Float): Int {
-        return TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, dp, context.resources.displayMetrics).toInt()
     }
 }

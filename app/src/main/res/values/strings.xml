@@ -31,8 +31,9 @@
     <string name="theme_system">Follow System</string>
     <string name="theme_light">Light Mode</string>
     <string name="theme_dark">Dark Mode</string>
-    <string name="setting_liquid_glass">Liquid Glass Theme</string>
-    <string name="setting_liquid_glass_summary">Enable premium transparent glass effects with blur and adaptive tints.</string>
+    <string name="setting_theme_style">Theme Style</string>
+    <string name="theme_style_standard">Standard</string>
+    <string name="theme_style_liquid_glass">Liquid Glass</string>
     <string name="setting_darken_wallpaper">Dark Wallpaper Dimming</string>
     <string name="setting_darken_wallpaper_summary">When dark mode is active, the wallpaper will visibly darken to enhance icon and text readability.</string>
     <string name="setting_freeform">Freeform Home</string>
