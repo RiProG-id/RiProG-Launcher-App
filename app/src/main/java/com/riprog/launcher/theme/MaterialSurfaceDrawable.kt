@@ -9,12 +9,6 @@ class MaterialSurfaceDrawable(
     private val isNight: Boolean
 ) : Drawable() {
 
-    private var cornerRadius: Float = 0f
-
-    fun setCornerRadius(radius: Float) {
-        this.cornerRadius = radius
-    }
-
     override fun onBoundsChange(bounds: Rect) {
         super.onBoundsChange(bounds)
         baseDrawable.bounds = bounds

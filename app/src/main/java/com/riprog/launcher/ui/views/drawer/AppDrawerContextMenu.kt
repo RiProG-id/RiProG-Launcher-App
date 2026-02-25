@@ -36,7 +36,8 @@ class AppDrawerContextMenu(context: Context, private val settingsManager: Settin
         recyclerView.background = ThemeUtils.getThemedSurface(context, settingsManager, 12f)
         recyclerView.clipToPadding = false
         recyclerView.setPadding(dpToPx(4), dpToPx(4), dpToPx(4), dpToPx(4))
-        recyclerView.elevation = if (settingsManager.isLiquidGlass) dpToPx(8).toFloat() else dpToPx(2).toFloat()
+        val isMaterial = settingsManager.themeStyle == ThemeStyle.MATERIAL
+        recyclerView.elevation = if (isMaterial) dpToPx(6).toFloat() else (if (settingsManager.isLiquidGlass) dpToPx(8).toFloat() else dpToPx(2).toFloat())
 
         val items = mutableListOf<ContextMenuItem>()
         items.add(ContextMenuItem(R.string.action_add_to_home) { callback.onAddToHome() })

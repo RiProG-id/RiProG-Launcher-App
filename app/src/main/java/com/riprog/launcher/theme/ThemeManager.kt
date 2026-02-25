@@ -56,11 +56,19 @@ object ThemeManager {
     }
 
     fun getIconTint(context: Context): Int {
+        val sm = SettingsManager(context)
+        if (sm.themeStyle == ThemeStyle.MATERIAL) {
+            return ThemeUtils.getPrimaryColor(context)
+        }
         return getSystemAccentColor(context) ?: context.getColor(R.color.accent_blue)
     }
 
     fun isMaterialYouIconsEnabled(settingsManager: SettingsManager): Boolean {
         return settingsManager.themeStyle == ThemeStyle.MATERIAL && settingsManager.isMaterialYouIcons
+    }
+
+    fun isMaterialStyle(settingsManager: SettingsManager): Boolean {
+        return settingsManager.themeStyle == ThemeStyle.MATERIAL
     }
 
 

@@ -49,7 +49,7 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
     private var systemBottomInset = 0
     var currentPage: Int = 0
         private set
-    private var accentColor = Color.WHITE
+    private var accentColor = Color.TRANSPARENT
     private var model: AppRepository? = null
     private var allApps: List<AppItem>? = null
 
@@ -137,6 +137,7 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
 
     init {
         clipChildren = false
+        accentColor = ThemeManager.getIconTint(context)
         clipToPadding = false
 
         recyclerView = RecyclerView(context)
@@ -909,7 +910,7 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
     inner class PageIndicator(context: Context) : LinearLayout(context) {
         private var count = 0
         private var current = 0
-        private var accentColor = Color.WHITE
+        private var accentColor = ThemeManager.getIconTint(context)
 
         init {
             orientation = HORIZONTAL

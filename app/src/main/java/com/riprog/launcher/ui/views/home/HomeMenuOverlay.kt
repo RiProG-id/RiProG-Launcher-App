@@ -78,7 +78,8 @@ class HomeMenuOverlay(context: Context, private val settingsManager: SettingsMan
             btn.layoutParams = lp
             btn.background = ThemeUtils.getThemedSurface(parent.context, settingsManager, 16f)
             val isLiquid = settingsManager.isLiquidGlass
-            btn.elevation = if (isLiquid) dpToPx(6).toFloat() else dpToPx(2).toFloat()
+            val isMaterial = settingsManager.themeStyle == ThemeStyle.MATERIAL
+            btn.elevation = if (isMaterial) dpToPx(4).toFloat() else (if (isLiquid) dpToPx(6).toFloat() else dpToPx(2).toFloat())
             btn.isClickable = true
             btn.isFocusable = true
 

@@ -446,14 +446,9 @@ class MainActivity : Activity() {
     }
 
     private fun applyDynamicColors() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            try {
-                val accentColor = ThemeManager.getSystemAccentColor(this) ?: resources.getColor(android.R.color.system_accent1_400, theme)
-                homeView.setAccentColor(accentColor)
-                drawerView.setAccentColor(accentColor)
-            } catch (ignored: Exception) {
-            }
-        }
+        val accentColor = ThemeManager.getIconTint(this)
+        homeView.setAccentColor(accentColor)
+        drawerView.setAccentColor(accentColor)
     }
 
 

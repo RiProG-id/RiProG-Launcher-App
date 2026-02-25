@@ -51,9 +51,7 @@ object ThemeUtils {
                 reflectionDrawable
             }
             ThemeStyle.MATERIAL -> {
-                val materialDrawable = MaterialSurfaceDrawable(gd, isNight)
-                materialDrawable.setCornerRadius(cornerRadiusPx)
-                materialDrawable
+                MaterialSurfaceDrawable(gd, isNight)
             }
             else -> {
                 // Pure mode: Solid background with subtle outline where appropriate.
@@ -136,8 +134,7 @@ object ThemeUtils {
     fun getOnBackgroundColor(context: Context): Int {
         val isNight = (context.resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES
         val fallback = if (isNight) Color.parseColor("#E6E1E9") else Color.parseColor("#1D1B20")
-        // colorOnBackground is not in android.R.attr usually, it's M3.
-        return MaterialColors.getColor(context, com.google.android.material.R.attr.colorOnSurface, fallback)
+        return MaterialColors.getColor(context, com.google.android.material.R.attr.colorOnBackground, fallback)
     }
 
     fun getSurfaceColor(context: Context): Int {
