@@ -328,6 +328,13 @@ class MainActivity : Activity() {
         if (settingsManager.isHideLabels) {
             labelView.visibility = View.GONE
         }
+
+        if (!settingsManager.isLiquidGlass) {
+            container.background = ThemeUtils.getThemedSurface(this, settingsManager, 12f)
+            val p = dpToPx(6)
+            container.setPadding(p, p, p, p)
+        }
+
         return container
     }
 

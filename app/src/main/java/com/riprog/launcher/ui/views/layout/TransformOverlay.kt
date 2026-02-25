@@ -138,7 +138,7 @@ class TransformOverlay(context: Context, private val targetView: View, private v
 
         val lp = LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT)
         lp.gravity = Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL
-        lp.bottomMargin = dpToPx(48f)
+        lp.bottomMargin = dpToPx(24f)
         lp.leftMargin = dpToPx(24f)
         lp.rightMargin = dpToPx(24f)
         addView(container, lp)
@@ -220,7 +220,7 @@ class TransformOverlay(context: Context, private val targetView: View, private v
         paint.color = foregroundColor
         paint.style = Paint.Style.STROKE
         paint.strokeWidth = dpToPx(1.2f).toFloat()
-        paint.alpha = 80
+        paint.alpha = 160
 
         // Only show directional guide lines (rectangle) for widgets in freeform mode
         if (isFreeform && isWidget) {
