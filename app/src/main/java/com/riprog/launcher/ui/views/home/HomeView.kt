@@ -30,6 +30,7 @@ import androidx.recyclerview.widget.PagerSnapHelper
 import androidx.recyclerview.widget.RecyclerView
 import java.util.ArrayList
 import java.util.HashMap
+import kotlin.math.ceil
 import kotlin.math.floor
 import kotlin.math.max
 import kotlin.math.min
@@ -607,6 +608,8 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
             item.tiltY = v.rotationY
         } else {
             val horizontalPadding = dpToPx(HORIZONTAL_PADDING_DP)
+            item.spanX = item.spanX.roundToInt().toFloat()
+            item.spanY = item.spanY.roundToInt().toFloat()
             var targetCol = ((v.x - horizontalPadding) / cellWidth).roundToInt()
             var targetRow = (v.y / cellHeight).roundToInt()
 
@@ -637,10 +640,10 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
                     .x(item.col * cellWidth + horizontalPadding)
                     .y(item.row * cellHeight)
                     .setDuration(200)
+                    .withEndAction { updateViewPosition(item, v) }
                     .start()
             } else {
-                v.x = item.col * cellWidth + horizontalPadding
-                v.y = item.row * cellHeight
+                updateViewPosition(item, v)
             }
         }
 
@@ -779,6 +782,8 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
 
         val occupied = Array(GRID_ROWS) { BooleanArray(columns) }
         for (item in items) {
+            item.spanX = item.spanX.roundToInt().toFloat()
+            item.spanY = item.spanY.roundToInt().toFloat()
             var r = max(0, min(GRID_ROWS - item.spanY.roundToInt(), item.row.roundToInt()))
             var c = max(0, min(columns - item.spanX.roundToInt(), item.col.roundToInt()))
 
@@ -961,10 +966,10 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
             for (item in activity.homeItems) {
                 if (item === excludeItem) continue
                 if (item.page == pageIndex) {
-                    val rStart = max(0, item.row.roundToInt())
-                    val rEnd = min(GRID_ROWS - 1, (rStart + item.spanY.roundToInt() - 1))
-                    val cStart = max(0, item.col.roundToInt())
-                    val cEnd = min(columns - 1, (cStart + item.spanX.roundToInt() - 1))
+                    val rStart = max(0, floor(item.row.toDouble() + 0.01).toInt())
+                    val rEnd = min(GRID_ROWS - 1, ceil((item.row + item.spanY).toDouble() - 0.01).toInt() - 1)
+                    val cStart = max(0, floor(item.col.toDouble() + 0.01).toInt())
+                    val cEnd = min(columns - 1, ceil((item.col + item.spanX).toDouble() - 0.01).toInt() - 1)
                     for (r in rStart..rEnd) {
                         for (c in cStart..cEnd) {
                             if (r >= 0 && r < GRID_ROWS && c >= 0 && c < columns) occupied[r][c] = true
@@ -985,9 +990,11 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
 
     fun doesFit(spanX: Float, spanY: Float, col: Int, row: Int, pageIndex: Int, excludeItem: HomeItem? = null): Boolean {
         val columns = settingsManager.columns
-        if (col < 0 || row < 0 || col + spanX.roundToInt() > columns || row + spanY.roundToInt() > GRID_ROWS) return false
+        val sX = ceil(spanX.toDouble() - 0.01).toInt()
+        val sY = ceil(spanY.toDouble() - 0.01).toInt()
+        if (col < 0 || row < 0 || col + sX > columns || row + sY > GRID_ROWS) return false
         val occupied = getOccupiedCells(pageIndex, excludeItem)
-        return canPlace(occupied, row, col, spanX.roundToInt(), spanY.roundToInt())
+        return canPlace(occupied, row, col, sX, sY)
     }
 
     fun hasAnySpace(spanX: Float, spanY: Float, pageIndex: Int): Boolean {
