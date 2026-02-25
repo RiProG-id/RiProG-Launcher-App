@@ -610,17 +610,23 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
             var targetCol = ((v.x - horizontalPadding) / cellWidth).roundToInt()
             var targetRow = (v.y / cellHeight).roundToInt()
 
-            if (!doesFit(item.spanX, item.spanY, targetCol, targetRow, item.page)) {
-                val occupied = getOccupiedCells(item.page, item)
-                val nearest = findNearestAvailable(occupied, targetRow, targetCol, item.spanX.roundToInt(), item.spanY.roundToInt())
-                if (nearest != null) {
-                    targetRow = nearest.first
-                    targetCol = nearest.second
-                }
-            }
+            if (!doesFit(item.spanX, item.spanY, targetCol, targetRow, item.page, item)) {
+                item.col = item.originalCol
+                item.row = item.originalRow
+                item.spanX = item.originalSpanX
+                item.spanY = item.originalSpanY
+                val pageChanged = item.page != item.originalPage
+                item.page = item.originalPage
 
-            item.col = max(0, min(settingsManager.columns - item.spanX.roundToInt(), targetCol)).toFloat()
-            item.row = max(0, min(GRID_ROWS - item.spanY.roundToInt(), targetRow)).toFloat()
+                if (pageChanged && context is MainActivity) {
+                    removeItemView(item)
+                    (context as MainActivity).renderHomeItem(item)
+                    return false
+                }
+            } else {
+                item.col = max(0, min(settingsManager.columns - item.spanX.roundToInt(), targetCol)).toFloat()
+                item.row = max(0, min(GRID_ROWS - item.spanY.roundToInt(), targetRow)).toFloat()
+            }
             item.rotation = 0f
             item.scale = 1.0f
             item.tiltX = 0f
@@ -977,10 +983,10 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
         return canPlace(occupied, newRow, newCol, newSpanX.roundToInt(), newSpanY.roundToInt())
     }
 
-    fun doesFit(spanX: Float, spanY: Float, col: Int, row: Int, pageIndex: Int): Boolean {
+    fun doesFit(spanX: Float, spanY: Float, col: Int, row: Int, pageIndex: Int, excludeItem: HomeItem? = null): Boolean {
         val columns = settingsManager.columns
         if (col < 0 || row < 0 || col + spanX.roundToInt() > columns || row + spanY.roundToInt() > GRID_ROWS) return false
-        val occupied = getOccupiedCells(pageIndex)
+        val occupied = getOccupiedCells(pageIndex, excludeItem)
         return canPlace(occupied, row, col, spanX.roundToInt(), spanY.roundToInt())
     }
 

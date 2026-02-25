@@ -538,25 +538,31 @@ class MainActivity : Activity() {
         val sX = pendingSpanX.coerceAtMost(settingsManager.columns)
         val sY = pendingSpanY.coerceAtMost(HomeView.GRID_ROWS)
 
-        var col = maxOf(0, (settingsManager.columns - sX) / 2)
-        var row = maxOf(0, (HomeView.GRID_ROWS - sY) / 2)
+        var col = 0
+        var row = 0
+        var page = homeView.currentPage
 
-        if (col + sX > settingsManager.columns) col = settingsManager.columns - sX
-        if (row + sY > HomeView.GRID_ROWS) row = HomeView.GRID_ROWS - sY
-
-        if (!settingsManager.isFreeformHome && !homeView.doesFit(sX.toFloat(), sY.toFloat(), col, row, homeView.currentPage)) {
-            val occupied = homeView.getOccupiedCells(homeView.currentPage)
-            val nearest = findNearestAvailable(occupied, row, col, sX, sY)
-            if (nearest != null) {
-                row = nearest.first
-                col = nearest.second
+        if (!settingsManager.isFreeformHome) {
+            val slot = findFirstAvailableSlot(sX, sY)
+            if (slot == null) {
+                Toast.makeText(this, R.string.page_full, Toast.LENGTH_SHORT).show()
+                return
             }
+            page = slot.first
+            row = slot.second
+            col = slot.third
+        } else {
+            col = maxOf(0, (settingsManager.columns - sX) / 2)
+            row = maxOf(0, (HomeView.GRID_ROWS - sY) / 2)
+            if (col + sX > settingsManager.columns) col = settingsManager.columns - sX
+            if (row + sY > HomeView.GRID_ROWS) row = HomeView.GRID_ROWS - sY
         }
 
-        val item = HomeItem.createWidget(appWidgetId, col.toFloat(), row.toFloat(), sX, sY, homeView.currentPage)
+        val item = HomeItem.createWidget(appWidgetId, col.toFloat(), row.toFloat(), sX, sY, page)
         homeItems.add(item)
         renderHomeItem(item)
         saveHomeState()
+        homeView.scrollToPage(page)
     }
 
     fun pickWidget() {
@@ -568,32 +574,37 @@ class MainActivity : Activity() {
         val sX = spanX.coerceAtMost(settingsManager.columns)
         val sY = spanY.coerceAtMost(HomeView.GRID_ROWS)
 
-        var col = maxOf(0, (settingsManager.columns - sX) / 2)
-        var row = maxOf(0, (HomeView.GRID_ROWS - sY) / 2)
-
-        if (col + sX > settingsManager.columns) col = settingsManager.columns - sX
-        if (row + sY > HomeView.GRID_ROWS) row = HomeView.GRID_ROWS - sY
-
         pendingSpanX = sX
         pendingSpanY = sY
 
         val appWidgetId = appWidgetHost.allocateAppWidgetId()
         val allowed = appWidgetManager.bindAppWidgetIdIfAllowed(appWidgetId, info.provider)
         if (allowed) {
-            if (!settingsManager.isFreeformHome && !homeView.doesFit(sX.toFloat(), sY.toFloat(), col, row, homeView.currentPage)) {
-                val occupied = homeView.getOccupiedCells(homeView.currentPage)
-                val nearest = findNearestAvailable(occupied, row, col, sX, sY)
-                if (nearest != null) {
-                    row = nearest.first
-                    col = nearest.second
+            var col = 0
+            var row = 0
+            var page = homeView.currentPage
+
+            if (!settingsManager.isFreeformHome) {
+                val slot = findFirstAvailableSlot(sX, sY)
+                if (slot == null) {
+                    Toast.makeText(this, R.string.page_full, Toast.LENGTH_SHORT).show()
+                    return
                 }
+                page = slot.first
+                row = slot.second
+                col = slot.third
+            } else {
+                col = maxOf(0, (settingsManager.columns - sX) / 2)
+                row = maxOf(0, (HomeView.GRID_ROWS - sY) / 2)
+                if (col + sX > settingsManager.columns) col = settingsManager.columns - sX
+                if (row + sY > HomeView.GRID_ROWS) row = HomeView.GRID_ROWS - sY
             }
 
-            val item = HomeItem.createWidget(appWidgetId, col.toFloat(), row.toFloat(), sX, sY, homeView.currentPage)
-
+            val item = HomeItem.createWidget(appWidgetId, col.toFloat(), row.toFloat(), sX, sY, page)
             homeItems.add(item)
             renderHomeItem(item)
             saveHomeState()
+            homeView.scrollToPage(page)
         } else {
             val intent = Intent(AppWidgetManager.ACTION_APPWIDGET_BIND)
             intent.putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, appWidgetId)

@@ -212,6 +212,21 @@ class FreeformController(
             val newCol = max(0, min(preferences.columns - newSpanX, ((relativeX - horizontalPadding) / cellWidth).roundToInt()))
             val newRow = max(0, min(HomeView.GRID_ROWS - newSpanY, (relativeY / cellHeight).roundToInt()))
 
+            if (!homeView.doesFit(newSpanX.toFloat(), newSpanY.toFloat(), newCol, newRow, targetPage, item)) {
+                item.col = item.originalCol
+                item.row = item.originalRow
+                item.spanX = item.originalSpanX
+                item.spanY = item.originalSpanY
+                item.page = item.originalPage
+                item.rotation = 0f
+                item.scale = 1.0f
+                item.tiltX = 0f
+                item.tiltY = 0f
+
+                closeTransformOverlay()
+                return false
+            }
+
             item.col = newCol.toFloat()
             item.row = newRow.toFloat()
             item.page = targetPage
