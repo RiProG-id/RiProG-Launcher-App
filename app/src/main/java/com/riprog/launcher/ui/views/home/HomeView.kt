@@ -14,6 +14,7 @@ import android.appwidget.AppWidgetManager
 import android.content.Context
 import android.content.ContextWrapper
 import android.graphics.Color
+import android.graphics.RectF
 import android.graphics.drawable.GradientDrawable
 import android.os.Handler
 import android.os.Looper
@@ -624,21 +625,26 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
             item.tiltY = v.rotationY
         } else {
             val horizontalPadding = dpToPx(HORIZONTAL_PADDING_DP)
-            item.spanX = item.spanX.roundToInt().toFloat()
-            item.spanY = item.spanY.roundToInt().toFloat()
 
-            // Snap based on visual center of the item relative to grid
-            var targetCol = ((v.x + vBounds.centerX() - horizontalPadding - (cellWidth * item.spanX / 2f)) / cellWidth).roundToInt()
-            var targetRow = ((v.y + vBounds.centerY() - (cellHeight * item.spanY / 2f)) / cellHeight).roundToInt()
+            // 1. Calculate visual span (EXACT)
+            val spanX = (vBounds.width() / cellWidth).roundToInt().coerceAtLeast(1)
+            val spanY = (vBounds.height() / cellHeight).roundToInt().coerceAtLeast(1)
 
-            item.col = max(0, min(settingsManager.columns - item.spanX.roundToInt(), targetCol)).toFloat()
-            item.row = max(0, min(GRID_ROWS - item.spanY.roundToInt(), targetRow)).toFloat()
+            // 2. Scan grid behind object position for nearest valid grid area matching EXACT span
+            val visualCenterX = v.x + vBounds.centerX()
+            val visualCenterY = v.y + vBounds.centerY()
 
-            resolveAllOverlaps(item.page)
+            var targetCol = ((visualCenterX - horizontalPadding - (cellWidth * spanX / 2f)) / cellWidth).roundToInt()
+            var targetRow = ((visualCenterY - (cellHeight * spanY / 2f)) / cellHeight).roundToInt()
+
+            targetCol = targetCol.coerceIn(0, settingsManager.columns - spanX)
+            targetRow = targetRow.coerceIn(0, GRID_ROWS - spanY)
+
+            // 3. Apply SNAP RESULT and handle overlaps
+            applyNewGridLogic(item, v, targetCol, targetRow, spanX, spanY)
 
             val pageChanged = item.page != item.originalPage
             if (pageChanged && context is MainActivity) {
-                resolveAllOverlaps(item.originalPage)
                 removeItemView(item)
                 (context as MainActivity).renderHomeItem(item)
                 return false
@@ -665,6 +671,165 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
             (context as MainActivity).saveHomeState()
         }
         return false
+    }
+
+    private fun getVisualArea(item: HomeItem, view: View): Float {
+        val bounds = WidgetSizingUtils.getVisualBounds(view)
+        return bounds.width() * bounds.height()
+    }
+
+    private fun getAbsoluteVisualBounds(item: HomeItem, view: View): RectF {
+        val vBounds = WidgetSizingUtils.getVisualBounds(view)
+        val cellWidth = getCellWidth()
+        val cellHeight = getCellHeight()
+        val horizontalPadding = dpToPx(HORIZONTAL_PADDING_DP)
+
+        val vCenterX = if (vBounds.width() > 0) vBounds.centerX() else (item.spanX * cellWidth) / 2f
+        val vCenterY = if (vBounds.height() > 0) vBounds.centerY() else (item.spanY * cellHeight) / 2f
+
+        val targetX = (item.col + item.spanX / 2f) * cellWidth + horizontalPadding - vCenterX
+        val targetY = (item.row + item.spanY / 2f) * cellHeight - vCenterY
+
+        return RectF(
+            targetX + vBounds.left,
+            targetY + vBounds.top,
+            targetX + vBounds.right,
+            targetY + vBounds.bottom
+        )
+    }
+
+    private fun areOverlappingVisually(item1: HomeItem, view1: View, item2: HomeItem, view2: View): Boolean {
+        val b1 = getAbsoluteVisualBounds(item1, view1)
+        val b2 = getAbsoluteVisualBounds(item2, view2)
+        return RectF.intersects(b1, b2)
+    }
+
+    private fun applyNewGridLogic(droppedItem: HomeItem, droppedView: View, targetCol: Int, targetRow: Int, spanX: Int, spanY: Int) {
+        val activity = context as? MainActivity ?: return
+
+        droppedItem.col = targetCol.toFloat()
+        droppedItem.row = targetRow.toFloat()
+        droppedItem.spanX = spanX.toFloat()
+        droppedItem.spanY = spanY.toFloat()
+
+        val droppedArea = getVisualArea(droppedItem, droppedView)
+        val pageItems = activity.homeItems.filter { it.page == droppedItem.page && it !== droppedItem }
+
+        // Find overlaps using VISUAL BOUNDS
+        var overlaps = pageItems.filter { other ->
+            val otherView = findViewForItem(other)
+            if (otherView != null) {
+                areOverlappingVisually(droppedItem, droppedView, other, otherView)
+            } else {
+                // Fallback to grid intersection if view not available
+                intersects(droppedItem, other)
+            }
+        }
+
+        if (overlaps.isNotEmpty()) {
+            val allInvolved = overlaps + droppedItem
+            val smallest = allInvolved.minByOrNull {
+                val view = findViewForItem(it)
+                if (view != null) getVisualArea(it, view) else it.spanX * it.spanY * 10000f
+            } ?: droppedItem
+
+            if (smallest === droppedItem) {
+                val nearest = findNearestEmptyArea(droppedItem.page, spanX, spanY, targetCol, targetRow, pageItems)
+                if (nearest != null) {
+                    droppedItem.col = nearest.first.toFloat()
+                    droppedItem.row = nearest.second.toFloat()
+                }
+            } else {
+                for (other in overlaps) {
+                    val otherView = findViewForItem(other)
+                    val otherArea = if (otherView != null) getVisualArea(other, otherView) else other.spanX * other.spanY * 10000f
+
+                    if (otherArea < droppedArea) {
+                        val otherSpanX = other.spanX.roundToInt()
+                        val otherSpanY = other.spanY.roundToInt()
+                        val nearest = findNearestEmptyArea(other.page, otherSpanX, otherSpanY, other.col.roundToInt(), other.row.roundToInt(), activity.homeItems.filter { it !== other })
+                        if (nearest != null) {
+                            other.col = nearest.first.toFloat()
+                            other.row = nearest.second.toFloat()
+                            updateItemView(other)
+                        }
+                    }
+                }
+
+                // If dropped item still overlaps something visually, move dropped item to nearest empty area
+                val stillOverlaps = pageItems.any { other ->
+                    val otherView = findViewForItem(other)
+                    if (otherView != null) areOverlappingVisually(droppedItem, droppedView, other, otherView) else intersects(droppedItem, other)
+                }
+                if (stillOverlaps) {
+                    val nearest = findNearestEmptyArea(droppedItem.page, spanX, spanY, targetCol, targetRow, pageItems)
+                    if (nearest != null) {
+                        droppedItem.col = nearest.first.toFloat()
+                        droppedItem.row = nearest.second.toFloat()
+                    }
+                }
+            }
+        }
+    }
+
+    private fun intersects(item1: HomeItem, item2: HomeItem): Boolean {
+        val r1 = item1.row.roundToInt()
+        val c1 = item1.col.roundToInt()
+        val sX1 = item1.spanX.roundToInt()
+        val sY1 = item1.spanY.roundToInt()
+
+        val r2 = item2.row.roundToInt()
+        val c2 = item2.col.roundToInt()
+        val sX2 = item2.spanX.roundToInt()
+        val sY2 = item2.spanY.roundToInt()
+
+        return c1 < c2 + sX2 && c1 + sX1 > c2 && r1 < r2 + sY2 && r1 + sY1 > r2
+    }
+
+    private fun findNearestEmptyArea(pageIndex: Int, spanX: Int, spanY: Int, prefCol: Int, prefRow: Int, otherItems: List<HomeItem>): Pair<Int, Int>? {
+        val cols = settingsManager.columns
+        val occupied = Array(GRID_ROWS) { BooleanArray(cols) }
+
+        for (item in otherItems) {
+            if (item.page == pageIndex) {
+                val rStart = max(0, item.row.roundToInt())
+                val rEnd = min(GRID_ROWS - 1, (item.row + item.spanY).roundToInt() - 1)
+                val cStart = max(0, item.col.roundToInt())
+                val cEnd = min(cols - 1, (item.col + item.spanX).roundToInt() - 1)
+                for (r in rStart..rEnd) {
+                    for (c in cStart..cEnd) {
+                        occupied[r][c] = true
+                    }
+                }
+            }
+        }
+
+        var minDest = Double.MAX_VALUE
+        var bestPos: Pair<Int, Int>? = null
+
+        for (i in 0..GRID_ROWS - spanY) {
+            for (j in 0..cols - spanX) {
+                var canPlace = true
+                for (ri in i until i + spanY) {
+                    for (ci in j until j + spanX) {
+                        if (occupied[ri][ci]) {
+                            canPlace = false
+                            break
+                        }
+                    }
+                    if (!canPlace) break
+                }
+
+                if (canPlace) {
+                    val d = Math.sqrt(Math.pow((i - prefRow).toDouble(), 2.0) + Math.pow((j - prefCol).toDouble(), 2.0))
+                    if (d < minDest) {
+                        minDest = d
+                        bestPos = Pair(j, i) // Note: returning (col, row)
+                    }
+                }
+            }
+        }
+        return bestPos
     }
 
     fun scrollToPage(page: Int) {
@@ -769,9 +934,9 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
                             item.scale = 1.0f
                             item.tiltX = 0f
                             item.tiltY = 0f
+                            updateViewPosition(item, v)
                         }
                     }
-                    resolveAllOverlaps(i)
                 }
             } else {
                 for (page in pages) {
@@ -789,75 +954,7 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
     }
 
     private fun resolveAllOverlaps(pageIndex: Int) {
-        if (settingsManager.isFreeformHome) return
-        val activity = context as? MainActivity ?: return
-        val columns = settingsManager.columns
-        val appWidgetManager = AppWidgetManager.getInstance(context)
-
-        val items = activity.homeItems.filter { it.page == pageIndex }
-
-        // 1. Re-validate widget spans and round all spans first
-        for (item in items) {
-            if (item.type == HomeItem.Type.WIDGET && item.widgetId != -1) {
-                val info = appWidgetManager.getAppWidgetInfo(item.widgetId)
-                if (info != null) {
-                    val span = WidgetSizingUtils.calculateWidgetSpan(context, this, info)
-                    item.spanX = span.first.toFloat()
-                    item.spanY = span.second.toFloat()
-                }
-            }
-            item.spanX = max(1f, item.spanX.roundToInt().toFloat())
-            item.spanY = max(1f, item.spanY.roundToInt().toFloat())
-        }
-
-        // 2. Sort by size (area) descending, then by position for stability
-        val sortedItems = items.sortedWith(compareByDescending<HomeItem> { it.spanX * it.spanY }
-            .thenBy { it.row * columns + it.col })
-
-        val occupied = Array(GRID_ROWS) { BooleanArray(columns) }
-        val toMoveToNextPage = mutableListOf<HomeItem>()
-
-        for (item in sortedItems) {
-            var r = max(0, min(GRID_ROWS - item.spanY.toInt(), item.row.roundToInt()))
-            var c = max(0, min(columns - item.spanX.toInt(), item.col.roundToInt()))
-
-            if (!canPlace(occupied, r, c, item.spanX.toInt(), item.spanY.toInt())) {
-                val pos = findNearestAvailable(occupied, r, c, item.spanX.toInt(), item.spanY.toInt())
-                if (pos != null) {
-                    r = pos.first
-                    c = pos.second
-                } else {
-                    toMoveToNextPage.add(item)
-                    continue
-                }
-            }
-
-            item.row = r.toFloat()
-            item.col = c.toFloat()
-            for (i in r until r + item.spanY.toInt()) {
-                for (j in c until c + item.spanX.toInt()) {
-                    if (i < GRID_ROWS && j < columns) occupied[i][j] = true
-                }
-            }
-            updateItemView(item)
-        }
-
-        if (toMoveToNextPage.isNotEmpty()) {
-            for (item in toMoveToNextPage) {
-                item.page = pageIndex + 1
-                while (item.page >= pages.size) {
-                    addPage()
-                }
-                removeItemView(item)
-                if (context is MainActivity) {
-                    (context as MainActivity).renderHomeItem(item)
-                }
-            }
-            post { resolveAllOverlaps(pageIndex + 1) }
-        }
-        if (context is MainActivity) {
-            (context as MainActivity).saveHomeState()
-        }
+        // Disabled per requirements: Object locks permanently, no secondary auto layout.
     }
 
     private fun findNearestAvailable(occupied: Array<BooleanArray>, r: Int, c: Int, spanX: Int, spanY: Int): Pair<Int, Int>? {

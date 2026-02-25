@@ -16,143 +16,110 @@ class OverlapCleanupTest {
     private val columns = 4
 
     @Test
-    fun testOverlapResolutionLogic() {
-        // Mock items
-        val item1 = HomeItem.createApp("pkg1", "cls1", 0f, 0f, 0)
-        item1.spanX = 2f
-        item1.spanY = 2f // 2x2 at (0,0)
+    fun testSmallestMovesWhenDroppedOnLarge() {
+        // Large item already at (0,0)
+        val large = HomeItem.createApp("large", "cls", 0f, 0f, 0)
+        large.spanX = 2f
+        large.spanY = 2f
 
-        val item2 = HomeItem.createApp("pkg2", "cls2", 1f, 1f, 0)
-        item2.spanX = 1f
-        item2.spanY = 1f // 1x1 at (1,1) - Overlaps with item1
+        // Small item dropped at (1,1)
+        val small = HomeItem.createApp("small", "cls", 1f, 1f, 0)
+        small.spanX = 1f
+        small.spanY = 1f
 
-        val items = listOf(item1, item2)
+        // Simulating the new logic: drop small on large
+        // small is smallest (1x1 vs 2x2) -> small moves
 
-        // Simulate logic from resolveAllOverlaps
-        // 1. Round spans
-        for (item in items) {
-            item.spanX = max(1f, item.spanX.roundToInt().toFloat())
-            item.spanY = max(1f, item.spanY.roundToInt().toFloat())
-        }
-
-        // 2. Sort by size descending, then position
-        val sortedItems = items.sortedWith(compareByDescending<HomeItem> { it.spanX * it.spanY }
-            .thenBy { it.row * columns + it.col })
-
-        assertEquals(item1, sortedItems[0]) // item1 is larger
-        assertEquals(item2, sortedItems[1])
-
-        val occupied = Array(GRID_ROWS) { BooleanArray(columns) }
-
-        // Place item1
-        var r1 = max(0, min(GRID_ROWS - item1.spanY.toInt(), item1.row.roundToInt()))
-        var c1 = max(0, min(columns - item1.spanX.toInt(), item1.col.roundToInt()))
-
-        // canPlace(occupied, r1, c1, 2, 2) is true
-        item1.row = r1.toFloat()
-        item1.col = c1.toFloat()
-        for (i in r1 until r1 + item1.spanY.toInt()) {
-            for (j in c1 until c1 + item1.spanX.toInt()) {
-                occupied[i][j] = true
+        val pageItems = listOf(large)
+        if (intersects(small, large)) {
+            val nearest = findNearestEmptyArea(0, 1, 1, 1, 1, pageItems)
+            if (nearest != null) {
+                small.col = nearest.first.toFloat()
+                small.row = nearest.second.toFloat()
             }
         }
 
-        // Place item2
-        var r2 = max(0, min(GRID_ROWS - item2.spanY.toInt(), item2.row.roundToInt()))
-        var c2 = max(0, min(columns - item2.spanX.toInt(), item2.col.roundToInt()))
-
-        // Check if it overlaps
-        if (!canPlace(occupied, r2, c2, item2.spanX.toInt(), item2.spanY.toInt())) {
-            val pos = findNearestAvailable(occupied, r2, c2, item2.spanX.toInt(), item2.spanY.toInt())
-            if (pos != null) {
-                r2 = pos.first
-                c2 = pos.second
-            }
-        }
-
-        item2.row = r2.toFloat()
-        item2.col = c2.toFloat()
-
-        // Verify item1 kept its position
-        assertEquals(0f, item1.row)
-        assertEquals(0f, item1.col)
-
-        // Verify item2 moved to nearest available (which should be (2,1) or (1,2) or (0,2) or (2,0))
-        // (1,1) was requested.
-        // Occupied: (0,0), (0,1), (1,0), (1,1)
-        // Nearest to (1,1) among empty: (2,1), (1,2), (2,2), (0,2), (2,0) etc.
-        // Dist from (1,1) to (2,1) is 1.0
-        // Dist from (1,1) to (1,2) is 1.0
-        // Dist from (1,1) to (0,2) is sqrt(1+1) = 1.41
-        // (0,2) is available? yes. (1,2) is available? yes.
-
-        assertTrue("Item 2 should have moved", item2.row != 1f || item2.col != 1f)
-        assertTrue("Item 2 should be in a valid position", canPlace(Array(GRID_ROWS) { BooleanArray(columns) }, item2.row.toInt(), item2.col.toInt(), 1, 1))
+        assertEquals(0f, large.col)
+        assertEquals(0f, large.row)
+        assertTrue("Small item should have moved from (1,1)", small.col != 1f || small.row != 1f)
     }
 
     @Test
-    fun testPageOverflow() {
-        // Fill the grid with items
-        val items = mutableListOf<HomeItem>()
-        for (r in 0 until GRID_ROWS) {
-            for (c in 0 until columns) {
-                items.add(HomeItem.createApp("pkg_$r$c", "cls", c.toFloat(), r.toFloat(), 0))
+    fun testSmallestMovesWhenLargeDroppedOnSmall() {
+        // Small item already at (1,1)
+        val small = HomeItem.createApp("small", "cls", 1f, 1f, 0)
+        small.spanX = 1f
+        small.spanY = 1f
+
+        // Large item dropped at (0,0)
+        val large = HomeItem.createApp("large", "cls", 0f, 0f, 0)
+        large.spanX = 2f
+        large.spanY = 2f
+
+        // Simulating the new logic: drop large on small
+        // small is smallest -> small moves, large stays
+
+        val pageItems = listOf(small)
+        if (intersects(large, small)) {
+            // Find smallest
+            // large area = 4, small area = 1
+            // Smallest is small. Move small.
+            val nearest = findNearestEmptyArea(0, 1, 1, 1, 1, listOf(large))
+            if (nearest != null) {
+                small.col = nearest.first.toFloat()
+                small.row = nearest.second.toFloat()
             }
         }
 
-        // Add one more item that won't fit
-        val extra = HomeItem.createApp("extra", "cls", 0f, 0f, 0)
-        items.add(extra)
+        assertEquals(0f, large.col)
+        assertEquals(0f, large.row)
+        assertTrue("Small item should have moved from (1,1)", small.col != 1f || small.row != 1f)
+    }
 
+    private fun intersects(item1: HomeItem, item2: HomeItem): Boolean {
+        val r1 = item1.row.roundToInt()
+        val c1 = item1.col.roundToInt()
+        val sX1 = item1.spanX.roundToInt()
+        val sY1 = item1.spanY.roundToInt()
+        val r2 = item2.row.roundToInt()
+        val c2 = item2.col.roundToInt()
+        val sX2 = item2.spanX.roundToInt()
+        val sY2 = item2.spanY.roundToInt()
+        return c1 < c2 + sX2 && c1 + sX1 > c2 && r1 < r2 + sY2 && r1 + sY1 > r2
+    }
+
+    private fun findNearestEmptyArea(pageIndex: Int, spanX: Int, spanY: Int, prefCol: Int, prefRow: Int, otherItems: List<HomeItem>): Pair<Int, Int>? {
         val occupied = Array(GRID_ROWS) { BooleanArray(columns) }
-        val toMoveToNextPage = mutableListOf<HomeItem>()
-
-        // Simulate resolution for page 0
-        val sortedItems = items.sortedWith(compareByDescending<HomeItem> { it.spanX * it.spanY }
-            .thenBy { it.row * columns + it.col })
-
-        for (item in sortedItems) {
-            val r = item.row.toInt()
-            val c = item.col.toInt()
-            if (canPlace(occupied, r, c, 1, 1)) {
-                for (i in r until r + 1) {
-                    for (j in c until c + 1) {
-                        occupied[i][j] = true
-                    }
-                }
-            } else {
-                val pos = findNearestAvailable(occupied, r, c, 1, 1)
-                if (pos != null) {
-                    occupied[pos.first][pos.second] = true
-                } else {
-                    toMoveToNextPage.add(item)
+        for (item in otherItems) {
+            val rStart = max(0, item.row.roundToInt())
+            val rEnd = min(GRID_ROWS - 1, (item.row + item.spanY).roundToInt() - 1)
+            val cStart = max(0, item.col.roundToInt())
+            val cEnd = min(columns - 1, (item.col + item.spanX).roundToInt() - 1)
+            for (r in rStart..rEnd) {
+                for (c in cStart..cEnd) {
+                    occupied[r][c] = true
                 }
             }
         }
-
-        assertEquals(1, toMoveToNextPage.size)
-    }
-
-    private fun canPlace(occupied: Array<BooleanArray>, r: Int, c: Int, spanX: Int, spanY: Int): Boolean {
-        for (i in r until r + spanY) {
-            for (j in c until c + spanX) {
-                if (i >= GRID_ROWS || j >= columns || occupied[i][j]) return false
-            }
-        }
-        return true
-    }
-
-    private fun findNearestAvailable(occupied: Array<BooleanArray>, r: Int, c: Int, spanX: Int, spanY: Int): Pair<Int, Int>? {
         var minDest = Double.MAX_VALUE
         var bestPos: Pair<Int, Int>? = null
-
         for (i in 0..GRID_ROWS - spanY) {
             for (j in 0..columns - spanX) {
-                if (canPlace(occupied, i, j, spanX, spanY)) {
-                    val d = sqrt((i - r).toDouble().pow(2.0) + (j - c).toDouble().pow(2.0))
+                var canPlace = true
+                for (ri in i until i + spanY) {
+                    for (ci in j until j + spanX) {
+                        if (occupied[ri][ci]) {
+                            canPlace = false
+                            break
+                        }
+                    }
+                    if (!canPlace) break
+                }
+                if (canPlace) {
+                    val d = sqrt((i - prefRow).toDouble().pow(2.0) + (j - prefCol).toDouble().pow(2.0))
                     if (d < minDest) {
                         minDest = d
-                        bestPos = Pair(i, j)
+                        bestPos = Pair(j, i)
                     }
                 }
             }
