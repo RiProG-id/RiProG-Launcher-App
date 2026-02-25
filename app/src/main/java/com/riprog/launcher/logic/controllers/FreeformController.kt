@@ -364,12 +364,12 @@ class FreeformController(
                 if (item != null && activity is MainActivity) {
                     if (activity.homeItems.contains(item)) {
                         activity.renderHomeItem(item)
-                        activity.saveHomeState()
                     }
                 }
             }
             transformingView = null
             transformingViewOriginalParent = null
+            (activity as? MainActivity)?.homeView?.refreshLayout()
         }
     }
 

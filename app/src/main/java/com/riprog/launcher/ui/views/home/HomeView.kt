@@ -6,9 +6,11 @@ import com.riprog.launcher.data.repository.AppRepository
 import com.riprog.launcher.data.model.HomeItem
 import com.riprog.launcher.data.model.AppItem
 import com.riprog.launcher.callback.PageActionCallback
+import com.riprog.launcher.logic.utils.WidgetSizingUtils
 import com.riprog.launcher.R
 
 import android.appwidget.AppWidgetHostView
+import android.appwidget.AppWidgetManager
 import android.content.Context
 import android.content.ContextWrapper
 import android.graphics.Color
@@ -768,7 +770,7 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
                     }
                 }
             }
-            if (!freeform && context is MainActivity) {
+            if (context is MainActivity) {
                 (context as MainActivity).saveHomeState()
             }
         }
@@ -778,17 +780,35 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
         if (settingsManager.isFreeformHome) return
         val activity = context as? MainActivity ?: return
         val columns = settingsManager.columns
-        val items = activity.homeItems.filter { it.page == pageIndex }.sortedBy { it.row * columns + it.col }
+        val appWidgetManager = AppWidgetManager.getInstance(context)
+
+        val items = activity.homeItems.filter { it.page == pageIndex }
+
+        // 1. Re-validate widget spans and round all spans first
+        for (item in items) {
+            if (item.type == HomeItem.Type.WIDGET && item.widgetId != -1) {
+                val info = appWidgetManager.getAppWidgetInfo(item.widgetId)
+                if (info != null) {
+                    val span = WidgetSizingUtils.calculateWidgetSpan(context, this, info)
+                    item.spanX = span.first.toFloat()
+                    item.spanY = span.second.toFloat()
+                }
+            }
+            item.spanX = max(1f, item.spanX.roundToInt().toFloat())
+            item.spanY = max(1f, item.spanY.roundToInt().toFloat())
+        }
+
+        // 2. Sort by size (area) descending, then by position for stability
+        val sortedItems = items.sortedWith(compareByDescending<HomeItem> { it.spanX * it.spanY }
+            .thenBy { it.row * columns + it.col })
 
         val occupied = Array(GRID_ROWS) { BooleanArray(columns) }
-        for (item in items) {
-            item.spanX = item.spanX.roundToInt().toFloat()
-            item.spanY = item.spanY.roundToInt().toFloat()
-            var r = max(0, min(GRID_ROWS - item.spanY.roundToInt(), item.row.roundToInt()))
-            var c = max(0, min(columns - item.spanX.roundToInt(), item.col.roundToInt()))
+        for (item in sortedItems) {
+            var r = max(0, min(GRID_ROWS - item.spanY.toInt(), item.row.roundToInt()))
+            var c = max(0, min(columns - item.spanX.toInt(), item.col.roundToInt()))
 
-            if (!canPlace(occupied, r, c, item.spanX.roundToInt(), item.spanY.roundToInt())) {
-                val pos = findNearestAvailable(occupied, r, c, item.spanX.roundToInt(), item.spanY.roundToInt())
+            if (!canPlace(occupied, r, c, item.spanX.toInt(), item.spanY.toInt())) {
+                val pos = findNearestAvailable(occupied, r, c, item.spanX.toInt(), item.spanY.toInt())
                 if (pos != null) {
                     r = pos.first
                     c = pos.second
@@ -797,8 +817,8 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
 
             item.row = r.toFloat()
             item.col = c.toFloat()
-            for (i in r until r + item.spanY.roundToInt()) {
-                for (j in c until c + item.spanX.roundToInt()) {
+            for (i in r until r + item.spanY.toInt()) {
+                for (j in c until c + item.spanX.toInt()) {
                     if (i < GRID_ROWS && j < columns) occupied[i][j] = true
                 }
             }
