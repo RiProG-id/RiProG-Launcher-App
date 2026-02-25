@@ -141,7 +141,7 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
         recyclerView = RecyclerView(context)
         val layoutManager = LinearLayoutManager(context, LinearLayoutManager.HORIZONTAL, false)
         recyclerView.layoutManager = layoutManager
-        recyclerView.setPadding(0, dpToPx(48), 0, 0)
+        recyclerView.setPadding(0, dpToPx(32), 0, 0)
         recyclerView.clipChildren = false
         recyclerView.clipToPadding = false
 
@@ -167,7 +167,7 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
             val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
             systemTopInset = systemBars.top
             systemBottomInset = systemBars.bottom
-            recyclerView.setPadding(0, dpToPx(48) + systemTopInset, 0, 0)
+            recyclerView.setPadding(0, dpToPx(32) + systemTopInset, 0, 0)
 
             val indicatorParams = pageIndicator.layoutParams as LayoutParams
             indicatorParams.bottomMargin = systemBottomInset + dpToPx(8)
@@ -266,10 +266,10 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
     }
 
     fun getCellHeight(): Float {
-        val topPadding = dpToPx(48)
-        val bottomPadding = dpToPx(16)
+        val topPadding = dpToPx(32)
+        val bottomPadding = dpToPx(8)
         val dockHeight = 0
-        val indicatorHeight = dpToPx(20)
+        val indicatorHeight = dpToPx(16)
         val systemInsets = systemTopInset + systemBottomInset
         val usableHeight = height - topPadding - bottomPadding - dockHeight - indicatorHeight - systemInsets
 
@@ -558,14 +558,40 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
         }
     }
 
+    fun getVisualBounds(view: View): android.graphics.RectF {
+        if (view !is ViewGroup) return android.graphics.RectF(0f, 0f, view.width.toFloat(), view.height.toFloat())
+        var minX = Float.MAX_VALUE
+        var minY = Float.MAX_VALUE
+        var maxX = Float.MIN_VALUE
+        var maxY = Float.MIN_VALUE
+        var hasVisibleChildren = false
+        for (i in 0 until view.childCount) {
+            val child = view.getChildAt(i)
+            if (child.visibility == View.VISIBLE && child.width > 0 && child.height > 0) {
+                if (child is TextView && view.tag is HomeItem) {
+                    val type = (view.tag as HomeItem).type
+                    if (type == HomeItem.Type.APP || type == HomeItem.Type.FOLDER) continue
+                }
+                minX = min(minX, child.x)
+                minY = min(minY, child.y)
+                maxX = max(maxX, child.x + child.width)
+                maxY = max(maxY, child.y + child.height)
+                hasVisibleChildren = true
+            }
+        }
+        if (!hasVisibleChildren) return android.graphics.RectF(0f, 0f, view.width.toFloat(), view.height.toFloat())
+        return android.graphics.RectF(minX, minY, maxX, maxY)
+    }
+
     fun snapToGrid(item: HomeItem, v: View): Boolean {
         val cellWidth = getCellWidth()
         val cellHeight = getCellHeight()
+        val vBounds = getVisualBounds(v)
 
         if (context is MainActivity) {
             val activity = context as MainActivity
-            val midX = v.x + v.width / 2f
-            val midY = v.y + v.height / 2f
+            val midX = v.x + vBounds.centerX()
+            val midY = v.y + vBounds.centerY()
 
             var otherView: View? = null
             val targetPageLayout = if (item.page < pages.size) pages[item.page] else null
@@ -574,11 +600,14 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
                     val child = targetPageLayout.getChildAt(i)
                     if (child === v) continue
 
-                    val hitBufferX = child.width * 0.25f
-                    val hitBufferY = child.height * 0.25f
+                    val cBounds = getVisualBounds(child)
+                    val cx = child.x + cBounds.left
+                    val cy = child.y + cBounds.top
+                    val cw = cBounds.width()
+                    val ch = cBounds.height()
 
-                    if (midX >= child.x + hitBufferX && midX <= child.x + child.width - hitBufferX &&
-                        midY >= child.y + hitBufferY && midY <= child.y + child.height - hitBufferY
+                    if (midX >= cx && midX <= cx + cw &&
+                        midY >= cy && midY <= cy + ch
                     ) {
                         otherView = child
                         break
@@ -612,8 +641,10 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
             val horizontalPadding = dpToPx(HORIZONTAL_PADDING_DP)
             item.spanX = item.spanX.roundToInt().toFloat()
             item.spanY = item.spanY.roundToInt().toFloat()
-            var targetCol = ((v.x - horizontalPadding) / cellWidth).roundToInt()
-            var targetRow = (v.y / cellHeight).roundToInt()
+
+            // Snap based on visual center of the item relative to grid
+            var targetCol = ((v.x + vBounds.centerX() - horizontalPadding - (cellWidth * item.spanX / 2f)) / cellWidth).roundToInt()
+            var targetRow = ((v.y + vBounds.centerY() - (cellHeight * item.spanY / 2f)) / cellHeight).roundToInt()
 
             if (!doesFit(item.spanX, item.spanY, targetCol, targetRow, item.page, item)) {
                 item.col = item.originalCol
@@ -1031,6 +1062,6 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
     companion object {
         const val GRID_COLUMNS = 4
         const val GRID_ROWS = 6
-        const val HORIZONTAL_PADDING_DP = 16
+        const val HORIZONTAL_PADDING_DP = 8
     }
 }

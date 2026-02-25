@@ -193,6 +193,10 @@ class TransformOverlay(context: Context, private val targetView: View, private v
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
 
+        if (!settingsManager.isFreeformHome && activeHandle != -1 && hasPassedThreshold) {
+            drawGridOverlay(canvas)
+        }
+
         val isFreeform = settingsManager.isFreeformHome
         val isWidget = item.type == HomeItem.Type.WIDGET
         val sx = targetView.scaleX
@@ -276,32 +280,101 @@ class TransformOverlay(context: Context, private val targetView: View, private v
 
     private val contentBounds: RectF
         get() {
-            if (targetView !is ViewGroup) {
-                return RectF(0f, 0f, targetView.width.toFloat(), targetView.height.toFloat())
-            }
-            val vg = targetView
-            var minX = Float.MAX_VALUE
-            var minY = Float.MAX_VALUE
-            var maxX = Float.MIN_VALUE
-            var maxY = Float.MIN_VALUE
-            var hasVisibleChildren = false
-
-            for (i in 0 until vg.childCount) {
-                val child = vg.getChildAt(i)
-                if (child.visibility == View.VISIBLE) {
-                    minX = min(minX, child.x)
-                    minY = min(minY, child.y)
-                    maxX = max(maxX, child.x + child.width)
-                    maxY = max(maxY, child.y + child.height)
-                    hasVisibleChildren = true
-                }
-            }
-
-            if (!hasVisibleChildren) {
-                return RectF(0f, 0f, targetView.width.toFloat(), targetView.height.toFloat())
-            }
-            return RectF(minX, minY, maxX, maxY)
+            return calculateVisualBounds(targetView)
         }
+
+    private fun calculateVisualBounds(view: View): RectF {
+        if (view !is ViewGroup) {
+            return RectF(0f, 0f, view.width.toFloat(), view.height.toFloat())
+        }
+        var minX = Float.MAX_VALUE
+        var minY = Float.MAX_VALUE
+        var maxX = Float.MIN_VALUE
+        var maxY = Float.MIN_VALUE
+        var hasVisibleChildren = false
+
+        for (i in 0 until view.childCount) {
+            val child = view.getChildAt(i)
+            if (child.visibility == View.VISIBLE && child.width > 0 && child.height > 0) {
+                // For apps, we might want to ignore the label for visual bounds
+                if (view.tag is HomeItem && (view.tag as HomeItem).type == HomeItem.Type.APP && child is TextView) {
+                    continue
+                }
+                minX = min(minX, child.x)
+                minY = min(minY, child.y)
+                maxX = max(maxX, child.x + child.width)
+                maxY = max(maxY, child.y + child.height)
+                hasVisibleChildren = true
+            }
+        }
+
+        if (!hasVisibleChildren) {
+            return RectF(0f, 0f, view.width.toFloat(), view.height.toFloat())
+        }
+        return RectF(minX, minY, maxX, maxY)
+    }
+
+    private fun drawGridOverlay(canvas: Canvas) {
+        val activity = context as? MainActivity ?: return
+        val homeView = activity.homeView
+        val cellWidth = homeView.getCellWidth()
+        val cellHeight = homeView.getCellHeight()
+        if (cellWidth <= 0 || cellHeight <= 0) return
+
+        val columns = settingsManager.columns
+        val rows = HomeView.GRID_ROWS
+        val density = resources.displayMetrics.density
+        val horizontalPadding = HomeView.HORIZONTAL_PADDING_DP * density
+
+        val homeLoc = IntArray(2)
+        homeView.getLocationInWindow(homeLoc)
+        val overlayLoc = IntArray(2)
+        this.getLocationInWindow(overlayLoc)
+
+        val offsetX = homeLoc[0] - overlayLoc[0] + horizontalPadding
+        val offsetY = homeLoc[1] - overlayLoc[1] + homeView.recyclerView.paddingTop.toFloat()
+
+        paint.style = Paint.Style.STROKE
+        paint.strokeWidth = dpToPx(0.8f).toFloat()
+        paint.color = ThemeUtils.getAdaptiveColor(context, settingsManager, false)
+
+        // Use very subtle lines for the grid
+        for (i in 0..rows) {
+            val y = offsetY + i * cellHeight
+            paint.alpha = 30
+            canvas.drawLine(offsetX, y, offsetX + columns * cellWidth, y, paint)
+        }
+        for (i in 0..columns) {
+            val x = offsetX + i * cellWidth
+            paint.alpha = 30
+            canvas.drawLine(x, offsetY, x, offsetY + rows * cellHeight, paint)
+        }
+
+        // Draw slightly stronger corners for each cell to indicate target spots
+        paint.alpha = 60
+        val cornerSize = dpToPx(8f).toFloat()
+        for (r in 0 until rows) {
+            for (c in 0 until columns) {
+                val lx = offsetX + c * cellWidth
+                val ty = offsetY + r * cellHeight
+                val rx = lx + cellWidth
+                val by = ty + cellHeight
+
+                // Top-left corner
+                canvas.drawLine(lx, ty, lx + cornerSize, ty, paint)
+                canvas.drawLine(lx, ty, lx, ty + cornerSize, paint)
+                // Top-right
+                canvas.drawLine(rx, ty, rx - cornerSize, ty, paint)
+                canvas.drawLine(rx, ty, rx, ty + cornerSize, paint)
+                // Bottom-left
+                canvas.drawLine(lx, by, lx + cornerSize, by, paint)
+                canvas.drawLine(lx, by, lx, by - cornerSize, paint)
+                // Bottom-right
+                canvas.drawLine(rx, by, rx - cornerSize, by, paint)
+                canvas.drawLine(rx, by, rx, by - cornerSize, paint)
+            }
+        }
+    }
 
     override fun performClick(): Boolean {
         return super.performClick()

@@ -144,16 +144,15 @@ class FreeformController(
         val density = activity.resources.displayMetrics.density
         val horizontalPadding = (HomeView.HORIZONTAL_PADDING_DP * density).toInt().toFloat()
 
-        val midX = v.x + v.width / 2f
-        val midY = v.y + v.height / 2f
+        val vBounds = homeView.getVisualBounds(v)
+        val midX = v.x + vBounds.centerX()
+        val midY = v.y + vBounds.centerY()
 
         val otherView = (rootLayout as? MainLayout)?.findTouchedHomeItem(midX, midY, v)
         if (otherView != null) {
-            val hitBufferX = otherView.width * 0.25f
-            val hitBufferY = otherView.height * 0.25f
-
-            var ox = otherView.x
-            var oy = otherView.y
+            val cBounds = homeView.getVisualBounds(otherView)
+            var ox = otherView.x + cBounds.left
+            var oy = otherView.y + cBounds.top
             var op = otherView.parent as? View
             while (op != null && op !== rootLayout) {
                 ox += op.x
@@ -161,8 +160,8 @@ class FreeformController(
                 op = op.parent as? View
             }
 
-            if (midX >= ox + hitBufferX && midX <= ox + otherView.width - hitBufferX &&
-                midY >= oy + hitBufferY && midY <= oy + otherView.height - hitBufferY) {
+            if (midX >= ox && midX <= ox + cBounds.width() &&
+                midY >= oy && midY <= oy + cBounds.height()) {
                 if (!preferences.isFreeformHome && handleFolderDrop(v, otherView)) {
                     closeTransformOverlay()
                     return true
@@ -170,7 +169,7 @@ class FreeformController(
             }
         }
 
-        val targetPage = homeView.resolvePageIndex(v.x + v.width / 2f)
+        val targetPage = homeView.resolvePageIndex(v.x + vBounds.centerX())
         val rv = homeView.recyclerView
         val lm = rv.layoutManager as? LinearLayoutManager
         val pageView = lm?.findViewByPosition(targetPage)
@@ -197,20 +196,20 @@ class FreeformController(
         }
 
         if (preferences.isFreeformHome) {
-            item.col = (relativeX - horizontalPadding) / cellWidth
-            item.row = relativeY / cellHeight
+            item.col = (relativeX + vBounds.centerX() - horizontalPadding - (cellWidth * item.spanX / 2f)) / cellWidth
+            item.row = (relativeY + vBounds.centerY() - (cellHeight * item.spanY / 2f)) / cellHeight
             item.spanX = v.width / cellWidth
             item.spanY = v.height / cellHeight
             item.page = targetPage
         } else {
-            val newSpanX = (v.width / cellWidth).roundToInt().coerceIn(1, preferences.columns)
-            val newSpanY = (v.height / cellHeight).roundToInt().coerceIn(1, HomeView.GRID_ROWS)
+            val newSpanX = (vBounds.width() / cellWidth).roundToInt().coerceIn(1, preferences.columns)
+            val newSpanY = (vBounds.height() / cellHeight).roundToInt().coerceIn(1, HomeView.GRID_ROWS)
 
             item.spanX = newSpanX.toFloat()
             item.spanY = newSpanY.toFloat()
 
-            val newCol = max(0, min(preferences.columns - newSpanX, ((relativeX - horizontalPadding) / cellWidth).roundToInt()))
-            val newRow = max(0, min(HomeView.GRID_ROWS - newSpanY, (relativeY / cellHeight).roundToInt()))
+            val newCol = max(0, min(preferences.columns - newSpanX, ((relativeX + vBounds.centerX() - horizontalPadding - (cellWidth * newSpanX / 2f)) / cellWidth).roundToInt()))
+            val newRow = max(0, min(HomeView.GRID_ROWS - newSpanY, ((relativeY + vBounds.centerY() - (cellHeight * newSpanY / 2f)) / cellHeight).roundToInt()))
 
             if (!homeView.doesFit(newSpanX.toFloat(), newSpanY.toFloat(), newCol, newRow, targetPage, item)) {
                 item.col = item.originalCol
