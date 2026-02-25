@@ -550,35 +550,10 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
         }
     }
 
-    fun getVisualBounds(view: View): android.graphics.RectF {
-        if (view !is ViewGroup) return android.graphics.RectF(0f, 0f, view.width.toFloat(), view.height.toFloat())
-        var minX = Float.MAX_VALUE
-        var minY = Float.MAX_VALUE
-        var maxX = Float.MIN_VALUE
-        var maxY = Float.MIN_VALUE
-        var hasVisibleChildren = false
-        for (i in 0 until view.childCount) {
-            val child = view.getChildAt(i)
-            if (child.visibility == View.VISIBLE && child.width > 0 && child.height > 0) {
-                if (child is TextView && view.tag is HomeItem) {
-                    val type = (view.tag as HomeItem).type
-                    if (type == HomeItem.Type.APP || type == HomeItem.Type.FOLDER) continue
-                }
-                minX = min(minX, child.x)
-                minY = min(minY, child.y)
-                maxX = max(maxX, child.x + child.width)
-                maxY = max(maxY, child.y + child.height)
-                hasVisibleChildren = true
-            }
-        }
-        if (!hasVisibleChildren) return android.graphics.RectF(0f, 0f, view.width.toFloat(), view.height.toFloat())
-        return android.graphics.RectF(minX, minY, maxX, maxY)
-    }
-
     fun snapToGrid(item: HomeItem, v: View): Boolean {
         val cellWidth = getCellWidth()
         val cellHeight = getCellHeight()
-        val vBounds = getVisualBounds(v)
+        val vBounds = WidgetSizingUtils.getVisualBounds(v)
 
         if (context is MainActivity) {
             val activity = context as MainActivity
@@ -592,7 +567,7 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
                     val child = targetPageLayout.getChildAt(i)
                     if (child === v) continue
 
-                    val cBounds = getVisualBounds(child)
+                    val cBounds = WidgetSizingUtils.getVisualBounds(child)
                     val cx = child.x + cBounds.left
                     val cy = child.y + cBounds.top
                     val cw = cBounds.width()
@@ -638,22 +613,17 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
             var targetCol = ((v.x + vBounds.centerX() - horizontalPadding - (cellWidth * item.spanX / 2f)) / cellWidth).roundToInt()
             var targetRow = ((v.y + vBounds.centerY() - (cellHeight * item.spanY / 2f)) / cellHeight).roundToInt()
 
-            if (!doesFit(item.spanX, item.spanY, targetCol, targetRow, item.page, item)) {
-                item.col = item.originalCol
-                item.row = item.originalRow
-                item.spanX = item.originalSpanX
-                item.spanY = item.originalSpanY
-                val pageChanged = item.page != item.originalPage
-                item.page = item.originalPage
+            item.col = max(0, min(settingsManager.columns - item.spanX.roundToInt(), targetCol)).toFloat()
+            item.row = max(0, min(GRID_ROWS - item.spanY.roundToInt(), targetRow)).toFloat()
 
-                if (pageChanged && context is MainActivity) {
-                    removeItemView(item)
-                    (context as MainActivity).renderHomeItem(item)
-                    return false
-                }
-            } else {
-                item.col = max(0, min(settingsManager.columns - item.spanX.roundToInt(), targetCol)).toFloat()
-                item.row = max(0, min(GRID_ROWS - item.spanY.roundToInt(), targetRow)).toFloat()
+            resolveAllOverlaps(item.page)
+
+            val pageChanged = item.page != item.originalPage
+            if (pageChanged && context is MainActivity) {
+                resolveAllOverlaps(item.originalPage)
+                removeItemView(item)
+                (context as MainActivity).renderHomeItem(item)
+                return false
             }
             item.rotation = 0f
             item.scale = 1.0f
@@ -826,6 +796,8 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
             .thenBy { it.row * columns + it.col })
 
         val occupied = Array(GRID_ROWS) { BooleanArray(columns) }
+        val toMoveToNextPage = mutableListOf<HomeItem>()
+
         for (item in sortedItems) {
             var r = max(0, min(GRID_ROWS - item.spanY.toInt(), item.row.roundToInt()))
             var c = max(0, min(columns - item.spanX.toInt(), item.col.roundToInt()))
@@ -835,6 +807,9 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
                 if (pos != null) {
                     r = pos.first
                     c = pos.second
+                } else {
+                    toMoveToNextPage.add(item)
+                    continue
                 }
             }
 
@@ -846,6 +821,20 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
                 }
             }
             updateItemView(item)
+        }
+
+        if (toMoveToNextPage.isNotEmpty()) {
+            for (item in toMoveToNextPage) {
+                item.page = pageIndex + 1
+                while (item.page >= pages.size) {
+                    addPage()
+                }
+                removeItemView(item)
+                if (context is MainActivity) {
+                    (context as MainActivity).renderHomeItem(item)
+                }
+            }
+            post { resolveAllOverlaps(pageIndex + 1) }
         }
     }
 

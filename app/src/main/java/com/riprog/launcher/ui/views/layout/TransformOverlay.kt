@@ -195,6 +195,9 @@ class TransformOverlay(context: Context, private val targetView: View, private v
 
         if (!settingsManager.isFreeformHome && activeHandle != -1 && hasPassedThreshold) {
             drawGridOverlay(canvas)
+            if (activeHandle == ACTION_MOVE) {
+                drawSnapPreview(canvas)
+            }
         }
 
         val isFreeform = settingsManager.isFreeformHome
@@ -280,39 +283,8 @@ class TransformOverlay(context: Context, private val targetView: View, private v
 
     private val contentBounds: RectF
         get() {
-            return calculateVisualBounds(targetView)
+            return WidgetSizingUtils.getVisualBounds(targetView)
         }
-
-    private fun calculateVisualBounds(view: View): RectF {
-        if (view !is ViewGroup) {
-            return RectF(0f, 0f, view.width.toFloat(), view.height.toFloat())
-        }
-        var minX = Float.MAX_VALUE
-        var minY = Float.MAX_VALUE
-        var maxX = Float.MIN_VALUE
-        var maxY = Float.MIN_VALUE
-        var hasVisibleChildren = false
-
-        for (i in 0 until view.childCount) {
-            val child = view.getChildAt(i)
-            if (child.visibility == View.VISIBLE && child.width > 0 && child.height > 0) {
-                // For apps, we might want to ignore the label for visual bounds
-                if (view.tag is HomeItem && (view.tag as HomeItem).type == HomeItem.Type.APP && child is TextView) {
-                    continue
-                }
-                minX = min(minX, child.x)
-                minY = min(minY, child.y)
-                maxX = max(maxX, child.x + child.width)
-                maxY = max(maxY, child.y + child.height)
-                hasVisibleChildren = true
-            }
-        }
-
-        if (!hasVisibleChildren) {
-            return RectF(0f, 0f, view.width.toFloat(), view.height.toFloat())
-        }
-        return RectF(minX, minY, maxX, maxY)
-    }
 
     private fun drawGridOverlay(canvas: Canvas) {
         val activity = context as? MainActivity ?: return
@@ -374,6 +346,47 @@ class TransformOverlay(context: Context, private val targetView: View, private v
                 canvas.drawLine(rx, by, rx, by - cornerSize, paint)
             }
         }
+    }
+
+    private fun drawSnapPreview(canvas: Canvas) {
+        val activity = context as? MainActivity ?: return
+        val homeView = activity.homeView
+        val cellWidth = homeView.getCellWidth()
+        val cellHeight = homeView.getCellHeight()
+        if (cellWidth <= 0 || cellHeight <= 0) return
+
+        val density = resources.displayMetrics.density
+        val horizontalPadding = HomeView.HORIZONTAL_PADDING_DP * density
+
+        val vBounds = WidgetSizingUtils.getVisualBounds(targetView)
+
+        val homeLoc = IntArray(2)
+        homeView.getLocationInWindow(homeLoc)
+        val overlayLoc = IntArray(2)
+        this.getLocationInWindow(overlayLoc)
+
+        val offsetX = homeLoc[0] - overlayLoc[0] + horizontalPadding
+        val offsetY = homeLoc[1] - overlayLoc[1] + homeView.recyclerView.paddingTop.toFloat()
+
+        // Calculate where it would snap
+        val midX = targetView.x + vBounds.centerX()
+        val midY = targetView.y + vBounds.centerY()
+
+        val columns = settingsManager.columns
+        val targetCol = ((midX - offsetX - (cellWidth * item.spanX / 2f)) / cellWidth).roundToInt()
+            .coerceIn(0, columns - item.spanX.toInt())
+        val targetRow = ((midY - offsetY - (cellHeight * item.spanY / 2f)) / cellHeight).roundToInt()
+            .coerceIn(0, HomeView.GRID_ROWS - item.spanY.toInt())
+
+        val snapX = offsetX + targetCol * cellWidth
+        val snapY = offsetY + targetRow * cellHeight
+        val snapW = item.spanX * cellWidth
+        val snapH = item.spanY * cellHeight
+
+        paint.style = Paint.Style.FILL
+        paint.color = ThemeUtils.getAdaptiveColor(context, settingsManager, false)
+        paint.alpha = 40
+        canvas.drawRoundRect(snapX, snapY, snapX + snapW, snapY + snapH, dpToPx(8f).toFloat(), dpToPx(8f).toFloat(), paint)
     }
 
     override fun performClick(): Boolean {

@@ -90,6 +90,49 @@ class OverlapCleanupTest {
         assertTrue("Item 2 should be in a valid position", canPlace(Array(GRID_ROWS) { BooleanArray(columns) }, item2.row.toInt(), item2.col.toInt(), 1, 1))
     }
 
+    @Test
+    fun testPageOverflow() {
+        // Fill the grid with items
+        val items = mutableListOf<HomeItem>()
+        for (r in 0 until GRID_ROWS) {
+            for (c in 0 until columns) {
+                items.add(HomeItem.createApp("pkg_$r$c", "cls", c.toFloat(), r.toFloat(), 0))
+            }
+        }
+
+        // Add one more item that won't fit
+        val extra = HomeItem.createApp("extra", "cls", 0f, 0f, 0)
+        items.add(extra)
+
+        val occupied = Array(GRID_ROWS) { BooleanArray(columns) }
+        val toMoveToNextPage = mutableListOf<HomeItem>()
+
+        // Simulate resolution for page 0
+        val sortedItems = items.sortedWith(compareByDescending<HomeItem> { it.spanX * it.spanY }
+            .thenBy { it.row * columns + it.col })
+
+        for (item in sortedItems) {
+            val r = item.row.toInt()
+            val c = item.col.toInt()
+            if (canPlace(occupied, r, c, 1, 1)) {
+                for (i in r until r + 1) {
+                    for (j in c until c + 1) {
+                        occupied[i][j] = true
+                    }
+                }
+            } else {
+                val pos = findNearestAvailable(occupied, r, c, 1, 1)
+                if (pos != null) {
+                    occupied[pos.first][pos.second] = true
+                } else {
+                    toMoveToNextPage.add(item)
+                }
+            }
+        }
+
+        assertEquals(1, toMoveToNextPage.size)
+    }
+
     private fun canPlace(occupied: Array<BooleanArray>, r: Int, c: Int, spanX: Int, spanY: Int): Boolean {
         for (i in r until r + spanY) {
             for (j in c until c + spanX) {

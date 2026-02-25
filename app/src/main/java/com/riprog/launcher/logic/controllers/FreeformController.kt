@@ -5,6 +5,7 @@ import com.riprog.launcher.ui.views.layout.MainLayout
 import com.riprog.launcher.ui.views.home.HomeView
 import com.riprog.launcher.ui.activities.MainActivity
 import com.riprog.launcher.logic.managers.SettingsManager
+import com.riprog.launcher.logic.utils.WidgetSizingUtils
 import com.riprog.launcher.data.model.HomeItem
 
 import android.app.Activity
@@ -144,13 +145,13 @@ class FreeformController(
         val density = activity.resources.displayMetrics.density
         val horizontalPadding = (HomeView.HORIZONTAL_PADDING_DP * density).toInt().toFloat()
 
-        val vBounds = homeView.getVisualBounds(v)
+        val vBounds = WidgetSizingUtils.getVisualBounds(v)
         val midX = v.x + vBounds.centerX()
         val midY = v.y + vBounds.centerY()
 
         val otherView = (rootLayout as? MainLayout)?.findTouchedHomeItem(midX, midY, v)
         if (otherView != null) {
-            val cBounds = homeView.getVisualBounds(otherView)
+            val cBounds = WidgetSizingUtils.getVisualBounds(otherView)
             var ox = otherView.x + cBounds.left
             var oy = otherView.y + cBounds.top
             var op = otherView.parent as? View
@@ -210,21 +211,6 @@ class FreeformController(
 
             val newCol = max(0, min(preferences.columns - newSpanX, ((relativeX + vBounds.centerX() - horizontalPadding - (cellWidth * newSpanX / 2f)) / cellWidth).roundToInt()))
             val newRow = max(0, min(HomeView.GRID_ROWS - newSpanY, ((relativeY + vBounds.centerY() - (cellHeight * newSpanY / 2f)) / cellHeight).roundToInt()))
-
-            if (!homeView.doesFit(newSpanX.toFloat(), newSpanY.toFloat(), newCol, newRow, targetPage, item)) {
-                item.col = item.originalCol
-                item.row = item.originalRow
-                item.spanX = item.originalSpanX
-                item.spanY = item.originalSpanY
-                item.page = item.originalPage
-                item.rotation = 0f
-                item.scale = 1.0f
-                item.tiltX = 0f
-                item.tiltY = 0f
-
-                closeTransformOverlay()
-                return false
-            }
 
             item.col = newCol.toFloat()
             item.row = newRow.toFloat()

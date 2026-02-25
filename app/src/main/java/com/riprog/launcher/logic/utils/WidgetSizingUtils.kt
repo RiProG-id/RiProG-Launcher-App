@@ -2,7 +2,12 @@ package com.riprog.launcher.logic.utils
 
 import android.appwidget.AppWidgetProviderInfo
 import android.content.Context
+import android.graphics.RectF
 import android.os.Build
+import android.view.View
+import android.view.ViewGroup
+import android.widget.TextView
+import com.riprog.launcher.data.model.HomeItem
 import com.riprog.launcher.ui.views.home.HomeView
 import com.riprog.launcher.logic.managers.SettingsManager
 import kotlin.math.ceil
@@ -91,5 +96,30 @@ object WidgetSizingUtils {
             return min(spanY, HomeView.GRID_ROWS)
         }
         return HomeView.GRID_ROWS
+    }
+
+    fun getVisualBounds(view: View): RectF {
+        if (view !is ViewGroup) return RectF(0f, 0f, view.width.toFloat(), view.height.toFloat())
+        var minX = Float.MAX_VALUE
+        var minY = Float.MAX_VALUE
+        var maxX = Float.MIN_VALUE
+        var maxY = Float.MIN_VALUE
+        var hasVisibleChildren = false
+        for (i in 0 until view.childCount) {
+            val child = view.getChildAt(i)
+            if (child.visibility == View.VISIBLE && child.width > 0 && child.height > 0) {
+                if (child is TextView && view.tag is HomeItem) {
+                    val type = (view.tag as HomeItem).type
+                    if (type == HomeItem.Type.APP || type == HomeItem.Type.FOLDER) continue
+                }
+                minX = min(minX, child.x)
+                minY = min(minY, child.y)
+                maxX = max(maxX, child.x + child.width)
+                maxY = max(maxY, child.y + child.height)
+                hasVisibleChildren = true
+            }
+        }
+        if (!hasVisibleChildren) return RectF(0f, 0f, view.width.toFloat(), view.height.toFloat())
+        return RectF(minX, minY, maxX, maxY)
     }
 }
