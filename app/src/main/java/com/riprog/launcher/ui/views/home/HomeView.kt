@@ -755,7 +755,7 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
         return null
     }
 
-    fun refreshLayout() {
+    fun refreshLayout(resolveOverlaps: Boolean = true) {
         post {
             val freeform = settingsManager.isFreeformHome
             if (!freeform) {
@@ -771,7 +771,14 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
                             item.tiltY = 0f
                         }
                     }
-                    resolveAllOverlaps(i)
+                    if (resolveOverlaps) resolveAllOverlaps(i)
+                    else {
+                        for (j in 0 until page.childCount) {
+                            val v = page.getChildAt(j)
+                            val item = v.tag as HomeItem?
+                            if (item != null) updateViewPosition(item, v)
+                        }
+                    }
                 }
             } else {
                 for (page in pages) {
@@ -788,34 +795,24 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
         }
     }
 
-    private fun resolveAllOverlaps(pageIndex: Int) {
+    fun resolveAllOverlaps(pageIndex: Int) {
         if (settingsManager.isFreeformHome) return
         val activity = context as? MainActivity ?: return
         val columns = settingsManager.columns
-        val appWidgetManager = AppWidgetManager.getInstance(context)
 
         val items = activity.homeItems.filter { it.page == pageIndex }
 
-        // 1. Re-validate widget spans and round all spans first
         for (item in items) {
-            if (item.type == HomeItem.Type.WIDGET && item.widgetId != -1) {
-                val info = appWidgetManager.getAppWidgetInfo(item.widgetId)
-                if (info != null) {
-                    val span = WidgetSizingUtils.calculateWidgetSpan(context, this, info)
-                    item.spanX = span.first.toFloat()
-                    item.spanY = span.second.toFloat()
-                }
-            }
             item.spanX = max(1f, item.spanX.roundToInt().toFloat())
             item.spanY = max(1f, item.spanY.roundToInt().toFloat())
         }
 
-        // 2. Sort by size (area) descending, then by position for stability
-        val sortedItems = items.sortedWith(compareByDescending<HomeItem> { it.spanX * it.spanY }
-            .thenBy { it.row * columns + it.col })
-
         val occupied = Array(GRID_ROWS) { BooleanArray(columns) }
         val toMoveToNextPage = mutableListOf<HomeItem>()
+
+        // Sort items by size (area) descending, then by position for stability
+        val sortedItems = items.sortedWith(compareByDescending<HomeItem> { it.spanX * it.spanY }
+            .thenBy { it.row * columns + it.col })
 
         for (item in sortedItems) {
             var r = max(0, min(GRID_ROWS - item.spanY.toInt(), item.row.roundToInt()))

@@ -197,8 +197,8 @@ class FreeformController(
         }
 
         if (preferences.isFreeformHome) {
-            item.col = (relativeX + vBounds.centerX() - horizontalPadding - (cellWidth * item.spanX / 2f)) / cellWidth
-            item.row = (relativeY + vBounds.centerY() - (cellHeight * item.spanY / 2f)) / cellHeight
+            item.col = (relativeX - horizontalPadding) / cellWidth
+            item.row = relativeY / cellHeight
             item.spanX = v.width / cellWidth
             item.spanY = v.height / cellHeight
             item.page = targetPage
@@ -215,6 +215,9 @@ class FreeformController(
             item.col = newCol.toFloat()
             item.row = newRow.toFloat()
             item.page = targetPage
+
+            homeView.resolveAllOverlaps(targetPage)
+
             item.rotation = 0f
             item.scale = 1.0f
             item.tiltX = 0f
@@ -363,7 +366,7 @@ class FreeformController(
             }
             transformingView = null
             transformingViewOriginalParent = null
-            (activity as? MainActivity)?.homeView?.refreshLayout()
+            (activity as? MainActivity)?.homeView?.refreshLayout(false)
         }
     }
 
