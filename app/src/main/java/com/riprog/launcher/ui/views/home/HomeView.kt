@@ -10,6 +10,7 @@ import com.riprog.launcher.R
 
 import android.appwidget.AppWidgetHostView
 import android.content.Context
+import android.content.ContextWrapper
 import android.graphics.Color
 import android.graphics.drawable.GradientDrawable
 import android.os.Handler
@@ -56,7 +57,14 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
     private var edgeHoldStart: Long = 0
     private val edgeScrollRunnable: Runnable = object : Runnable {
         override fun run() {
-            if (draggingView != null && isEdgeScrolling) {
+            var actContext = context
+            while (actContext !is MainActivity && actContext is ContextWrapper) {
+                actContext = actContext.baseContext
+            }
+            val activity = actContext as? MainActivity
+            val isTransforming = activity?.freeformInteraction?.isTransforming() == true
+
+            if (isEdgeScrolling && (draggingView != null || isTransforming)) {
                 if (lastX < width * 0.10f) {
                     if (currentPage > 0) {
                         scrollToPage(currentPage - 1)
@@ -344,7 +352,7 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
         if (x < width * 0.10f || x > width * 0.90f) {
             if (!isEdgeScrolling) {
                 isEdgeScrolling = true
-                edgeScrollHandler.postDelayed(edgeScrollRunnable, 600)
+                edgeScrollHandler.postDelayed(edgeScrollRunnable, 400)
                 animateEdgeEffect(x < width * 0.5f)
             }
         } else {
@@ -374,6 +382,7 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
     fun stopEdgeScroll() {
         isEdgeScrolling = false
         edgeScrollHandler.removeCallbacks(edgeScrollRunnable)
+        stopEdgeEffect()
     }
 
     fun endDragging() {
