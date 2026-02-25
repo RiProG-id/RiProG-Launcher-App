@@ -41,6 +41,9 @@ class HomeItem {
 
     var tiltY: Float = 0f
 
+    var visualOffsetX: Float = -1f
+    var visualOffsetY: Float = -1f
+
     companion object {
 
         fun createApp(packageName: String, className: String, col: Float, row: Float, page: Int): HomeItem {

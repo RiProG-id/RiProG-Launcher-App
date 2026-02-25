@@ -279,8 +279,9 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
             return Pair(item.col * cellWidth + horizontalPadding, item.row * cellHeight)
         } else {
             val vBounds = WidgetSizingUtils.getVisualBounds(view)
-            val vCenterX = if (vBounds.width() > 0) vBounds.centerX() else (item.spanX * cellWidth) / 2f
-            val vCenterY = if (vBounds.height() > 0) vBounds.centerY() else (item.spanY * cellHeight) / 2f
+            // Use stored offsets to ensure pixel-perfect locked position after save/restore
+            val vCenterX = if (item.visualOffsetX >= 0) item.visualOffsetX else if (vBounds.width() > 0) vBounds.centerX() else (item.spanX * cellWidth) / 2f
+            val vCenterY = if (item.visualOffsetY >= 0) item.visualOffsetY else if (vBounds.height() > 0) vBounds.centerY() else (item.spanY * cellHeight) / 2f
 
             val targetX = (item.col + item.spanX / 2f) * cellWidth + horizontalPadding - vCenterX
             val targetY = (item.row + item.spanY / 2f) * cellHeight - vCenterY
@@ -630,6 +631,10 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
             val spanX = (vBounds.width() / cellWidth).roundToInt().coerceAtLeast(1)
             val spanY = (vBounds.height() / cellHeight).roundToInt().coerceAtLeast(1)
 
+            // Store FINAL visual offsets as single source of truth to lock position and prevent post-save shifts
+            item.visualOffsetX = vBounds.centerX()
+            item.visualOffsetY = vBounds.centerY()
+
             // 2. Scan grid behind object position for nearest valid grid area matching EXACT span
             val visualCenterX = v.x + vBounds.centerX()
             val visualCenterY = v.y + vBounds.centerY()
@@ -684,8 +689,8 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
         val cellHeight = getCellHeight()
         val horizontalPadding = dpToPx(HORIZONTAL_PADDING_DP)
 
-        val vCenterX = if (vBounds.width() > 0) vBounds.centerX() else (item.spanX * cellWidth) / 2f
-        val vCenterY = if (vBounds.height() > 0) vBounds.centerY() else (item.spanY * cellHeight) / 2f
+        val vCenterX = if (item.visualOffsetX >= 0) item.visualOffsetX else if (vBounds.width() > 0) vBounds.centerX() else (item.spanX * cellWidth) / 2f
+        val vCenterY = if (item.visualOffsetY >= 0) item.visualOffsetY else if (vBounds.height() > 0) vBounds.centerY() else (item.spanY * cellHeight) / 2f
 
         val targetX = (item.col + item.spanX / 2f) * cellWidth + horizontalPadding - vCenterX
         val targetY = (item.row + item.spanY / 2f) * cellHeight - vCenterY
