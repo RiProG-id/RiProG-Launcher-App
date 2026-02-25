@@ -538,29 +538,17 @@ class MainActivity : Activity() {
         val sX = pendingSpanX.coerceAtMost(settingsManager.columns)
         val sY = pendingSpanY.coerceAtMost(HomeView.GRID_ROWS)
 
-        var col = 0
-        var row = 0
-        var page = homeView.currentPage
+        val page = homeView.currentPage
+        // Default to top-left of current page
+        val col = 0f
+        val row = 0f
 
-        if (!settingsManager.isFreeformHome) {
-            val slot = findFirstAvailableSlot(sX, sY)
-            if (slot == null) {
-                Toast.makeText(this, R.string.page_full, Toast.LENGTH_SHORT).show()
-                return
-            }
-            page = slot.first
-            row = slot.second
-            col = slot.third
-        } else {
-            col = maxOf(0, (settingsManager.columns - sX) / 2)
-            row = maxOf(0, (HomeView.GRID_ROWS - sY) / 2)
-            if (col + sX > settingsManager.columns) col = settingsManager.columns - sX
-            if (row + sY > HomeView.GRID_ROWS) row = HomeView.GRID_ROWS - sY
-        }
-
-        val item = HomeItem.createWidget(appWidgetId, col.toFloat(), row.toFloat(), sX, sY, page)
+        val item = HomeItem.createWidget(appWidgetId, col, row, sX, sY, page)
         homeItems.add(item)
-        renderHomeItem(item)
+        val view = renderHomeItem(item)
+        if (view != null) {
+            homeView.snapToGrid(item, view)
+        }
         saveHomeState()
         homeView.scrollToPage(page)
     }
@@ -580,29 +568,16 @@ class MainActivity : Activity() {
         val appWidgetId = appWidgetHost.allocateAppWidgetId()
         val allowed = appWidgetManager.bindAppWidgetIdIfAllowed(appWidgetId, info.provider)
         if (allowed) {
-            var col = 0
-            var row = 0
-            var page = homeView.currentPage
+            val page = homeView.currentPage
+            val col = 0f
+            val row = 0f
 
-            if (!settingsManager.isFreeformHome) {
-                val slot = findFirstAvailableSlot(sX, sY)
-                if (slot == null) {
-                    Toast.makeText(this, R.string.page_full, Toast.LENGTH_SHORT).show()
-                    return
-                }
-                page = slot.first
-                row = slot.second
-                col = slot.third
-            } else {
-                col = maxOf(0, (settingsManager.columns - sX) / 2)
-                row = maxOf(0, (HomeView.GRID_ROWS - sY) / 2)
-                if (col + sX > settingsManager.columns) col = settingsManager.columns - sX
-                if (row + sY > HomeView.GRID_ROWS) row = HomeView.GRID_ROWS - sY
-            }
-
-            val item = HomeItem.createWidget(appWidgetId, col.toFloat(), row.toFloat(), sX, sY, page)
+            val item = HomeItem.createWidget(appWidgetId, col, row, sX, sY, page)
             homeItems.add(item)
-            renderHomeItem(item)
+            val view = renderHomeItem(item)
+            if (view != null) {
+                homeView.snapToGrid(item, view)
+            }
             saveHomeState()
             homeView.scrollToPage(page)
         } else {
@@ -798,76 +773,18 @@ class MainActivity : Activity() {
         return bestPos
     }
 
-    private fun findFirstAvailableSlot(spanX: Int, spanY: Int): Triple<Int, Int, Int>? {
-        val startPage = homeView.currentPage
-        val pageCount = homeView.getPageCount()
-
-        for (p in startPage until pageCount) {
-            val occupied = homeView.getOccupiedCells(p)
-            for (r in 0..HomeView.GRID_ROWS - spanY) {
-                for (c in 0..settingsManager.columns - spanX) {
-                    var canPlace = true
-                    for (ri in r until r + spanY) {
-                        for (ci in c until c + spanX) {
-                            if (ri >= HomeView.GRID_ROWS || ci >= settingsManager.columns || occupied[ri][ci]) {
-                                canPlace = false
-                                break
-                            }
-                        }
-                        if (!canPlace) break
-                    }
-                    if (canPlace) return Triple(p, r, c)
-                }
-            }
-        }
-
-        for (p in 0 until startPage) {
-            val occupied = homeView.getOccupiedCells(p)
-            for (r in 0..HomeView.GRID_ROWS - spanY) {
-                for (c in 0..settingsManager.columns - spanX) {
-                    var canPlace = true
-                    for (ri in r until r + spanY) {
-                        for (ci in c until c + spanX) {
-                            if (ri >= HomeView.GRID_ROWS || ci >= settingsManager.columns || occupied[ri][ci]) {
-                                canPlace = false
-                                break
-                            }
-                        }
-                        if (!canPlace) break
-                    }
-                    if (canPlace) return Triple(p, r, c)
-                }
-            }
-        }
-
-        return null
-    }
 
     fun spawnApp(app: AppItem) {
-        val sX = 1
-        val sY = 1
-        var col = 0f
-        var row = 0f
-        var page = homeView.currentPage
-
-        val slot = findFirstAvailableSlot(sX, sY)
-        if (slot == null) {
-            if (!settingsManager.isFreeformHome) {
-                Toast.makeText(this, R.string.page_full, Toast.LENGTH_SHORT).show()
-                return
-            } else {
-                col = (settingsManager.columns - sX) / 2f
-                row = (HomeView.GRID_ROWS - sY) / 2f
-            }
-        } else {
-            page = slot.first
-            row = slot.second.toFloat()
-            col = slot.third.toFloat()
-        }
+        val page = homeView.currentPage
+        val col = 0f
+        val row = 0f
 
         val item = HomeItem.createApp(app.packageName, app.className, col, row, page)
         homeItems.add(item)
-        renderHomeItem(item)
+        val view = renderHomeItem(item)
+        if (view != null) {
+            homeView.snapToGrid(item, view)
+        }
         saveHomeState()
 
         homeView.scrollToPage(page)

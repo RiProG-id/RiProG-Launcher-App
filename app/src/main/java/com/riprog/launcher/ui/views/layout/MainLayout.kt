@@ -310,6 +310,7 @@ class MainLayout(private val activity: MainActivity) : FrameLayout(activity) {
     fun startExternalDrag(v: View) {
         isDragging = true
         touchedView = v
+        (v.tag as? HomeItem)?.layoutLocked = false
 
         val cellWidth = activity.homeView.getCellWidth()
         val cellHeight = activity.homeView.getCellHeight()

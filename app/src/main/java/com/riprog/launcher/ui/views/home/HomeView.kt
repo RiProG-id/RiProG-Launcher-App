@@ -274,17 +274,13 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
         val cellHeight = getCellHeight()
         val horizontalPadding = dpToPx(HORIZONTAL_PADDING_DP)
 
-        if (settingsManager.isFreeformHome) {
-            return Pair(item.col * cellWidth + horizontalPadding, item.row * cellHeight)
-        } else {
-            val vBounds = WidgetSizingUtils.getVisualBounds(view)
-            val vCenterX = if (vBounds.width() > 0) vBounds.centerX() else (item.spanX * cellWidth) / 2f
-            val vCenterY = if (vBounds.height() > 0) vBounds.centerY() else (item.spanY * cellHeight) / 2f
+        val vBounds = WidgetSizingUtils.getVisualBounds(view)
+        val vCenterX = if (vBounds.width() > 0) vBounds.centerX() else (item.spanX * cellWidth) / 2f
+        val vCenterY = if (vBounds.height() > 0) vBounds.centerY() else (item.spanY * cellHeight) / 2f
 
-            val targetX = (item.col + item.spanX / 2f) * cellWidth + horizontalPadding - vCenterX
-            val targetY = (item.row + item.spanY / 2f) * cellHeight - vCenterY
-            return Pair(targetX, targetY)
-        }
+        val targetX = (item.col + item.spanX / 2f) * cellWidth + horizontalPadding - vCenterX
+        val targetY = (item.row + item.spanY / 2f) * cellHeight - vCenterY
+        return Pair(targetX, targetY)
     }
 
     fun updateViewPosition(item: HomeItem, view: View) {
@@ -600,71 +596,111 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
                 }
             }
 
-            if (!settingsManager.isFreeformHome && otherView != null && item.type == HomeItem.Type.APP && otherView.parent != null) {
-                val otherItem = otherView.tag as HomeItem?
-                if (otherItem != null && otherItem !== item) {
-                    if (otherItem.type == HomeItem.Type.APP) {
-                        activity.folderManager.mergeToFolder(otherItem, item, activity.homeItems)
-                        return true
-                    } else if (otherItem.type == HomeItem.Type.FOLDER) {
-                        activity.folderManager.addToFolder(otherItem, item, activity.homeItems)
-                        return true
-                    }
-                }
-            }
         }
 
-        if (settingsManager.isFreeformHome) {
-            val horizontalPadding = dpToPx(HORIZONTAL_PADDING_DP)
-            item.col = (v.x - horizontalPadding) / cellWidth
-            item.row = v.y / cellHeight
-            item.rotation = v.rotation
-            item.scale = v.scaleX
-            item.tiltX = v.rotationX
-            item.tiltY = v.rotationY
+        val horizontalPadding = dpToPx(HORIZONTAL_PADDING_DP)
+        item.spanX = item.spanX.roundToInt().toFloat()
+        item.spanY = item.spanY.roundToInt().toFloat()
+
+        // Snap based on visual center of the item relative to grid
+        var targetCol = ((v.x + vBounds.centerX() - horizontalPadding - (cellWidth * item.spanX / 2f)) / cellWidth).roundToInt()
+        var targetRow = ((v.y + vBounds.centerY() - (cellHeight * item.spanY / 2f)) / cellHeight).roundToInt()
+
+        item.col = max(0, min(settingsManager.columns - item.spanX.roundToInt(), targetCol)).toFloat()
+        item.row = max(0, min(GRID_ROWS - item.spanY.roundToInt(), targetRow)).toFloat()
+
+        val pageChanged = item.page != item.originalPage
+        if (pageChanged && context is MainActivity) {
+            removeItemView(item)
+            (context as MainActivity).renderHomeItem(item)
+            return false
+        }
+        item.rotation = 0f
+        item.scale = 1.0f
+        item.tiltX = 0f
+        item.tiltY = 0f
+        item.layoutLocked = true
+
+        if (settingsManager.isLiquidGlass) {
+            val pos = getSnapPosition(item, v)
+            v.animate()
+                .x(pos.first)
+                .y(pos.second)
+                .setDuration(200)
+                .withEndAction {
+                    updateViewPosition(item, v)
+                    resolveOverlapsIterative(item.page)
+                }
+                .start()
         } else {
-            val horizontalPadding = dpToPx(HORIZONTAL_PADDING_DP)
-            item.spanX = item.spanX.roundToInt().toFloat()
-            item.spanY = item.spanY.roundToInt().toFloat()
-
-            // Snap based on visual center of the item relative to grid
-            var targetCol = ((v.x + vBounds.centerX() - horizontalPadding - (cellWidth * item.spanX / 2f)) / cellWidth).roundToInt()
-            var targetRow = ((v.y + vBounds.centerY() - (cellHeight * item.spanY / 2f)) / cellHeight).roundToInt()
-
-            item.col = max(0, min(settingsManager.columns - item.spanX.roundToInt(), targetCol)).toFloat()
-            item.row = max(0, min(GRID_ROWS - item.spanY.roundToInt(), targetRow)).toFloat()
-
-            resolveAllOverlaps(item.page)
-
-            val pageChanged = item.page != item.originalPage
-            if (pageChanged && context is MainActivity) {
-                resolveAllOverlaps(item.originalPage)
-                removeItemView(item)
-                (context as MainActivity).renderHomeItem(item)
-                return false
-            }
-            item.rotation = 0f
-            item.scale = 1.0f
-            item.tiltX = 0f
-            item.tiltY = 0f
-
-            if (settingsManager.isLiquidGlass) {
-                val pos = getSnapPosition(item, v)
-                v.animate()
-                    .x(pos.first)
-                    .y(pos.second)
-                    .setDuration(200)
-                    .withEndAction { updateViewPosition(item, v) }
-                    .start()
-            } else {
-                updateViewPosition(item, v)
-            }
+            updateViewPosition(item, v)
+            resolveOverlapsIterative(item.page)
         }
 
         if (context is MainActivity) {
             (context as MainActivity).saveHomeState()
         }
         return false
+    }
+
+    private fun isOverlapping(v1: View, v2: View): Boolean {
+        val b1 = WidgetSizingUtils.getVisualBounds(v1)
+        val b2 = WidgetSizingUtils.getVisualBounds(v2)
+        val r1 = android.graphics.RectF(v1.x + b1.left, v1.y + b1.top, v1.x + b1.right, v1.y + b1.bottom)
+        val r2 = android.graphics.RectF(v2.x + b2.left, v2.y + b2.top, v2.x + b2.right, v2.y + b2.bottom)
+        return android.graphics.RectF.intersects(r1, r2)
+    }
+
+    private fun getVisualArea(v: View): Float {
+        val b = WidgetSizingUtils.getVisualBounds(v)
+        return b.width() * b.height()
+    }
+
+    private fun moveToNearestEmpty(item: HomeItem, view: View) {
+        val columns = settingsManager.columns
+        val occupied = getOccupiedCells(item.page, excludeItem = item)
+        val nearest = findNearestAvailable(occupied, item.row.roundToInt(), item.col.roundToInt(), item.spanX.roundToInt(), item.spanY.roundToInt())
+
+        if (nearest != null) {
+            item.col = nearest.second.toFloat()
+            item.row = nearest.first.toFloat()
+            updateViewPosition(item, view)
+        } else {
+            item.page++
+            while (item.page >= pages.size) addPage()
+            removeItemView(item)
+            (context as MainActivity).renderHomeItem(item)
+        }
+    }
+
+    fun resolveOverlapsIterative(pageIndex: Int) {
+        val activity = context as? MainActivity ?: return
+        var iterations = 0
+        val maxIterations = 50
+
+        while (iterations < maxIterations) {
+            val items = activity.homeItems.filter { it.page == pageIndex }
+            var found = false
+            for (i in items.indices) {
+                for (j in i + 1 until items.size) {
+                    val vA = findViewForItem(items[i]) ?: continue
+                    val vB = findViewForItem(items[j]) ?: continue
+                    if (isOverlapping(vA, vB)) {
+                        found = true
+                        if (getVisualArea(vA) <= getVisualArea(vB)) {
+                            moveToNearestEmpty(items[i], vA)
+                        } else {
+                            moveToNearestEmpty(items[j], vB)
+                        }
+                        break
+                    }
+                }
+                if (found) break
+            }
+            if (!found) break
+            iterations++
+        }
+        activity.saveHomeState()
     }
 
     fun scrollToPage(page: Int) {
@@ -757,106 +793,23 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
 
     fun refreshLayout() {
         post {
-            val freeform = settingsManager.isFreeformHome
-            if (!freeform) {
-                for (i in pages.indices) {
-                    val page = pages[i]
-                    for (j in 0 until page.childCount) {
-                        val v = page.getChildAt(j)
-                        val item = v.tag as HomeItem?
-                        if (item != null) {
-                            item.rotation = 0f
-                            item.scale = 1.0f
-                            item.tiltX = 0f
-                            item.tiltY = 0f
-                        }
-                    }
-                    resolveAllOverlaps(i)
-                }
-            } else {
-                for (page in pages) {
-                    for (i in 0 until page.childCount) {
-                        val v = page.getChildAt(i)
-                        val item = v.tag as HomeItem?
-                        if (item != null) updateViewPosition(item, v)
+            for (i in pages.indices) {
+                val page = pages[i]
+                for (j in 0 until page.childCount) {
+                    val v = page.getChildAt(j)
+                    val item = v.tag as HomeItem?
+                    if (item != null) {
+                        item.rotation = 0f
+                        item.scale = 1.0f
+                        item.tiltX = 0f
+                        item.tiltY = 0f
+                        updateViewPosition(item, v)
                     }
                 }
             }
             if (context is MainActivity) {
                 (context as MainActivity).saveHomeState()
             }
-        }
-    }
-
-    private fun resolveAllOverlaps(pageIndex: Int) {
-        if (settingsManager.isFreeformHome) return
-        val activity = context as? MainActivity ?: return
-        val columns = settingsManager.columns
-        val appWidgetManager = AppWidgetManager.getInstance(context)
-
-        val items = activity.homeItems.filter { it.page == pageIndex }
-
-        // 1. Re-validate widget spans and round all spans first
-        for (item in items) {
-            if (item.type == HomeItem.Type.WIDGET && item.widgetId != -1) {
-                val info = appWidgetManager.getAppWidgetInfo(item.widgetId)
-                if (info != null) {
-                    val span = WidgetSizingUtils.calculateWidgetSpan(context, this, info)
-                    item.spanX = span.first.toFloat()
-                    item.spanY = span.second.toFloat()
-                }
-            }
-            item.spanX = max(1f, item.spanX.roundToInt().toFloat())
-            item.spanY = max(1f, item.spanY.roundToInt().toFloat())
-        }
-
-        // 2. Sort by size (area) descending, then by position for stability
-        val sortedItems = items.sortedWith(compareByDescending<HomeItem> { it.spanX * it.spanY }
-            .thenBy { it.row * columns + it.col })
-
-        val occupied = Array(GRID_ROWS) { BooleanArray(columns) }
-        val toMoveToNextPage = mutableListOf<HomeItem>()
-
-        for (item in sortedItems) {
-            var r = max(0, min(GRID_ROWS - item.spanY.toInt(), item.row.roundToInt()))
-            var c = max(0, min(columns - item.spanX.toInt(), item.col.roundToInt()))
-
-            if (!canPlace(occupied, r, c, item.spanX.toInt(), item.spanY.toInt())) {
-                val pos = findNearestAvailable(occupied, r, c, item.spanX.toInt(), item.spanY.toInt())
-                if (pos != null) {
-                    r = pos.first
-                    c = pos.second
-                } else {
-                    toMoveToNextPage.add(item)
-                    continue
-                }
-            }
-
-            item.row = r.toFloat()
-            item.col = c.toFloat()
-            for (i in r until r + item.spanY.toInt()) {
-                for (j in c until c + item.spanX.toInt()) {
-                    if (i < GRID_ROWS && j < columns) occupied[i][j] = true
-                }
-            }
-            updateItemView(item)
-        }
-
-        if (toMoveToNextPage.isNotEmpty()) {
-            for (item in toMoveToNextPage) {
-                item.page = pageIndex + 1
-                while (item.page >= pages.size) {
-                    addPage()
-                }
-                removeItemView(item)
-                if (context is MainActivity) {
-                    (context as MainActivity).renderHomeItem(item)
-                }
-            }
-            post { resolveAllOverlaps(pageIndex + 1) }
-        }
-        if (context is MainActivity) {
-            (context as MainActivity).saveHomeState()
         }
     }
 
@@ -1020,13 +973,13 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
             for (item in activity.homeItems) {
                 if (item === excludeItem) continue
                 if (item.page == pageIndex) {
-                    val rStart = max(0, floor(item.row.toDouble() + 0.01).toInt())
-                    val rEnd = min(GRID_ROWS - 1, ceil((item.row + item.spanY).toDouble() - 0.01).toInt() - 1)
-                    val cStart = max(0, floor(item.col.toDouble() + 0.01).toInt())
-                    val cEnd = min(columns - 1, ceil((item.col + item.spanX).toDouble() - 0.01).toInt() - 1)
+                    val rStart = item.row.roundToInt()
+                    val rEnd = rStart + item.spanY.roundToInt() - 1
+                    val cStart = item.col.roundToInt()
+                    val cEnd = cStart + item.spanX.roundToInt() - 1
                     for (r in rStart..rEnd) {
                         for (c in cStart..cEnd) {
-                            if (r >= 0 && r < GRID_ROWS && c >= 0 && c < columns) occupied[r][c] = true
+                            if (r in 0 until GRID_ROWS && c in 0 until columns) occupied[r][c] = true
                         }
                     }
                 }

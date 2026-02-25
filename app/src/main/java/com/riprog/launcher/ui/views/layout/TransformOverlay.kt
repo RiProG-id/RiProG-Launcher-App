@@ -89,6 +89,7 @@ class TransformOverlay(context: Context, private val targetView: View, private v
     }
 
     fun startImmediateDrag(x: Float, y: Float) {
+        item.layoutLocked = false
         activeHandle = ACTION_MOVE
         initialTouchX = x
         initialTouchY = y
@@ -193,18 +194,17 @@ class TransformOverlay(context: Context, private val targetView: View, private v
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
 
-        if (!settingsManager.isFreeformHome && activeHandle != -1 && hasPassedThreshold) {
+        if (activeHandle != -1 && hasPassedThreshold) {
             drawGridOverlay(canvas)
             if (activeHandle == ACTION_MOVE) {
                 drawSnapPreview(canvas)
             }
         }
 
-        val isFreeform = settingsManager.isFreeformHome
         val isWidget = item.type == HomeItem.Type.WIDGET
         val sx = targetView.scaleX
         val sy = targetView.scaleY
-        val r = if (isFreeform) targetView.rotation else 0f
+        val r = 0f
 
         val isEdgeResizing = activeHandle == HANDLE_TOP || activeHandle == HANDLE_BOTTOM || activeHandle == HANDLE_LEFT || activeHandle == HANDLE_RIGHT
         val cx = if (isEdgeResizing) gestureInitialX + gestureInitialWidth / 2f else targetView.x + targetView.pivotX
@@ -236,19 +236,7 @@ class TransformOverlay(context: Context, private val targetView: View, private v
         paint.strokeWidth = dpToPx(1.2f).toFloat()
         paint.alpha = 80
 
-        // Only show directional guide lines (rectangle) for widgets in freeform mode
-        if (isFreeform && isWidget) {
-            canvas.drawRect(left, top, right, bottom, paint)
-        }
-
         val hs = handleSize / 2f
-
-        if (isFreeform) {
-            drawHandle(canvas, left, top, hs, true, foregroundColor)
-            drawHandle(canvas, right, top, hs, true, foregroundColor)
-            drawHandle(canvas, right, bottom, hs, true, foregroundColor)
-            drawHandle(canvas, left, bottom, hs, true, foregroundColor)
-        }
 
         // Only show directional handles for widgets
         if (isWidget) {
@@ -256,13 +244,6 @@ class TransformOverlay(context: Context, private val targetView: View, private v
             drawHandle(canvas, right, (top + bottom) / 2f, hs, false, foregroundColor)
             drawHandle(canvas, (left + right) / 2f, bottom, hs, false, foregroundColor)
             drawHandle(canvas, left, (top + bottom) / 2f, hs, false, foregroundColor)
-        }
-
-        if (isFreeform) {
-            paint.color = foregroundColor
-            paint.alpha = 100
-            canvas.drawLine((left + right) / 2f, top, (left + right) / 2f, top - rotationHandleDist, paint)
-            drawHandle(canvas, (left + right) / 2f, top - rotationHandleDist, hs * 1.1f, true, foregroundColor)
         }
 
         canvas.restore()
@@ -403,6 +384,7 @@ class TransformOverlay(context: Context, private val targetView: View, private v
                 performClick()
                 activeHandle = findHandle(x, y)
                 if (activeHandle != ACTION_OUTSIDE) {
+                    item.layoutLocked = false
                     if (activeHandle == ACTION_MOVE && onSaveListener != null) {
                         onSaveListener.onMoveStart(x, y)
                     }
@@ -481,16 +463,14 @@ class TransformOverlay(context: Context, private val targetView: View, private v
     }
 
     private fun findHandle(tx: Float, ty: Float): Int {
-        val isFreeform = settingsManager.isFreeformHome
         val isWidget = item.type == HomeItem.Type.WIDGET
         val sx = targetView.scaleX
         val sy = targetView.scaleY
         val cx = targetView.x + targetView.pivotX
         val cy = targetView.y + targetView.pivotY
 
-        val angle = if (isFreeform) Math.toRadians((-targetView.rotation).toDouble()) else 0.0
-        val rx = (cos(angle) * (tx - cx) - sin(angle) * (ty - cy)).toFloat()
-        val ry = (sin(angle) * (tx - cx) + cos(angle) * (ty - cy)).toFloat()
+        val rx = (tx - cx)
+        val ry = (ty - cy)
 
         val bounds = contentBounds
         val left = (bounds.left - targetView.pivotX) * sx
@@ -499,15 +479,6 @@ class TransformOverlay(context: Context, private val targetView: View, private v
         val bottom = (bounds.bottom - targetView.pivotY) * sy
 
         val hs = dpToPx(24f).toFloat()
-
-        if (isFreeform && dist(rx, ry, (left + right) / 2f, top - rotationHandleDist) < hs) return HANDLE_ROTATE
-
-        if (isFreeform) {
-            if (dist(rx, ry, left, top) < hs) return HANDLE_TOP_LEFT
-            if (dist(rx, ry, right, top) < hs) return HANDLE_TOP_RIGHT
-            if (dist(rx, ry, right, bottom) < hs) return HANDLE_BOTTOM_RIGHT
-            if (dist(rx, ry, left, bottom) < hs) return HANDLE_BOTTOM_LEFT
-        }
 
         if (isWidget) {
             if (dist(rx, ry, (left + right) / 2f, top) < hs) return HANDLE_TOP
@@ -520,7 +491,6 @@ class TransformOverlay(context: Context, private val targetView: View, private v
     }
 
     private fun handleInteraction(tx: Float, ty: Float) {
-        val isFreeform = settingsManager.isFreeformHome
         val sx = gestureInitialScaleX
         val sy = gestureInitialScaleY
         val cx = gestureInitialX + targetView.pivotX
@@ -534,26 +504,8 @@ class TransformOverlay(context: Context, private val targetView: View, private v
             targetView.x = newX
             targetView.y = newY
             onSaveListener?.onMove(tx, ty)
-        } else if (activeHandle == HANDLE_ROTATE) {
-            val angle = Math.toDegrees(atan2((ty - cy).toDouble(), (tx - cx).toDouble())) + 90
-            var targetR = angle.toFloat()
-            val currentR = targetView.rotation
-            while (targetR - currentR > 180) targetR -= 360f
-            while (targetR - currentR < -180) targetR += 360f
-            targetView.rotation = currentR + (targetR - currentR) * SMOOTHING_FACTOR
         } else if (activeHandle == HANDLE_TOP || activeHandle == HANDLE_BOTTOM || activeHandle == HANDLE_LEFT || activeHandle == HANDLE_RIGHT) {
             handleEdgeResize(tx, ty)
-        } else {
-            // Corner-based scaling (freeform only)
-            if (!isFreeform) return
-
-            val initialDist = dist(initialTouchX, initialTouchY, cx, cy)
-            val currDist = dist(tx, ty, cx, cy)
-            if (initialDist > 0) {
-                val factor = currDist / initialDist
-                targetView.scaleX = sx * factor
-                targetView.scaleY = sy * factor
-            }
         }
     }
 

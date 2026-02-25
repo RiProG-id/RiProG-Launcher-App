@@ -41,6 +41,8 @@ class HomeItem {
 
     var tiltY: Float = 0f
 
+    var layoutLocked: Boolean = false
+
     companion object {
 
         fun createApp(packageName: String, className: String, col: Float, row: Float, page: Int): HomeItem {

@@ -115,9 +115,6 @@ class SettingsActivity : Activity() {
         items.add(SettingItem(SettingType.TITLE))
 
         items.add(SettingItem(SettingType.CATEGORY, titleString = getString(R.string.category_home), iconRes = R.drawable.ic_layout))
-        items.add(SettingItem(SettingType.TOGGLE, titleRes = R.string.setting_freeform, summaryRes = R.string.setting_freeform_summary, isChecked = settingsManager.isFreeformHome) {
-            settingsManager.isFreeformHome = it
-        })
         items.add(SettingItem(SettingType.TOGGLE, titleRes = R.string.setting_hide_labels, summaryRes = R.string.setting_hide_labels_summary, isChecked = settingsManager.isHideLabels) {
             settingsManager.isHideLabels = it
         })
