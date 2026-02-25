@@ -575,6 +575,47 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
 
         val horizontalPadding = dpToPx(HORIZONTAL_PADDING_DP)
 
+        if (context is MainActivity) {
+            val activity = context as MainActivity
+            val midX = v.x + vBounds.centerX()
+            val midY = v.y + vBounds.centerY()
+
+            var otherView: View? = null
+            val targetPageLayout = if (item.page < pages.size) pages[item.page] else null
+            if (targetPageLayout != null) {
+                for (i in 0 until targetPageLayout.childCount) {
+                    val child = targetPageLayout.getChildAt(i)
+                    if (child === v) continue
+
+                    val cBounds = WidgetSizingUtils.getVisualBounds(child)
+                    val cx = child.x + cBounds.left
+                    val cy = child.y + cBounds.top
+                    val cw = cBounds.width()
+                    val ch = cBounds.height()
+
+                    if (midX >= cx && midX <= cx + cw &&
+                        midY >= cy && midY <= cy + ch
+                    ) {
+                        otherView = child
+                        break
+                    }
+                }
+            }
+
+            if (!settingsManager.isFreeformHome && otherView != null && item.type == HomeItem.Type.APP && otherView.parent != null) {
+                val otherItem = otherView.tag as HomeItem?
+                if (otherItem != null && otherItem !== item) {
+                    if (otherItem.type == HomeItem.Type.APP) {
+                        activity.folderManager.mergeToFolder(otherItem, item, activity.homeItems)
+                        return true
+                    } else if (otherItem.type == HomeItem.Type.FOLDER) {
+                        activity.folderManager.addToFolder(otherItem, item, activity.homeItems)
+                        return true
+                    }
+                }
+            }
+        }
+
         if (settingsManager.isFreeformHome) {
             item.col = (v.x - horizontalPadding) / cellWidth
             item.row = v.y / cellHeight
@@ -583,10 +624,16 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
             item.tiltX = v.rotationX
             item.tiltY = v.rotationY
         } else {
-            // Use exact float positions to comply with "Store exact position" rule.
-            // No auto-snap, no grid normalization, no collision resolver.
-            item.col = (v.x + vBounds.centerX() - horizontalPadding - (cellWidth * item.spanX / 2f)) / cellWidth
-            item.row = (v.y + vBounds.centerY() - (cellHeight * item.spanY / 2f)) / cellHeight
+            // Precise auto-centering placement logic for non-freeform mode.
+            // Snap to nearest center of grid cell(s).
+            item.spanX = item.spanX.roundToInt().toFloat()
+            item.spanY = item.spanY.roundToInt().toFloat()
+
+            val targetCol = ((v.x + vBounds.centerX() - horizontalPadding - (cellWidth * item.spanX / 2f)) / cellWidth).roundToInt()
+            val targetRow = ((v.y + vBounds.centerY() - (cellHeight * item.spanY / 2f)) / cellHeight).roundToInt()
+
+            item.col = max(0, min(settingsManager.columns - item.spanX.toInt(), targetCol)).toFloat()
+            item.row = max(0, min(GRID_ROWS - item.spanY.toInt(), targetRow)).toFloat()
 
             val pageChanged = item.page != item.originalPage
             if (pageChanged && context is MainActivity) {
