@@ -14,6 +14,7 @@ import android.appwidget.AppWidgetManager
 import android.content.Context
 import android.content.ContextWrapper
 import android.graphics.Color
+import android.graphics.RectF
 import android.graphics.drawable.GradientDrawable
 import android.os.Handler
 import android.os.Looper
@@ -574,49 +575,7 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
         val cellWidth = getCellWidth()
         val cellHeight = getCellHeight()
         val vBounds = WidgetSizingUtils.getVisualBounds(v)
-
         val horizontalPadding = dpToPx(HORIZONTAL_PADDING_DP)
-
-        if (context is MainActivity) {
-            val activity = context as MainActivity
-            val midX = v.x + vBounds.centerX()
-            val midY = v.y + vBounds.centerY()
-
-            var otherView: View? = null
-            val targetPageLayout = if (item.page < pages.size) pages[item.page] else null
-            if (targetPageLayout != null) {
-                for (i in 0 until targetPageLayout.childCount) {
-                    val child = targetPageLayout.getChildAt(i)
-                    if (child === v) continue
-
-                    val cBounds = WidgetSizingUtils.getVisualBounds(child)
-                    val cx = child.x + cBounds.left
-                    val cy = child.y + cBounds.top
-                    val cw = cBounds.width()
-                    val ch = cBounds.height()
-
-                    if (midX >= cx && midX <= cx + cw &&
-                        midY >= cy && midY <= cy + ch
-                    ) {
-                        otherView = child
-                        break
-                    }
-                }
-            }
-
-            if (!settingsManager.isFreeformHome && otherView != null && item.type == HomeItem.Type.APP && otherView.parent != null) {
-                val otherItem = otherView.tag as HomeItem?
-                if (otherItem != null && otherItem !== item) {
-                    if (otherItem.type == HomeItem.Type.APP) {
-                        activity.folderManager.mergeToFolder(otherItem, item, activity.homeItems)
-                        return true
-                    } else if (otherItem.type == HomeItem.Type.FOLDER) {
-                        activity.folderManager.addToFolder(otherItem, item, activity.homeItems)
-                        return true
-                    }
-                }
-            }
-        }
 
         if (settingsManager.isFreeformHome) {
             item.col = (v.x - horizontalPadding) / cellWidth
@@ -649,6 +608,8 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
             item.tiltX = 0f
             item.tiltY = 0f
 
+            // Run overlap correction before final locking
+            runOverlapCorrection(item)
             updateViewPosition(item, v)
         }
 
@@ -763,9 +724,70 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
         }
     }
 
-    private fun resolveAllOverlaps(pageIndex: Int) {
-        // Disabled to ensure home layout never changes outside edit mode
-        return
+
+    fun runOverlapCorrection(placedItem: HomeItem) {
+        if (settingsManager.isFreeformHome) return
+        val activity = context as? MainActivity ?: return
+
+        // Total Auto Arrange Cleanup: Single Predictable Placement System
+        // Repeat until no overlaps remain between any objects on the page.
+        var hasCollision = true
+        var safetyCounter = 0
+        while (hasCollision && safetyCounter < 100) {
+            hasCollision = false
+            safetyCounter++
+
+            val pageItems = activity.homeItems.filter { it.page == placedItem.page }
+
+            for (i in pageItems.indices) {
+                for (j in i + 1 until pageItems.size) {
+                    val itemA = pageItems[i]
+                    val itemB = pageItems[j]
+
+                    val boundsA = getItemVisualBounds(itemA)
+                    val boundsB = getItemVisualBounds(itemB)
+
+                    if (RectF.intersects(boundsA, boundsB)) {
+                        val areaA = boundsA.width() * boundsA.height()
+                        val areaB = boundsB.width() * boundsB.height()
+
+                        // Identify smaller object by visual area
+                        val smaller = if (areaA < areaB) itemA else itemB
+
+                        // Move smaller object to nearest empty grid
+                        val occupied = getOccupiedCells(smaller.page, smaller)
+                        val pos = findNearestAvailable(occupied, smaller.row.toInt(), smaller.col.toInt(), smaller.spanX.toInt(), smaller.spanY.toInt())
+                        if (pos != null) {
+                            smaller.row = pos.first.toFloat()
+                            smaller.col = pos.second.toFloat()
+                            updateItemView(smaller)
+                            hasCollision = true
+                            break
+                        }
+                    }
+                }
+                if (hasCollision) break
+            }
+        }
+    }
+
+    private fun getItemVisualBounds(item: HomeItem): RectF {
+        val v = findViewForItem(item)
+        val horizontalPadding = dpToPx(HORIZONTAL_PADDING_DP).toFloat()
+        val cellWidth = getCellWidth()
+        val cellHeight = getCellHeight()
+
+        val vBounds = if (v != null) WidgetSizingUtils.getVisualBounds(v) else {
+            RectF(0f, 0f, cellWidth * item.spanX, cellHeight * item.spanY)
+        }
+
+        val vCenterX = if (vBounds.width() > 0) vBounds.centerX() else (item.spanX * cellWidth) / 2f
+        val vCenterY = if (vBounds.height() > 0) vBounds.centerY() else (item.spanY * cellHeight) / 2f
+
+        val targetX = (item.col + item.spanX / 2f) * cellWidth + horizontalPadding - vCenterX
+        val targetY = (item.row + item.spanY / 2f) * cellHeight - vCenterY
+
+        return RectF(targetX + vBounds.left, targetY + vBounds.top, targetX + vBounds.right, targetY + vBounds.bottom)
     }
 
     private fun findNearestAvailable(occupied: Array<BooleanArray>, r: Int, c: Int, spanX: Int, spanY: Int): Pair<Int, Int>? {

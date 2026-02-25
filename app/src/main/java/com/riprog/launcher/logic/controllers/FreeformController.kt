@@ -214,6 +214,9 @@ class FreeformController(
             item.col = max(0, min(preferences.columns - item.spanX.toInt(), ((relativeX + vBounds.centerX() - horizontalPadding - (cellWidth * item.spanX / 2f)) / cellWidth).roundToInt())).toFloat()
             item.row = max(0, min(HomeView.GRID_ROWS - item.spanY.toInt(), ((relativeY + vBounds.centerY() - (cellHeight * item.spanY / 2f)) / cellHeight).roundToInt())).toFloat()
 
+            // Run overlap correction
+            homeView.runOverlapCorrection(item)
+
             item.rotation = 0f
             item.scale = 1.0f
             item.tiltX = 0f
@@ -322,6 +325,9 @@ class FreeformController(
                 // Ensure saved position is grid-aligned for non-freeform mode using center-based logic
                 item.col = max(0, min(preferences.columns - sX, ((relativeX + vBounds.centerX() - horizontalPadding - (cellWidth * sX / 2f)) / cellWidth).roundToInt())).toFloat()
                 item.row = max(0, min(HomeView.GRID_ROWS - sY, ((relativeY + vBounds.centerY() - (cellHeight * sY / 2f)) / cellHeight).roundToInt())).toFloat()
+
+                // Run overlap correction
+                homeView.runOverlapCorrection(item)
             }
         }
 
