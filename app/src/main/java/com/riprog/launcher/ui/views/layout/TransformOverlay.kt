@@ -47,8 +47,8 @@ class TransformOverlay(context: Context, private val targetView: View, private v
     private var gestureInitialWidth = 0
     private var gestureInitialHeight = 0
     private var gestureInitialBounds: RectF? = null
-    private var gestureInitialSpanX = 1
-    private var gestureInitialSpanY = 1
+    private var gestureInitialSpanX = 1f
+    private var gestureInitialSpanY = 1f
     private var gestureInitialCol = 0f
     private var gestureInitialRow = 0f
     private var currentDrx = 0f
@@ -488,49 +488,6 @@ class TransformOverlay(context: Context, private val targetView: View, private v
 
         currentDrx = rx - irx
         currentDry = ry - iry
-
-        var newSpanX = item.spanX
-        var newSpanY = item.spanY
-        var newCol = item.col.roundToInt()
-        var newRow = item.row.roundToInt()
-
-        val info = if (targetView is AppWidgetHostView) targetView.appWidgetInfo else null
-        val density = resources.displayMetrics.density
-
-        val minSpanX = if (info != null) WidgetSizingUtils.getMinSpanX(info, cellWidth, density) else 1
-        val minSpanY = if (info != null) WidgetSizingUtils.getMinSpanY(info, cellHeight, density) else 1
-        val maxSpanX = if (info != null) WidgetSizingUtils.getMaxSpanX(info, cellWidth, density) else HomeView.GRID_COLUMNS
-        val maxSpanY = if (info != null) WidgetSizingUtils.getMaxSpanY(info, cellHeight, density) else HomeView.GRID_ROWS
-
-        // Threshold detection: snap if moved more than 50% of cell width/height
-        when (activeHandle) {
-            HANDLE_RIGHT -> {
-                if (canResizeHorizontal) {
-                    val spanDelta = (currentDrx / (cellWidth * targetView.scaleX)).roundToInt()
-                    newSpanX = (gestureInitialSpanX + spanDelta).coerceIn(minSpanX, maxSpanX)
-                }
-            }
-            HANDLE_LEFT -> {
-                if (canResizeHorizontal) {
-                    val spanDelta = (-currentDrx / (cellWidth * targetView.scaleX)).roundToInt()
-                    newSpanX = (gestureInitialSpanX + spanDelta).coerceIn(minSpanX, maxSpanX)
-                    newCol = (gestureInitialCol.roundToInt() + gestureInitialSpanX - newSpanX)
-                }
-            }
-            HANDLE_BOTTOM -> {
-                if (canResizeVertical) {
-                    val spanDelta = (currentDry / (cellHeight * targetView.scaleY)).roundToInt()
-                    newSpanY = (gestureInitialSpanY + spanDelta).coerceIn(minSpanY, maxSpanY)
-                }
-            }
-            HANDLE_TOP -> {
-                if (canResizeVertical) {
-                    val spanDelta = (-currentDry / (cellHeight * targetView.scaleY)).roundToInt()
-                    newSpanY = (gestureInitialSpanY + spanDelta).coerceIn(minSpanY, maxSpanY)
-                    newRow = (gestureInitialRow.roundToInt() + gestureInitialSpanY - newSpanY)
-                }
-            }
-        }
 
         // Follow finger exactly without real-time grid snapping
         val lp = targetView.layoutParams

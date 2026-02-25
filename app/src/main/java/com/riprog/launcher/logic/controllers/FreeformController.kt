@@ -142,7 +142,7 @@ class FreeformController(
         if (cellWidth <= 0 || cellHeight <= 0) return false
 
         val density = activity.resources.displayMetrics.density
-        val horizontalPadding = HomeView.HORIZONTAL_PADDING_DP * density
+        val horizontalPadding = (HomeView.HORIZONTAL_PADDING_DP * density).toInt().toFloat()
 
         val midX = v.x + v.width / 2f
         val midY = v.y + v.height / 2f
@@ -170,31 +170,47 @@ class FreeformController(
             }
         }
 
-        if (!preferences.isFreeformHome) {
-            val targetPage = homeView.resolvePageIndex(v.x + v.width / 2f)
-            val rv = homeView.recyclerView
-            val lm = rv.layoutManager as? LinearLayoutManager
-            val pageView = lm?.findViewByPosition(targetPage)
+        val targetPage = homeView.resolvePageIndex(v.x + v.width / 2f)
+        val rv = homeView.recyclerView
+        val lm = rv.layoutManager as? LinearLayoutManager
+        val pageView = lm?.findViewByPosition(targetPage)
 
-            val relativeX = if (pageView != null && pageView.isAttachedToWindow) {
-                val loc = IntArray(2).apply { pageView.getLocationInWindow(this) }
-                val rootLoc = IntArray(2).apply { rootLayout.getLocationInWindow(this) }
-                v.x - (loc[0] - rootLoc[0])
-            } else {
-                val rvLoc = IntArray(2).apply { rv.getLocationInWindow(this) }
-                val rootLoc = IntArray(2).apply { rootLayout.getLocationInWindow(this) }
-                val pageW = if (rv.width > 0) rv.width else activity.resources.displayMetrics.widthPixels
-                v.x - (targetPage * pageW + (rvLoc[0] - rootLoc[0]))
-            }
+        val relativeX = if (pageView != null && pageView.isAttachedToWindow) {
+            val loc = IntArray(2).apply { pageView.getLocationInWindow(this) }
+            val rootLoc = IntArray(2).apply { rootLayout.getLocationInWindow(this) }
+            v.x - (loc[0] - rootLoc[0])
+        } else {
+            val rvLoc = IntArray(2).apply { rv.getLocationInWindow(this) }
+            val rootLoc = IntArray(2).apply { rootLayout.getLocationInWindow(this) }
+            val pageW = if (rv.width > 0) rv.width else activity.resources.displayMetrics.widthPixels
+            v.x - (targetPage * pageW + (rvLoc[0] - rootLoc[0]))
+        }
 
+        val relativeY = if (pageView != null && pageView.isAttachedToWindow) {
+            val loc = IntArray(2).apply { pageView.getLocationInWindow(this) }
+            val rootLoc = IntArray(2).apply { rootLayout.getLocationInWindow(this) }
+            v.y - (loc[1] - rootLoc[1])
+        } else {
+            val rvLoc = IntArray(2).apply { rv.getLocationInWindow(this) }
+            val rootLoc = IntArray(2).apply { rootLayout.getLocationInWindow(this) }
+            v.y - (rv.paddingTop + (rvLoc[1] - rootLoc[1]))
+        }
+
+        if (preferences.isFreeformHome) {
+            item.col = (relativeX - horizontalPadding) / cellWidth
+            item.row = relativeY / cellHeight
+            item.spanX = v.width / cellWidth
+            item.spanY = v.height / cellHeight
+            item.page = targetPage
+        } else {
             val newSpanX = (v.width / cellWidth).roundToInt().coerceIn(1, preferences.columns)
             val newSpanY = (v.height / cellHeight).roundToInt().coerceIn(1, HomeView.GRID_ROWS)
 
-            item.spanX = newSpanX
-            item.spanY = newSpanY
+            item.spanX = newSpanX.toFloat()
+            item.spanY = newSpanY.toFloat()
 
-            val newCol = max(0, min(preferences.columns - item.spanX, ((relativeX - horizontalPadding) / cellWidth).roundToInt()))
-            val newRow = max(0, min(HomeView.GRID_ROWS - item.spanY, (v.y / cellHeight).roundToInt()))
+            val newCol = max(0, min(preferences.columns - newSpanX, ((relativeX - horizontalPadding) / cellWidth).roundToInt()))
+            val newRow = max(0, min(HomeView.GRID_ROWS - newSpanY, (relativeY / cellHeight).roundToInt()))
 
             item.col = newCol.toFloat()
             item.row = newRow.toFloat()
@@ -247,12 +263,13 @@ class FreeformController(
         val cellHeight = homeView.getCellHeight()
 
         val absX = transformingView!!.x
+        val absY = transformingView!!.y
         val targetPage = homeView.resolvePageIndex(absX + transformingView!!.width / 2f)
         item.page = targetPage
 
         if (cellWidth > 0 && cellHeight > 0) {
             val density = activity.resources.displayMetrics.density
-            val horizontalPadding = HomeView.HORIZONTAL_PADDING_DP * density
+            val horizontalPadding = (HomeView.HORIZONTAL_PADDING_DP * density).toInt().toFloat()
 
             val rv = homeView.recyclerView
             val lm = rv.layoutManager as? LinearLayoutManager
@@ -269,8 +286,29 @@ class FreeformController(
                 absX - (targetPage * pageW + (rvLoc[0] - rootLoc[0]))
             }
 
-            item.col = (relativeX - horizontalPadding) / cellWidth
-            item.row = transformingView!!.y / cellHeight
+            val relativeY = if (pageView != null && pageView.isAttachedToWindow) {
+                val loc = IntArray(2).apply { pageView.getLocationInWindow(this) }
+                val rootLoc = IntArray(2).apply { rootLayout.getLocationInWindow(this) }
+                absY - (loc[1] - rootLoc[1])
+            } else {
+                val rvLoc = IntArray(2).apply { rv.getLocationInWindow(this) }
+                val rootLoc = IntArray(2).apply { rootLayout.getLocationInWindow(this) }
+                absY - (rv.paddingTop + (rvLoc[1] - rootLoc[1]))
+            }
+
+            if (preferences.isFreeformHome) {
+                item.col = (relativeX - horizontalPadding) / cellWidth
+                item.row = relativeY / cellHeight
+                item.spanX = transformingView!!.width / cellWidth
+                item.spanY = transformingView!!.height / cellHeight
+            } else {
+                val sX = (transformingView!!.width / cellWidth).roundToInt().coerceIn(1, preferences.columns)
+                val sY = (transformingView!!.height / cellHeight).roundToInt().coerceIn(1, HomeView.GRID_ROWS)
+                item.spanX = sX.toFloat()
+                item.spanY = sY.toFloat()
+                item.col = max(0, min(preferences.columns - sX, ((relativeX - horizontalPadding) / cellWidth).roundToInt())).toFloat()
+                item.row = max(0, min(HomeView.GRID_ROWS - sY, (relativeY / cellHeight).roundToInt())).toFloat()
+            }
         }
 
         item.rotation = transformingView!!.rotation

@@ -18,16 +18,16 @@ class HomeItem {
 
     var col: Float = 0f
 
-    var spanX: Int = 1
+    var spanX: Float = 1f
 
-    var spanY: Int = 1
+    var spanY: Float = 1f
 
     var page: Int = 0
 
     var originalRow: Float = 0f
     var originalCol: Float = 0f
-    var originalSpanX: Int = 1
-    var originalSpanY: Int = 1
+    var originalSpanX: Float = 1f
+    var originalSpanY: Float = 1f
     var originalPage: Int = 0
 
     var widgetId: Int = -1
@@ -50,13 +50,13 @@ class HomeItem {
             item.className = className
             item.col = col
             item.row = row
-            item.spanX = 1
-            item.spanY = 1
+            item.spanX = 1f
+            item.spanY = 1f
             item.page = page
             item.originalCol = col
             item.originalRow = row
-            item.originalSpanX = 1
-            item.originalSpanY = 1
+            item.originalSpanX = 1f
+            item.originalSpanY = 1f
             item.originalPage = page
             return item
         }
@@ -68,13 +68,13 @@ class HomeItem {
             item.widgetId = widgetId
             item.col = col
             item.row = row
-            item.spanX = spanX
-            item.spanY = spanY
+            item.spanX = spanX.toFloat()
+            item.spanY = spanY.toFloat()
             item.page = page
             item.originalCol = col
             item.originalRow = row
-            item.originalSpanX = spanX
-            item.originalSpanY = spanY
+            item.originalSpanX = spanX.toFloat()
+            item.originalSpanY = spanY.toFloat()
             item.originalPage = page
             return item
         }
@@ -85,13 +85,13 @@ class HomeItem {
             item.type = Type.CLOCK
             item.col = col
             item.row = row
-            item.spanX = spanX
-            item.spanY = spanY
+            item.spanX = spanX.toFloat()
+            item.spanY = spanY.toFloat()
             item.page = page
             item.originalCol = col
             item.originalRow = row
-            item.originalSpanX = spanX
-            item.originalSpanY = spanY
+            item.originalSpanX = spanX.toFloat()
+            item.originalSpanY = spanY.toFloat()
             item.originalPage = page
             return item
         }
@@ -103,13 +103,13 @@ class HomeItem {
             item.folderName = name
             item.col = col
             item.row = row
-            item.spanX = 1
-            item.spanY = 1
+            item.spanX = 1f
+            item.spanY = 1f
             item.page = page
             item.originalCol = col
             item.originalRow = row
-            item.originalSpanX = 1
-            item.originalSpanY = 1
+            item.originalSpanX = 1f
+            item.originalSpanY = 1f
             item.originalPage = page
             return item
         }

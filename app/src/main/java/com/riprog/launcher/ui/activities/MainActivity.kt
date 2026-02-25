@@ -544,7 +544,7 @@ class MainActivity : Activity() {
         if (col + sX > settingsManager.columns) col = settingsManager.columns - sX
         if (row + sY > HomeView.GRID_ROWS) row = HomeView.GRID_ROWS - sY
 
-        if (!settingsManager.isFreeformHome && !homeView.doesFit(sX, sY, col, row, homeView.currentPage)) {
+        if (!settingsManager.isFreeformHome && !homeView.doesFit(sX.toFloat(), sY.toFloat(), col, row, homeView.currentPage)) {
             val occupied = homeView.getOccupiedCells(homeView.currentPage)
             val nearest = findNearestAvailable(occupied, row, col, sX, sY)
             if (nearest != null) {
@@ -580,7 +580,7 @@ class MainActivity : Activity() {
         val appWidgetId = appWidgetHost.allocateAppWidgetId()
         val allowed = appWidgetManager.bindAppWidgetIdIfAllowed(appWidgetId, info.provider)
         if (allowed) {
-            if (!settingsManager.isFreeformHome && !homeView.doesFit(sX, sY, col, row, homeView.currentPage)) {
+            if (!settingsManager.isFreeformHome && !homeView.doesFit(sX.toFloat(), sY.toFloat(), col, row, homeView.currentPage)) {
                 val occupied = homeView.getOccupiedCells(homeView.currentPage)
                 val nearest = findNearestAvailable(occupied, row, col, sX, sY)
                 if (nearest != null) {

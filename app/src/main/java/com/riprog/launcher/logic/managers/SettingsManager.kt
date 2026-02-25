@@ -122,13 +122,13 @@ class SettingsManager(context: Context) {
             obj.put("folderName", item.folderName)
             obj.put("col", item.col.toDouble())
             obj.put("row", item.row.toDouble())
-            obj.put("spanX", item.spanX)
-            obj.put("spanY", item.spanY)
+            obj.put("spanX", item.spanX.toDouble())
+            obj.put("spanY", item.spanY.toDouble())
             obj.put("page", item.page)
             obj.put("originalCol", item.originalCol.toDouble())
             obj.put("originalRow", item.originalRow.toDouble())
-            obj.put("originalSpanX", item.originalSpanX)
-            obj.put("originalSpanY", item.originalSpanY)
+            obj.put("originalSpanX", item.originalSpanX.toDouble())
+            obj.put("originalSpanY", item.originalSpanY.toDouble())
             obj.put("originalPage", item.originalPage)
             obj.put("widgetId", item.widgetId)
             obj.put("rotation", item.rotation.toDouble())
@@ -183,16 +183,16 @@ class SettingsManager(context: Context) {
         } else {
             item.row = (obj.optDouble("y", 0.0) / 100.0).toFloat()
         }
-        item.spanX = obj.optInt("spanX", obj.optInt("width", 100) / 100)
-        item.spanY = obj.optInt("spanY", obj.optInt("height", 100) / 100)
-        if (item.spanX <= 0) item.spanX = 1
-        if (item.spanY <= 0) item.spanY = 1
+        item.spanX = obj.optDouble("spanX", (obj.optInt("width", 100) / 100).toDouble()).toFloat()
+        item.spanY = obj.optDouble("spanY", (obj.optInt("height", 100) / 100).toDouble()).toFloat()
+        if (item.spanX <= 0) item.spanX = 1f
+        if (item.spanY <= 0) item.spanY = 1f
         item.page = obj.optInt("page", 0)
 
         item.originalCol = obj.optDouble("originalCol", item.col.toDouble()).toFloat()
         item.originalRow = obj.optDouble("originalRow", item.row.toDouble()).toFloat()
-        item.originalSpanX = obj.optInt("originalSpanX", item.spanX)
-        item.originalSpanY = obj.optInt("originalSpanY", item.spanY)
+        item.originalSpanX = obj.optDouble("originalSpanX", item.spanX.toDouble()).toFloat()
+        item.originalSpanY = obj.optDouble("originalSpanY", item.spanY.toDouble()).toFloat()
         item.originalPage = obj.optInt("originalPage", item.page)
 
         item.widgetId = obj.optInt("widgetId", -1)
