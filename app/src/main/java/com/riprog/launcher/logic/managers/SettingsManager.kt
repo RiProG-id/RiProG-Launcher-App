@@ -125,6 +125,11 @@ class SettingsManager(context: Context) {
             obj.put("spanX", item.spanX)
             obj.put("spanY", item.spanY)
             obj.put("page", item.page)
+            obj.put("originalCol", item.originalCol.toDouble())
+            obj.put("originalRow", item.originalRow.toDouble())
+            obj.put("originalSpanX", item.originalSpanX)
+            obj.put("originalSpanY", item.originalSpanY)
+            obj.put("originalPage", item.originalPage)
             obj.put("widgetId", item.widgetId)
             obj.put("rotation", item.rotation.toDouble())
             obj.put("scale", item.scale.toDouble())
@@ -183,6 +188,13 @@ class SettingsManager(context: Context) {
         if (item.spanX <= 0) item.spanX = 1
         if (item.spanY <= 0) item.spanY = 1
         item.page = obj.optInt("page", 0)
+
+        item.originalCol = obj.optDouble("originalCol", item.col.toDouble()).toFloat()
+        item.originalRow = obj.optDouble("originalRow", item.row.toDouble()).toFloat()
+        item.originalSpanX = obj.optInt("originalSpanX", item.spanX)
+        item.originalSpanY = obj.optInt("originalSpanY", item.spanY)
+        item.originalPage = obj.optInt("originalPage", item.page)
+
         item.widgetId = obj.optInt("widgetId", -1)
         item.rotation = obj.optDouble("rotation", 0.0).toFloat()
         item.scale = obj.optDouble("scale", 1.0).toFloat()

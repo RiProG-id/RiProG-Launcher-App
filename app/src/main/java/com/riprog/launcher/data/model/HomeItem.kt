@@ -24,6 +24,12 @@ class HomeItem {
 
     var page: Int = 0
 
+    var originalRow: Float = 0f
+    var originalCol: Float = 0f
+    var originalSpanX: Int = 1
+    var originalSpanY: Int = 1
+    var originalPage: Int = 0
+
     var widgetId: Int = -1
 
 
@@ -47,6 +53,11 @@ class HomeItem {
             item.spanX = 1
             item.spanY = 1
             item.page = page
+            item.originalCol = col
+            item.originalRow = row
+            item.originalSpanX = 1
+            item.originalSpanY = 1
+            item.originalPage = page
             return item
         }
 
@@ -60,6 +71,11 @@ class HomeItem {
             item.spanX = spanX
             item.spanY = spanY
             item.page = page
+            item.originalCol = col
+            item.originalRow = row
+            item.originalSpanX = spanX
+            item.originalSpanY = spanY
+            item.originalPage = page
             return item
         }
 
@@ -72,6 +88,11 @@ class HomeItem {
             item.spanX = spanX
             item.spanY = spanY
             item.page = page
+            item.originalCol = col
+            item.originalRow = row
+            item.originalSpanX = spanX
+            item.originalSpanY = spanY
+            item.originalPage = page
             return item
         }
 
@@ -85,6 +106,11 @@ class HomeItem {
             item.spanX = 1
             item.spanY = 1
             item.page = page
+            item.originalCol = col
+            item.originalRow = row
+            item.originalSpanX = 1
+            item.originalSpanY = 1
+            item.originalPage = page
             return item
         }
     }

@@ -31,6 +31,7 @@ import kotlin.math.*
 class TransformOverlay(context: Context, private val targetView: View, private val settingsManager: SettingsManager, private val onSaveListener: OnSaveListener?) : FrameLayout(context) {
 
     private val item: HomeItem = targetView.tag as HomeItem
+    private var buttonsContainer: View? = null
     private val paint = Paint(Paint.ANTI_ALIAS_FLAG)
     private val handleSize: Float = dpToPx(12f).toFloat()
     private val rotationHandleDist: Float = dpToPx(50f).toFloat()
@@ -141,6 +142,7 @@ class TransformOverlay(context: Context, private val targetView: View, private v
         lp.bottomMargin = dpToPx(48f)
         lp.leftMargin = dpToPx(24f)
         lp.rightMargin = dpToPx(24f)
+        buttonsContainer = container
         addView(container, lp)
     }
 
@@ -158,26 +160,31 @@ class TransformOverlay(context: Context, private val targetView: View, private v
     }
 
     private fun reset() {
+        val activity = context as? MainActivity ?: return
+
         targetView.rotation = 0f
         targetView.scaleX = 1.0f
         targetView.scaleY = 1.0f
+        targetView.rotationX = 0f
+        targetView.rotationY = 0f
 
-        // Restore widget to provider-based calculated span
-        if (item.type == HomeItem.Type.WIDGET && targetView is AppWidgetHostView) {
-            val info = targetView.appWidgetInfo
-            if (info != null && context is MainActivity) {
-                val activity = context as MainActivity
-                val spans = WidgetSizingUtils.calculateWidgetSpan(activity, activity.homeView, info)
-                item.spanX = spans.first
-                item.spanY = spans.second
-                activity.homeView.updateViewPosition(item, targetView)
-            }
-        } else if (item.type == HomeItem.Type.APP || item.type == HomeItem.Type.FOLDER) {
-            item.spanX = 1
-            item.spanY = 1
-            if (context is MainActivity) {
-                (context as MainActivity).homeView.updateViewPosition(item, targetView)
-            }
+        val pageChanged = item.page != item.originalPage
+
+        item.col = item.originalCol
+        item.row = item.originalRow
+        item.spanX = item.originalSpanX
+        item.spanY = item.originalSpanY
+        item.page = item.originalPage
+        item.rotation = 0f
+        item.scale = 1.0f
+        item.tiltX = 0f
+        item.tiltY = 0f
+
+        if (pageChanged) {
+            activity.homeView.removeItemView(item)
+            activity.renderHomeItem(item)
+        } else {
+            activity.homeView.updateViewPosition(item, targetView)
         }
 
         invalidate()
@@ -354,6 +361,7 @@ class TransformOverlay(context: Context, private val targetView: View, private v
                         }
                     }
                     if (hasPassedThreshold) {
+                        buttonsContainer?.visibility = if (activeHandle == ACTION_MOVE) View.GONE else View.VISIBLE
                         handleInteraction(x, y)
                     }
                     lastTouchX = x
@@ -364,6 +372,7 @@ class TransformOverlay(context: Context, private val targetView: View, private v
             }
 
             MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                buttonsContainer?.visibility = View.VISIBLE
                 if (activeHandle == ACTION_MOVE && hasPassedThreshold) {
                     val midX = targetView.x + targetView.width / 2f
                     val midY = targetView.y + targetView.height / 2f

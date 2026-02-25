@@ -165,6 +165,11 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
             systemTopInset = systemBars.top
             systemBottomInset = systemBars.bottom
             recyclerView.setPadding(0, dpToPx(48) + systemTopInset, 0, 0)
+
+            val indicatorParams = pageIndicator.layoutParams as LayoutParams
+            indicatorParams.bottomMargin = systemBottomInset + dpToPx(8)
+            pageIndicator.layoutParams = indicatorParams
+
             post { refreshLayout() }
             insets
         }
@@ -174,6 +179,8 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
         recyclerView.adapter = adapter
 
         pageIndicator = PageIndicator(context)
+        pageIndicator.isClickable = false
+        pageIndicator.isFocusable = false
         val indicatorParams = LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT)
         indicatorParams.gravity = Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL
         indicatorParams.bottomMargin = dpToPx(80)
@@ -189,6 +196,8 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
         if (settingsManager.drawerOpenCount >= 5) return
 
         val hint = TextView(context)
+        hint.isClickable = false
+        hint.isFocusable = false
         hint.text = context.getString(R.string.drawer_hint)
         hint.textSize = 12f
         hint.setTextColor(Color.GRAY and 0x80FFFFFF.toInt())
@@ -257,7 +266,7 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
         val topPadding = dpToPx(48)
         val bottomPadding = dpToPx(16)
         val dockHeight = 0
-        val indicatorHeight = dpToPx(80)
+        val indicatorHeight = dpToPx(20)
         val systemInsets = systemTopInset + systemBottomInset
         val usableHeight = height - topPadding - bottomPadding - dockHeight - indicatorHeight - systemInsets
 
