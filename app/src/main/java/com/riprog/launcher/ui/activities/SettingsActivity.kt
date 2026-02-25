@@ -124,10 +124,7 @@ class SettingsActivity : Activity() {
 
         items.add(SettingItem(SettingType.CATEGORY, titleString = getString(R.string.category_appearance), iconRes = R.drawable.ic_wallpaper))
         items.add(SettingItem(SettingType.THEME))
-        items.add(SettingItem(SettingType.TOGGLE, titleRes = R.string.setting_liquid_glass, summaryRes = R.string.setting_liquid_glass_summary, isChecked = settingsManager.isLiquidGlass) {
-            settingsManager.isLiquidGlass = it
-            recreate()
-        })
+        items.add(SettingItem(SettingType.STYLE))
         items.add(SettingItem(SettingType.TOGGLE, titleRes = R.string.setting_darken_wallpaper, summaryRes = R.string.setting_darken_wallpaper_summary, isChecked = settingsManager.isDarkenWallpaper) {
             settingsManager.isDarkenWallpaper = it
             autoDimmingBackground?.updateDimVisibility()
@@ -140,7 +137,7 @@ class SettingsActivity : Activity() {
     }
 
     private enum class SettingType {
-        TITLE, CATEGORY, TOGGLE, THEME, ABOUT
+        TITLE, CATEGORY, TOGGLE, THEME, STYLE, ABOUT
     }
 
     private data class SettingItem(
@@ -222,14 +219,14 @@ class SettingsActivity : Activity() {
                     item.layoutParams = lp
                     ToggleViewHolder(item, titleView, summaryView, toggle)
                 }
-                SettingType.THEME -> {
+                SettingType.THEME, SettingType.STYLE -> {
                     val item = LinearLayout(context)
                     item.orientation = LinearLayout.VERTICAL
                     item.setPadding(dpToPx(16), dpToPx(16), dpToPx(16), dpToPx(16))
                     ThemeManager.applySettingItemStyle(context as Activity, item, settingsManager)
 
                     val titleView = TextView(context)
-                    titleView.setText(R.string.setting_theme_mode)
+                    titleView.setText(if (type == SettingType.THEME) R.string.setting_theme_mode else R.string.setting_theme_style)
                     titleView.textSize = 18f
                     titleView.setTextColor(adaptiveColor)
                     item.addView(titleView)
@@ -317,6 +314,40 @@ class SettingsActivity : Activity() {
                         option.setOnClickListener {
                             settingsManager.themeMode = values[index]
                             ThemeManager.applyThemeMode(this@SettingsActivity, values[index])
+                            recreate()
+                        }
+
+                        val lp = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
+                        h.options.addView(option, lp)
+                        option.gravity = Gravity.CENTER
+                    }
+                }
+                SettingType.STYLE -> {
+                    val h = holder as ThemeViewHolder
+                    h.options.removeAllViews()
+                    val styles = arrayOf(getString(R.string.theme_style_standard), getString(R.string.theme_style_liquid_glass))
+                    val values = arrayOf(false, true)
+                    val current = settingsManager.isLiquidGlass
+
+                    for (i in styles.indices) {
+                        val index = i
+                        val option = TextView(this@SettingsActivity)
+                        option.text = styles[i]
+                        option.setPadding(dpToPx(12), dpToPx(8), dpToPx(12), dpToPx(8))
+                        option.textSize = 14f
+
+                        val isSelected = values[i] == current
+                        option.setTextColor(if (isSelected) adaptiveColor else this@SettingsActivity.getColor(R.color.foreground_dim))
+
+                        if (isSelected) {
+                            val gd = GradientDrawable()
+                            gd.setColor(getColor(R.color.search_background))
+                            gd.cornerRadius = dpToPx(8).toFloat()
+                            option.background = gd
+                        }
+
+                        option.setOnClickListener {
+                            settingsManager.isLiquidGlass = values[index]
                             recreate()
                         }
 
