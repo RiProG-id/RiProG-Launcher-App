@@ -559,6 +559,7 @@ class MainActivity : Activity() {
         }
 
         val item = HomeItem.createWidget(appWidgetId, col.toFloat(), row.toFloat(), sX, sY, page)
+        item.isLayoutLocked = true
         homeItems.add(item)
         renderHomeItem(item)
         saveHomeState()
@@ -601,6 +602,7 @@ class MainActivity : Activity() {
             }
 
             val item = HomeItem.createWidget(appWidgetId, col.toFloat(), row.toFloat(), sX, sY, page)
+            item.isLayoutLocked = true
             homeItems.add(item)
             renderHomeItem(item)
             saveHomeState()
@@ -866,6 +868,7 @@ class MainActivity : Activity() {
         }
 
         val item = HomeItem.createApp(app.packageName, app.className, col, row, page)
+        item.isLayoutLocked = true
         homeItems.add(item)
         renderHomeItem(item)
         saveHomeState()

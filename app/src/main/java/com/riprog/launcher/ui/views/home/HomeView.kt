@@ -610,8 +610,12 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
             val horizontalPadding = dpToPx(HORIZONTAL_PADDING_DP)
             item.spanX = item.spanX.roundToInt().toFloat()
             item.spanY = item.spanY.roundToInt().toFloat()
-            var targetCol = ((v.x - horizontalPadding) / cellWidth).roundToInt()
-            var targetRow = (v.y / cellHeight).roundToInt()
+
+            // Center-based grid snapping
+            val centerX = v.x + v.width / 2f
+            val centerY = v.y + v.height / 2f
+            var targetCol = ((centerX - horizontalPadding) / cellWidth - item.spanX / 2f).roundToInt()
+            var targetRow = (centerY / cellHeight - item.spanY / 2f).roundToInt()
 
             if (!doesFit(item.spanX, item.spanY, targetCol, targetRow, item.page, item)) {
                 item.col = item.originalCol
@@ -629,6 +633,7 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
             } else {
                 item.col = max(0, min(settingsManager.columns - item.spanX.roundToInt(), targetCol)).toFloat()
                 item.row = max(0, min(GRID_ROWS - item.spanY.roundToInt(), targetRow)).toFloat()
+                item.isLayoutLocked = true
             }
             item.rotation = 0f
             item.scale = 1.0f
@@ -755,9 +760,9 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
                             item.scale = 1.0f
                             item.tiltX = 0f
                             item.tiltY = 0f
+                            updateViewPosition(item, v)
                         }
                     }
-                    resolveAllOverlaps(i)
                 }
             } else {
                 for (page in pages) {

@@ -135,6 +135,7 @@ class SettingsManager(context: Context) {
             obj.put("scale", item.scale.toDouble())
             obj.put("tiltX", item.tiltX.toDouble())
             obj.put("tiltY", item.tiltY.toDouble())
+            obj.put("isLayoutLocked", item.isLayoutLocked)
 
             if (item.folderItems.isNotEmpty()) {
                 val folderArray = JSONArray()
@@ -200,6 +201,7 @@ class SettingsManager(context: Context) {
         item.scale = obj.optDouble("scale", 1.0).toFloat()
         item.tiltX = obj.optDouble("tiltX", 0.0).toFloat()
         item.tiltY = obj.optDouble("tiltY", 0.0).toFloat()
+        item.isLayoutLocked = obj.optBoolean("isLayoutLocked", false)
 
         if (obj.has("folderItems")) {
             val folderArray = obj.getJSONArray("folderItems")

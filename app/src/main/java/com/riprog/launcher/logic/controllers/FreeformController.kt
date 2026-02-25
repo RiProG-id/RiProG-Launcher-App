@@ -41,6 +41,7 @@ class FreeformController(
         }
 
         transformingView = v
+        (v.tag as? HomeItem)?.isLayoutLocked = false
         transformingViewOriginalParent = v.parent as? ViewGroup
         if (transformingViewOriginalParent != null) {
             transformingViewOriginalIndex = transformingViewOriginalParent!!.indexOfChild(v)
@@ -209,8 +210,11 @@ class FreeformController(
             item.spanX = newSpanX.toFloat()
             item.spanY = newSpanY.toFloat()
 
-            val newCol = max(0, min(preferences.columns - newSpanX, ((relativeX - horizontalPadding) / cellWidth).roundToInt()))
-            val newRow = max(0, min(HomeView.GRID_ROWS - newSpanY, (relativeY / cellHeight).roundToInt()))
+            // Center-based grid snapping
+            val centerX = relativeX + v.width / 2f
+            val centerY = relativeY + v.height / 2f
+            val newCol = max(0, min(preferences.columns - newSpanX, ((centerX - horizontalPadding) / cellWidth - item.spanX / 2f).roundToInt()))
+            val newRow = max(0, min(HomeView.GRID_ROWS - newSpanY, (centerY / cellHeight - item.spanY / 2f).roundToInt()))
 
             if (!homeView.doesFit(newSpanX.toFloat(), newSpanY.toFloat(), newCol, newRow, targetPage, item)) {
                 item.col = item.originalCol
@@ -230,6 +234,7 @@ class FreeformController(
             item.col = newCol.toFloat()
             item.row = newRow.toFloat()
             item.page = targetPage
+            item.isLayoutLocked = true
             item.rotation = 0f
             item.scale = 1.0f
             item.tiltX = 0f
@@ -321,8 +326,13 @@ class FreeformController(
                 val sY = (transformingView!!.height / cellHeight).roundToInt().coerceIn(1, HomeView.GRID_ROWS)
                 item.spanX = sX.toFloat()
                 item.spanY = sY.toFloat()
-                item.col = max(0, min(preferences.columns - sX, ((relativeX - horizontalPadding) / cellWidth).roundToInt())).toFloat()
-                item.row = max(0, min(HomeView.GRID_ROWS - sY, (relativeY / cellHeight).roundToInt())).toFloat()
+
+                // Center-based grid snapping
+                val centerX = relativeX + transformingView!!.width / 2f
+                val centerY = relativeY + transformingView!!.height / 2f
+                item.col = max(0, min(preferences.columns - sX, ((centerX - horizontalPadding) / cellWidth - item.spanX / 2f).roundToInt())).toFloat()
+                item.row = max(0, min(HomeView.GRID_ROWS - sY, (centerY / cellHeight - item.spanY / 2f).roundToInt())).toFloat()
+                item.isLayoutLocked = true
             }
         }
 
