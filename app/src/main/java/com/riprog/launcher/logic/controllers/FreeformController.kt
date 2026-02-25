@@ -163,7 +163,7 @@ class FreeformController(
 
             if (midX >= ox + hitBufferX && midX <= ox + otherView.width - hitBufferX &&
                 midY >= oy + hitBufferY && midY <= oy + otherView.height - hitBufferY) {
-                if (handleFolderDrop(v, otherView)) {
+                if (!preferences.isFreeformHome && handleFolderDrop(v, otherView)) {
                     closeTransformOverlay()
                     return true
                 }
@@ -186,6 +186,12 @@ class FreeformController(
                 val pageW = if (rv.width > 0) rv.width else activity.resources.displayMetrics.widthPixels
                 v.x - (targetPage * pageW + (rvLoc[0] - rootLoc[0]))
             }
+
+            val newSpanX = (v.width / cellWidth).roundToInt().coerceIn(1, preferences.columns)
+            val newSpanY = (v.height / cellHeight).roundToInt().coerceIn(1, HomeView.GRID_ROWS)
+
+            item.spanX = newSpanX
+            item.spanY = newSpanY
 
             val newCol = max(0, min(preferences.columns - item.spanX, ((relativeX - horizontalPadding) / cellWidth).roundToInt()))
             val newRow = max(0, min(HomeView.GRID_ROWS - item.spanY, (v.y / cellHeight).roundToInt()))

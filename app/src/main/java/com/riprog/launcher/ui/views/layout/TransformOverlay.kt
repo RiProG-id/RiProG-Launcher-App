@@ -373,15 +373,17 @@ class TransformOverlay(context: Context, private val targetView: View, private v
 
             MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
                 buttonsContainer?.visibility = View.VISIBLE
-                if (activeHandle == ACTION_MOVE && hasPassedThreshold) {
+                if (activeHandle != -1 && activeHandle != ACTION_OUTSIDE && hasPassedThreshold) {
                     val midX = targetView.x + targetView.width / 2f
                     val midY = targetView.y + targetView.height / 2f
 
                     onSaveListener?.onSnapToGrid(targetView)
 
-                    val other = onSaveListener?.findItemAt(midX, midY, targetView)
-                    if (other != null) {
-                        onSaveListener?.onCollision(other)
+                    if (activeHandle == ACTION_MOVE) {
+                        val other = onSaveListener?.findItemAt(midX, midY, targetView)
+                        if (other != null) {
+                            onSaveListener?.onCollision(other)
+                        }
                     }
                 }
                 activeHandle = -1
@@ -530,15 +532,25 @@ class TransformOverlay(context: Context, private val targetView: View, private v
             }
         }
 
-        if (newSpanX != item.spanX || newSpanY != item.spanY || newCol != item.col.roundToInt() || newRow != item.row.roundToInt()) {
-            if (activity.homeView.isSpanValid(item, newSpanX, newSpanY, newCol, newRow)) {
-                item.spanX = newSpanX
-                item.spanY = newSpanY
-                item.col = newCol.toFloat()
-                item.row = newRow.toFloat()
-                activity.homeView.updateViewPosition(item, targetView)
+        // Follow finger exactly without real-time grid snapping
+        val lp = targetView.layoutParams
+        when (activeHandle) {
+            HANDLE_RIGHT -> {
+                lp.width = (gestureInitialWidth + currentDrx).toInt().coerceAtLeast(dpToPx(40f))
+            }
+            HANDLE_LEFT -> {
+                lp.width = (gestureInitialWidth - currentDrx).toInt().coerceAtLeast(dpToPx(40f))
+                targetView.x = gestureInitialX + currentDrx
+            }
+            HANDLE_BOTTOM -> {
+                lp.height = (gestureInitialHeight + currentDry).toInt().coerceAtLeast(dpToPx(40f))
+            }
+            HANDLE_TOP -> {
+                lp.height = (gestureInitialHeight - currentDry).toInt().coerceAtLeast(dpToPx(40f))
+                targetView.y = gestureInitialY + currentDry
             }
         }
+        targetView.layoutParams = lp
     }
 
     private fun dist(x1: Float, y1: Float, x2: Float, y2: Float): Float {
