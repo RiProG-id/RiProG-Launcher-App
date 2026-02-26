@@ -101,6 +101,7 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
         page.clipChildren = false
         page.clipToPadding = false
         pages.add(index, page)
+        settingsManager.pageCount = pages.size
 
         if (context is MainActivity) {
             val activity = context as MainActivity
@@ -190,8 +191,10 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
         indicatorParams.bottomMargin = dpToPx(80)
         addView(pageIndicator, indicatorParams)
 
-        addPage()
-        addPage()
+        val pc = settingsManager.pageCount
+        for (i in 0 until pc) {
+            addPage()
+        }
 
         addDrawerHint()
     }
@@ -225,6 +228,7 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
         page.clipChildren = false
         page.clipToPadding = false
         pages.add(page)
+        settingsManager.pageCount = pages.size
         adapter.notifyItemInserted(pages.size - 1)
         pageIndicator.setPageCount(pages.size)
         pageIndicator.setCurrentPage(currentPage)
@@ -550,6 +554,7 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
         }
 
         pages.removeAt(index)
+        settingsManager.pageCount = pages.size
         adapter.notifyItemRemoved(index)
 
         for (i in pages.indices) {

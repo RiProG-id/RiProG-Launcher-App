@@ -225,10 +225,7 @@ class MainActivity : Activity() {
     }
 
     private fun setupDefaultHome() {
-        // Minimal valid layout: A clock on the first page
-        val clock = HomeItem.createClock(1f, 1f, 2, 2, 0)
-        homeItems.add(clock)
-        renderHomeItem(clock)
+        // Default home layout must be clean (empty).
         saveHomeState()
     }
 

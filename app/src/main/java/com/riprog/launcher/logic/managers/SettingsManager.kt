@@ -19,6 +19,7 @@ class SettingsManager(context: Context) {
                 putBoolean(KEY_DARKEN_WALLPAPER, true)
                 putBoolean(KEY_FREEFORM_HOME, false)
                 putBoolean(KEY_HIDE_LABELS, false)
+                putInt(KEY_PAGE_COUNT, 1)
                 putBoolean(KEY_FIRST_RUN, true)
                 apply()
             }
@@ -62,6 +63,12 @@ class SettingsManager(context: Context) {
         get() = prefs.getBoolean(KEY_DARKEN_WALLPAPER, false)
         set(enabled) {
             prefs.edit().putBoolean(KEY_DARKEN_WALLPAPER, enabled).apply()
+        }
+
+    var pageCount: Int
+        get() = prefs.getInt(KEY_PAGE_COUNT, 2)
+        set(count) {
+            prefs.edit().putInt(KEY_PAGE_COUNT, count).apply()
         }
 
     fun incrementUsage(packageName: String) {
@@ -260,5 +267,6 @@ class SettingsManager(context: Context) {
         private const val KEY_DEFAULT_PROMPT_TIMESTAMP = "default_prompt_ts"
         private const val KEY_DEFAULT_PROMPT_COUNT = "default_prompt_count"
         private const val KEY_FIRST_RUN = "first_run_init"
+        private const val KEY_PAGE_COUNT = "page_count"
     }
 }
