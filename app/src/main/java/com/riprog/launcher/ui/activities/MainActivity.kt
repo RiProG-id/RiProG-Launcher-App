@@ -66,6 +66,7 @@ class MainActivity : Activity() {
     private var lastGridRow: Float = 0f
     private var pendingSpanX: Int = 2
     private var pendingSpanY: Int = 1
+    private var currentDefaultPrompt: View? = null
 
     override fun attachBaseContext(newBase: Context) {
         val sm = SettingsManager(newBase)
@@ -132,7 +133,6 @@ class MainActivity : Activity() {
 
         homeView.post {
             restoreHomeState()
-            showDefaultLauncherPrompt()
         }
     }
 
@@ -146,6 +146,7 @@ class MainActivity : Activity() {
 
     private fun showDefaultLauncherPrompt() {
         if (isDefaultLauncher()) return
+        if (currentDefaultPrompt != null) return
 
         val lastShown = settingsManager.lastDefaultPromptTimestamp
         val count = settingsManager.defaultPromptCount
@@ -154,6 +155,7 @@ class MainActivity : Activity() {
         if (count >= 5) return
 
         val prompt = LinearLayout(this)
+        currentDefaultPrompt = prompt
         prompt.orientation = LinearLayout.VERTICAL
         prompt.background = ThemeUtils.getThemedSurface(this, settingsManager, 28f)
         prompt.setPadding(dpToPx(24), dpToPx(24), dpToPx(24), dpToPx(24))
@@ -183,7 +185,10 @@ class MainActivity : Activity() {
         btnLater.setText(R.string.action_later)
         btnLater.setPadding(dpToPx(16), dpToPx(8), dpToPx(16), dpToPx(8))
         btnLater.setTextColor(getColor(R.color.foreground))
-        btnLater.setOnClickListener { mainLayout.removeView(prompt) }
+        btnLater.setOnClickListener {
+            mainLayout.removeView(prompt)
+            currentDefaultPrompt = null
+        }
         buttons.addView(btnLater)
 
         val btnSet = TextView(this)
@@ -193,6 +198,7 @@ class MainActivity : Activity() {
         btnSet.setTypeface(null, Typeface.BOLD)
         btnSet.setOnClickListener {
             mainLayout.removeView(prompt)
+            currentDefaultPrompt = null
             val intent = Intent(Settings.ACTION_HOME_SETTINGS)
             startActivity(intent)
         }
@@ -544,6 +550,15 @@ class MainActivity : Activity() {
         autoDimmingBackground?.updateDimVisibility()
         homeView.refreshLayout()
         homeView.refreshIcons(model, allApps)
+
+        if (isDefaultLauncher()) {
+            if (currentDefaultPrompt != null) {
+                mainLayout.removeView(currentDefaultPrompt)
+                currentDefaultPrompt = null
+            }
+        } else {
+            showDefaultLauncherPrompt()
+        }
     }
 
     override fun onStart() {
