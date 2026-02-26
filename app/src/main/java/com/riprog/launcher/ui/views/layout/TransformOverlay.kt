@@ -73,7 +73,7 @@ class TransformOverlay(context: Context, private val targetView: View, private v
         fun onAppInfo()
         fun onCollision(otherView: View)
         fun findItemAt(x: Float, y: Float, exclude: View): View?
-        fun onSnapToGrid(v: View): Boolean
+        fun onSnapToGrid(v: View, isResize: Boolean): Boolean
     }
 
     init {
@@ -219,8 +219,8 @@ class TransformOverlay(context: Context, private val targetView: View, private v
             drawHandle(canvas, left, bottom, hs, true, foregroundColor)
         }
 
-        // Only show directional handles for widgets in Freeform mode
-        if (isFreeform && isWidget) {
+        // Only show directional handles for widgets
+        if (isWidget) {
             drawHandle(canvas, (left + right) / 2f, top, hs, false, foregroundColor)
             drawHandle(canvas, right, (top + bottom) / 2f, hs, false, foregroundColor)
             drawHandle(canvas, (left + right) / 2f, bottom, hs, false, foregroundColor)
@@ -432,7 +432,12 @@ class TransformOverlay(context: Context, private val targetView: View, private v
                     val midX = targetView.x + targetView.width / 2f
                     val midY = targetView.y + targetView.height / 2f
 
-                    onSaveListener?.onSnapToGrid(targetView)
+                    val isResize = activeHandle == HANDLE_TOP || activeHandle == HANDLE_BOTTOM ||
+                                   activeHandle == HANDLE_LEFT || activeHandle == HANDLE_RIGHT ||
+                                   activeHandle == HANDLE_TOP_LEFT || activeHandle == HANDLE_TOP_RIGHT ||
+                                   activeHandle == HANDLE_BOTTOM_LEFT || activeHandle == HANDLE_BOTTOM_RIGHT
+
+                    onSaveListener?.onSnapToGrid(targetView, isResize)
 
                     if (activeHandle == ACTION_MOVE) {
                         val other = onSaveListener?.findItemAt(midX, midY, targetView)
@@ -476,13 +481,13 @@ class TransformOverlay(context: Context, private val targetView: View, private v
             if (dist(rx, ry, right, top) < hs) return HANDLE_TOP_RIGHT
             if (dist(rx, ry, right, bottom) < hs) return HANDLE_BOTTOM_RIGHT
             if (dist(rx, ry, left, bottom) < hs) return HANDLE_BOTTOM_LEFT
+        }
 
-            if (isWidget) {
-                if (dist(rx, ry, (left + right) / 2f, top) < hs) return HANDLE_TOP
-                if (dist(rx, ry, right, (top + bottom) / 2f) < hs) return HANDLE_RIGHT
-                if (dist(rx, ry, (left + right) / 2f, bottom) < hs) return HANDLE_BOTTOM
-                if (dist(rx, ry, left, (top + bottom) / 2f) < hs) return HANDLE_LEFT
-            }
+        if (isWidget) {
+            if (dist(rx, ry, (left + right) / 2f, top) < hs) return HANDLE_TOP
+            if (dist(rx, ry, right, (top + bottom) / 2f) < hs) return HANDLE_RIGHT
+            if (dist(rx, ry, (left + right) / 2f, bottom) < hs) return HANDLE_BOTTOM
+            if (dist(rx, ry, left, (top + bottom) / 2f) < hs) return HANDLE_LEFT
         }
 
         return if (rx >= left && rx <= right && ry >= top && ry <= bottom) ACTION_MOVE else ACTION_OUTSIDE

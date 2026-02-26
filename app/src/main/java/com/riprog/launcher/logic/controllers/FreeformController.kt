@@ -102,8 +102,8 @@ class FreeformController(
                 return mainLayout.findTouchedHomeItem(x, y, exclude)
             }
 
-            override fun onSnapToGrid(v: View): Boolean {
-                return snapToGrid(v)
+            override fun onSnapToGrid(v: View, isResize: Boolean): Boolean {
+                return snapToGrid(v, isResize)
             }
         })
 
@@ -131,7 +131,7 @@ class FreeformController(
         )
     }
 
-    private fun snapToGrid(v: View): Boolean {
+    private fun snapToGrid(v: View, isResize: Boolean = false): Boolean {
         val mainActivity = activity as? MainActivity ?: return false
         val homeView = mainActivity.homeView
         val item = v.tag as? HomeItem ?: return false
@@ -203,18 +203,37 @@ class FreeformController(
             item.spanY = v.height / cellHeight
             item.page = targetPage
         } else {
-            val newSpanX = (vBounds.width() / cellWidth).roundToInt().coerceIn(1, preferences.columns)
-            val newSpanY = (vBounds.height() / cellHeight).roundToInt().coerceIn(1, HomeView.GRID_ROWS)
+            val sX: Int
+            val sY: Int
 
-            item.spanX = newSpanX.toFloat()
-            item.spanY = newSpanY.toFloat()
+            if (item.type == HomeItem.Type.WIDGET) {
+                val newSpanX = (vBounds.width() / cellWidth).roundToInt().coerceIn(1, preferences.columns)
+                val newSpanY = (vBounds.height() / cellHeight).roundToInt().coerceIn(1, HomeView.GRID_ROWS)
+
+                if (isResize) {
+                    if (newSpanX.toFloat() == item.spanX && newSpanY.toFloat() == item.spanY) {
+                        // Span didn't change, ignore resize result and revert
+                        homeView.updateViewPosition(item, v)
+                        return false
+                    }
+                }
+                sX = newSpanX
+                sY = newSpanY
+            } else {
+                // Apps and Folders are always 1x1 in non-freeform mode
+                sX = 1
+                sY = 1
+            }
+
+            item.spanX = sX.toFloat()
+            item.spanY = sY.toFloat()
 
             // Store visual offsets to lock centering
             item.visualOffsetX = vBounds.centerX()
             item.visualOffsetY = vBounds.centerY()
 
-            val newCol = max(0, min(preferences.columns - newSpanX, ((relativeX + vBounds.centerX() - horizontalPadding - (cellWidth * newSpanX / 2f)) / cellWidth).roundToInt()))
-            val newRow = max(0, min(HomeView.GRID_ROWS - newSpanY, ((relativeY + vBounds.centerY() - (cellHeight * newSpanY / 2f)) / cellHeight).roundToInt()))
+            val newCol = max(0, min(preferences.columns - sX, ((relativeX + vBounds.centerX() - horizontalPadding - (cellWidth * sX / 2f)) / cellWidth).roundToInt()))
+            val newRow = max(0, min(HomeView.GRID_ROWS - sY, ((relativeY + vBounds.centerY() - (cellHeight * sY / 2f)) / cellHeight).roundToInt()))
 
             item.col = newCol.toFloat()
             item.row = newRow.toFloat()
@@ -316,8 +335,16 @@ class FreeformController(
                 item.spanY = transformingView!!.height / cellHeight
             } else {
                 val vBounds = WidgetSizingUtils.getVisualBounds(transformingView!!)
-                val sX = (vBounds.width() / cellWidth).roundToInt().coerceIn(1, preferences.columns)
-                val sY = (vBounds.height() / cellHeight).roundToInt().coerceIn(1, HomeView.GRID_ROWS)
+                val sX: Int
+                val sY: Int
+
+                if (item.type == HomeItem.Type.WIDGET) {
+                    sX = (vBounds.width() / cellWidth).roundToInt().coerceIn(1, preferences.columns)
+                    sY = (vBounds.height() / cellHeight).roundToInt().coerceIn(1, HomeView.GRID_ROWS)
+                } else {
+                    sX = 1
+                    sY = 1
+                }
                 item.spanX = sX.toFloat()
                 item.spanY = sY.toFloat()
 

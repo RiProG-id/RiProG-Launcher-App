@@ -636,8 +636,15 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
             val horizontalPadding = dpToPx(HORIZONTAL_PADDING_DP)
 
             // 1. Calculate visual span (EXACT)
-            val spanX = (vBounds.width() / cellWidth).roundToInt().coerceAtLeast(1)
-            val spanY = (vBounds.height() / cellHeight).roundToInt().coerceAtLeast(1)
+            val sX: Int
+            val sY: Int
+            if (item.type == HomeItem.Type.WIDGET) {
+                sX = (vBounds.width() / cellWidth).roundToInt().coerceAtLeast(1)
+                sY = (vBounds.height() / cellHeight).roundToInt().coerceAtLeast(1)
+            } else {
+                sX = 1
+                sY = 1
+            }
 
             // Store FINAL visual offsets as single source of truth to lock position and prevent post-save shifts
             item.visualOffsetX = vBounds.centerX()
@@ -647,14 +654,14 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
             val visualCenterX = v.x + vBounds.centerX()
             val visualCenterY = v.y + vBounds.centerY()
 
-            var targetCol = ((visualCenterX - horizontalPadding - (cellWidth * spanX / 2f)) / cellWidth).roundToInt()
-            var targetRow = ((visualCenterY - (cellHeight * spanY / 2f)) / cellHeight).roundToInt()
+            var targetCol = ((visualCenterX - horizontalPadding - (cellWidth * sX / 2f)) / cellWidth).roundToInt()
+            var targetRow = ((visualCenterY - (cellHeight * sY / 2f)) / cellHeight).roundToInt()
 
-            targetCol = targetCol.coerceIn(0, settingsManager.columns - spanX)
-            targetRow = targetRow.coerceIn(0, GRID_ROWS - spanY)
+            targetCol = targetCol.coerceIn(0, settingsManager.columns - sX)
+            targetRow = targetRow.coerceIn(0, GRID_ROWS - sY)
 
             // 3. Apply SNAP RESULT and handle overlaps
-            applyNewGridLogic(item, v, targetCol, targetRow, spanX, spanY)
+            applyNewGridLogic(item, v, targetCol, targetRow, sX, sY)
 
             val pageChanged = item.page != item.originalPage
             if (pageChanged && context is MainActivity) {
