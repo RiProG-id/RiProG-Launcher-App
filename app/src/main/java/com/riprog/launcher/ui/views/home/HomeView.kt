@@ -262,6 +262,10 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
         updateViewPosition(item, view)
         view.tag = item
         page.addView(view)
+
+        // Synchronize visual state to avoid data drift/re-render loops
+        item.originalPage = item.page
+
         // Ensure last interaction / last placed item is on top (Z-order)
         view.bringToFront()
 

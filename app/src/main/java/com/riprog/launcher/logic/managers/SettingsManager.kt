@@ -217,15 +217,17 @@ class SettingsManager(context: Context) {
         item.page = obj.optInt("page", 0)
 
         // Recovery: ensure items are not placed on impossible pages/positions
-        if (item.page < 0) item.page = 0
-        if (item.col < -1) item.col = 0f
-        if (item.row < -1) item.row = 0f
+        item.page = item.page.coerceAtLeast(0)
+        item.col = item.col.coerceIn(-2f, columns.toFloat())
+        item.row = item.row.coerceIn(-2f, 10f) // HomeView.GRID_ROWS is 6
+        item.spanX = item.spanX.coerceIn(1f, columns.toFloat())
+        item.spanY = item.spanY.coerceIn(1f, 10f)
 
-        item.originalCol = obj.optDouble("originalCol", item.col.toDouble()).toFloat()
-        item.originalRow = obj.optDouble("originalRow", item.row.toDouble()).toFloat()
-        item.originalSpanX = obj.optDouble("originalSpanX", item.spanX.toDouble()).toFloat()
-        item.originalSpanY = obj.optDouble("originalSpanY", item.spanY.toDouble()).toFloat()
-        item.originalPage = obj.optInt("originalPage", item.page)
+        item.originalCol = obj.optDouble("originalCol", item.col.toDouble()).toFloat().coerceIn(-2f, columns.toFloat())
+        item.originalRow = obj.optDouble("originalRow", item.row.toDouble()).toFloat().coerceIn(-2f, 10f)
+        item.originalSpanX = obj.optDouble("originalSpanX", item.spanX.toDouble()).toFloat().coerceIn(1f, columns.toFloat())
+        item.originalSpanY = obj.optDouble("originalSpanY", item.spanY.toDouble()).toFloat().coerceIn(1f, 10f)
+        item.originalPage = obj.optInt("originalPage", item.page).coerceAtLeast(0)
 
         item.widgetId = obj.optInt("widgetId", -1)
         item.rotation = obj.optDouble("rotation", 0.0).toFloat()
