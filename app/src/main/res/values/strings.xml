@@ -37,9 +37,9 @@
     <string name="setting_darken_wallpaper">Dim Wallpaper</string>
     <string name="setting_darken_wallpaper_summary">Darken wallpaper in dark mode.</string>
     <string name="setting_freeform">Freeform Layout</string>
-    <string name="setting_freeform_summary">Move and scale icons freely.</string>
+    <string name="setting_freeform_summary">Position apps, folders, and widgets freely without grid constraints.</string>
     <string name="setting_hide_labels">Hide Labels</string>
-    <string name="setting_hide_labels_summary">Hide names on the home screen.</string>
+    <string name="setting_hide_labels_summary">Hide names for apps, folders, and widgets.</string>
 
     <string name="category_home">Home</string>
     <string name="category_appearance">Appearance</string>
