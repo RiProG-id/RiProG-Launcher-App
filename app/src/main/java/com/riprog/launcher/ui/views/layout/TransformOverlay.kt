@@ -162,32 +162,48 @@ class TransformOverlay(context: Context, private val targetView: View, private v
     private fun reset() {
         val activity = context as? MainActivity ?: return
 
-        targetView.rotation = 0f
-        targetView.scaleX = 1.0f
-        targetView.scaleY = 1.0f
-        targetView.rotationX = 0f
-        targetView.rotationY = 0f
+        if (item.type == HomeItem.Type.WIDGET) {
+            // Requirement 2: RESET BUTTON = FULL REMOVE + RE-ADD FLOW
+            val appWidgetManager = android.appwidget.AppWidgetManager.getInstance(context)
+            val info = appWidgetManager.getAppWidgetInfo(item.widgetId)
 
-        val pageChanged = item.page != item.originalPage
+            // 1. remove widget from data model and view
+            activity.removeHomeItem(item, targetView)
+            onSaveListener?.onCancel() // Close overlay
 
-        item.col = item.originalCol
-        item.row = item.originalRow
-        item.spanX = item.originalSpanX
-        item.spanY = item.originalSpanY
-        item.page = item.originalPage
-        item.rotation = 0f
-        item.scale = 1.0f
-        item.tiltX = 0f
-        item.tiltY = 0f
-
-        if (pageChanged) {
-            activity.homeView.removeItemView(item)
-            activity.renderHomeItem(item)
+            // 2. trigger add-to-home placement logic
+            if (info != null) {
+                // Using original spans to simulate "fresh add"
+                activity.spawnWidget(info, item.originalSpanX.toInt(), item.originalSpanY.toInt())
+            }
         } else {
-            activity.homeView.updateViewPosition(item, targetView)
-        }
+            // For non-widgets, keep existing reset logic
+            targetView.rotation = 0f
+            targetView.scaleX = 1.0f
+            targetView.scaleY = 1.0f
+            targetView.rotationX = 0f
+            targetView.rotationY = 0f
 
-        invalidate()
+            val pageChanged = item.page != item.originalPage
+
+            item.col = item.originalCol
+            item.row = item.originalRow
+            item.spanX = item.originalSpanX
+            item.spanY = item.originalSpanY
+            item.page = item.originalPage
+            item.rotation = 0f
+            item.scale = 1.0f
+            item.tiltX = 0f
+            item.tiltY = 0f
+
+            if (pageChanged) {
+                activity.homeView.removeItemView(item)
+                activity.renderHomeItem(item)
+            } else {
+                activity.homeView.updateViewPosition(item, targetView)
+            }
+            invalidate()
+        }
     }
 
     override fun onDraw(canvas: Canvas) {

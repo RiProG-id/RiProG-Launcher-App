@@ -45,6 +45,7 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
     val pageIndicator: PageIndicator
     val pages: MutableList<FrameLayout> = ArrayList()
     private val settingsManager: SettingsManager = SettingsManager(context)
+    private var wasFreeform: Boolean = settingsManager.isFreeformHome
     private var systemTopInset = 0
     private var systemBottomInset = 0
     var currentPage: Int = 0
@@ -607,6 +608,27 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
         val cellHeight = getCellHeight()
         val vBounds = WidgetSizingUtils.getVisualBounds(v)
 
+        if (item.type == HomeItem.Type.WIDGET) {
+            val visualWidth = vBounds.width()
+            val visualHeight = vBounds.height()
+            val sX = (visualWidth / cellWidth).roundToInt().coerceAtLeast(1).toFloat()
+            val sY = (visualHeight / cellHeight).roundToInt().coerceAtLeast(1).toFloat()
+
+            if (item.lastVisualWidth == visualWidth &&
+                item.lastVisualHeight == visualHeight &&
+                item.lastSpanX == sX &&
+                item.lastSpanY == sY
+            ) {
+                // Ignore save if no visual change
+                return false
+            }
+
+            item.lastVisualWidth = visualWidth
+            item.lastVisualHeight = visualHeight
+            item.lastSpanX = sX
+            item.lastSpanY = sY
+        }
+
         if (context is MainActivity) {
             val activity = context as MainActivity
             val midX = v.x + vBounds.centerX()
@@ -959,19 +981,44 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
 
     fun refreshLayout() {
         post {
+            val activity = context as? MainActivity
             val freeform = settingsManager.isFreeformHome
+            val transitionedToGrid = wasFreeform && !freeform
+            wasFreeform = freeform
+
             if (!freeform) {
+                val widgetsToReset = mutableListOf<Pair<HomeItem, View>>()
+
                 for (i in pages.indices) {
                     val page = pages[i]
                     for (j in 0 until page.childCount) {
                         val v = page.getChildAt(j)
                         val item = v.tag as HomeItem?
                         if (item != null) {
+                            if (transitionedToGrid && item.type == HomeItem.Type.WIDGET) {
+                                widgetsToReset.add(item to v)
+                                continue
+                            }
+
                             item.rotation = 0f
                             item.scale = 1.0f
                             item.tiltX = 0f
                             item.tiltY = 0f
                             updateViewPosition(item, v)
+                        }
+                    }
+                }
+
+                if (widgetsToReset.isNotEmpty() && activity != null) {
+                    val appWidgetManager = android.appwidget.AppWidgetManager.getInstance(context)
+                    for ((item, view) in widgetsToReset) {
+                        val info = appWidgetManager.getAppWidgetInfo(item.widgetId)
+                        val originalSpanX = item.originalSpanX.toInt()
+                        val originalSpanY = item.originalSpanY.toInt()
+
+                        activity.removeHomeItem(item, view)
+                        if (info != null) {
+                            activity.spawnWidget(info, originalSpanX, originalSpanY)
                         }
                     }
                 }

@@ -276,6 +276,28 @@ class FreeformController(
         val targetPage = homeView.resolvePageIndex(absX + transformingView!!.width / 2f)
         item.page = targetPage
 
+        if (item.type == HomeItem.Type.WIDGET) {
+            val vBounds = WidgetSizingUtils.getVisualBounds(transformingView!!)
+            val visualWidth = vBounds.width()
+            val visualHeight = vBounds.height()
+            val sX = (visualWidth / cellWidth).roundToInt().coerceAtLeast(1).toFloat()
+            val sY = (visualHeight / cellHeight).roundToInt().coerceAtLeast(1).toFloat()
+
+            if (item.lastVisualWidth == visualWidth &&
+                item.lastVisualHeight == visualHeight &&
+                item.lastSpanX == sX &&
+                item.lastSpanY == sY
+            ) {
+                // Ignore save if no visual change
+                return
+            }
+
+            item.lastVisualWidth = visualWidth
+            item.lastVisualHeight = visualHeight
+            item.lastSpanX = sX
+            item.lastSpanY = sY
+        }
+
         if (cellWidth > 0 && cellHeight > 0) {
             val density = activity.resources.displayMetrics.density
             val horizontalPadding = (HomeView.HORIZONTAL_PADDING_DP * density).toInt().toFloat()

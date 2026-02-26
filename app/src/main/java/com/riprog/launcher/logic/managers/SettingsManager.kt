@@ -137,6 +137,10 @@ class SettingsManager(context: Context) {
             obj.put("tiltY", item.tiltY.toDouble())
             obj.put("visualOffsetX", item.visualOffsetX.toDouble())
             obj.put("visualOffsetY", item.visualOffsetY.toDouble())
+            obj.put("lastVisualWidth", item.lastVisualWidth.toDouble())
+            obj.put("lastVisualHeight", item.lastVisualHeight.toDouble())
+            obj.put("lastSpanX", item.lastSpanX.toDouble())
+            obj.put("lastSpanY", item.lastSpanY.toDouble())
 
             if (item.folderItems.isNotEmpty()) {
                 val folderArray = JSONArray()
@@ -204,6 +208,10 @@ class SettingsManager(context: Context) {
         item.tiltY = obj.optDouble("tiltY", 0.0).toFloat()
         item.visualOffsetX = obj.optDouble("visualOffsetX", -1.0).toFloat()
         item.visualOffsetY = obj.optDouble("visualOffsetY", -1.0).toFloat()
+        item.lastVisualWidth = obj.optDouble("lastVisualWidth", -1.0).toFloat()
+        item.lastVisualHeight = obj.optDouble("lastVisualHeight", -1.0).toFloat()
+        item.lastSpanX = obj.optDouble("lastSpanX", -1.0).toFloat()
+        item.lastSpanY = obj.optDouble("lastSpanY", -1.0).toFloat()
 
         if (obj.has("folderItems")) {
             val folderArray = obj.getJSONArray("folderItems")

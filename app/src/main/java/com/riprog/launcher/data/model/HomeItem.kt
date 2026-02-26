@@ -44,6 +44,11 @@ class HomeItem {
     var visualOffsetX: Float = -1f
     var visualOffsetY: Float = -1f
 
+    var lastVisualWidth: Float = -1f
+    var lastVisualHeight: Float = -1f
+    var lastSpanX: Float = -1f
+    var lastSpanY: Float = -1f
+
     companion object {
 
         fun createApp(packageName: String, className: String, col: Float, row: Float, page: Int): HomeItem {
