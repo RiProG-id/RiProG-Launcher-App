@@ -8,22 +8,21 @@ import android.graphics.drawable.GradientDrawable
 import android.view.animation.LinearInterpolator
 
 class AcrylicReflectionDrawable(
-    private val baseDrawable: GradientDrawable,
     private val isNight: Boolean
-) : Drawable(), Animatable {
+) : GradientDrawable(), Animatable {
 
     private val reflectionPaint = Paint(Paint.ANTI_ALIAS_FLAG)
     private val matrix = Matrix()
 
     private var cornerRadius: Float = 0f
 
-    fun setCornerRadius(radius: Float) {
+    override fun setCornerRadius(radius: Float) {
+        super.setCornerRadius(radius)
         this.cornerRadius = radius
     }
 
     override fun onBoundsChange(bounds: Rect) {
         super.onBoundsChange(bounds)
-        baseDrawable.bounds = bounds
         updateShader(bounds)
     }
 
@@ -58,7 +57,7 @@ class AcrylicReflectionDrawable(
         if (bounds.isEmpty) return
 
         // 1. Draw base acrylic background
-        baseDrawable.draw(canvas)
+        super.draw(canvas)
 
         // 2. Draw static reflection highlight for surface depth
         val width = bounds.width().toFloat()
@@ -82,17 +81,14 @@ class AcrylicReflectionDrawable(
     }
 
     override fun setAlpha(alpha: Int) {
-        baseDrawable.alpha = alpha
+        super.setAlpha(alpha)
         reflectionPaint.alpha = alpha
     }
 
     override fun setColorFilter(colorFilter: ColorFilter?) {
-        baseDrawable.colorFilter = colorFilter
+        super.setColorFilter(colorFilter)
         reflectionPaint.colorFilter = colorFilter
     }
-
-    @Deprecated("Deprecated in Java", ReplaceWith("PixelFormat.TRANSLUCENT"))
-    override fun getOpacity(): Int = PixelFormat.TRANSLUCENT
 
     override fun setVisible(visible: Boolean, restart: Boolean): Boolean {
         return super.setVisible(visible, restart)

@@ -15,16 +15,13 @@ object AcrylicTheme : ThemeModule {
         val isNight = (context.resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) ==
                 Configuration.UI_MODE_NIGHT_YES
 
-        val gd = GradientDrawable()
+        val cornerRadiusPx = dpToPx(context, cornerRadiusDp).toFloat()
         val backgroundColor = context.getColor(R.color.background_acrylic)
 
-        val cornerRadiusPx = dpToPx(context, cornerRadiusDp).toFloat()
-        gd.setColor(backgroundColor)
-        gd.cornerRadius = cornerRadiusPx
-
-        gd.setStroke(dpToPx(context, 1.5f), context.getColor(R.color.acrylic_stroke))
-        val reflectionDrawable = AcrylicReflectionDrawable(gd, isNight)
-        reflectionDrawable.setCornerRadius(cornerRadiusPx)
+        val reflectionDrawable = AcrylicReflectionDrawable(isNight)
+        reflectionDrawable.setColor(backgroundColor)
+        reflectionDrawable.cornerRadius = cornerRadiusPx
+        reflectionDrawable.setStroke(dpToPx(context, 1.5f), context.getColor(R.color.acrylic_stroke))
         return reflectionDrawable
     }
 

@@ -5,7 +5,6 @@ import com.riprog.launcher.logic.managers.SettingsManager
 import com.riprog.launcher.logic.utils.WidgetSizingUtils
 import com.riprog.launcher.R
 
-import android.app.Activity
 import android.appwidget.AppWidgetManager
 import android.appwidget.AppWidgetProviderInfo
 import android.content.Context
@@ -18,6 +17,8 @@ import android.os.Bundle
 import android.util.TypedValue
 import android.view.*
 import android.widget.*
+import androidx.activity.ComponentActivity
+import androidx.activity.enableEdgeToEdge
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
@@ -26,23 +27,22 @@ import androidx.recyclerview.widget.RecyclerView
 import java.util.*
 import java.util.concurrent.Executors
 
-class WidgetPickerActivity : Activity() {
+class WidgetPickerActivity : ComponentActivity() {
 
     private lateinit var settingsManager: SettingsManager
     private lateinit var recyclerView: RecyclerView
     private lateinit var appWidgetManager: AppWidgetManager
     private val widgetPreviewExecutor = Executors.newFixedThreadPool(4)
 
-    @Suppress("DEPRECATION")
+
     override fun onCreate(savedInstanceState: Bundle?) {
+        enableEdgeToEdge()
         super.onCreate(savedInstanceState)
         settingsManager = SettingsManager(this)
         appWidgetManager = AppWidgetManager.getInstance(this)
 
         val w = window
         w.setFlags(WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS, WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS)
-        w.statusBarColor = Color.TRANSPARENT
-        w.navigationBarColor = Color.TRANSPARENT
         WindowCompat.setDecorFitsSystemWindows(w, false)
         ThemeUtils.applyWindowBlur(w, settingsManager.isAcrylic)
 
