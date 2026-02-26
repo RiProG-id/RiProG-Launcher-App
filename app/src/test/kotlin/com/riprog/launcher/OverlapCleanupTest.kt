@@ -16,54 +16,85 @@ class OverlapCleanupTest {
     private val columns = 4
 
     @Test
-    fun testNoAutoArrangeWhenDroppedOnOccupied() {
+    fun testSmallerMovesWhenDroppedOnLarge() {
         // Large item already at (0,0)
         val large = HomeItem.createApp("large", "cls", 0f, 0f, 0)
         large.spanX = 2f
         large.spanY = 2f
 
-        // Small item dropped at (1,1)
+        // Small item dropped at (1,1). Overlaps large.
         val small = HomeItem.createApp("small", "cls", 1f, 1f, 0)
         small.spanX = 1f
         small.spanY = 1f
 
-        // Simulating the new logic: drop small on large
-        // Should NOT move anything.
+        // Simulating Case 1: small is smaller -> small moves
         if (intersects(small, large)) {
-            // In the new logic, applyNewGridLogic does NOTHING but set the intended coordinates
-            small.col = 1f
-            small.row = 1f
+            val nearest = findNearestEmptyArea(0, 1, 1, 1, 1, listOf(large))
+            if (nearest != null) {
+                small.col = nearest.first.toFloat()
+                small.row = nearest.second.toFloat()
+            }
         }
 
         assertEquals(0f, large.col)
         assertEquals(0f, large.row)
-        assertEquals(1f, small.col)
-        assertEquals(1f, small.row)
+        assertTrue("Small item should have moved from (1,1)", small.col != 1f || small.row != 1f)
     }
 
     @Test
-    fun testNoSecondaryRepositionWhenLargeDroppedOnSmall() {
+    fun testSmallerMovesWhenLargeDroppedOnSmall() {
         // Small item already at (1,1)
         val small = HomeItem.createApp("small", "cls", 1f, 1f, 0)
         small.spanX = 1f
         small.spanY = 1f
 
-        // Large item dropped at (0,0)
+        // Large item dropped at (0,0). Overlaps small.
         val large = HomeItem.createApp("large", "cls", 0f, 0f, 0)
         large.spanX = 2f
         large.spanY = 2f
 
-        // Simulating the new logic: drop large on small
-        // Should NOT move anything.
+        // Simulating Case 1: small is smaller -> small moves
         if (intersects(large, small)) {
-            large.col = 0f
-            large.row = 0f
+            val nearest = findNearestEmptyArea(0, 1, 1, 1, 1, listOf(large))
+            if (nearest != null) {
+                small.col = nearest.first.toFloat()
+                small.row = nearest.second.toFloat()
+            }
         }
 
-        assertEquals(1f, small.col)
-        assertEquals(1f, small.row)
         assertEquals(0f, large.col)
         assertEquals(0f, large.row)
+        assertTrue("Small item should have moved from (1,1)", small.col != 1f || small.row != 1f)
+    }
+
+    @Test
+    fun testSwapWhenSameSize() {
+        // Item A at (0,0)
+        val itemA = HomeItem.createApp("A", "cls", 0f, 0f, 0)
+        itemA.spanX = 1f
+        itemA.spanY = 1f
+
+        // Item B dropped at (0,0) from elsewhere
+        val itemB = HomeItem.createApp("B", "cls", 2f, 2f, 0) // was at (2,2)
+        itemB.spanX = 1f
+        itemB.spanY = 1f
+        val targetBCol = 0f
+        val targetBRow = 0f
+
+        // Simulating Case 2: same size -> swap
+        if (targetBCol == itemA.col && targetBRow == itemA.row) {
+            val oldBCol = itemB.col
+            val oldBRow = itemB.row
+            itemB.col = targetBCol
+            itemB.row = targetBRow
+            itemA.col = oldBCol
+            itemA.row = oldBRow
+        }
+
+        assertEquals(0f, itemB.col)
+        assertEquals(0f, itemB.row)
+        assertEquals(2f, itemA.col)
+        assertEquals(2f, itemA.row)
     }
 
     private fun intersects(item1: HomeItem, item2: HomeItem): Boolean {

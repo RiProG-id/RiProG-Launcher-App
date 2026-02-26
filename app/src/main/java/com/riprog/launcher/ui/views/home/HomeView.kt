@@ -258,6 +258,8 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
         updateViewPosition(item, view)
         view.tag = item
         page.addView(view)
+        // Ensure last interaction / last placed item is on top (Z-order)
+        view.bringToFront()
 
         // Initial add flow for all items in Non-Freeform mode:
         // Wait until rendered, then detect actual visual span and lock position.
@@ -595,17 +597,12 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
                     val child = targetPageLayout.getChildAt(i)
                     if (child === v) continue
 
-                    val cBounds = WidgetSizingUtils.getVisualBounds(child)
-                    val cx = child.x + cBounds.left
-                    val cy = child.y + cBounds.top
-                    val cw = cBounds.width()
-                    val ch = cBounds.height()
-
-                    if (midX >= cx && midX <= cx + cw &&
-                        midY >= cy && midY <= cy + ch
-                    ) {
-                        otherView = child
-                        break
+                    val otherItem = child.tag as? HomeItem
+                    if (otherItem != null) {
+                        if (areOverlappingVisually(item, v, otherItem, child)) {
+                            otherView = child
+                            break
+                        }
                     }
                 }
             }
@@ -693,9 +690,14 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
         return false
     }
 
-    private fun getVisualArea(item: HomeItem, view: View): Float {
-        val bounds = WidgetSizingUtils.getVisualBounds(view)
-        return bounds.width() * bounds.height()
+    private fun getVisualArea(item: HomeItem, view: View?): Float {
+        if (view != null) {
+            val bounds = WidgetSizingUtils.getVisualBounds(view)
+            return bounds.width() * bounds.height()
+        }
+        val cw = getCellWidth()
+        val ch = getCellHeight()
+        return (item.spanX * cw) * (item.spanY * ch)
     }
 
     private fun getAbsoluteVisualBounds(item: HomeItem, view: View): RectF {
@@ -724,16 +726,86 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
         return RectF.intersects(b1, b2)
     }
 
-    private fun applyNewGridLogic(droppedItem: HomeItem, droppedView: View, targetCol: Int, targetRow: Int, spanX: Int, spanY: Int) {
-        // Apply final grid position and span exactly.
-        // As per requirements for Non-Freeform mode:
-        // - Alignment must be symmetric (handled by getSnapPosition)
-        // - Final position must be locked after placement.
-        // - Do NOT apply auto arrange or secondary reposition logic.
+    fun applyNewGridLogic(droppedItem: HomeItem, droppedView: View, targetCol: Int, targetRow: Int, spanX: Int, spanY: Int) {
+        val activity = context as? MainActivity ?: return
+
+        val oldCol = droppedItem.col
+        val oldRow = droppedItem.row
+        val oldPage = droppedItem.page
+        val oldSpanX = droppedItem.spanX
+        val oldSpanY = droppedItem.spanY
+
+        // Temporarily set dropped item at target position to check for overlaps
         droppedItem.col = targetCol.toFloat()
         droppedItem.row = targetRow.toFloat()
         droppedItem.spanX = spanX.toFloat()
         droppedItem.spanY = spanY.toFloat()
+
+        val droppedArea = getVisualArea(droppedItem, droppedView)
+
+        // Items on the same page, excluding the one we just dropped
+        val pageItems = activity.homeItems.filter { it.page == droppedItem.page && it !== droppedItem }
+
+        // Detect all visual overlaps
+        val overlaps = pageItems.filter { other ->
+            val otherView = findViewForItem(other)
+            if (otherView != null) {
+                areOverlappingVisually(droppedItem, droppedView, other, otherView)
+            } else {
+                intersects(droppedItem, other)
+            }
+        }
+
+        if (overlaps.isNotEmpty()) {
+            val firstOther = overlaps[0]
+            val otherArea = getVisualArea(firstOther, findViewForItem(firstOther))
+
+            if (overlaps.size == 1 && kotlin.math.abs(droppedArea - otherArea) < 0.1f) {
+                // CASE 2: Same size -> Swap
+                if (oldPage == droppedItem.page && oldCol >= 0 && oldRow >= 0) {
+                    firstOther.col = oldCol
+                    firstOther.row = oldRow
+                    firstOther.spanX = oldSpanX
+                    firstOther.spanY = oldSpanY
+                    // Re-capture offsets for center locking
+                    val otherView = findViewForItem(firstOther)
+                    if (otherView != null) {
+                        val vBounds = WidgetSizingUtils.getVisualBounds(otherView)
+                        firstOther.visualOffsetX = vBounds.centerX()
+                        firstOther.visualOffsetY = vBounds.centerY()
+                    }
+                    updateItemView(firstOther)
+                } else {
+                    moveItemToNearestEmpty(firstOther, activity.homeItems)
+                }
+            } else {
+                // CASE 1: Different sizes or multiple overlaps
+                val existsLarger = overlaps.any { getVisualArea(it, findViewForItem(it)) > droppedArea + 0.1f }
+
+                if (existsLarger) {
+                    // droppedItem is smaller than at least one item it overlaps -> droppedItem moves
+                    val nearest = findNearestEmptyArea(droppedItem.page, spanX, spanY, targetCol, targetRow, pageItems)
+                    if (nearest != null) {
+                        droppedItem.col = nearest.first.toFloat()
+                        droppedItem.row = nearest.second.toFloat()
+                    }
+                } else {
+                    // droppedItem is larger than all items it overlaps -> all overlapping items move
+                    for (other in overlaps) {
+                        moveItemToNearestEmpty(other, activity.homeItems)
+                    }
+                }
+            }
+        }
+    }
+
+    private fun moveItemToNearestEmpty(item: HomeItem, allItems: List<HomeItem>) {
+        val nearest = findNearestEmptyArea(item.page, item.spanX.roundToInt(), item.spanY.roundToInt(), item.col.roundToInt(), item.row.roundToInt(), allItems.filter { it !== item })
+        if (nearest != null) {
+            item.col = nearest.first.toFloat()
+            item.row = nearest.second.toFloat()
+            updateItemView(item)
+        }
     }
 
     private fun intersects(item1: HomeItem, item2: HomeItem): Boolean {

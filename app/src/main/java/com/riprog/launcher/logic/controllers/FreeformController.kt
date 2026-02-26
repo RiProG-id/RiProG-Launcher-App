@@ -235,9 +235,8 @@ class FreeformController(
             val newCol = max(0, min(preferences.columns - sX, ((relativeX + vBounds.centerX() - horizontalPadding - (cellWidth * sX / 2f)) / cellWidth).roundToInt()))
             val newRow = max(0, min(HomeView.GRID_ROWS - sY, ((relativeY + vBounds.centerY() - (cellHeight * sY / 2f)) / cellHeight).roundToInt()))
 
-            item.col = newCol.toFloat()
-            item.row = newRow.toFloat()
             item.page = targetPage
+            homeView.applyNewGridLogic(item, v, newCol, newRow, sX, sY)
             item.rotation = 0f
             item.scale = 1.0f
             item.tiltX = 0f
@@ -352,8 +351,10 @@ class FreeformController(
                 item.visualOffsetX = vBounds.centerX()
                 item.visualOffsetY = vBounds.centerY()
 
-                item.col = max(0, min(preferences.columns - sX, ((relativeX + vBounds.centerX() - horizontalPadding - (cellWidth * sX / 2f)) / cellWidth).roundToInt())).toFloat()
-                item.row = max(0, min(HomeView.GRID_ROWS - sY, ((relativeY + vBounds.centerY() - (cellHeight * sY / 2f)) / cellHeight).roundToInt())).toFloat()
+                val targetCol = max(0, min(preferences.columns - sX, ((relativeX + vBounds.centerX() - horizontalPadding - (cellWidth * sX / 2f)) / cellWidth).roundToInt()))
+                val targetRow = max(0, min(HomeView.GRID_ROWS - sY, ((relativeY + vBounds.centerY() - (cellHeight * sY / 2f)) / cellHeight).roundToInt()))
+
+                homeView.applyNewGridLogic(item, transformingView!!, targetCol, targetRow, sX, sY)
 
                 item.rotation = 0f
                 item.scale = 1.0f
