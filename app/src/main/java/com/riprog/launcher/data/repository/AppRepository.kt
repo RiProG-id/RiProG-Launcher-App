@@ -13,6 +13,8 @@ import android.graphics.drawable.Drawable
 import android.os.Handler
 import android.os.Looper
 import android.util.LruCache
+import org.json.JSONArray
+import org.json.JSONObject
 import java.util.*
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
@@ -27,15 +29,21 @@ class AppRepository(context: Context) {
     private val executor: ExecutorService = Executors.newSingleThreadExecutor()
     private val mainHandler = Handler(Looper.getMainLooper())
     private val iconCache: LruCache<String, Bitmap>
+    private val diskCache: DiskCacheManager = DiskCacheManager(context)
     private val pendingListeners: MutableMap<String, MutableList<OnIconLoadedListener>> = HashMap()
 
     init {
         val maxMemory = (Runtime.getRuntime().maxMemory() / 1024).toInt()
-        val cacheSize = Math.min(24 * 1024, maxMemory / 10)
+        // Reduced RAM footprint: from 24MB to 8MB max, or 1/20th of RAM
+        val cacheSize = Math.min(8 * 1024, maxMemory / 20)
         iconCache = object : LruCache<String, Bitmap>(cacheSize) {
             override fun sizeOf(key: String, bitmap: Bitmap): Int {
                 return bitmap.byteCount / 1024
             }
+        }
+
+        executor.execute {
+            diskCache.performCleanup()
         }
     }
 
@@ -55,8 +63,22 @@ class AppRepository(context: Context) {
         executor.shutdown()
     }
 
+    /**
+     * Intelligent Load: Returns cached app list immediately if available,
+     * then refreshes from PackageManager in background.
+     */
     fun loadApps(listener: OnAppsLoadedListener) {
+        // 1. Try to load from disk cache first for instant UI response
         executor.execute {
+            val cachedJson = diskCache.getData("app_list")
+            if (cachedJson != null) {
+                val cachedApps = deserializeApps(cachedJson)
+                if (cachedApps.isNotEmpty()) {
+                    mainHandler.post { listener.onAppsLoaded(cachedApps) }
+                }
+            }
+
+            // 2. Query PackageManager for source of truth
             val mainIntent = Intent(Intent.ACTION_MAIN, null)
             mainIntent.addCategory(Intent.CATEGORY_LAUNCHER)
             val infos = pm.queryIntentActivities(mainIntent, 0)
@@ -77,7 +99,11 @@ class AppRepository(context: Context) {
 
             apps.sortWith { a, b -> a.label.compareTo(b.label, ignoreCase = true) }
 
-            mainHandler.post { listener.onAppsLoaded(apps) }
+            val newJson = serializeApps(apps)
+            if (newJson != cachedJson) {
+                diskCache.saveData("app_list", newJson)
+                mainHandler.post { listener.onAppsLoaded(apps) }
+            }
         }
     }
 
@@ -101,14 +127,22 @@ class AppRepository(context: Context) {
         }
 
         executor.execute {
-            var bitmap: Bitmap? = null
-            try {
-                val drawable = pm.getApplicationIcon(item.packageName)
-                bitmap = drawableToBitmap(drawable)
-                if (bitmap != null) {
-                    iconCache.put(item.packageName, bitmap)
+            // Hybrid Cache: Check disk before querying PackageManager
+            var bitmap = diskCache.getBitmap(item.packageName)
+
+            if (bitmap == null) {
+                try {
+                    val drawable = pm.getApplicationIcon(item.packageName)
+                    bitmap = drawableToBitmap(drawable)
+                    if (bitmap != null) {
+                        diskCache.saveBitmap(item.packageName, bitmap)
+                    }
+                } catch (ignored: PackageManager.NameNotFoundException) {
                 }
-            } catch (ignored: PackageManager.NameNotFoundException) {
+            }
+
+            if (bitmap != null) {
+                iconCache.put(item.packageName, bitmap)
             }
 
             val finalBitmap = bitmap
@@ -124,6 +158,41 @@ class AppRepository(context: Context) {
                 }
             }
         }
+    }
+
+    fun invalidateIcon(packageName: String) {
+        iconCache.remove(packageName)
+        executor.execute {
+            diskCache.removeBitmap(packageName)
+        }
+    }
+
+    private fun serializeApps(apps: List<AppItem>): String {
+        val array = JSONArray()
+        for (app in apps) {
+            val obj = JSONObject()
+            obj.put("label", app.label)
+            obj.put("packageName", app.packageName)
+            obj.put("className", app.className)
+            array.put(obj)
+        }
+        return array.toString()
+    }
+
+    private fun deserializeApps(json: String): List<AppItem> {
+        val apps = mutableListOf<AppItem>()
+        try {
+            val array = JSONArray(json)
+            for (i in 0 until array.length()) {
+                val obj = array.getJSONObject(i)
+                apps.add(AppItem(
+                    obj.getString("label"),
+                    obj.getString("packageName"),
+                    obj.getString("className")
+                ))
+            }
+        } catch (ignored: Exception) {}
+        return apps
     }
 
     private fun drawableToBitmap(drawable: Drawable?): Bitmap? {

@@ -941,6 +941,11 @@ class MainActivity : Activity() {
 
     private inner class AppInstallReceiver : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
+            val packageName = intent.data?.schemeSpecificPart
+            if (packageName != null) {
+                // Intelligent Invalidation: only clear affected app's cache
+                model.invalidateIcon(packageName)
+            }
             loadApps()
         }
     }
