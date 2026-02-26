@@ -44,7 +44,14 @@
     <string name="category_home">Home Screen</string>
     <string name="category_appearance">Appearance</string>
     <string name="category_about">About</string>
+    <string name="category_emergency">Emergency</string>
     <string name="search_hint">Search apps&#8230;</string>
+
+    <string name="setting_force_restart">Force Restart</string>
+    <string name="setting_force_restart_summary">Force stop launcher process then relaunch launcher.</string>
+    <string name="setting_erase_data">Erase Data</string>
+    <string name="setting_erase_data_summary">Clear all launcher data (preferences, database, cache), then force stop and relaunch launcher.</string>
+    <string name="toast_triple_tap_confirm">Tap quickly 3x to confirm</string>
 
     <string name="prompt_default_launcher_title">Set Default Launcher</string>
     <string name="prompt_default_launcher_message">RiProG Launcher works best when set as your primary home application.</string>

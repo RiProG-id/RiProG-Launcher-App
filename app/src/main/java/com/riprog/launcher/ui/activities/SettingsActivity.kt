@@ -7,7 +7,9 @@ import com.riprog.launcher.ui.views.layout.AutoDimmingBackground
 import com.riprog.launcher.R
 
 import android.app.Activity
+import android.app.ActivityManager
 import android.content.Context
+import android.content.Intent
 import android.graphics.Color
 import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
@@ -115,20 +117,28 @@ class SettingsActivity : Activity() {
         items.add(SettingItem(SettingType.TITLE))
 
         items.add(SettingItem(SettingType.CATEGORY, titleString = getString(R.string.category_home), iconRes = R.drawable.ic_layout))
-        items.add(SettingItem(SettingType.TOGGLE, titleRes = R.string.setting_freeform, summaryRes = R.string.setting_freeform_summary, isChecked = settingsManager.isFreeformHome) {
+        items.add(SettingItem(SettingType.TOGGLE, titleRes = R.string.setting_freeform, summaryRes = R.string.setting_freeform_summary, isChecked = settingsManager.isFreeformHome, onToggle = {
             settingsManager.isFreeformHome = it
-        })
-        items.add(SettingItem(SettingType.TOGGLE, titleRes = R.string.setting_hide_labels, summaryRes = R.string.setting_hide_labels_summary, isChecked = settingsManager.isHideLabels) {
+        }))
+        items.add(SettingItem(SettingType.TOGGLE, titleRes = R.string.setting_hide_labels, summaryRes = R.string.setting_hide_labels_summary, isChecked = settingsManager.isHideLabels, onToggle = {
             settingsManager.isHideLabels = it
-        })
+        }))
 
         items.add(SettingItem(SettingType.CATEGORY, titleString = getString(R.string.category_appearance), iconRes = R.drawable.ic_wallpaper))
         items.add(SettingItem(SettingType.THEME))
         items.add(SettingItem(SettingType.STYLE))
-        items.add(SettingItem(SettingType.TOGGLE, titleRes = R.string.setting_darken_wallpaper, summaryRes = R.string.setting_darken_wallpaper_summary, isChecked = settingsManager.isDarkenWallpaper) {
+        items.add(SettingItem(SettingType.TOGGLE, titleRes = R.string.setting_darken_wallpaper, summaryRes = R.string.setting_darken_wallpaper_summary, isChecked = settingsManager.isDarkenWallpaper, onToggle = {
             settingsManager.isDarkenWallpaper = it
             autoDimmingBackground?.updateDimVisibility()
-        })
+        }))
+
+        items.add(SettingItem(SettingType.CATEGORY, titleString = getString(R.string.category_emergency), iconRes = R.drawable.ic_emergency))
+        items.add(SettingItem(SettingType.ACTION, titleRes = R.string.setting_force_restart, summaryRes = R.string.setting_force_restart_summary, onClick = {
+            forceRestart()
+        }))
+        items.add(SettingItem(SettingType.ACTION, titleRes = R.string.setting_erase_data, summaryRes = R.string.setting_erase_data_summary, onClick = {
+            eraseData()
+        }))
 
         items.add(SettingItem(SettingType.CATEGORY, titleString = getString(R.string.category_about), iconRes = R.drawable.ic_info))
         items.add(SettingItem(SettingType.ABOUT))
@@ -137,7 +147,7 @@ class SettingsActivity : Activity() {
     }
 
     private enum class SettingType {
-        TITLE, CATEGORY, TOGGLE, THEME, STYLE, ABOUT
+        TITLE, CATEGORY, TOGGLE, THEME, STYLE, ABOUT, ACTION
     }
 
     private data class SettingItem(
@@ -146,8 +156,10 @@ class SettingsActivity : Activity() {
         val summaryRes: Int = 0,
         val iconRes: Int = 0,
         val titleString: String? = null,
+        val summaryString: String? = null,
         var isChecked: Boolean = false,
-        val onToggle: ((Boolean) -> Unit)? = null
+        val onToggle: ((Boolean) -> Unit)? = null,
+        val onClick: (() -> Unit)? = null
     )
 
     private inner class SettingsAdapter(val items: List<SettingItem>) : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
@@ -248,6 +260,33 @@ class SettingsActivity : Activity() {
                     aboutContent.textSize = 14f
                     aboutContent.setPadding(0, 0, 0, dpToPx(32))
                     SimpleViewHolder(aboutContent)
+                }
+                SettingType.ACTION -> {
+                    val item = LinearLayout(context)
+                    item.orientation = LinearLayout.HORIZONTAL
+                    item.gravity = Gravity.CENTER_VERTICAL
+                    item.setPadding(dpToPx(16), dpToPx(16), dpToPx(16), dpToPx(16))
+                    ThemeManager.applySettingItemStyle(context as Activity, item, settingsManager)
+
+                    val textLayout = LinearLayout(context)
+                    textLayout.orientation = LinearLayout.VERTICAL
+                    val textParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
+                    item.addView(textLayout, textParams)
+
+                    val titleView = TextView(context)
+                    titleView.textSize = 18f
+                    titleView.setTextColor(adaptiveColor)
+                    textLayout.addView(titleView)
+
+                    val summaryView = TextView(context)
+                    summaryView.textSize = 14f
+                    summaryView.setTextColor(context.getColor(R.color.foreground_dim))
+                    textLayout.addView(summaryView)
+
+                    val lp = RecyclerView.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+                    lp.bottomMargin = dpToPx(8)
+                    item.layoutParams = lp
+                    ActionViewHolder(item, titleView, summaryView)
                 }
             }
         }
@@ -362,6 +401,28 @@ class SettingsActivity : Activity() {
                     Linkify.addLinks(tv, Linkify.WEB_URLS)
                     tv.movementMethod = LinkMovementMethod.getInstance()
                 }
+                SettingType.ACTION -> {
+                    val h = holder as ActionViewHolder
+                    if (item.titleRes != 0) h.title.setText(item.titleRes) else h.title.text = item.titleString
+                    if (item.summaryRes != 0) h.summary.setText(item.summaryRes) else h.summary.text = item.summaryString
+
+                    h.itemView.setOnClickListener {
+                        val currentTime = System.currentTimeMillis()
+                        if (currentTime - h.lastTapTime > 500) {
+                            h.tapCount = 1
+                        } else {
+                            h.tapCount++
+                        }
+                        h.lastTapTime = currentTime
+
+                        if (h.tapCount == 1) {
+                            Toast.makeText(this@SettingsActivity, R.string.toast_triple_tap_confirm, Toast.LENGTH_SHORT).show()
+                        } else if (h.tapCount == 3) {
+                            h.tapCount = 0
+                            item.onClick?.invoke()
+                        }
+                    }
+                }
                 else -> {}
             }
         }
@@ -370,6 +431,23 @@ class SettingsActivity : Activity() {
     private class SimpleViewHolder(view: View) : RecyclerView.ViewHolder(view)
     private class ToggleViewHolder(view: View, val title: TextView, val summary: TextView, val toggle: Switch) : RecyclerView.ViewHolder(view)
     private class ThemeViewHolder(view: View, val options: LinearLayout) : RecyclerView.ViewHolder(view)
+    private class ActionViewHolder(view: View, val title: TextView, val summary: TextView) : RecyclerView.ViewHolder(view) {
+        var tapCount = 0
+        var lastTapTime = 0L
+    }
+
+    private fun forceRestart() {
+        val pm = packageManager
+        val intent = pm.getLaunchIntentForPackage(packageName)
+        val mainIntent = Intent.makeRestartActivityTask(intent?.component)
+        startActivity(mainIntent)
+        Runtime.getRuntime().exit(0)
+    }
+
+    private fun eraseData() {
+        val am = getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
+        am.clearApplicationUserData()
+    }
 
     private fun dpToPx(dp: Int): Int {
         return TypedValue.applyDimension(
