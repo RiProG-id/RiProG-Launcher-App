@@ -130,6 +130,9 @@ class TransformOverlay(context: Context, private val targetView: View, private v
         container.background = ThemeUtils.getThemedSurface(context, settingsManager, 12f)
 
         addButton(container, R.string.action_remove, adaptiveColor) { onSaveListener?.onRemove() }
+        if (settingsManager.isFreeformHome) {
+            addButton(container, R.string.action_reset, adaptiveColor) { reset() }
+        }
         addButton(container, R.string.action_save, adaptiveColor) { onSaveListener?.onSave() }
 
         if (item.type == HomeItem.Type.APP) {
@@ -156,6 +159,37 @@ class TransformOverlay(context: Context, private val targetView: View, private v
         btn.setOnClickListener(listener)
         val lp = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1.0f)
         parent.addView(btn, lp)
+    }
+
+    private fun reset() {
+        val activity = context as? MainActivity ?: return
+
+        targetView.rotation = 0f
+        targetView.scaleX = 1.0f
+        targetView.scaleY = 1.0f
+        targetView.rotationX = 0f
+        targetView.rotationY = 0f
+
+        val pageChanged = item.page != item.originalPage
+
+        item.col = item.originalCol
+        item.row = item.originalRow
+        item.spanX = item.originalSpanX
+        item.spanY = item.originalSpanY
+        item.page = item.originalPage
+        item.rotation = 0f
+        item.scale = 1.0f
+        item.tiltX = 0f
+        item.tiltY = 0f
+
+        if (pageChanged) {
+            activity.homeView.removeItemView(item)
+            activity.renderHomeItem(item)
+        } else {
+            activity.homeView.updateViewPosition(item, targetView)
+        }
+
+        invalidate()
     }
 
 
