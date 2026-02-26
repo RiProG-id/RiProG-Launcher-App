@@ -225,6 +225,10 @@ class MainActivity : Activity() {
     }
 
     private fun setupDefaultHome() {
+        // Minimal valid layout: A clock on the first page
+        val clock = HomeItem.createClock(1f, 1f, 2, 2, 0)
+        homeItems.add(clock)
+        renderHomeItem(clock)
         saveHomeState()
     }
 
@@ -440,6 +444,73 @@ class MainActivity : Activity() {
             this.allApps = apps
             drawerView.setApps(apps, model)
             homeView.refreshIcons(model, apps)
+            cleanupHomeItems()
+        }
+    }
+
+    private fun cleanupHomeItems() {
+        val pm = packageManager
+        val awm = AppWidgetManager.getInstance(this)
+        val iterator = homeItems.iterator()
+        var changed = false
+
+        while (iterator.hasNext()) {
+            val item = iterator.next()
+            var shouldRemove = false
+
+            when (item.type) {
+                HomeItem.Type.APP -> {
+                    if (item.packageName == null) {
+                        shouldRemove = true
+                    } else {
+                        try {
+                            pm.getApplicationInfo(item.packageName!!, 0)
+                        } catch (e: Exception) {
+                            shouldRemove = true
+                        }
+                    }
+                }
+                HomeItem.Type.WIDGET -> {
+                    val info = if (item.widgetId != -1) awm.getAppWidgetInfo(item.widgetId) else null
+                    if (info == null) {
+                        shouldRemove = true
+                    }
+                }
+                HomeItem.Type.FOLDER -> {
+                    val folderIterator = item.folderItems.iterator()
+                    while (folderIterator.hasNext()) {
+                        val subItem = folderIterator.next()
+                        if (subItem.type == HomeItem.Type.APP) {
+                            if (subItem.packageName == null) {
+                                folderIterator.remove()
+                                changed = true
+                            } else {
+                                try {
+                                    pm.getApplicationInfo(subItem.packageName!!, 0)
+                                } catch (e: Exception) {
+                                    folderIterator.remove()
+                                    changed = true
+                                }
+                            }
+                        }
+                    }
+                    if (item.folderItems.isEmpty()) {
+                        shouldRemove = true
+                    }
+                }
+                else -> {}
+            }
+
+            if (shouldRemove) {
+                homeView.removeItemView(item)
+                iterator.remove()
+                changed = true
+            }
+        }
+
+        if (changed) {
+            saveHomeState()
+            homeView.refreshLayout()
         }
     }
 
@@ -486,6 +557,7 @@ class MainActivity : Activity() {
     override fun onStop() {
         super.onStop()
         appWidgetHost.stopListening()
+        saveHomeState()
     }
 
     override fun onDestroy() {

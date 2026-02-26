@@ -14,9 +14,9 @@ class SettingsManager(context: Context) {
     init {
         if (!prefs.contains(KEY_FIRST_RUN)) {
             prefs.edit().apply {
-                putString(KEY_THEME_MODE, "system")
-                putBoolean(KEY_LIQUID_GLASS, false)
-                putBoolean(KEY_DARKEN_WALLPAPER, false)
+                putString(KEY_THEME_MODE, "light")
+                putBoolean(KEY_LIQUID_GLASS, true)
+                putBoolean(KEY_DARKEN_WALLPAPER, true)
                 putBoolean(KEY_FREEFORM_HOME, false)
                 putBoolean(KEY_HIDE_LABELS, false)
                 putBoolean(KEY_FIRST_RUN, true)
@@ -29,12 +29,6 @@ class SettingsManager(context: Context) {
         get() = prefs.getInt(KEY_COLUMNS, 4)
         set(columns) {
             prefs.edit().putInt(KEY_COLUMNS, columns).apply()
-        }
-
-    var widgetId: Int
-        get() = prefs.getInt(KEY_WIDGET_ID, -1)
-        set(widgetId) {
-            prefs.edit().putInt(KEY_WIDGET_ID, widgetId).apply()
         }
 
     var isFreeformHome: Boolean
@@ -106,16 +100,26 @@ class SettingsManager(context: Context) {
     }
 
     fun saveHomeItems(items: List<HomeItem>) {
-        val array = JSONArray()
-        for (item in items) {
-            array.put(serializeItem(item))
+        try {
+            val array = JSONArray()
+            for (item in items) {
+                array.put(serializeItem(item))
+            }
+            val json = array.toString()
+            if (json.isNotEmpty() && json != "[]") {
+                prefs.edit().putString(KEY_HOME_ITEMS, json).apply()
+            } else if (items.isEmpty()) {
+                prefs.edit().putString(KEY_HOME_ITEMS, "[]").apply()
+            }
+        } catch (e: Exception) {
+            // Prevent partial save if serialization fails
         }
-        prefs.edit().putString(KEY_HOME_ITEMS, array.toString()).apply()
     }
 
     private fun serializeItem(item: HomeItem): JSONObject {
         val obj = JSONObject()
         try {
+            if (item.type == null) return obj
             obj.put("type", item.type?.name)
             obj.put("packageName", item.packageName)
             obj.put("className", item.className)
@@ -141,11 +145,14 @@ class SettingsManager(context: Context) {
             if (item.folderItems.isNotEmpty()) {
                 val folderArray = JSONArray()
                 for (subItem in item.folderItems) {
-                    folderArray.put(serializeItem(subItem))
+                    val serializedSub = serializeItem(subItem)
+                    if (serializedSub.has("type")) {
+                        folderArray.put(serializedSub)
+                    }
                 }
                 obj.put("folderItems", folderArray)
             }
-        } catch (ignored: JSONException) {
+        } catch (ignored: Exception) {
         }
         return obj
     }
@@ -153,13 +160,22 @@ class SettingsManager(context: Context) {
     fun getHomeItems(): MutableList<HomeItem> {
         val items: MutableList<HomeItem> = ArrayList()
         val json = prefs.getString(KEY_HOME_ITEMS, null) ?: return items
+        if (json.isEmpty() || json == "[]") return items
+
         try {
             val array = JSONArray(json)
+            val tempItems = ArrayList<HomeItem>()
             for (i in 0 until array.length()) {
                 val item = deserializeItem(array.getJSONObject(i))
-                if (item != null) items.add(item)
+                if (item != null) {
+                    tempItems.add(item)
+                } else {
+                    // Critical failure in one item, but we should try to recover others
+                }
             }
-        } catch (ignored: Exception) {
+            items.addAll(tempItems)
+        } catch (e: Exception) {
+            // Return empty list only if the entire JSON is corrupt
         }
         return items
     }
@@ -172,9 +188,10 @@ class SettingsManager(context: Context) {
         } catch (e: Exception) {
             return null
         }
-        item.packageName = if (obj.has("packageName")) obj.optString("packageName") else null
-        item.className = if (obj.has("className")) obj.optString("className") else null
-        item.folderName = if (obj.has("folderName")) obj.optString("folderName") else null
+        item.packageName = if (obj.has("packageName")) obj.getString("packageName") else null
+        item.className = if (obj.has("className")) obj.getString("className") else null
+        item.folderName = if (obj.has("folderName")) obj.getString("folderName") else null
+
         if (obj.has("col")) {
             item.col = obj.optDouble("col", 0.0).toFloat()
         } else {
@@ -185,11 +202,17 @@ class SettingsManager(context: Context) {
         } else {
             item.row = (obj.optDouble("y", 0.0) / 100.0).toFloat()
         }
+
         item.spanX = obj.optDouble("spanX", (obj.optInt("width", 100) / 100).toDouble()).toFloat()
         item.spanY = obj.optDouble("spanY", (obj.optInt("height", 100) / 100).toDouble()).toFloat()
         if (item.spanX <= 0) item.spanX = 1f
         if (item.spanY <= 0) item.spanY = 1f
         item.page = obj.optInt("page", 0)
+
+        // Recovery: ensure items are not placed on impossible pages/positions
+        if (item.page < 0) item.page = 0
+        if (item.col < -1) item.col = 0f
+        if (item.row < -1) item.row = 0f
 
         item.originalCol = obj.optDouble("originalCol", item.col.toDouble()).toFloat()
         item.originalRow = obj.optDouble("originalRow", item.row.toDouble()).toFloat()
@@ -212,13 +235,20 @@ class SettingsManager(context: Context) {
                 if (subItem != null) item.folderItems.add(subItem)
             }
         }
-        return item
+
+        // Final validation for specific types
+        return when (item.type) {
+            HomeItem.Type.APP -> if (item.packageName == null) null else item
+            HomeItem.Type.WIDGET -> if (item.widgetId == -1) null else item
+            HomeItem.Type.CLOCK -> item
+            HomeItem.Type.FOLDER -> if (item.folderItems.isEmpty()) null else item
+            null -> null
+        }
     }
 
     companion object {
         private const val PREFS_NAME = "riprog_launcher_prefs"
         private const val KEY_COLUMNS = "columns"
-        private const val KEY_WIDGET_ID = "widget_id"
         private const val KEY_USAGE_PREFIX = "usage_"
         private const val KEY_HOME_ITEMS = "home_items"
         private const val KEY_FREEFORM_HOME = "freeform_home"

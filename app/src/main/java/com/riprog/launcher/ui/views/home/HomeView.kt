@@ -959,27 +959,29 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
     fun refreshLayout() {
         post {
             val freeform = settingsManager.isFreeformHome
-            if (!freeform) {
-                for (i in pages.indices) {
-                    val page = pages[i]
-                    for (j in 0 until page.childCount) {
-                        val v = page.getChildAt(j)
-                        val item = v.tag as HomeItem?
-                        if (item != null) {
-                            item.rotation = 0f
-                            item.scale = 1.0f
-                            item.tiltX = 0f
-                            item.tiltY = 0f
+            for (i in pages.indices) {
+                val page = pages[i]
+                for (j in 0 until page.childCount) {
+                    val v = page.getChildAt(j)
+                    val item = v.tag as HomeItem? ?: continue
+
+                    if (!freeform) {
+                        // Reset transforms during conversion or refresh in grid mode
+                        item.rotation = 0f
+                        item.scale = 1.0f
+                        item.tiltX = 0f
+                        item.tiltY = 0f
+
+                        // Ensure it's snapped to grid if not already
+                        val colInt = item.col.roundToInt().toFloat()
+                        val rowInt = item.row.roundToInt().toFloat()
+                        if (item.col != colInt || item.row != rowInt || item.visualOffsetX < 0) {
+                            snapToGrid(item, v)
+                        } else {
                             updateViewPosition(item, v)
                         }
-                    }
-                }
-            } else {
-                for (page in pages) {
-                    for (i in 0 until page.childCount) {
-                        val v = page.getChildAt(i)
-                        val item = v.tag as HomeItem?
-                        if (item != null) updateViewPosition(item, v)
+                    } else {
+                        updateViewPosition(item, v)
                     }
                 }
             }
