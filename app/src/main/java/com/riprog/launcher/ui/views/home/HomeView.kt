@@ -275,7 +275,9 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
     }
 
     fun getCellHeight(): Float {
-        return getCellWidth()
+        val totalVerticalPadding = dpToPx(120) + systemTopInset + systemBottomInset
+        val usableHeight = height - totalVerticalPadding
+        return if (usableHeight > 0) usableHeight / GRID_ROWS.toFloat() else getCellWidth()
     }
 
     fun getSnapPosition(item: HomeItem, view: View): Pair<Float, Float> {
@@ -287,12 +289,28 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
             return Pair(item.col * cellWidth + horizontalPadding, item.row * cellHeight)
         } else {
             val vBounds = WidgetSizingUtils.getVisualBounds(view)
-            // Use stored offsets to ensure pixel-perfect locked position after save/restore
+
+            // Single Source of Truth: Use stored visual center offsets to lock position
             val vCenterX = if (item.visualOffsetX >= 0) item.visualOffsetX else if (vBounds.width() > 0) vBounds.centerX() else (item.spanX * cellWidth) / 2f
             val vCenterY = if (item.visualOffsetY >= 0) item.visualOffsetY else if (vBounds.height() > 0) vBounds.centerY() else (item.spanY * cellHeight) / 2f
 
-            val targetX = (item.col + item.spanX / 2f) * cellWidth + horizontalPadding - vCenterX
-            val targetY = (item.row + item.spanY / 2f) * cellHeight - vCenterY
+            // Center Alignment Formula:
+            // gridCenterX = gridStartX + (gridWidth / 2)
+            val gridStartX = item.col * cellWidth + horizontalPadding
+            val gridStartY = item.row * cellHeight
+
+            val gridWidth = item.spanX * cellWidth
+            val gridHeight = item.spanY * cellHeight
+
+            val gridCenterX = gridStartX + (gridWidth / 2f)
+            val gridCenterY = gridStartY + (gridHeight / 2f)
+
+            // widgetX = gridCenterX - (visualWidgetWidth / 2)
+            // Note: Since visual center is at vCenterX relative to view origin,
+            // the target translation is exactly gridCenterX - vCenterX.
+            val targetX = gridCenterX - vCenterX
+            val targetY = gridCenterY - vCenterY
+
             return Pair(targetX, targetY)
         }
     }
@@ -306,12 +324,18 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
             return
         }
 
+        // Lock size to grid area
         val lp = LayoutParams((cellWidth * item.spanX).toInt(), (cellHeight * item.spanY).toInt())
+        // Reset margins and gravity to ensure translation is relative to page (0,0)
+        lp.leftMargin = 0
+        lp.topMargin = 0
+        lp.gravity = Gravity.TOP or Gravity.START
         view.layoutParams = lp
 
         val pos = getSnapPosition(item, view)
-        view.x = pos.first
-        view.y = pos.second
+        // Apply position via absolute translation to prevent shifts during layout passes
+        view.translationX = pos.first
+        view.translationY = pos.second
 
         view.rotation = item.rotation
         view.scaleX = item.scale
