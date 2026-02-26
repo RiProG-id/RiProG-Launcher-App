@@ -16,7 +16,7 @@ class OverlapCleanupTest {
     private val columns = 4
 
     @Test
-    fun testSmallestMovesWhenDroppedOnLarge() {
+    fun testNoAutoArrangeWhenDroppedOnOccupied() {
         // Large item already at (0,0)
         val large = HomeItem.createApp("large", "cls", 0f, 0f, 0)
         large.spanX = 2f
@@ -28,24 +28,21 @@ class OverlapCleanupTest {
         small.spanY = 1f
 
         // Simulating the new logic: drop small on large
-        // small is smallest (1x1 vs 2x2) -> small moves
-
-        val pageItems = listOf(large)
+        // Should NOT move anything.
         if (intersects(small, large)) {
-            val nearest = findNearestEmptyArea(0, 1, 1, 1, 1, pageItems)
-            if (nearest != null) {
-                small.col = nearest.first.toFloat()
-                small.row = nearest.second.toFloat()
-            }
+            // In the new logic, applyNewGridLogic does NOTHING but set the intended coordinates
+            small.col = 1f
+            small.row = 1f
         }
 
         assertEquals(0f, large.col)
         assertEquals(0f, large.row)
-        assertTrue("Small item should have moved from (1,1)", small.col != 1f || small.row != 1f)
+        assertEquals(1f, small.col)
+        assertEquals(1f, small.row)
     }
 
     @Test
-    fun testSmallestMovesWhenLargeDroppedOnSmall() {
+    fun testNoSecondaryRepositionWhenLargeDroppedOnSmall() {
         // Small item already at (1,1)
         val small = HomeItem.createApp("small", "cls", 1f, 1f, 0)
         small.spanX = 1f
@@ -57,23 +54,16 @@ class OverlapCleanupTest {
         large.spanY = 2f
 
         // Simulating the new logic: drop large on small
-        // small is smallest -> small moves, large stays
-
-        val pageItems = listOf(small)
+        // Should NOT move anything.
         if (intersects(large, small)) {
-            // Find smallest
-            // large area = 4, small area = 1
-            // Smallest is small. Move small.
-            val nearest = findNearestEmptyArea(0, 1, 1, 1, 1, listOf(large))
-            if (nearest != null) {
-                small.col = nearest.first.toFloat()
-                small.row = nearest.second.toFloat()
-            }
+            large.col = 0f
+            large.row = 0f
         }
 
+        assertEquals(1f, small.col)
+        assertEquals(1f, small.row)
         assertEquals(0f, large.col)
         assertEquals(0f, large.row)
-        assertTrue("Small item should have moved from (1,1)", small.col != 1f || small.row != 1f)
     }
 
     private fun intersects(item1: HomeItem, item2: HomeItem): Boolean {

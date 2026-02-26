@@ -209,6 +209,10 @@ class FreeformController(
             item.spanX = newSpanX.toFloat()
             item.spanY = newSpanY.toFloat()
 
+            // Store visual offsets to lock centering
+            item.visualOffsetX = vBounds.centerX()
+            item.visualOffsetY = vBounds.centerY()
+
             val newCol = max(0, min(preferences.columns - newSpanX, ((relativeX + vBounds.centerX() - horizontalPadding - (cellWidth * newSpanX / 2f)) / cellWidth).roundToInt()))
             val newRow = max(0, min(HomeView.GRID_ROWS - newSpanY, ((relativeY + vBounds.centerY() - (cellHeight * newSpanY / 2f)) / cellHeight).roundToInt()))
 
@@ -311,19 +315,32 @@ class FreeformController(
                 item.spanX = transformingView!!.width / cellWidth
                 item.spanY = transformingView!!.height / cellHeight
             } else {
-                val sX = (transformingView!!.width / cellWidth).roundToInt().coerceIn(1, preferences.columns)
-                val sY = (transformingView!!.height / cellHeight).roundToInt().coerceIn(1, HomeView.GRID_ROWS)
+                val vBounds = WidgetSizingUtils.getVisualBounds(transformingView!!)
+                val sX = (vBounds.width() / cellWidth).roundToInt().coerceIn(1, preferences.columns)
+                val sY = (vBounds.height() / cellHeight).roundToInt().coerceIn(1, HomeView.GRID_ROWS)
                 item.spanX = sX.toFloat()
                 item.spanY = sY.toFloat()
-                item.col = max(0, min(preferences.columns - sX, ((relativeX - horizontalPadding) / cellWidth).roundToInt())).toFloat()
-                item.row = max(0, min(HomeView.GRID_ROWS - sY, (relativeY / cellHeight).roundToInt())).toFloat()
+
+                // Capture visual offsets during final save
+                item.visualOffsetX = vBounds.centerX()
+                item.visualOffsetY = vBounds.centerY()
+
+                item.col = max(0, min(preferences.columns - sX, ((relativeX + vBounds.centerX() - horizontalPadding - (cellWidth * sX / 2f)) / cellWidth).roundToInt())).toFloat()
+                item.row = max(0, min(HomeView.GRID_ROWS - sY, ((relativeY + vBounds.centerY() - (cellHeight * sY / 2f)) / cellHeight).roundToInt())).toFloat()
+
+                item.rotation = 0f
+                item.scale = 1.0f
+                item.tiltX = 0f
+                item.tiltY = 0f
             }
         }
 
-        item.rotation = transformingView!!.rotation
-        item.scale = transformingView!!.scaleX
-        item.tiltX = transformingView!!.rotationX
-        item.tiltY = transformingView!!.rotationY
+        if (preferences.isFreeformHome) {
+            item.rotation = transformingView!!.rotation
+            item.scale = transformingView!!.scaleX
+            item.tiltX = transformingView!!.rotationX
+            item.tiltY = transformingView!!.rotationY
+        }
         callback.onSaveState()
     }
 

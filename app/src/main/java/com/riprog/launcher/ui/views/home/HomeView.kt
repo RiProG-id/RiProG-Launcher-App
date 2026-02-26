@@ -259,9 +259,9 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
         view.tag = item
         page.addView(view)
 
-        // Initial add flow for widgets in Non-Freeform mode:
+        // Initial add flow for all items in Non-Freeform mode:
         // Wait until rendered, then detect actual visual span and lock position.
-        if (!settingsManager.isFreeformHome && item.type == HomeItem.Type.WIDGET && item.visualOffsetX < 0) {
+        if (!settingsManager.isFreeformHome && item.visualOffsetX < 0) {
             view.post {
                 snapToGrid(item, view)
             }
@@ -718,71 +718,15 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
     }
 
     private fun applyNewGridLogic(droppedItem: HomeItem, droppedView: View, targetCol: Int, targetRow: Int, spanX: Int, spanY: Int) {
-        val activity = context as? MainActivity ?: return
-
+        // Apply final grid position and span exactly.
+        // As per requirements for Non-Freeform mode:
+        // - Alignment must be symmetric (handled by getSnapPosition)
+        // - Final position must be locked after placement.
+        // - Do NOT apply auto arrange or secondary reposition logic.
         droppedItem.col = targetCol.toFloat()
         droppedItem.row = targetRow.toFloat()
         droppedItem.spanX = spanX.toFloat()
         droppedItem.spanY = spanY.toFloat()
-
-        val droppedArea = getVisualArea(droppedItem, droppedView)
-        val pageItems = activity.homeItems.filter { it.page == droppedItem.page && it !== droppedItem }
-
-        // Find overlaps using VISUAL BOUNDS
-        var overlaps = pageItems.filter { other ->
-            val otherView = findViewForItem(other)
-            if (otherView != null) {
-                areOverlappingVisually(droppedItem, droppedView, other, otherView)
-            } else {
-                // Fallback to grid intersection if view not available
-                intersects(droppedItem, other)
-            }
-        }
-
-        if (overlaps.isNotEmpty()) {
-            val allInvolved = overlaps + droppedItem
-            val smallest = allInvolved.minByOrNull {
-                val view = findViewForItem(it)
-                if (view != null) getVisualArea(it, view) else it.spanX * it.spanY * 10000f
-            } ?: droppedItem
-
-            if (smallest === droppedItem) {
-                val nearest = findNearestEmptyArea(droppedItem.page, spanX, spanY, targetCol, targetRow, pageItems)
-                if (nearest != null) {
-                    droppedItem.col = nearest.first.toFloat()
-                    droppedItem.row = nearest.second.toFloat()
-                }
-            } else {
-                for (other in overlaps) {
-                    val otherView = findViewForItem(other)
-                    val otherArea = if (otherView != null) getVisualArea(other, otherView) else other.spanX * other.spanY * 10000f
-
-                    if (otherArea < droppedArea) {
-                        val otherSpanX = other.spanX.roundToInt()
-                        val otherSpanY = other.spanY.roundToInt()
-                        val nearest = findNearestEmptyArea(other.page, otherSpanX, otherSpanY, other.col.roundToInt(), other.row.roundToInt(), activity.homeItems.filter { it !== other })
-                        if (nearest != null) {
-                            other.col = nearest.first.toFloat()
-                            other.row = nearest.second.toFloat()
-                            updateItemView(other)
-                        }
-                    }
-                }
-
-                // If dropped item still overlaps something visually, move dropped item to nearest empty area
-                val stillOverlaps = pageItems.any { other ->
-                    val otherView = findViewForItem(other)
-                    if (otherView != null) areOverlappingVisually(droppedItem, droppedView, other, otherView) else intersects(droppedItem, other)
-                }
-                if (stillOverlaps) {
-                    val nearest = findNearestEmptyArea(droppedItem.page, spanX, spanY, targetCol, targetRow, pageItems)
-                    if (nearest != null) {
-                        droppedItem.col = nearest.first.toFloat()
-                        droppedItem.row = nearest.second.toFloat()
-                    }
-                }
-            }
-        }
     }
 
     private fun intersects(item1: HomeItem, item2: HomeItem): Boolean {

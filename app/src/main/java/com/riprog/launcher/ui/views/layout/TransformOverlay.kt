@@ -130,7 +130,6 @@ class TransformOverlay(context: Context, private val targetView: View, private v
         container.background = ThemeUtils.getThemedSurface(context, settingsManager, 12f)
 
         addButton(container, R.string.action_remove, adaptiveColor) { onSaveListener?.onRemove() }
-        addButton(container, R.string.action_reset, adaptiveColor) { reset() }
         addButton(container, R.string.action_save, adaptiveColor) { onSaveListener?.onSave() }
 
         if (item.type == HomeItem.Type.APP) {
@@ -159,36 +158,6 @@ class TransformOverlay(context: Context, private val targetView: View, private v
         parent.addView(btn, lp)
     }
 
-    private fun reset() {
-        val activity = context as? MainActivity ?: return
-
-        targetView.rotation = 0f
-        targetView.scaleX = 1.0f
-        targetView.scaleY = 1.0f
-        targetView.rotationX = 0f
-        targetView.rotationY = 0f
-
-        val pageChanged = item.page != item.originalPage
-
-        item.col = item.originalCol
-        item.row = item.originalRow
-        item.spanX = item.originalSpanX
-        item.spanY = item.originalSpanY
-        item.page = item.originalPage
-        item.rotation = 0f
-        item.scale = 1.0f
-        item.tiltX = 0f
-        item.tiltY = 0f
-
-        if (pageChanged) {
-            activity.homeView.removeItemView(item)
-            activity.renderHomeItem(item)
-        } else {
-            activity.homeView.updateViewPosition(item, targetView)
-        }
-
-        invalidate()
-    }
 
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
@@ -250,8 +219,8 @@ class TransformOverlay(context: Context, private val targetView: View, private v
             drawHandle(canvas, left, bottom, hs, true, foregroundColor)
         }
 
-        // Only show directional handles for widgets
-        if (isWidget) {
+        // Only show directional handles for widgets in Freeform mode
+        if (isFreeform && isWidget) {
             drawHandle(canvas, (left + right) / 2f, top, hs, false, foregroundColor)
             drawHandle(canvas, right, (top + bottom) / 2f, hs, false, foregroundColor)
             drawHandle(canvas, (left + right) / 2f, bottom, hs, false, foregroundColor)
@@ -507,13 +476,13 @@ class TransformOverlay(context: Context, private val targetView: View, private v
             if (dist(rx, ry, right, top) < hs) return HANDLE_TOP_RIGHT
             if (dist(rx, ry, right, bottom) < hs) return HANDLE_BOTTOM_RIGHT
             if (dist(rx, ry, left, bottom) < hs) return HANDLE_BOTTOM_LEFT
-        }
 
-        if (isWidget) {
-            if (dist(rx, ry, (left + right) / 2f, top) < hs) return HANDLE_TOP
-            if (dist(rx, ry, right, (top + bottom) / 2f) < hs) return HANDLE_RIGHT
-            if (dist(rx, ry, (left + right) / 2f, bottom) < hs) return HANDLE_BOTTOM
-            if (dist(rx, ry, left, (top + bottom) / 2f) < hs) return HANDLE_LEFT
+            if (isWidget) {
+                if (dist(rx, ry, (left + right) / 2f, top) < hs) return HANDLE_TOP
+                if (dist(rx, ry, right, (top + bottom) / 2f) < hs) return HANDLE_RIGHT
+                if (dist(rx, ry, (left + right) / 2f, bottom) < hs) return HANDLE_BOTTOM
+                if (dist(rx, ry, left, (top + bottom) / 2f) < hs) return HANDLE_LEFT
+            }
         }
 
         return if (rx >= left && rx <= right && ry >= top && ry <= bottom) ACTION_MOVE else ACTION_OUTSIDE
