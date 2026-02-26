@@ -69,7 +69,8 @@ object WidgetSizingUtils {
         } else {
             ceil((minWidth + 30) / 70.0).toInt().coerceAtLeast(1)
         }
-        return min(spanX, HomeView.GRID_COLUMNS) // Note: HomeView.GRID_COLUMNS is 4, but we should ideally use SettingsManager.columns if available
+        // Note: HomeView.GRID_COLUMNS is 4, but we should ideally use SettingsManager.columns if available
+        return min(spanX, HomeView.GRID_COLUMNS)
     }
 
     fun getMinSpanY(info: AppWidgetProviderInfo, cellHeight: Float, density: Float): Int {

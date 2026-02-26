@@ -37,6 +37,7 @@ class SettingsActivity : Activity() {
         super.attachBaseContext(ThemeManager.applyThemeToContext(newBase, sm.themeMode))
     }
 
+    @Suppress("DEPRECATION")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         settingsManager = SettingsManager(this)

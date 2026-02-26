@@ -75,7 +75,8 @@ class OverlapCleanupTest {
         itemA.spanY = 1f
 
         // Item B dropped at (0,0) from elsewhere
-        val itemB = HomeItem.createApp("B", "cls", 2f, 2f, 0) // was at (2,2)
+        // was at (2,2)
+        val itemB = HomeItem.createApp("B", "cls", 2f, 2f, 0)
         itemB.spanX = 1f
         itemB.spanY = 1f
         val targetBCol = 0f

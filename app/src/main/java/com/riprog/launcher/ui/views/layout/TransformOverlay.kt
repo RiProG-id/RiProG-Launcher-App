@@ -116,7 +116,8 @@ class TransformOverlay(context: Context, private val targetView: View, private v
         gestureInitialRow = item.row
         currentDrx = 0f
         currentDry = 0f
-        hasPassedThreshold = true // Already long pressed
+        // Already long pressed
+        hasPassedThreshold = true
         onSaveListener?.onMoveStart(x, y)
     }
 

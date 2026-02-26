@@ -160,7 +160,8 @@ class MainLayout(private val activity: MainActivity) : FrameLayout(activity) {
         }
 
         if (activity.isAnyOverlayVisible()) {
-            return true // Consume all events to block underlying gestures
+            // Consume all events to block underlying gestures
+            return true
         }
 
         if (isDrawerOpen) {

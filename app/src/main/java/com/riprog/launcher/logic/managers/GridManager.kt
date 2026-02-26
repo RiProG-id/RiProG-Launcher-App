@@ -7,13 +7,15 @@ class GridManager(private val columns: Int) {
     private val rows = 6
 
     fun getCellWidth(availableWidth: Int): Int {
-        val horizontalPadding = 32 // dp estimate
+        // dp estimate
+        val horizontalPadding = 32
         val cw = (availableWidth - horizontalPadding).coerceAtLeast(0) / max(1, columns)
         return cw
     }
 
     fun getCellHeight(availableWidth: Int, availableHeight: Int): Int {
-        val verticalPaddings = 48 + 16 + 80 + 72 // Estimate
+        // Estimate
+        val verticalPaddings = 48 + 16 + 80 + 72
         val usableHeight = (availableHeight - verticalPaddings).coerceAtLeast(0)
         var ch = usableHeight / max(1, rows)
 

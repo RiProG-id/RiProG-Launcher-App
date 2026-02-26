@@ -41,6 +41,7 @@ import android.text.format.DateFormat
 import android.util.TypedValue
 import android.view.*
 import android.view.inputmethod.InputMethodManager
+import androidx.core.content.IntentCompat
 import androidx.core.view.WindowCompat
 import android.widget.*
 import java.util.*
@@ -73,6 +74,7 @@ class MainActivity : Activity() {
         super.attachBaseContext(ThemeManager.applyThemeToContext(newBase, sm.themeMode))
     }
 
+    @Suppress("DEPRECATION")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         settingsManager = SettingsManager(this)
@@ -530,10 +532,12 @@ class MainActivity : Activity() {
         }
     }
 
+    @Suppress("DEPRECATION")
     override fun onTrimMemory(level: Int) {
         super.onTrimMemory(level)
     }
 
+    @Deprecated("Deprecated in Java")
     override fun onBackPressed() {
         if (isAnyOverlayVisible()) {
             dismissAllOverlays()
@@ -586,7 +590,7 @@ class MainActivity : Activity() {
             return
         }
         if (requestCode == REQUEST_PICK_WIDGET_SCREEN && resultCode == RESULT_OK && data != null) {
-            val info = data.getParcelableExtra<AppWidgetProviderInfo>("EXTRA_WIDGET_INFO")
+            val info = IntentCompat.getParcelableExtra(data, "EXTRA_WIDGET_INFO", AppWidgetProviderInfo::class.java)
             val spanX = data.getIntExtra("EXTRA_SPAN_X", 2)
             val spanY = data.getIntExtra("EXTRA_SPAN_Y", 1)
             if (info != null) {

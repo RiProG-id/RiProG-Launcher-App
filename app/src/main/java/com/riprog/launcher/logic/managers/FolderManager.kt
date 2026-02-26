@@ -350,7 +350,7 @@ class FolderManager(private val activity: MainActivity, private val settingsMana
         override fun onBindViewHolder(holder: FolderViewHolder, position: Int) {
             val item = items[position]
             holder.bind(item, item === draggedItem) { view ->
-                val data = ClipData.newPlainText("index", holder.adapterPosition.toString())
+                val data = ClipData.newPlainText("index", holder.bindingAdapterPosition.toString())
                 val shadow = View.DragShadowBuilder(view)
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
                     view.startDragAndDrop(data, shadow, view, 0)

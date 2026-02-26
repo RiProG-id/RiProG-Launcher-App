@@ -81,10 +81,12 @@ class DiskCacheManager(context: Context) {
      * Prevents excessive disk growth.
      */
     fun performCleanup() {
-        val maxSize = 50L * 1024 * 1024 // 50MB limit for icons
+        // 50MB limit for icons
+        val maxSize = 50L * 1024 * 1024
         cleanupDirectory(cacheDir, maxSize)
 
-        val maxDataSize = 5L * 1024 * 1024 // 5MB limit for data
+        // 5MB limit for data
+        val maxDataSize = 5L * 1024 * 1024
         cleanupDirectory(dataDir, maxDataSize)
     }
 

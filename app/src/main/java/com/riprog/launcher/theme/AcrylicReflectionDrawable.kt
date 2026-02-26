@@ -33,9 +33,11 @@ class AcrylicReflectionDrawable(
 
         // Intensity adapts to theme brightness - subtle and elegant
         val colors = if (isNight) {
-            intArrayOf(0x00FFFFFF, 0x0AFFFFFF, 0x00FFFFFF) // ~4% alpha for dark
+            // ~4% alpha for dark
+            intArrayOf(0x00FFFFFF, 0x0AFFFFFF, 0x00FFFFFF)
         } else {
-            intArrayOf(0x00FFFFFF, 0x14FFFFFF, 0x00FFFFFF) // ~8% alpha for light
+            // ~8% alpha for light
+            intArrayOf(0x00FFFFFF, 0x14FFFFFF, 0x00FFFFFF)
         }
 
         // Horizontal shimmer that will be rotated
@@ -89,6 +91,7 @@ class AcrylicReflectionDrawable(
         reflectionPaint.colorFilter = colorFilter
     }
 
+    @Deprecated("Deprecated in Java", ReplaceWith("PixelFormat.TRANSLUCENT"))
     override fun getOpacity(): Int = PixelFormat.TRANSLUCENT
 
     override fun setVisible(visible: Boolean, restart: Boolean): Boolean {

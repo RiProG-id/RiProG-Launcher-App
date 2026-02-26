@@ -33,6 +33,7 @@ class WidgetPickerActivity : Activity() {
     private lateinit var appWidgetManager: AppWidgetManager
     private val widgetPreviewExecutor = Executors.newFixedThreadPool(4)
 
+    @Suppress("DEPRECATION")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         settingsManager = SettingsManager(this)

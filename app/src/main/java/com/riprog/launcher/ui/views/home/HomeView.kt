@@ -869,7 +869,8 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
                     val d = Math.sqrt(Math.pow((i - prefRow).toDouble(), 2.0) + Math.pow((j - prefCol).toDouble(), 2.0))
                     if (d < minDest) {
                         minDest = d
-                        bestPos = Pair(j, i) // Note: returning (col, row)
+                        // Note: returning (col, row)
+                        bestPos = Pair(j, i)
                     }
                 }
             }
