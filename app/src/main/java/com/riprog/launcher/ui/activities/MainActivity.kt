@@ -158,8 +158,8 @@ class MainActivity : Activity() {
         prompt.background = ThemeUtils.getThemedSurface(this, settingsManager, 28f)
         prompt.setPadding(dpToPx(24), dpToPx(24), dpToPx(24), dpToPx(24))
         prompt.gravity = Gravity.CENTER
-        val isLiquid = settingsManager.isLiquidGlass
-        prompt.elevation = if (isLiquid) dpToPx(8).toFloat() else dpToPx(2).toFloat()
+        val isAcrylic = settingsManager.isAcrylic
+        prompt.elevation = if (isAcrylic) dpToPx(8).toFloat() else dpToPx(2).toFloat()
 
         val title = TextView(this)
         title.setText(R.string.prompt_default_launcher_title)
@@ -746,16 +746,16 @@ class MainActivity : Activity() {
         // We must ensure the active foreground layer (Drawer) remains sharp.
         val isDrawerOpen = if (::mainLayout.isInitialized) mainLayout.isDrawerOpen() else false
         val isFolderOpen = folderManager.isFolderOpen()
-        val isLiquid = settingsManager.isLiquidGlass
+        val isAcrylic = settingsManager.isAcrylic
 
         // homeView blurs if drawer or folder is open to show depth.
-        ThemeUtils.applyBlurIfSupported(homeView, (isDrawerOpen || isFolderOpen) && isLiquid)
+        ThemeUtils.applyBlurIfSupported(homeView, (isDrawerOpen || isFolderOpen) && isAcrylic)
 
         // drawerView only blurs if a folder is open on top of it.
-        ThemeUtils.applyBlurIfSupported(drawerView, isFolderOpen && isDrawerOpen && isLiquid)
+        ThemeUtils.applyBlurIfSupported(drawerView, isFolderOpen && isDrawerOpen && isAcrylic)
 
-        // Apply window blur for both Folders and App Drawer in Liquid Glass mode.
-        ThemeUtils.applyWindowBlur(window, (isFolderOpen || isDrawerOpen) && isLiquid)
+        // Apply window blur for both Folders and App Drawer in Acrylic mode.
+        ThemeUtils.applyWindowBlur(window, (isFolderOpen || isDrawerOpen) && isAcrylic)
     }
 
     fun showHomeMenu(x: Float, y: Float) {

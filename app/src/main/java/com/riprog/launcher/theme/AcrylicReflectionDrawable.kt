@@ -7,7 +7,7 @@ import android.graphics.drawable.Drawable
 import android.graphics.drawable.GradientDrawable
 import android.view.animation.LinearInterpolator
 
-class GlassReflectionDrawable(
+class AcrylicReflectionDrawable(
     private val baseDrawable: GradientDrawable,
     private val isNight: Boolean
 ) : Drawable(), Animatable {

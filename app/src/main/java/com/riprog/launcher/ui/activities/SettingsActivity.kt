@@ -48,7 +48,7 @@ class SettingsActivity : Activity() {
         w.statusBarColor = Color.TRANSPARENT
         w.navigationBarColor = Color.TRANSPARENT
         WindowCompat.setDecorFitsSystemWindows(w, false)
-        ThemeUtils.applyWindowBlur(w, settingsManager.isLiquidGlass)
+        ThemeUtils.applyWindowBlur(w, settingsManager.isAcrylic)
 
         val rootContainer = FrameLayout(this)
 
@@ -365,9 +365,9 @@ class SettingsActivity : Activity() {
                 SettingType.STYLE -> {
                     val h = holder as ThemeViewHolder
                     h.options.removeAllViews()
-                    val styles = arrayOf(getString(R.string.theme_style_standard), getString(R.string.theme_style_liquid_glass))
+                    val styles = arrayOf(getString(R.string.theme_style_standard), getString(R.string.theme_style_acrylic))
                     val values = arrayOf(false, true)
-                    val current = settingsManager.isLiquidGlass
+                    val current = settingsManager.isAcrylic
 
                     for (i in styles.indices) {
                         val index = i
@@ -387,7 +387,7 @@ class SettingsActivity : Activity() {
                         }
 
                         option.setOnClickListener {
-                            settingsManager.isLiquidGlass = values[index]
+                            settingsManager.isAcrylic = values[index]
                             recreate()
                         }
 

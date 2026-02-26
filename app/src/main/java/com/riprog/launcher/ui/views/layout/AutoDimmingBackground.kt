@@ -38,13 +38,13 @@ class AutoDimmingBackground(private val context: Context, private val parentLayo
             if (dimView!!.visibility != View.VISIBLE) {
                 dimView!!.visibility = View.VISIBLE
             }
-            if (settingsManager.isLiquidGlass) {
+            if (settingsManager.isAcrylic) {
                 dimView!!.animate().alpha(0.4f).setDuration(400).start()
             } else {
                 dimView!!.alpha = 0.4f
             }
         } else {
-            if (settingsManager.isLiquidGlass) {
+            if (settingsManager.isAcrylic) {
                 dimView!!.animate().alpha(0f).setDuration(400).withEndAction {
                     dimView!!.visibility = View.GONE
                 }.start()

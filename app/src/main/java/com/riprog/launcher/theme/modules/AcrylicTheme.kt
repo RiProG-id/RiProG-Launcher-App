@@ -7,30 +7,30 @@ import android.graphics.drawable.Drawable
 import android.graphics.drawable.GradientDrawable
 import android.util.TypedValue
 import com.riprog.launcher.R
-import com.riprog.launcher.theme.GlassReflectionDrawable
+import com.riprog.launcher.theme.AcrylicReflectionDrawable
 import com.riprog.launcher.theme.ThemeUtils
 
-object LiquidGlassTheme : ThemeModule {
+object AcrylicTheme : ThemeModule {
     override fun getThemedSurface(context: Context, cornerRadiusDp: Float): Drawable {
         val isNight = (context.resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) ==
                 Configuration.UI_MODE_NIGHT_YES
 
         val gd = GradientDrawable()
-        val backgroundColor = context.getColor(R.color.background_glass)
+        val backgroundColor = context.getColor(R.color.background_acrylic)
 
         val cornerRadiusPx = dpToPx(context, cornerRadiusDp).toFloat()
         gd.setColor(backgroundColor)
         gd.cornerRadius = cornerRadiusPx
 
-        gd.setStroke(dpToPx(context, 1.5f), context.getColor(R.color.glass_stroke))
-        val reflectionDrawable = GlassReflectionDrawable(gd, isNight)
+        gd.setStroke(dpToPx(context, 1.5f), context.getColor(R.color.acrylic_stroke))
+        val reflectionDrawable = AcrylicReflectionDrawable(gd, isNight)
         reflectionDrawable.setCornerRadius(cornerRadiusPx)
         return reflectionDrawable
     }
 
     override fun getAdaptiveColor(context: Context, isOnGlass: Boolean): Int {
         if (isOnGlass) {
-            return ThemeUtils.getAdaptiveColor(context, context.getColor(R.color.background_glass))
+            return ThemeUtils.getAdaptiveColor(context, context.getColor(R.color.background_acrylic))
         } else {
             val isNight = (context.resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) ==
                     Configuration.UI_MODE_NIGHT_YES

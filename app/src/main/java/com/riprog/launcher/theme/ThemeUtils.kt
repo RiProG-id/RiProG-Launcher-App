@@ -1,7 +1,7 @@
 package com.riprog.launcher.theme
 
 import com.riprog.launcher.logic.managers.SettingsManager
-import com.riprog.launcher.theme.modules.LiquidGlassTheme
+import com.riprog.launcher.theme.modules.AcrylicTheme
 import com.riprog.launcher.theme.modules.StandardTheme
 import com.riprog.launcher.theme.modules.ThemeModule
 import com.riprog.launcher.R
@@ -21,7 +21,7 @@ import androidx.core.view.WindowCompat
 object ThemeUtils {
 
     private fun getModule(settingsManager: SettingsManager): ThemeModule {
-        return if (settingsManager.isLiquidGlass) LiquidGlassTheme else StandardTheme
+        return if (settingsManager.isAcrylic) AcrylicTheme else StandardTheme
     }
 
 

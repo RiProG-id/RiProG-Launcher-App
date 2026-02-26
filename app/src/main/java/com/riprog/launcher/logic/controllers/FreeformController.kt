@@ -264,7 +264,7 @@ class FreeformController(
                 pos.second + (rv.paddingTop + (rvLoc[1] - rootLoc[1]))
             }
 
-            if (preferences.isLiquidGlass) {
+            if (preferences.isAcrylic) {
                 v.x = snappedX
                 v.y = snappedY
                 v.rotation = 0f

@@ -287,7 +287,7 @@ class MainLayout(private val activity: MainActivity) : FrameLayout(activity) {
         activity.settingsManager.drawerOpenCount = activity.settingsManager.drawerOpenCount + 1
         activity.drawerView.visibility = View.VISIBLE
 
-        if (activity.settingsManager.isLiquidGlass) {
+        if (activity.settingsManager.isAcrylic) {
             activity.drawerView.alpha = 0f
             activity.drawerView.translationY = height / 4f
             activity.drawerView.animate()
@@ -353,7 +353,7 @@ class MainLayout(private val activity: MainActivity) : FrameLayout(activity) {
         if (!isDrawerOpen) return false
         isDrawerOpen = false
 
-        if (activity.settingsManager.isLiquidGlass) {
+        if (activity.settingsManager.isAcrylic) {
             activity.drawerView.animate()
                 .translationY(height / 4f)
                 .alpha(0f)

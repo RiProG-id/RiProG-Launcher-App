@@ -214,7 +214,7 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
         lp.bottomMargin = dpToPx(120)
         addView(hint, lp)
 
-        if (Math.random() < 0.3 && !settingsManager.isLiquidGlass) {
+        if (Math.random() < 0.3 && !settingsManager.isAcrylic) {
             hint.animate().alpha(1f).setDuration(1000).setStartDelay(2000).withEndAction {
                 hint.animate().alpha(0f).setDuration(1000).setStartDelay(4000).withEndAction {
                     removeView(hint)
@@ -364,7 +364,7 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
             v.y = absY
         }
 
-        if (settingsManager.isLiquidGlass) {
+        if (settingsManager.isAcrylic) {
             v.animate().scaleX(1.1f).scaleY(1.1f).alpha(0.8f).setDuration(150).start()
         } else {
             v.scaleX = 1.1f
@@ -430,7 +430,7 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
     fun endDragging() {
         if (draggingView != null) {
             val v = draggingView!!
-            if (settingsManager.isLiquidGlass) {
+            if (settingsManager.isAcrylic) {
                 v.animate().scaleX(1.0f).scaleY(1.0f).alpha(1.0f).setDuration(150).start()
             } else {
                 v.scaleX = 1.0f
@@ -680,7 +680,7 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
             item.tiltX = 0f
             item.tiltY = 0f
 
-            if (settingsManager.isLiquidGlass) {
+            if (settingsManager.isAcrylic) {
                 val pos = getSnapPosition(item, v)
                 v.animate()
                     .x(pos.first)

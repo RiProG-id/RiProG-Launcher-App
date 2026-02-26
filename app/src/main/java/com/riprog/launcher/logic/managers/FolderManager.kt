@@ -74,12 +74,12 @@ class FolderManager(private val activity: MainActivity, private val settingsMana
             }
         })
 
-        val isLiquid = settingsManager.isLiquidGlass
+        val isAcrylic = settingsManager.isAcrylic
 
         val overlay = LinearLayout(activity)
         overlay.orientation = LinearLayout.VERTICAL
         overlay.background = ThemeUtils.getThemedSurface(activity, settingsManager, 12f)
-        overlay.elevation = if (isLiquid) dpToPx(16f).toFloat() else dpToPx(2f).toFloat()
+        overlay.elevation = if (isAcrylic) dpToPx(16f).toFloat() else dpToPx(2f).toFloat()
         overlay.setPadding(dpToPx(24f), dpToPx(24f), dpToPx(24f), dpToPx(24f))
         overlay.gravity = Gravity.CENTER_HORIZONTAL
         overlay.isClickable = true

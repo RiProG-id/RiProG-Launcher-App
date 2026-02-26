@@ -224,14 +224,14 @@ class DrawerView(context: Context) : FrameLayout(context) {
     private fun highlightLetter(index: Int) {
         if (index == lastSelectedIndex) return
         val adaptiveColor = ThemeUtils.getAdaptiveColor(context, settingsManager, true)
-        val isLiquid = settingsManager.isLiquidGlass
+        val isAcrylic = settingsManager.isAcrylic
 
         if (lastSelectedIndex in 0 until indexBar.childCount) {
             val prevTv = indexBar.getChildAt(lastSelectedIndex) as? TextView
             prevTv?.let {
                 it.setTextColor(context.getColor(R.color.foreground_dim))
                 it.setTypeface(null, android.graphics.Typeface.NORMAL)
-                if (isLiquid) {
+                if (isAcrylic) {
                     it.animate().scaleX(1.0f).scaleY(1.0f).setDuration(100).start()
                 } else {
                     it.scaleX = 1.0f
@@ -245,7 +245,7 @@ class DrawerView(context: Context) : FrameLayout(context) {
             currTv?.let {
                 it.setTextColor(adaptiveColor)
                 it.setTypeface(null, android.graphics.Typeface.BOLD)
-                if (isLiquid) {
+                if (isAcrylic) {
                     it.animate().scaleX(1.2f).scaleY(1.2f).setDuration(100).start()
                 } else {
                     it.scaleX = 1.2f
@@ -264,7 +264,7 @@ class DrawerView(context: Context) : FrameLayout(context) {
             tv?.let {
                 it.setTextColor(context.getColor(R.color.foreground_dim))
                 it.setTypeface(null, android.graphics.Typeface.NORMAL)
-                if (settingsManager.isLiquidGlass) {
+                if (settingsManager.isAcrylic) {
                     it.animate().scaleX(1.0f).scaleY(1.0f).setDuration(100).start()
                 } else {
                     it.scaleX = 1.0f

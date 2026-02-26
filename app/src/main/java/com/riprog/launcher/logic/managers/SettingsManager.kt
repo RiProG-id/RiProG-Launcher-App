@@ -15,7 +15,7 @@ class SettingsManager(context: Context) {
         if (!prefs.contains(KEY_FIRST_RUN)) {
             prefs.edit().apply {
                 putString(KEY_THEME_MODE, "light")
-                putBoolean(KEY_LIQUID_GLASS, true)
+                putBoolean(KEY_ACRYLIC, true)
                 putBoolean(KEY_DARKEN_WALLPAPER, true)
                 putBoolean(KEY_FREEFORM_HOME, false)
                 putBoolean(KEY_HIDE_LABELS, false)
@@ -53,10 +53,10 @@ class SettingsManager(context: Context) {
             prefs.edit().putString(KEY_THEME_MODE, mode).apply()
         }
 
-    var isLiquidGlass: Boolean
-        get() = prefs.getBoolean(KEY_LIQUID_GLASS, false)
+    var isAcrylic: Boolean
+        get() = prefs.getBoolean(KEY_ACRYLIC, false)
         set(enabled) {
-            prefs.edit().putBoolean(KEY_LIQUID_GLASS, enabled).apply()
+            prefs.edit().putBoolean(KEY_ACRYLIC, enabled).apply()
         }
 
     var isDarkenWallpaper: Boolean
@@ -262,7 +262,7 @@ class SettingsManager(context: Context) {
         private const val KEY_HOME_ITEMS = "home_items"
         private const val KEY_FREEFORM_HOME = "freeform_home"
         private const val KEY_THEME_MODE = "theme_mode"
-        private const val KEY_LIQUID_GLASS = "liquid_glass"
+        private const val KEY_ACRYLIC = "liquid_glass"
         private const val KEY_DARKEN_WALLPAPER = "darken_wallpaper"
         private const val KEY_HIDE_LABELS = "hide_labels"
         private const val KEY_DRAWER_OPEN_COUNT = "drawer_open_count"

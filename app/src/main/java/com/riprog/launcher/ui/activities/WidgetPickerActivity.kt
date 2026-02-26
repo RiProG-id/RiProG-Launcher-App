@@ -43,7 +43,7 @@ class WidgetPickerActivity : Activity() {
         w.statusBarColor = Color.TRANSPARENT
         w.navigationBarColor = Color.TRANSPARENT
         WindowCompat.setDecorFitsSystemWindows(w, false)
-        ThemeUtils.applyWindowBlur(w, settingsManager.isLiquidGlass)
+        ThemeUtils.applyWindowBlur(w, settingsManager.isAcrylic)
 
         val rootContainer = FrameLayout(this)
         rootContainer.background = ThemeUtils.getThemedSurface(this, settingsManager, 0f)
