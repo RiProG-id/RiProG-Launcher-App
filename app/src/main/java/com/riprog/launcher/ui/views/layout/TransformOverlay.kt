@@ -130,7 +130,7 @@ class TransformOverlay(context: Context, private val targetView: View, private v
         container.background = ThemeUtils.getThemedSurface(context, settingsManager, 12f)
 
         addButton(container, R.string.action_remove, adaptiveColor) { onSaveListener?.onRemove() }
-        if (settingsManager.isFreeformHome) {
+        if (settingsManager.isFreeformHome || item.type == HomeItem.Type.WIDGET) {
             addButton(container, R.string.action_reset, adaptiveColor) { reset() }
         }
         addButton(container, R.string.action_save, adaptiveColor) { onSaveListener?.onSave() }
