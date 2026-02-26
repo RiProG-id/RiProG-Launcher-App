@@ -19,6 +19,8 @@ android {
             storePassword = project.property("RELEASE_STORE_PASSWORD") as String
             keyAlias = project.property("RELEASE_KEY_ALIAS") as String
             keyPassword = project.property("RELEASE_KEY_PASSWORD") as String
+            enableV1Signing = true
+            enableV2Signing = true
         }
     }
 
@@ -36,6 +38,18 @@ android {
         }
     }
 
+    bundle {
+        language {
+            enableSplit = false
+        }
+        density {
+            enableSplit = false
+        }
+        abi {
+            enableSplit = false
+        }
+    }
+
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_21
         targetCompatibility = JavaVersion.VERSION_21
@@ -43,6 +57,7 @@ android {
 
     namespace = "com.riprog.launcher"
 }
+
 
 dependencies {
     implementation("androidx.core:core-ktx:1.15.0")
