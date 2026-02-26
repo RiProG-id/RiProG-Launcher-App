@@ -613,11 +613,7 @@ class MainActivity : Activity() {
         var page = homeView.currentPage
 
         if (!settingsManager.isFreeformHome) {
-            val slot = findFirstAvailableSlot(sX, sY)
-            if (slot == null) {
-                Toast.makeText(this, R.string.page_full, Toast.LENGTH_SHORT).show()
-                return
-            }
+            val slot = findOrCreateSlot(sX, sY)
             page = slot.first
             row = slot.second
             col = slot.third
@@ -657,11 +653,7 @@ class MainActivity : Activity() {
             var page = homeView.currentPage
 
             if (!settingsManager.isFreeformHome) {
-                val slot = findFirstAvailableSlot(sX, sY)
-                if (slot == null) {
-                    Toast.makeText(this, R.string.page_full, Toast.LENGTH_SHORT).show()
-                    return
-                }
+                val slot = findOrCreateSlot(sX, sY)
                 page = slot.first
                 row = slot.second
                 col = slot.third
@@ -887,6 +879,16 @@ class MainActivity : Activity() {
         return null
     }
 
+    private fun findOrCreateSlot(spanX: Int, spanY: Int): Triple<Int, Int, Int> {
+        val slot = findFirstAvailableSlot(spanX, spanY)
+        if (slot != null) return slot
+
+        // No slot found on existing pages, create a new one
+        homeView.addPage()
+        val newPage = homeView.pages.size - 1
+        return Triple(newPage, 0, 0)
+    }
+
     fun spawnApp(app: AppItem) {
         val sX = 1
         val sY = 1
@@ -894,19 +896,21 @@ class MainActivity : Activity() {
         var row = 0f
         var page = homeView.currentPage
 
-        val slot = findFirstAvailableSlot(sX, sY)
-        if (slot == null) {
-            if (!settingsManager.isFreeformHome) {
-                Toast.makeText(this, R.string.page_full, Toast.LENGTH_SHORT).show()
-                return
-            } else {
-                col = (settingsManager.columns - sX) / 2f
-                row = (HomeView.GRID_ROWS - sY) / 2f
-            }
-        } else {
+        if (!settingsManager.isFreeformHome) {
+            val slot = findOrCreateSlot(sX, sY)
             page = slot.first
             row = slot.second.toFloat()
             col = slot.third.toFloat()
+        } else {
+            val slot = findFirstAvailableSlot(sX, sY)
+            if (slot == null) {
+                col = (settingsManager.columns - sX) / 2f
+                row = (HomeView.GRID_ROWS - sY) / 2f
+            } else {
+                page = slot.first
+                row = slot.second.toFloat()
+                col = slot.third.toFloat()
+            }
         }
 
         val item = HomeItem.createApp(app.packageName, app.className, col, row, page)

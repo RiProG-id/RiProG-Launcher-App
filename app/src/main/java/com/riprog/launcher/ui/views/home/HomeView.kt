@@ -1131,6 +1131,7 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
         }
 
         private fun updateDots() {
+            visibility = if (count <= 1) View.GONE else View.VISIBLE
             removeAllViews()
             for (i in 0 until count) {
                 val dot = View(context)
