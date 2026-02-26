@@ -534,6 +534,7 @@ class MainActivity : Activity() {
 
     private fun createWidget(data: Intent) {
         val appWidgetId = data.getIntExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, -1)
+        val info = appWidgetManager.getAppWidgetInfo(appWidgetId) ?: return
 
         val sX = pendingSpanX.coerceAtMost(settingsManager.columns)
         val sY = pendingSpanY.coerceAtMost(HomeView.GRID_ROWS)
@@ -563,6 +564,8 @@ class MainActivity : Activity() {
         renderHomeItem(item)
         saveHomeState()
         homeView.scrollToPage(page)
+        val label = info.loadLabel(packageManager)
+        Toast.makeText(this, getString(R.string.app_added_to_home, label), Toast.LENGTH_SHORT).show()
     }
 
     fun pickWidget() {
@@ -605,6 +608,8 @@ class MainActivity : Activity() {
             renderHomeItem(item)
             saveHomeState()
             homeView.scrollToPage(page)
+            val label = info.loadLabel(packageManager)
+            Toast.makeText(this, getString(R.string.app_added_to_home, label), Toast.LENGTH_SHORT).show()
         } else {
             val intent = Intent(AppWidgetManager.ACTION_APPWIDGET_BIND)
             intent.putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, appWidgetId)
