@@ -55,7 +55,7 @@ class AcrylicReflectionDrawable(
         val bounds = bounds
         if (bounds.isEmpty) return
 
-        // 1. Draw base glass background
+        // 1. Draw base acrylic background
         baseDrawable.draw(canvas)
 
         // 2. Draw static reflection highlight for surface depth

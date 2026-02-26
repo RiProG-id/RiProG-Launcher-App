@@ -11,7 +11,7 @@ RiProG Launcher is an ultra-lightweight, high-performance Android launcher desig
 - **Fast Execution**: Engineered for rapid app launching and smooth navigation.
 
 ### Acrylic Design
-- **Consistent Aesthetic**: Features a sophisticated frosted glass UI across the app drawer, settings, and menus.
+- **Consistent Aesthetic**: Features a sophisticated acrylic UI across the app drawer, settings, and menus.
 - **Visual Harmony**: Transparent and translucent elements that adapt to your wallpaper.
 
 ### Advanced App Drawer

@@ -28,8 +28,8 @@ object AcrylicTheme : ThemeModule {
         return reflectionDrawable
     }
 
-    override fun getAdaptiveColor(context: Context, isOnGlass: Boolean): Int {
-        if (isOnGlass) {
+    override fun getAdaptiveColor(context: Context, isOnAcrylic: Boolean): Int {
+        if (isOnAcrylic) {
             return ThemeUtils.getAdaptiveColor(context, context.getColor(R.color.background_acrylic))
         } else {
             val isNight = (context.resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) ==

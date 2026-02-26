@@ -43,8 +43,8 @@ object ThemeUtils {
     }
 
 
-    fun getAdaptiveColor(context: Context, settingsManager: SettingsManager, isOnGlass: Boolean): Int {
-        return getModule(settingsManager).getAdaptiveColor(context, isOnGlass)
+    fun getAdaptiveColor(context: Context, settingsManager: SettingsManager, isOnAcrylic: Boolean): Int {
+        return getModule(settingsManager).getAdaptiveColor(context, isOnAcrylic)
     }
 
 

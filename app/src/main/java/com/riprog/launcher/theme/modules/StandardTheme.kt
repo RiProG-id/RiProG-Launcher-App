@@ -26,7 +26,7 @@ object StandardTheme : ThemeModule {
         return gd
     }
 
-    override fun getAdaptiveColor(context: Context, isOnGlass: Boolean): Int {
+    override fun getAdaptiveColor(context: Context, isOnAcrylic: Boolean): Int {
         val isNight = (context.resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) ==
                 Configuration.UI_MODE_NIGHT_YES
 

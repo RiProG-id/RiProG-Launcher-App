@@ -5,5 +5,5 @@ import android.graphics.drawable.Drawable
 
 interface ThemeModule {
     fun getThemedSurface(context: Context, cornerRadiusDp: Float): Drawable
-    fun getAdaptiveColor(context: Context, isOnGlass: Boolean): Int
+    fun getAdaptiveColor(context: Context, isOnAcrylic: Boolean): Int
 }

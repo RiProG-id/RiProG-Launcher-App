@@ -8,7 +8,6 @@ import com.riprog.launcher.R
 
 import android.app.Activity
 import android.app.ActivityManager
-import android.appwidget.AppWidgetHost
 import android.content.Context
 import android.content.Intent
 import android.graphics.Color
@@ -55,7 +54,7 @@ class SettingsActivity : Activity() {
         // Add dimming layer at the very bottom
         autoDimmingBackground = AutoDimmingBackground(this, rootContainer, settingsManager)
 
-        // Add content layer with glass background
+        // Add content layer with acrylic background
         val contentLayer = FrameLayout(this)
         contentLayer.background = ThemeUtils.getThemedSurface(this, settingsManager, 0f)
         rootContainer.addView(contentLayer, FrameLayout.LayoutParams(
@@ -452,7 +451,7 @@ class SettingsActivity : Activity() {
 
         // 2. Clear AppWidgetHost
         try {
-            val awh = AppWidgetHost(this, 1024)
+            val awh = android.appwidget.AppWidgetHost(this, 1024)
             awh.deleteHost()
         } catch (e: Exception) {
             // Ignored

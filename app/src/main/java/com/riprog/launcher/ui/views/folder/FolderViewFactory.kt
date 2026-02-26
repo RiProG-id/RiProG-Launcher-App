@@ -18,7 +18,7 @@ import android.widget.TextView
 
 class FolderViewFactory(private val context: Context, private val preferences: SettingsManager) {
 
-    fun createFolderView(item: HomeItem, isOnGlass: Boolean, cellWidth: Int, cellHeight: Int): View {
+    fun createFolderView(item: HomeItem, isOnAcrylic: Boolean, cellWidth: Int, cellHeight: Int): View {
         val container = LinearLayout(context)
         container.orientation = LinearLayout.VERTICAL
         container.gravity = Gravity.CENTER
@@ -62,7 +62,7 @@ class FolderViewFactory(private val context: Context, private val preferences: S
         labelView.isClickable = false
         labelView.isFocusable = false
         labelView.tag = "item_label"
-        labelView.setTextColor(ThemeUtils.getAdaptiveColor(context, preferences, isOnGlass))
+        labelView.setTextColor(ThemeUtils.getAdaptiveColor(context, preferences, isOnAcrylic))
         labelView.setTextSize(TypedValue.COMPLEX_UNIT_SP, 10 * scale)
         labelView.gravity = Gravity.CENTER
         labelView.maxLines = 1

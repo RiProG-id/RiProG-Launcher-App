@@ -26,10 +26,22 @@ class SettingsManager(context: Context) {
         }
     }
 
+    var pageCount: Int
+        get() = prefs.getInt(KEY_PAGE_COUNT, 2)
+        set(count) {
+            prefs.edit().putInt(KEY_PAGE_COUNT, count).apply()
+        }
+
     var columns: Int
         get() = prefs.getInt(KEY_COLUMNS, 4)
         set(columns) {
             prefs.edit().putInt(KEY_COLUMNS, columns).apply()
+        }
+
+    var widgetId: Int
+        get() = prefs.getInt(KEY_WIDGET_ID, -1)
+        set(widgetId) {
+            prefs.edit().putInt(KEY_WIDGET_ID, widgetId).apply()
         }
 
     var isFreeformHome: Boolean
@@ -63,12 +75,6 @@ class SettingsManager(context: Context) {
         get() = prefs.getBoolean(KEY_DARKEN_WALLPAPER, false)
         set(enabled) {
             prefs.edit().putBoolean(KEY_DARKEN_WALLPAPER, enabled).apply()
-        }
-
-    var pageCount: Int
-        get() = prefs.getInt(KEY_PAGE_COUNT, 2)
-        set(count) {
-            prefs.edit().putInt(KEY_PAGE_COUNT, count).apply()
         }
 
     fun incrementUsage(packageName: String) {
@@ -110,7 +116,10 @@ class SettingsManager(context: Context) {
         try {
             val array = JSONArray()
             for (item in items) {
-                array.put(serializeItem(item))
+                val serialized = serializeItem(item)
+                if (serialized.has("type")) {
+                    array.put(serialized)
+                }
             }
             val json = array.toString()
             if (json.isNotEmpty() && json != "[]") {
@@ -176,8 +185,6 @@ class SettingsManager(context: Context) {
                 val item = deserializeItem(array.getJSONObject(i))
                 if (item != null) {
                     tempItems.add(item)
-                } else {
-                    // Critical failure in one item, but we should try to recover others
                 }
             }
             items.addAll(tempItems)
@@ -195,10 +202,9 @@ class SettingsManager(context: Context) {
         } catch (e: Exception) {
             return null
         }
-        item.packageName = if (obj.has("packageName")) obj.getString("packageName") else null
-        item.className = if (obj.has("className")) obj.getString("className") else null
-        item.folderName = if (obj.has("folderName")) obj.getString("folderName") else null
-
+        item.packageName = if (obj.has("packageName")) obj.optString("packageName") else null
+        item.className = if (obj.has("className")) obj.optString("className") else null
+        item.folderName = if (obj.has("folderName")) obj.optString("folderName") else null
         if (obj.has("col")) {
             item.col = obj.optDouble("col", 0.0).toFloat()
         } else {
@@ -209,7 +215,6 @@ class SettingsManager(context: Context) {
         } else {
             item.row = (obj.optDouble("y", 0.0) / 100.0).toFloat()
         }
-
         item.spanX = obj.optDouble("spanX", (obj.optInt("width", 100) / 100).toDouble()).toFloat()
         item.spanY = obj.optDouble("spanY", (obj.optInt("height", 100) / 100).toDouble()).toFloat()
         if (item.spanX <= 0) item.spanX = 1f
@@ -219,7 +224,7 @@ class SettingsManager(context: Context) {
         // Recovery: ensure items are not placed on impossible pages/positions
         item.page = item.page.coerceAtLeast(0)
         item.col = item.col.coerceIn(-2f, columns.toFloat())
-        item.row = item.row.coerceIn(-2f, 10f) // HomeView.GRID_ROWS is 6
+        item.row = item.row.coerceIn(-2f, 10f)
         item.spanX = item.spanX.coerceIn(1f, columns.toFloat())
         item.spanY = item.spanY.coerceIn(1f, 10f)
 
@@ -258,17 +263,18 @@ class SettingsManager(context: Context) {
     companion object {
         private const val PREFS_NAME = "riprog_launcher_prefs"
         private const val KEY_COLUMNS = "columns"
+        private const val KEY_WIDGET_ID = "widget_id"
         private const val KEY_USAGE_PREFIX = "usage_"
         private const val KEY_HOME_ITEMS = "home_items"
         private const val KEY_FREEFORM_HOME = "freeform_home"
         private const val KEY_THEME_MODE = "theme_mode"
         private const val KEY_ACRYLIC = "liquid_glass"
         private const val KEY_DARKEN_WALLPAPER = "darken_wallpaper"
+        private const val KEY_PAGE_COUNT = "page_count"
         private const val KEY_HIDE_LABELS = "hide_labels"
         private const val KEY_DRAWER_OPEN_COUNT = "drawer_open_count"
         private const val KEY_DEFAULT_PROMPT_TIMESTAMP = "default_prompt_ts"
         private const val KEY_DEFAULT_PROMPT_COUNT = "default_prompt_count"
         private const val KEY_FIRST_RUN = "first_run_init"
-        private const val KEY_PAGE_COUNT = "page_count"
     }
 }
