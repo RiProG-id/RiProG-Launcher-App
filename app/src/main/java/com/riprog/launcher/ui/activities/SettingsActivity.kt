@@ -8,6 +8,7 @@ import com.riprog.launcher.R
 
 import android.app.Activity
 import android.app.ActivityManager
+import android.appwidget.AppWidgetHost
 import android.content.Context
 import android.content.Intent
 import android.graphics.Color
@@ -445,8 +446,36 @@ class SettingsActivity : Activity() {
     }
 
     private fun eraseData() {
-        val am = getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
-        am.clearApplicationUserData()
+        // 1. Clear SharedPreferences
+        val prefs = getSharedPreferences("riprog_launcher_prefs", Context.MODE_PRIVATE)
+        prefs.edit().clear().commit()
+
+        // 2. Clear AppWidgetHost
+        try {
+            val awh = AppWidgetHost(this, 1024)
+            awh.deleteHost()
+        } catch (e: Exception) {
+            // Ignored
+        }
+
+        // 3. Clear Internal Storage
+        val dataDir = java.io.File(applicationInfo.dataDir)
+        deleteRecursive(java.io.File(dataDir, "shared_prefs"))
+        deleteRecursive(java.io.File(dataDir, "files"))
+        deleteRecursive(java.io.File(dataDir, "cache"))
+        deleteRecursive(java.io.File(dataDir, "databases"))
+
+        // 4. Force Restart
+        forceRestart()
+    }
+
+    private fun deleteRecursive(fileOrDirectory: java.io.File) {
+        if (fileOrDirectory.exists()) {
+            if (fileOrDirectory.isDirectory) {
+                fileOrDirectory.listFiles()?.forEach { deleteRecursive(it) }
+            }
+            fileOrDirectory.delete()
+        }
     }
 
     private fun dpToPx(dp: Int): Int {
