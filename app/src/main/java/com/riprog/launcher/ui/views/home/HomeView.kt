@@ -258,6 +258,14 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
         updateViewPosition(item, view)
         view.tag = item
         page.addView(view)
+
+        // Initial add flow for widgets in Non-Freeform mode:
+        // Wait until rendered, then detect actual visual span and lock position.
+        if (!settingsManager.isFreeformHome && item.type == HomeItem.Type.WIDGET && item.visualOffsetX < 0) {
+            view.post {
+                snapToGrid(item, view)
+            }
+        }
     }
 
     fun getCellWidth(): Float {

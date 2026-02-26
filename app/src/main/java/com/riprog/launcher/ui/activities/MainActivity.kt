@@ -768,36 +768,6 @@ class MainActivity : Activity() {
         updateContentBlur()
     }
 
-    private fun findNearestAvailable(occupied: Array<BooleanArray>, r: Int, c: Int, spanX: Int, spanY: Int): Pair<Int, Int>? {
-        var minDest = Double.MAX_VALUE
-        var bestPos: Pair<Int, Int>? = null
-        val columns = settingsManager.columns
-
-        for (i in 0..HomeView.GRID_ROWS - spanY) {
-            for (j in 0..columns - spanX) {
-                var canPlace = true
-                for (ri in i until i + spanY) {
-                    for (ci in j until j + spanX) {
-                        if (ri >= HomeView.GRID_ROWS || ci >= columns || occupied[ri][ci]) {
-                            canPlace = false
-                            break
-                        }
-                    }
-                    if (!canPlace) break
-                }
-
-                if (canPlace) {
-                    val d = Math.sqrt(Math.pow((i - r).toDouble(), 2.0) + Math.pow((j - c).toDouble(), 2.0))
-                    if (d < minDest) {
-                        minDest = d
-                        bestPos = Pair(i, j)
-                    }
-                }
-            }
-        }
-        return bestPos
-    }
-
     private fun findFirstAvailableSlot(spanX: Int, spanY: Int): Triple<Int, Int, Int>? {
         val startPage = homeView.currentPage
         val pageCount = homeView.getPageCount()
