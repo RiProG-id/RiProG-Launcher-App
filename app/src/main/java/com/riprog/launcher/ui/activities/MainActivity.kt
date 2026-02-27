@@ -43,6 +43,8 @@ import android.view.*
 import android.view.inputmethod.InputMethodManager
 import androidx.core.view.WindowCompat
 import android.widget.*
+import androidx.core.content.IntentCompat
+import androidx.core.view.WindowInsetsControllerCompat
 import java.util.*
 
 class MainActivity : Activity() {
@@ -81,8 +83,6 @@ class MainActivity : Activity() {
 
         val w = window
         w.setFlags(WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS, WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS)
-        w.statusBarColor = Color.TRANSPARENT
-        w.navigationBarColor = Color.TRANSPARENT
 
         WindowCompat.setDecorFitsSystemWindows(w, false)
 
@@ -262,7 +262,6 @@ class MainActivity : Activity() {
 
     fun refreshFolderPreview(folder: HomeItem, grid: GridLayout) {
         grid.removeAllViews()
-        if (folder.folderItems == null) return
         val count = Math.min(folder.folderItems.size, 4)
         val scale = settingsManager.iconScale
         val size = (dpToPx(18) * scale).toInt()
@@ -534,6 +533,7 @@ class MainActivity : Activity() {
         super.onTrimMemory(level)
     }
 
+    @Deprecated("Deprecated in Java")
     override fun onBackPressed() {
         if (isAnyOverlayVisible()) {
             dismissAllOverlays()
@@ -586,7 +586,7 @@ class MainActivity : Activity() {
             return
         }
         if (requestCode == REQUEST_PICK_WIDGET_SCREEN && resultCode == RESULT_OK && data != null) {
-            val info = data.getParcelableExtra<AppWidgetProviderInfo>("EXTRA_WIDGET_INFO")
+            val info = IntentCompat.getParcelableExtra(data, "EXTRA_WIDGET_INFO", AppWidgetProviderInfo::class.java)
             val spanX = data.getIntExtra("EXTRA_SPAN_X", 2)
             val spanY = data.getIntExtra("EXTRA_SPAN_Y", 1)
             if (info != null) {
