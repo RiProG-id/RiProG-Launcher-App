@@ -38,6 +38,8 @@ import kotlin.math.floor
 import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.roundToInt
+import android.os.Bundle
+import android.util.SizeF
 
 class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
     val recyclerView: RecyclerView
@@ -333,8 +335,12 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
             val density = resources.displayMetrics.density
             val minW = (cellWidth * item.spanX / density).toInt()
             val minH = (cellHeight * item.spanY / density).toInt()
-            @Suppress("DEPRECATION")
-            view.updateAppWidgetSize(null, minW, minH, minW, minH)
+            val options = Bundle()
+            options.putInt(AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH, minW)
+            options.putInt(AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT, minH)
+            options.putInt(AppWidgetManager.OPTION_APPWIDGET_MAX_WIDTH, minW)
+            options.putInt(AppWidgetManager.OPTION_APPWIDGET_MAX_HEIGHT, minH)
+            view.updateAppWidgetSize(options, listOf(SizeF(minW.toFloat(), minH.toFloat())))
         }
     }
 
@@ -494,6 +500,7 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
     fun cancelDragging() {
         draggingView = null
         isEdgeScrolling = false
+        edgeHoldStart = 0
         edgeScrollHandler.removeCallbacks(edgeScrollRunnable)
         stopEdgeEffect()
     }
@@ -832,7 +839,7 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
     }
 
     private fun findNearestEmptyArea(pageIndex: Int, spanX: Int, spanY: Int, prefCol: Int, prefRow: Int, otherItems: List<HomeItem>): Pair<Int, Int>? {
-        val cols = settingsManager.columns
+        val cols = if (context is MainActivity) (context as MainActivity).settingsManager.columns else GRID_COLUMNS
         val occupied = Array(GRID_ROWS) { BooleanArray(cols) }
 
         for (item in otherItems) {
@@ -1157,7 +1164,7 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
     }
 
     fun getOccupiedCells(pageIndex: Int, excludeItem: HomeItem? = null): Array<BooleanArray> {
-        val columns = settingsManager.columns
+        val columns = if (context is MainActivity) (context as MainActivity).settingsManager.columns else GRID_COLUMNS
         val occupied = Array(GRID_ROWS) { BooleanArray(columns) }
         if (context is MainActivity) {
             val activity = context as MainActivity
@@ -1180,14 +1187,14 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
     }
 
     fun isSpanValid(item: HomeItem, newSpanX: Float, newSpanY: Float, newCol: Int, newRow: Int): Boolean {
-        val columns = settingsManager.columns
+        val columns = if (context is MainActivity) (context as MainActivity).settingsManager.columns else GRID_COLUMNS
         if (newCol < 0 || newRow < 0 || newCol + newSpanX.roundToInt() > columns || newRow + newSpanY.roundToInt() > GRID_ROWS) return false
         val occupied = getOccupiedCells(item.page, item)
         return canPlace(occupied, newRow, newCol, newSpanX.roundToInt(), newSpanY.roundToInt())
     }
 
     fun doesFit(spanX: Float, spanY: Float, col: Int, row: Int, pageIndex: Int, excludeItem: HomeItem? = null): Boolean {
-        val columns = settingsManager.columns
+        val columns = if (context is MainActivity) (context as MainActivity).settingsManager.columns else GRID_COLUMNS
         val sX = ceil(spanX.toDouble() - 0.01).toInt()
         val sY = ceil(spanY.toDouble() - 0.01).toInt()
         if (col < 0 || row < 0 || col + sX > columns || row + sY > GRID_ROWS) return false
@@ -1196,7 +1203,7 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
     }
 
     fun hasAnySpace(spanX: Float, spanY: Float, pageIndex: Int): Boolean {
-        val columns = settingsManager.columns
+        val columns = if (context is MainActivity) (context as MainActivity).settingsManager.columns else GRID_COLUMNS
         val occupied = getOccupiedCells(pageIndex)
         for (r in 0..GRID_ROWS - spanY.roundToInt()) {
             for (c in 0..columns - spanX.roundToInt()) {

@@ -6,7 +6,6 @@ import com.riprog.launcher.data.model.HomeItem
 import com.riprog.launcher.data.model.AppItem
 import com.riprog.launcher.ui.views.home.HomeView
 
-import android.annotation.SuppressLint
 import android.content.ClipData
 import android.content.Context
 import android.graphics.Typeface
@@ -30,12 +29,12 @@ import android.widget.GridLayout
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import java.util.*
+import androidx.core.view.ViewCompat
 
 class FolderManager(private val activity: MainActivity, private val settingsManager: SettingsManager) {
     private var currentFolderOverlay: View? = null
     private var isProcessingDrop = false
 
-    @SuppressLint("ClickableViewAccessibility")
     fun openFolder(folderItem: HomeItem, folderView: View?, homeItems: MutableList<HomeItem>, allApps: List<AppItem>) {
         val wasOpen = currentFolderOverlay != null
         if (wasOpen) {
@@ -350,14 +349,9 @@ class FolderManager(private val activity: MainActivity, private val settingsMana
         override fun onBindViewHolder(holder: FolderViewHolder, position: Int) {
             val item = items[position]
             holder.bind(item, item === draggedItem) { view ->
-                val data = ClipData.newPlainText("index", holder.adapterPosition.toString())
+                val data = ClipData.newPlainText("index", holder.bindingAdapterPosition.toString())
                 val shadow = View.DragShadowBuilder(view)
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-                    view.startDragAndDrop(data, shadow, view, 0)
-                } else {
-                    @Suppress("DEPRECATION")
-                    view.startDrag(data, shadow, view, 0)
-                }
+                ViewCompat.startDragAndDrop(view, data, shadow, view, 0)
                 draggedItem = item
                 view.visibility = View.INVISIBLE
             }

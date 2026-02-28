@@ -8,7 +8,6 @@ import com.riprog.launcher.ui.views.home.HomeView
 import com.riprog.launcher.ui.activities.MainActivity
 import com.riprog.launcher.R
 
-import android.annotation.SuppressLint
 import android.appwidget.AppWidgetHostView
 import android.appwidget.AppWidgetProviderInfo
 import android.content.Context
@@ -27,7 +26,6 @@ import android.widget.LinearLayout
 import android.widget.TextView
 import kotlin.math.*
 
-@SuppressLint("ViewConstructor")
 class TransformOverlay(context: Context, private val targetView: View, private val settingsManager: SettingsManager, private val onSaveListener: OnSaveListener?) : FrameLayout(context) {
 
     private val item: HomeItem = targetView.tag as HomeItem
@@ -396,7 +394,6 @@ class TransformOverlay(context: Context, private val targetView: View, private v
         return super.performClick()
     }
 
-    @SuppressLint("ClickableViewAccessibility")
     override fun onTouchEvent(event: MotionEvent): Boolean {
         val x = event.x
         val y = event.y

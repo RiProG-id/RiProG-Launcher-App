@@ -25,8 +25,10 @@ import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import androidx.activity.ComponentActivity
+import androidx.activity.enableEdgeToEdge
 
-class SettingsActivity : Activity() {
+class SettingsActivity : ComponentActivity() {
 
     private lateinit var settingsManager: SettingsManager
     private lateinit var recyclerView: RecyclerView
@@ -38,15 +40,12 @@ class SettingsActivity : Activity() {
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        enableEdgeToEdge()
         super.onCreate(savedInstanceState)
         settingsManager = SettingsManager(this)
         ThemeManager.applyThemeMode(this, settingsManager.themeMode)
 
         val w = window
-        w.setFlags(WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS, WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS)
-        w.statusBarColor = Color.TRANSPARENT
-        w.navigationBarColor = Color.TRANSPARENT
-        WindowCompat.setDecorFitsSystemWindows(w, false)
         ThemeUtils.applyWindowBlur(w, settingsManager.isAcrylic)
 
         val rootContainer = FrameLayout(this)
@@ -168,7 +167,7 @@ class SettingsActivity : Activity() {
 
         override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): RecyclerView.ViewHolder {
             val context = parent.context
-            val type = SettingType.values()[viewType]
+            val type = SettingType.entries[viewType]
             val adaptiveColor = ThemeUtils.getAdaptiveColor(context, settingsManager, true)
 
             return when (type) {

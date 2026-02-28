@@ -89,11 +89,8 @@ class AcrylicReflectionDrawable(
         reflectionPaint.colorFilter = colorFilter
     }
 
+    @Deprecated("Deprecated in Java")
     override fun getOpacity(): Int = PixelFormat.TRANSLUCENT
-
-    override fun setVisible(visible: Boolean, restart: Boolean): Boolean {
-        return super.setVisible(visible, restart)
-    }
 
     override fun start() {
     }

@@ -2,7 +2,6 @@ package com.riprog.launcher.data.repository
 
 import com.riprog.launcher.data.model.AppItem
 
-import android.content.ComponentCallbacks2
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -47,16 +46,9 @@ class AppRepository(context: Context) {
         }
     }
 
-    fun onTrimMemory(level: Int) {
-        if (level >= ComponentCallbacks2.TRIM_MEMORY_UI_HIDDEN) {
-            iconCache.trimToSize(iconCache.size() / 2)
-        }
-        if (level >= ComponentCallbacks2.TRIM_MEMORY_MODERATE) {
-            iconCache.evictAll()
-            System.gc()
-        } else if (level >= ComponentCallbacks2.TRIM_MEMORY_BACKGROUND) {
-            iconCache.trimToSize(0)
-        }
+    fun clearCaches() {
+        iconCache.evictAll()
+        System.gc()
     }
 
     fun shutdown() {

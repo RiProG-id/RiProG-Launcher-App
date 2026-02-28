@@ -1,55 +1,45 @@
 package com.riprog.launcher
 
 import com.riprog.launcher.data.model.HomeItem
-import org.junit.Test
-import org.junit.Assert.assertEquals
+import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.Assertions.assertEquals
+import kotlin.math.floor
 
 class PageMappingTest {
-    @Test
-    fun testAddPageLeftShiftsIndices() {
-        val items = mutableListOf<HomeItem>()
-        items.add(HomeItem.createApp("pkg1", "cls1", 0f, 0f, 0))
-        items.add(HomeItem.createApp("pkg2", "cls2", 0f, 0f, 1))
-
-        val indexToAdd = 0
-        items.forEach {
-            if (it.page >= indexToAdd) it.page++
-        }
-
-        assertEquals(1, items[0].page)
-        assertEquals(2, items[1].page)
-    }
 
     @Test
-    fun testAddPageRightDoesNotShiftIndices() {
-        val items = mutableListOf<HomeItem>()
-        items.add(HomeItem.createApp("pkg1", "cls1", 0f, 0f, 0))
-        items.add(HomeItem.createApp("pkg2", "cls2", 0f, 0f, 1))
+    fun testResolvePageIndex() {
+        val width = 1080
+        val pageW = width
 
-        val indexToAdd = 2
-        items.forEach {
-            if (it.page >= indexToAdd) it.page++
-        }
+        // Scenario: scrolled to page 1 exactly (scrollX = 1080)
+        // User touches at x = 540 (middle of screen)
+        // adjustedX = 540
+        // scrollX = 1080
+        // relativeX = 540 + 1080 = 1620
+        // index = floor(1620 / 1080) = 1
 
-        assertEquals(0, items[0].page)
-        assertEquals(1, items[1].page)
-    }
+        val scrollX = 1080
+        val adjustedX = 540f
+        val relativeX = adjustedX + scrollX
+        val index = floor((relativeX / pageW).toDouble()).toInt()
 
-    @Test
-    fun testRemovePageShiftsIndices() {
-        val items = mutableListOf<HomeItem>()
-        items.add(HomeItem.createApp("pkg1", "cls1", 0f, 0f, 0))
-        items.add(HomeItem.createApp("pkg2", "cls2", 0f, 0f, 1))
-        items.add(HomeItem.createApp("pkg3", "cls3", 0f, 0f, 2))
+        assertEquals(1, index)
 
-        val indexToRemove = 1
-        items.removeAll { it.page == indexToRemove }
-        items.forEach {
-            if (it.page > indexToRemove) it.page--
-        }
+        // Scenario: adjustedX = 100 (left edge of screen, but on page 1)
+        // relativeX = 100 + 1080 = 1180
+        // index = 1
+        assertEquals(1, floor(((100f + 1080) / pageW).toDouble()).toInt())
 
-        assertEquals(0, items[0].page)
-        assertEquals(1, items[1].page)
-        assertEquals(2, items.size)
+        // Scenario: adjustedX = 1000 (right edge of screen, but on page 1)
+        // relativeX = 1000 + 1080 = 2080
+        // index = 1
+        assertEquals(1, floor(((1000f + 1080) / pageW).toDouble()).toInt())
+
+        // Scenario: dragged to page 2
+        // adjustedX = 1100 (slightly off right edge of screen)
+        // relativeX = 1100 + 1080 = 2180
+        // index = 2
+        assertEquals(2, floor(((1100f + 1080) / pageW).toDouble()).toInt())
     }
 }

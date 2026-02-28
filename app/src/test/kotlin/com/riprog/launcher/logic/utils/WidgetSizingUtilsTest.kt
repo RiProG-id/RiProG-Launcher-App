@@ -5,9 +5,9 @@ import android.content.Context
 import android.content.res.Resources
 import android.util.DisplayMetrics
 import com.riprog.launcher.ui.views.home.HomeView
-import org.junit.Assert.assertEquals
-import org.junit.Assert.assertTrue
-import org.junit.Test
+import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertTrue
+import org.junit.jupiter.api.Test
 import org.mockito.kotlin.doReturn
 import org.mockito.kotlin.mock
 import org.mockito.kotlin.whenever
@@ -38,8 +38,8 @@ class WidgetSizingUtilsTest {
 
         val spans = WidgetSizingUtils.calculateWidgetSpan(context, null, info)
         println("Calculated spans: ${spans.first}x${spans.second}")
-        assertTrue("SpanX should be clamped to 4, but was ${spans.first}", spans.first <= 4)
-        assertTrue("SpanY should be clamped to 6, but was ${spans.second}", spans.second <= 6)
+        assertTrue(spans.first <= 4, "SpanX should be clamped to 4, but was ${spans.first}")
+        assertTrue(spans.second <= 6, "SpanY should be clamped to 6, but was ${spans.second}")
     }
 
     @Test

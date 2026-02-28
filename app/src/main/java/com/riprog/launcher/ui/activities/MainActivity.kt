@@ -43,9 +43,14 @@ import android.view.*
 import android.view.inputmethod.InputMethodManager
 import androidx.core.view.WindowCompat
 import android.widget.*
+import androidx.activity.ComponentActivity
+import androidx.activity.OnBackPressedCallback
+import androidx.activity.enableEdgeToEdge
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.content.IntentCompat
 import java.util.*
 
-class MainActivity : Activity() {
+class MainActivity : ComponentActivity() {
 
     lateinit var model: AppRepository
     lateinit var settingsManager: SettingsManager
@@ -68,23 +73,46 @@ class MainActivity : Activity() {
     private var pendingSpanY: Int = 1
     private var currentDefaultPrompt: View? = null
 
+    private val settingsLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) {
+        loadApps()
+        homeView.refreshLayout()
+        drawerView.refreshTheme()
+    }
+
+    private val widgetPickerLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+        if (result.resultCode == Activity.RESULT_OK && result.data != null) {
+            val info = IntentCompat.getParcelableExtra(result.data!!, "EXTRA_WIDGET_INFO", AppWidgetProviderInfo::class.java)
+            val spanX = result.data!!.getIntExtra("EXTRA_SPAN_X", 2)
+            val spanY = result.data!!.getIntExtra("EXTRA_SPAN_Y", 1)
+            if (info != null) {
+                spawnWidget(info, spanX, spanY)
+            }
+        }
+    }
+
+    private val bindWidgetLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+        if (result.resultCode == Activity.RESULT_OK && result.data != null) {
+            configureWidget(result.data!!)
+        }
+    }
+
+    private val configureWidgetLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+        if (result.resultCode == Activity.RESULT_OK && result.data != null) {
+            createWidget(result.data!!)
+        }
+    }
+
     override fun attachBaseContext(newBase: Context) {
         val sm = SettingsManager(newBase)
         super.attachBaseContext(ThemeManager.applyThemeToContext(newBase, sm.themeMode))
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        enableEdgeToEdge()
         super.onCreate(savedInstanceState)
         settingsManager = SettingsManager(this)
         ThemeManager.applyThemeMode(this, settingsManager.themeMode)
         ThemeUtils.updateStatusBarContrast(this)
-
-        val w = window
-        w.setFlags(WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS, WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS)
-        w.statusBarColor = Color.TRANSPARENT
-        w.navigationBarColor = Color.TRANSPARENT
-
-        WindowCompat.setDecorFitsSystemWindows(w, false)
 
         model = (application as LauncherApplication).model
 
@@ -134,6 +162,23 @@ class MainActivity : Activity() {
         homeView.post {
             restoreHomeState()
         }
+
+        addOnTrimMemoryListener {
+            model.clearCaches()
+        }
+
+        onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
+            override fun handleOnBackPressed() {
+                if (isAnyOverlayVisible()) {
+                    dismissAllOverlays()
+                    return
+                }
+                if (mainLayout.closeDrawer()) {
+                    return
+                }
+                // Do nothing to prevent closing the launcher
+            }
+        })
     }
 
     private fun isDefaultLauncher(): Boolean {
@@ -262,7 +307,6 @@ class MainActivity : Activity() {
 
     fun refreshFolderPreview(folder: HomeItem, grid: GridLayout) {
         grid.removeAllViews()
-        if (folder.folderItems == null) return
         val count = Math.min(folder.folderItems.size, 4)
         val scale = settingsManager.iconScale
         val size = (dpToPx(18) * scale).toInt()
@@ -428,7 +472,7 @@ class MainActivity : Activity() {
 
     private fun openSettings() {
         val intent = Intent(this, SettingsActivity::class.java)
-        startActivityForResult(intent, 100)
+        settingsLauncher.launch(intent)
     }
 
     private fun applyDynamicColors() {
@@ -530,21 +574,6 @@ class MainActivity : Activity() {
         }
     }
 
-    override fun onTrimMemory(level: Int) {
-        super.onTrimMemory(level)
-    }
-
-    override fun onBackPressed() {
-        if (isAnyOverlayVisible()) {
-            dismissAllOverlays()
-            return
-        }
-        if (mainLayout.closeDrawer()) {
-            return
-        }
-        // Don't call super.onBackPressed() to prevent closing the launcher
-    }
-
     override fun onResume() {
         super.onResume()
         autoDimmingBackground?.updateDimVisibility()
@@ -577,32 +606,6 @@ class MainActivity : Activity() {
         if (appInstallReceiver != null) unregisterReceiver(appInstallReceiver)
     }
 
-    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
-        super.onActivityResult(requestCode, resultCode, data)
-        if (requestCode == 100) {
-            loadApps()
-            homeView.refreshLayout()
-            drawerView.refreshTheme()
-            return
-        }
-        if (requestCode == REQUEST_PICK_WIDGET_SCREEN && resultCode == RESULT_OK && data != null) {
-            val info = data.getParcelableExtra<AppWidgetProviderInfo>("EXTRA_WIDGET_INFO")
-            val spanX = data.getIntExtra("EXTRA_SPAN_X", 2)
-            val spanY = data.getIntExtra("EXTRA_SPAN_Y", 1)
-            if (info != null) {
-                spawnWidget(info, spanX, spanY)
-            }
-            return
-        }
-        if (resultCode == RESULT_OK && data != null) {
-            if (requestCode == REQUEST_PICK_APPWIDGET) {
-                configureWidget(data)
-            } else if (requestCode == REQUEST_CREATE_APPWIDGET) {
-                createWidget(data)
-            }
-        }
-    }
-
     private fun configureWidget(data: Intent) {
         val appWidgetId = data.getIntExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, -1)
         val info = appWidgetManager.getAppWidgetInfo(appWidgetId) ?: return
@@ -610,7 +613,7 @@ class MainActivity : Activity() {
             val intent = Intent(AppWidgetManager.ACTION_APPWIDGET_CONFIGURE)
             intent.component = info.configure
             intent.putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, appWidgetId)
-            startActivityForResult(intent, REQUEST_CREATE_APPWIDGET)
+            configureWidgetLauncher.launch(intent)
         } else {
             createWidget(data)
         }
@@ -654,7 +657,7 @@ class MainActivity : Activity() {
 
     fun pickWidget() {
         val intent = Intent(this, WidgetPickerActivity::class.java)
-        startActivityForResult(intent, REQUEST_PICK_WIDGET_SCREEN)
+        widgetPickerLauncher.launch(intent)
     }
 
     fun spawnWidget(info: AppWidgetProviderInfo, spanX: Int, spanY: Int) {
@@ -698,7 +701,7 @@ class MainActivity : Activity() {
             val intent = Intent(AppWidgetManager.ACTION_APPWIDGET_BIND)
             intent.putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, appWidgetId)
             intent.putExtra(AppWidgetManager.EXTRA_APPWIDGET_PROVIDER, info.provider)
-            startActivityForResult(intent, REQUEST_PICK_APPWIDGET)
+            bindWidgetLauncher.launch(intent)
         }
     }
 
@@ -719,7 +722,7 @@ class MainActivity : Activity() {
             val intent = Intent(AppWidgetManager.ACTION_APPWIDGET_BIND)
             intent.putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, appWidgetId)
             intent.putExtra(AppWidgetManager.EXTRA_APPWIDGET_PROVIDER, info.provider)
-            startActivityForResult(intent, REQUEST_PICK_APPWIDGET)
+            bindWidgetLauncher.launch(intent)
         }
     }
 
@@ -951,9 +954,6 @@ class MainActivity : Activity() {
     }
 
     companion object {
-        private const val REQUEST_PICK_APPWIDGET = 1
-        private const val REQUEST_CREATE_APPWIDGET = 2
-        private const val REQUEST_PICK_WIDGET_SCREEN = 3
         private const val APPWIDGET_HOST_ID = 1024
     }
 }

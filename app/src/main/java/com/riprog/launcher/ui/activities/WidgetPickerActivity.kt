@@ -25,8 +25,10 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import java.util.*
 import java.util.concurrent.Executors
+import androidx.activity.ComponentActivity
+import androidx.activity.enableEdgeToEdge
 
-class WidgetPickerActivity : Activity() {
+class WidgetPickerActivity : ComponentActivity() {
 
     private lateinit var settingsManager: SettingsManager
     private lateinit var recyclerView: RecyclerView
@@ -34,15 +36,12 @@ class WidgetPickerActivity : Activity() {
     private val widgetPreviewExecutor = Executors.newFixedThreadPool(4)
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        enableEdgeToEdge()
         super.onCreate(savedInstanceState)
         settingsManager = SettingsManager(this)
         appWidgetManager = AppWidgetManager.getInstance(this)
 
         val w = window
-        w.setFlags(WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS, WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS)
-        w.statusBarColor = Color.TRANSPARENT
-        w.navigationBarColor = Color.TRANSPARENT
-        WindowCompat.setDecorFitsSystemWindows(w, false)
         ThemeUtils.applyWindowBlur(w, settingsManager.isAcrylic)
 
         val rootContainer = FrameLayout(this)
@@ -167,7 +166,7 @@ class WidgetPickerActivity : Activity() {
             val context = parent.context
             val adaptiveColor = ThemeUtils.getAdaptiveColor(context, settingsManager, true)
             val secondaryColor = (adaptiveColor and 0x00FFFFFF) or 0x80000000.toInt()
-            val type = ItemType.values()[viewType]
+            val type = ItemType.entries[viewType]
 
             return when (type) {
                 ItemType.TITLE -> {
@@ -274,7 +273,7 @@ class WidgetPickerActivity : Activity() {
                         data.putExtra("EXTRA_WIDGET_INFO", info)
                         data.putExtra("EXTRA_SPAN_X", item.spanX)
                         data.putExtra("EXTRA_SPAN_Y", item.spanY)
-                        setResult(RESULT_OK, data)
+                        setResult(Activity.RESULT_OK, data)
                         finish()
                     }
                 }

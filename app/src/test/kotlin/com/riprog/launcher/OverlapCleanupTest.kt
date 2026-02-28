@@ -1,9 +1,9 @@
 package com.riprog.launcher
 
 import com.riprog.launcher.data.model.HomeItem
-import org.junit.Test
-import org.junit.Assert.assertEquals
-import org.junit.Assert.assertTrue
+import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertTrue
 import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.roundToInt
@@ -38,7 +38,7 @@ class OverlapCleanupTest {
 
         assertEquals(0f, large.col)
         assertEquals(0f, large.row)
-        assertTrue("Small item should have moved from (1,1)", small.col != 1f || small.row != 1f)
+        assertTrue(small.col != 1f || small.row != 1f, "Small item should have moved from (1,1)")
     }
 
     @Test
@@ -64,7 +64,7 @@ class OverlapCleanupTest {
 
         assertEquals(0f, large.col)
         assertEquals(0f, large.row)
-        assertTrue("Small item should have moved from (1,1)", small.col != 1f || small.row != 1f)
+        assertTrue(small.col != 1f || small.row != 1f, "Small item should have moved from (1,1)")
     }
 
     @Test

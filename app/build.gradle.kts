@@ -3,12 +3,12 @@ plugins {
 }
 
 android {
-    compileSdk = 35
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "com.riprog.launcher"
         minSdk = 23
-        targetSdk = 35
+        targetSdk = 36
         versionCode = 300
         versionName = "3.0.0"
     }
@@ -56,13 +56,26 @@ android {
     }
 
     namespace = "com.riprog.launcher"
+
+    testOptions {
+        unitTests.all {
+            it.useJUnitPlatform()
+        }
+    }
 }
 
+tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().configureEach {
+    compilerOptions {
+        allWarningsAsErrors.set(true)
+    }
+}
 
 dependencies {
-    implementation("androidx.core:core-ktx:1.15.0")
-    implementation("androidx.recyclerview:recyclerview:1.3.2")
-    testImplementation("junit:junit:4.13.2")
+    implementation("androidx.core:core-ktx:1.17.0")
+    implementation("androidx.recyclerview:recyclerview:1.4.0")
+    implementation("androidx.activity:activity-ktx:1.12.4")
+    testImplementation("org.junit.jupiter:junit-jupiter:5.10.0")
+    testRuntimeOnly("org.junit.platform:junit-platform-launcher")
     testImplementation("org.mockito:mockito-core:5.11.0")
     testImplementation("org.mockito.kotlin:mockito-kotlin:5.2.1")
 }

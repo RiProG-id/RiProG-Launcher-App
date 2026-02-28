@@ -2,8 +2,8 @@ package com.riprog.launcher.data.repository
 
 import com.riprog.launcher.data.model.AppItem
 
-import org.junit.Test
-import org.junit.Assert.assertEquals
+import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.Assertions.assertEquals
 import java.util.ArrayList
 
 class AppRepositoryTest {
