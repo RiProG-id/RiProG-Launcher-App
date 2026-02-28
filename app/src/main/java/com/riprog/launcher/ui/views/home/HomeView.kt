@@ -333,8 +333,12 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
             val density = resources.displayMetrics.density
             val minW = (cellWidth * item.spanX / density).toInt()
             val minH = (cellHeight * item.spanY / density).toInt()
-            @Suppress("DEPRECATION")
-            view.updateAppWidgetSize(null, minW, minH, minW, minH)
+            val options = android.os.Bundle()
+            options.putInt(AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH, minW)
+            options.putInt(AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT, minH)
+            options.putInt(AppWidgetManager.OPTION_APPWIDGET_MAX_WIDTH, minW)
+            options.putInt(AppWidgetManager.OPTION_APPWIDGET_MAX_HEIGHT, minH)
+            view.updateAppWidgetOptions(options)
         }
     }
 

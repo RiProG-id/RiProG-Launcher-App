@@ -13,4 +13,9 @@ allprojects {
         google()
         mavenCentral()
     }
+    tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().configureEach {
+        compilerOptions {
+            allWarningsAsErrors.set(true)
+        }
+    }
 }

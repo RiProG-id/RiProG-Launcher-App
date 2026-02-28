@@ -3,12 +3,12 @@ plugins {
 }
 
 android {
-    compileSdk = 35
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "com.riprog.launcher"
         minSdk = 23
-        targetSdk = 35
+        targetSdk = 36
         versionCode = 300
         versionName = "3.0.0"
     }
@@ -60,9 +60,10 @@ android {
 
 
 dependencies {
-    implementation("androidx.core:core-ktx:1.15.0")
-    implementation("androidx.recyclerview:recyclerview:1.3.2")
+    implementation("androidx.core:core-ktx:1.16.0")
+    implementation("androidx.activity:activity-ktx:1.10.0")
+    implementation("androidx.recyclerview:recyclerview:1.4.0")
     testImplementation("junit:junit:4.13.2")
-    testImplementation("org.mockito:mockito-core:5.11.0")
-    testImplementation("org.mockito.kotlin:mockito-kotlin:5.2.1")
+    testImplementation("org.mockito:mockito-core:5.14.2")
+    testImplementation("org.mockito.kotlin:mockito-kotlin:5.4.0")
 }

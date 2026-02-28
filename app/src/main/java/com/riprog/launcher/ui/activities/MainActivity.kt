@@ -22,6 +22,11 @@ import com.riprog.launcher.R
 import com.riprog.launcher.LauncherApplication
 
 import android.app.Activity
+import androidx.activity.ComponentActivity
+import androidx.activity.OnBackPressedCallback
+import androidx.activity.result.ActivityResultLauncher
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.content.IntentCompat
 import android.appwidget.AppWidgetHost
 import android.appwidget.AppWidgetHostView
 import android.appwidget.AppWidgetManager
@@ -45,7 +50,7 @@ import androidx.core.view.WindowCompat
 import android.widget.*
 import java.util.*
 
-class MainActivity : Activity() {
+class MainActivity : ComponentActivity() {
 
     lateinit var model: AppRepository
     lateinit var settingsManager: SettingsManager
@@ -59,6 +64,11 @@ class MainActivity : Activity() {
     lateinit var mainLayout: MainLayout
     lateinit var homeView: HomeView
     lateinit var drawerView: DrawerView
+
+    private lateinit var settingsLauncher: ActivityResultLauncher<Intent>
+    private lateinit var widgetPickerLauncher: ActivityResultLauncher<Intent>
+    private lateinit var widgetConfigLauncher: ActivityResultLauncher<Intent>
+    private lateinit var widgetCreateLauncher: ActivityResultLauncher<Intent>
     private var appInstallReceiver: AppInstallReceiver? = null
     var homeItems: MutableList<HomeItem> = ArrayList()
     var allApps: List<AppItem> = ArrayList()
@@ -81,8 +91,6 @@ class MainActivity : Activity() {
 
         val w = window
         w.setFlags(WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS, WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS)
-        w.statusBarColor = Color.TRANSPARENT
-        w.navigationBarColor = Color.TRANSPARENT
 
         WindowCompat.setDecorFitsSystemWindows(w, false)
 
@@ -131,9 +139,53 @@ class MainActivity : Activity() {
         loadApps()
         registerAppInstallReceiver()
 
+        settingsLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+            if (result.resultCode == RESULT_OK) {
+                loadApps()
+                homeView.refreshLayout()
+                drawerView.refreshTheme()
+            }
+        }
+
+        widgetPickerLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+            if (result.resultCode == RESULT_OK && result.data != null) {
+                val data = result.data!!
+                val info = IntentCompat.getParcelableExtra(data, "EXTRA_WIDGET_INFO", AppWidgetProviderInfo::class.java)
+                val spanX = data.getIntExtra("EXTRA_SPAN_X", 2)
+                val spanY = data.getIntExtra("EXTRA_SPAN_Y", 1)
+                if (info != null) {
+                    spawnWidget(info, spanX, spanY)
+                }
+            }
+        }
+
+        widgetConfigLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+            if (result.resultCode == RESULT_OK && result.data != null) {
+                createWidget(result.data!!)
+            }
+        }
+
+        widgetCreateLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+            if (result.resultCode == RESULT_OK && result.data != null) {
+                createWidget(result.data!!)
+            }
+        }
+
         homeView.post {
             restoreHomeState()
         }
+
+        onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
+            override fun handleOnBackPressed() {
+                if (isAnyOverlayVisible()) {
+                    dismissAllOverlays()
+                    return
+                }
+                if (mainLayout.closeDrawer()) {
+                    return
+                }
+            }
+        })
     }
 
     private fun isDefaultLauncher(): Boolean {
@@ -262,7 +314,6 @@ class MainActivity : Activity() {
 
     fun refreshFolderPreview(folder: HomeItem, grid: GridLayout) {
         grid.removeAllViews()
-        if (folder.folderItems == null) return
         val count = Math.min(folder.folderItems.size, 4)
         val scale = settingsManager.iconScale
         val size = (dpToPx(18) * scale).toInt()
@@ -428,7 +479,7 @@ class MainActivity : Activity() {
 
     private fun openSettings() {
         val intent = Intent(this, SettingsActivity::class.java)
-        startActivityForResult(intent, 100)
+        settingsLauncher.launch(intent)
     }
 
     private fun applyDynamicColors() {
@@ -534,17 +585,6 @@ class MainActivity : Activity() {
         super.onTrimMemory(level)
     }
 
-    override fun onBackPressed() {
-        if (isAnyOverlayVisible()) {
-            dismissAllOverlays()
-            return
-        }
-        if (mainLayout.closeDrawer()) {
-            return
-        }
-        // Don't call super.onBackPressed() to prevent closing the launcher
-    }
-
     override fun onResume() {
         super.onResume()
         autoDimmingBackground?.updateDimVisibility()
@@ -577,31 +617,6 @@ class MainActivity : Activity() {
         if (appInstallReceiver != null) unregisterReceiver(appInstallReceiver)
     }
 
-    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
-        super.onActivityResult(requestCode, resultCode, data)
-        if (requestCode == 100) {
-            loadApps()
-            homeView.refreshLayout()
-            drawerView.refreshTheme()
-            return
-        }
-        if (requestCode == REQUEST_PICK_WIDGET_SCREEN && resultCode == RESULT_OK && data != null) {
-            val info = data.getParcelableExtra<AppWidgetProviderInfo>("EXTRA_WIDGET_INFO")
-            val spanX = data.getIntExtra("EXTRA_SPAN_X", 2)
-            val spanY = data.getIntExtra("EXTRA_SPAN_Y", 1)
-            if (info != null) {
-                spawnWidget(info, spanX, spanY)
-            }
-            return
-        }
-        if (resultCode == RESULT_OK && data != null) {
-            if (requestCode == REQUEST_PICK_APPWIDGET) {
-                configureWidget(data)
-            } else if (requestCode == REQUEST_CREATE_APPWIDGET) {
-                createWidget(data)
-            }
-        }
-    }
 
     private fun configureWidget(data: Intent) {
         val appWidgetId = data.getIntExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, -1)
@@ -610,7 +625,7 @@ class MainActivity : Activity() {
             val intent = Intent(AppWidgetManager.ACTION_APPWIDGET_CONFIGURE)
             intent.component = info.configure
             intent.putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, appWidgetId)
-            startActivityForResult(intent, REQUEST_CREATE_APPWIDGET)
+            widgetCreateLauncher.launch(intent)
         } else {
             createWidget(data)
         }
@@ -654,7 +669,7 @@ class MainActivity : Activity() {
 
     fun pickWidget() {
         val intent = Intent(this, WidgetPickerActivity::class.java)
-        startActivityForResult(intent, REQUEST_PICK_WIDGET_SCREEN)
+        widgetPickerLauncher.launch(intent)
     }
 
     fun spawnWidget(info: AppWidgetProviderInfo, spanX: Int, spanY: Int) {
@@ -698,7 +713,7 @@ class MainActivity : Activity() {
             val intent = Intent(AppWidgetManager.ACTION_APPWIDGET_BIND)
             intent.putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, appWidgetId)
             intent.putExtra(AppWidgetManager.EXTRA_APPWIDGET_PROVIDER, info.provider)
-            startActivityForResult(intent, REQUEST_PICK_APPWIDGET)
+            widgetConfigLauncher.launch(intent)
         }
     }
 
@@ -719,7 +734,7 @@ class MainActivity : Activity() {
             val intent = Intent(AppWidgetManager.ACTION_APPWIDGET_BIND)
             intent.putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, appWidgetId)
             intent.putExtra(AppWidgetManager.EXTRA_APPWIDGET_PROVIDER, info.provider)
-            startActivityForResult(intent, REQUEST_PICK_APPWIDGET)
+            widgetConfigLauncher.launch(intent)
         }
     }
 
