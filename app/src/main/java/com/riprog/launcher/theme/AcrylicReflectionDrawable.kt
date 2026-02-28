@@ -2,7 +2,6 @@ package com.riprog.launcher.theme
 
 import android.animation.ValueAnimator
 import android.graphics.*
-import android.graphics.drawable.AdaptiveIconDrawable
 import android.graphics.drawable.Animatable
 import android.graphics.drawable.Drawable
 import android.graphics.drawable.GradientDrawable
@@ -11,7 +10,7 @@ import android.view.animation.LinearInterpolator
 class AcrylicReflectionDrawable(
     private val baseDrawable: GradientDrawable,
     private val isNight: Boolean
-) : AdaptiveIconDrawable(baseDrawable, null), Animatable {
+) : Drawable(), Animatable {
 
     private val reflectionPaint = Paint(Paint.ANTI_ALIAS_FLAG)
     private val matrix = Matrix()
@@ -92,7 +91,10 @@ class AcrylicReflectionDrawable(
         reflectionPaint.colorFilter = colorFilter
     }
 
-
+    @Suppress("OVERRIDE_DEPRECATION")
+    override fun getOpacity(): Int {
+        return PixelFormat.TRANSLUCENT
+    }
 
     override fun setVisible(visible: Boolean, restart: Boolean): Boolean {
         return super.setVisible(visible, restart)
