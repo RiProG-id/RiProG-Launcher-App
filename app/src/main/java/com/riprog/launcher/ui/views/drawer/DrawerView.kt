@@ -331,15 +331,16 @@ class DrawerView(context: Context) : FrameLayout(context) {
             searchBar.setText("")
             searchBar.clearFocus()
         }
-        adapter.notifyDataSetChanged()
+        adapter.notifyItemRangeChanged(0, adapter.itemCount)
     }
 
     fun onClose() {
         if (::searchBar.isInitialized) {
             searchBar.setText("")
         }
+        val count = filteredApps.size
         filteredApps.clear()
-        adapter.notifyDataSetChanged()
+        adapter.notifyItemRangeRemoved(1, count)
     }
 
     fun refreshTheme() {
@@ -352,7 +353,7 @@ class DrawerView(context: Context) : FrameLayout(context) {
                 searchBar.compoundDrawables[0].setTint(context.getColor(R.color.foreground_dim))
             }
         }
-        adapter.notifyDataSetChanged()
+        adapter.notifyItemRangeChanged(0, adapter.itemCount)
     }
 
     private fun dpToPx(dp: Int): Int {

@@ -2,6 +2,7 @@ package com.riprog.launcher.ui.views.home
 
 import android.content.Context
 import android.graphics.Typeface
+import android.util.AttributeSet
 import android.util.TypedValue
 import android.view.Gravity
 import android.view.View
@@ -16,7 +17,14 @@ import com.riprog.launcher.R
 import com.riprog.launcher.logic.managers.SettingsManager
 import com.riprog.launcher.theme.ThemeUtils
 
-class HomeMenuOverlay(context: Context, private val settingsManager: SettingsManager, private val callback: Callback) : FrameLayout(context) {
+class HomeMenuOverlay @JvmOverloads constructor(
+    context: Context,
+    attrs: AttributeSet? = null,
+    defStyleAttr: Int = 0
+) : FrameLayout(context, attrs, defStyleAttr) {
+
+    private var settingsManager: SettingsManager? = null
+    private var callback: Callback? = null
 
     interface Callback {
         fun onAddPageLeft()
@@ -29,7 +37,7 @@ class HomeMenuOverlay(context: Context, private val settingsManager: SettingsMan
         fun dismiss()
     }
 
-    init {
+    private fun setup(settingsManager: SettingsManager, callback: Callback) {
         setBackgroundColor(android.graphics.Color.TRANSPARENT)
         // Consume all touches to block background interaction
         isClickable = true
@@ -75,8 +83,9 @@ class HomeMenuOverlay(context: Context, private val settingsManager: SettingsMan
             val lp = RecyclerView.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dpToPx(80))
             lp.setMargins(dpToPx(4), dpToPx(4), dpToPx(4), dpToPx(4))
             btn.layoutParams = lp
-            btn.background = ThemeUtils.getThemedSurface(parent.context, settingsManager, 16f)
-            val isAcrylic = settingsManager.isAcrylic
+            val sm = settingsManager ?: return MenuViewHolder(btn, btn, ImageView(parent.context), TextView(parent.context))
+            btn.background = ThemeUtils.getThemedSurface(parent.context, sm, 16f)
+            val isAcrylic = sm.isAcrylic
             btn.elevation = if (isAcrylic) dpToPx(6).toFloat() else dpToPx(2).toFloat()
             btn.isClickable = true
             btn.isFocusable = true
@@ -97,7 +106,8 @@ class HomeMenuOverlay(context: Context, private val settingsManager: SettingsMan
 
         override fun onBindViewHolder(holder: MenuViewHolder, position: Int) {
             val item = items[position]
-            val adaptiveColor = ThemeUtils.getAdaptiveColor(holder.itemView.context, settingsManager, true)
+            val sm = settingsManager ?: return
+            val adaptiveColor = ThemeUtils.getAdaptiveColor(holder.itemView.context, sm, true)
 
             holder.icon.setImageResource(item.iconRes)
             holder.icon.setColorFilter(adaptiveColor)
@@ -115,7 +125,7 @@ class HomeMenuOverlay(context: Context, private val settingsManager: SettingsMan
                 holder.btn.isFocusable = true
                 holder.btn.setOnClickListener {
                     item.onClick()
-                    callback.dismiss()
+                    callback?.dismiss()
                 }
             }
         }
@@ -124,6 +134,12 @@ class HomeMenuOverlay(context: Context, private val settingsManager: SettingsMan
     }
 
     private class MenuViewHolder(view: View, val btn: LinearLayout, val icon: ImageView, val label: TextView) : RecyclerView.ViewHolder(view)
+
+    fun initData(settingsManager: SettingsManager, callback: Callback) {
+        this.settingsManager = settingsManager
+        this.callback = callback
+        setup(settingsManager, callback)
+    }
 
     override fun performClick(): Boolean {
         return super.performClick()

@@ -8,6 +8,7 @@ import com.riprog.launcher.R
 import android.content.Context
 import android.graphics.Color
 import android.os.Handler
+import android.util.AttributeSet
 import android.util.TypedValue
 import android.os.Looper
 import android.view.Gravity
@@ -23,7 +24,12 @@ import androidx.recyclerview.widget.RecyclerView
 import kotlin.math.abs
 import kotlin.math.sqrt
 
-class MainLayout(private val activity: MainActivity) : FrameLayout(activity) {
+class MainLayout @JvmOverloads constructor(
+    context: Context,
+    attrs: AttributeSet? = null,
+    defStyleAttr: Int = 0
+) : FrameLayout(context, attrs, defStyleAttr) {
+    private val activity: MainActivity = context as MainActivity
     private var isDrawerOpen = false
     var startX = 0f
         private set

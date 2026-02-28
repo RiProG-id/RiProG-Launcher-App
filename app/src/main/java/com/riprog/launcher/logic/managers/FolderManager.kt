@@ -11,6 +11,9 @@ import android.content.ClipData
 import android.content.Context
 import android.graphics.Typeface
 import android.os.Build
+import androidx.core.view.ViewCompat
+import androidx.core.view.isVisible
+import androidx.core.view.isNotEmpty
 import android.text.Editable
 import android.text.TextWatcher
 import android.view.DragEvent
@@ -143,7 +146,7 @@ class FolderManager(private val activity: MainActivity, private val settingsMana
         }
 
         overlay.setOnClickListener {
-            if (titleEdit.visibility == View.VISIBLE) {
+            if (titleEdit.isVisible) {
                 finishRename()
             }
         }
@@ -287,7 +290,7 @@ class FolderManager(private val activity: MainActivity, private val settingsMana
 
     private inner class FolderViewHolder(val container: FrameLayout) : RecyclerView.ViewHolder(container) {
         fun bind(item: HomeItem, isDragged: Boolean, onLongClick: (View) -> Unit) {
-            val subView = if (container.childCount > 0) {
+            val subView = if (container.isNotEmpty()) {
                 container.getChildAt(0)
             } else {
                 val v = activity.createAppView(item)
@@ -351,7 +354,7 @@ class FolderManager(private val activity: MainActivity, private val settingsMana
             holder.bind(item, item === draggedItem) { view ->
                 val data = ClipData.newPlainText("index", holder.bindingAdapterPosition.toString())
                 val shadow = View.DragShadowBuilder(view)
-                view.startDragAndDrop(data, shadow, view, 0)
+                ViewCompat.startDragAndDrop(view, data, shadow, view, 0)
                 draggedItem = item
                 view.visibility = View.INVISIBLE
             }

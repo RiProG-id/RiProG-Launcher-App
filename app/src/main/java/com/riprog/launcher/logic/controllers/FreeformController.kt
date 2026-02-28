@@ -64,7 +64,9 @@ class FreeformController(
         v.y = y
 
         val homeView = (activity as? MainActivity)?.homeView
-        currentTransformOverlay = TransformOverlay(activity, v, preferences, object : TransformOverlay.OnSaveListener {
+        val overlay = TransformOverlay(activity)
+        currentTransformOverlay = overlay
+        overlay.initData(v, preferences, object : TransformOverlay.OnSaveListener {
             override fun onMove(x: Float, y: Float) {
                 homeView?.checkEdgeScroll(x)
                 homeView?.pageIndicator?.setCurrentPage(homeView.resolvePageIndex(x))

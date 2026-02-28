@@ -38,6 +38,7 @@ import android.content.IntentFilter
 import android.graphics.Color
 import android.graphics.Typeface
 import android.net.Uri
+import androidx.core.net.toUri
 import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
@@ -416,7 +417,7 @@ class MainActivity : ComponentActivity() {
         if (packageName.isNullOrEmpty()) return
         try {
             val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
-            intent.data = Uri.parse("package:$packageName")
+            intent.data = "package:$packageName".toUri()
             intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             startActivity(intent)
         } catch (e: Exception) {
@@ -798,7 +799,8 @@ class MainActivity : ComponentActivity() {
 
     fun showHomeMenu(x: Float, y: Float) {
         if (isAnyOverlayVisible()) return
-        val menu = HomeMenuOverlay(this, settingsManager, object : HomeMenuOverlay.Callback {
+        val menu = HomeMenuOverlay(this)
+        menu.initData(settingsManager, object : HomeMenuOverlay.Callback {
             override fun onAddPageLeft() {
                 homeView.addPageLeft()
                 homeView.scrollToPage(0)
@@ -848,7 +850,8 @@ class MainActivity : ComponentActivity() {
 
     fun showAppDrawerMenu(anchor: View, app: AppItem) {
         if (isAnyOverlayVisible()) return
-        val menu = AppDrawerContextMenu(this, settingsManager, object : AppDrawerContextMenu.Callback {
+        val menu = AppDrawerContextMenu(this)
+        menu.initData(settingsManager, object : AppDrawerContextMenu.Callback {
             override fun onAddToHome() {
                 spawnApp(app)
                 mainLayout.closeDrawer()

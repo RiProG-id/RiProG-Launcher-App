@@ -8,6 +8,8 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.graphics.Canvas
+import androidx.core.graphics.applyCanvas
+import androidx.core.graphics.createBitmap
 import android.graphics.drawable.BitmapDrawable
 import android.graphics.drawable.Drawable
 import android.os.Handler
@@ -205,10 +207,11 @@ class AppRepository(context: Context) {
         val size = 192
 
         return try {
-            val bitmap = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
-            val canvas = Canvas(bitmap)
-            drawable.setBounds(0, 0, canvas.width, canvas.height)
-            drawable.draw(canvas)
+            val bitmap = createBitmap(size, size, Bitmap.Config.ARGB_8888)
+            bitmap.applyCanvas {
+                drawable.setBounds(0, 0, width, height)
+                drawable.draw(this)
+            }
             bitmap
         } catch (e: OutOfMemoryError) {
             if (drawable is BitmapDrawable) {

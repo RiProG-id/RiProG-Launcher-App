@@ -20,6 +20,7 @@ import android.text.util.Linkify
 import android.util.TypedValue
 import android.view.*
 import android.widget.*
+import androidx.core.content.edit
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
@@ -445,7 +446,7 @@ class SettingsActivity : Activity() {
     private fun eraseData() {
         // 1. Clear SharedPreferences
         val prefs = getSharedPreferences("riprog_launcher_prefs", Context.MODE_PRIVATE)
-        prefs.edit().clear().commit()
+        prefs.edit(commit = true) { clear() }
 
         // 2. Clear AppWidgetHost
         try {
