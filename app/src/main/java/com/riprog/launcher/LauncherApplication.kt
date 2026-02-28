@@ -13,10 +13,6 @@ class LauncherApplication : Application() {
         model = AppRepository(this)
     }
 
-    override fun onTrimMemory(level: Int) {
-        super.onTrimMemory(level)
-        model.onTrimMemory(level)
-    }
 
     override fun onTerminate() {
         super.onTerminate()

@@ -79,6 +79,9 @@ class MainActivity : ComponentActivity() {
     private var pendingSpanY: Int = 1
     private var currentDefaultPrompt: View? = null
 
+    private val clockHandler = android.os.Handler(android.os.Looper.getMainLooper())
+    private var clockRunnable: Runnable? = null
+
     override fun attachBaseContext(newBase: Context) {
         val sm = SettingsManager(newBase)
         super.attachBaseContext(ThemeManager.applyThemeToContext(newBase, sm.themeMode))
@@ -443,15 +446,18 @@ class MainActivity : ComponentActivity() {
         clockRoot.addView(tvTime)
         clockRoot.addView(tvDate)
 
+        clockRunnable?.let { clockHandler.removeCallbacks(it) }
+
         val updateTask: Runnable = object : Runnable {
             override fun run() {
                 val cal = Calendar.getInstance()
                 tvTime.text = DateFormat.getTimeFormat(this@MainActivity).format(cal.time)
                 tvDate.text = DateFormat.getMediumDateFormat(this@MainActivity).format(cal.time)
-                tvTime.postDelayed(this, 10000)
+                clockHandler.postDelayed(this, 10000)
             }
         }
-        tvTime.post(updateTask)
+        clockRunnable = updateTask
+        clockHandler.post(updateTask)
         return clockRoot
     }
 
@@ -582,10 +588,6 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    override fun onTrimMemory(level: Int) {
-        super.onTrimMemory(level)
-    }
-
     override fun onResume() {
         super.onResume()
         autoDimmingBackground?.updateDimVisibility()
@@ -610,6 +612,7 @@ class MainActivity : ComponentActivity() {
     override fun onStop() {
         super.onStop()
         appWidgetHost.stopListening()
+        clockRunnable?.let { clockHandler.removeCallbacks(it) }
         saveHomeState()
     }
 

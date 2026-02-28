@@ -307,14 +307,21 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
         }
     }
 
+    private val positionUpdateAttempts = mutableMapOf<View, Int>()
+
     fun updateViewPosition(item: HomeItem, view: View) {
         val cellWidth = getCellWidth()
         val cellHeight = getCellHeight()
 
         if (cellWidth <= 0f || cellHeight <= 0f) {
-            post { updateViewPosition(item, view) }
+            val attempts = positionUpdateAttempts[view] ?: 0
+            if (attempts < 5) {
+                positionUpdateAttempts[view] = attempts + 1
+                post { updateViewPosition(item, view) }
+            }
             return
         }
+        positionUpdateAttempts.remove(view)
 
         val lp = LayoutParams((cellWidth * item.spanX).toInt(), (cellHeight * item.spanY).toInt())
         view.layoutParams = lp
@@ -1124,18 +1131,21 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
         }
 
         fun setPageCount(count: Int) {
+            if (this.count == count) return
             this.count = count
             updateDots()
         }
 
         fun setCurrentPage(current: Int) {
+            if (this.current == current) return
             this.current = current
-            updateDots()
+            updateSelection()
         }
 
         fun setAccentColor(color: Int) {
+            if (this.accentColor == color) return
             this.accentColor = color
-            updateDots()
+            updateSelection()
         }
 
         private fun updateDots() {
@@ -1149,13 +1159,21 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
 
                 val shape = GradientDrawable()
                 shape.shape = GradientDrawable.OVAL
+                dot.background = shape
+                addView(dot)
+            }
+            updateSelection()
+        }
+
+        private fun updateSelection() {
+            for (i in 0 until childCount) {
+                val dot = getChildAt(i)
+                val shape = dot.background as? GradientDrawable ?: continue
                 if (i == current) {
                     shape.setColor(accentColor)
                 } else {
                     shape.setColor(Color.GRAY and 0x80FFFFFF.toInt())
                 }
-                dot.background = shape
-                addView(dot)
             }
         }
     }

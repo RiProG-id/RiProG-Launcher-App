@@ -26,7 +26,7 @@ import androidx.recyclerview.widget.RecyclerView
 import java.util.*
 import java.util.concurrent.Executors
 
-class WidgetPickerActivity : Activity() {
+class WidgetPickerActivity : androidx.activity.ComponentActivity() {
 
     private lateinit var settingsManager: SettingsManager
     private lateinit var recyclerView: RecyclerView

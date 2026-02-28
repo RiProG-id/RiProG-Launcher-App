@@ -2,6 +2,7 @@ package com.riprog.launcher.theme
 
 import android.animation.ValueAnimator
 import android.graphics.*
+import android.graphics.drawable.AdaptiveIconDrawable
 import android.graphics.drawable.Animatable
 import android.graphics.drawable.Drawable
 import android.graphics.drawable.GradientDrawable
@@ -10,7 +11,7 @@ import android.view.animation.LinearInterpolator
 class AcrylicReflectionDrawable(
     private val baseDrawable: GradientDrawable,
     private val isNight: Boolean
-) : Drawable(), Animatable {
+) : AdaptiveIconDrawable(baseDrawable, null), Animatable {
 
     private val reflectionPaint = Paint(Paint.ANTI_ALIAS_FLAG)
     private val matrix = Matrix()
@@ -50,6 +51,8 @@ class AcrylicReflectionDrawable(
         style = Paint.Style.STROKE
         strokeWidth = 2f
     }
+    private val highlightRect = RectF()
+    private val highlightPath = Path()
 
     override fun draw(canvas: Canvas) {
         val bounds = bounds
@@ -73,10 +76,10 @@ class AcrylicReflectionDrawable(
             Shader.TileMode.CLAMP
         )
 
-        val rect = RectF(0f, 0f, width, height)
-        val path = Path()
-        path.addRoundRect(rect, cornerRadius, cornerRadius, Path.Direction.CW)
-        canvas.drawPath(path, highlightPaint)
+        highlightRect.set(0f, 0f, width, height)
+        highlightPath.reset()
+        highlightPath.addRoundRect(highlightRect, cornerRadius, cornerRadius, Path.Direction.CW)
+        canvas.drawPath(highlightPath, highlightPaint)
     }
 
     override fun setAlpha(alpha: Int) {
@@ -90,10 +93,6 @@ class AcrylicReflectionDrawable(
     }
 
 
-    @Deprecated("Deprecated in Java", ReplaceWith("PixelFormat.TRANSLUCENT", "android.graphics.PixelFormat"))
-    override fun getOpacity(): Int {
-        return PixelFormat.TRANSLUCENT
-    }
 
     override fun setVisible(visible: Boolean, restart: Boolean): Boolean {
         return super.setVisible(visible, restart)
