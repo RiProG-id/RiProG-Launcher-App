@@ -11,6 +11,7 @@ import com.riprog.launcher.R
 
 import android.appwidget.AppWidgetHostView
 import android.appwidget.AppWidgetManager
+import android.os.Bundle
 import android.content.Context
 import android.content.ContextWrapper
 import android.graphics.Color
@@ -333,8 +334,13 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
             val density = resources.displayMetrics.density
             val minW = (cellWidth * item.spanX / density).toInt()
             val minH = (cellHeight * item.spanY / density).toInt()
-            @Suppress("DEPRECATION")
-            view.updateAppWidgetSize(null, minW, minH, minW, minH)
+            val options = Bundle().apply {
+                putInt(AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH, minW)
+                putInt(AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT, minH)
+                putInt(AppWidgetManager.OPTION_APPWIDGET_MAX_WIDTH, minW)
+                putInt(AppWidgetManager.OPTION_APPWIDGET_MAX_HEIGHT, minH)
+            }
+            view.updateAppWidgetOptions(options)
         }
     }
 

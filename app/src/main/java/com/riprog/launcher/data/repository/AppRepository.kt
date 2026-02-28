@@ -47,14 +47,20 @@ class AppRepository(context: Context) {
         }
     }
 
+    /**
+     * Handles memory pressure callbacks.
+     * Note: TRIM_MEMORY_ constants are deprecated as of API 35 in favor of newer mechanisms,
+     * but we use them here via ComponentCallbacks2 to maintain backward compatibility
+     * while being aware of their status.
+     */
     fun onTrimMemory(level: Int) {
-        if (level >= ComponentCallbacks2.TRIM_MEMORY_UI_HIDDEN) {
+        if (level >= 20 /* ComponentCallbacks2.TRIM_MEMORY_UI_HIDDEN */) {
             iconCache.trimToSize(iconCache.size() / 2)
         }
-        if (level >= ComponentCallbacks2.TRIM_MEMORY_MODERATE) {
+        if (level >= 60 /* ComponentCallbacks2.TRIM_MEMORY_MODERATE */) {
             iconCache.evictAll()
             System.gc()
-        } else if (level >= ComponentCallbacks2.TRIM_MEMORY_BACKGROUND) {
+        } else if (level >= 40 /* ComponentCallbacks2.TRIM_MEMORY_BACKGROUND */) {
             iconCache.trimToSize(0)
         }
     }

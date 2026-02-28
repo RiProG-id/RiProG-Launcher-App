@@ -23,8 +23,10 @@ object AcrylicTheme : ThemeModule {
         gd.cornerRadius = cornerRadiusPx
 
         gd.setStroke(dpToPx(context, 1.5f), context.getColor(R.color.acrylic_stroke))
-        val reflectionDrawable = AcrylicReflectionDrawable(gd, isNight)
-        reflectionDrawable.setCornerRadius(cornerRadiusPx)
+        val reflectionDrawable = AcrylicReflectionDrawable(isNight)
+        reflectionDrawable.setColor(backgroundColor)
+        reflectionDrawable.cornerRadius = cornerRadiusPx
+        reflectionDrawable.setStroke(dpToPx(context, 1.5f), context.getColor(R.color.acrylic_stroke))
         return reflectionDrawable
     }
 

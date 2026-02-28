@@ -27,7 +27,6 @@ import android.widget.LinearLayout
 import android.widget.TextView
 import kotlin.math.*
 
-@SuppressLint("ViewConstructor")
 class TransformOverlay(context: Context, private val targetView: View, private val settingsManager: SettingsManager, private val onSaveListener: OnSaveListener?) : FrameLayout(context) {
 
     private val item: HomeItem = targetView.tag as HomeItem
@@ -396,7 +395,6 @@ class TransformOverlay(context: Context, private val targetView: View, private v
         return super.performClick()
     }
 
-    @SuppressLint("ClickableViewAccessibility")
     override fun onTouchEvent(event: MotionEvent): Boolean {
         val x = event.x
         val y = event.y
