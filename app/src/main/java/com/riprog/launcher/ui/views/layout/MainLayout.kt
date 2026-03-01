@@ -160,7 +160,7 @@ class MainLayout(private val activity: MainActivity) : FrameLayout(activity) {
         }
 
         if (activity.isAnyOverlayVisible()) {
-            return true // Consume all events to block underlying gestures
+            return true
         }
 
         if (isDrawerOpen) {
@@ -182,7 +182,7 @@ class MainLayout(private val activity: MainActivity) : FrameLayout(activity) {
 
         when (event.action and MotionEvent.ACTION_MASK) {
             MotionEvent.ACTION_DOWN -> {
-                // startX/startY already set in onInterceptTouchEvent
+
                 return true
             }
 

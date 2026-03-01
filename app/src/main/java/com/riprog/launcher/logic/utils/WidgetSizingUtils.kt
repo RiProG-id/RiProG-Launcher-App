@@ -26,7 +26,7 @@ object WidgetSizingUtils {
         var cellHeight = homeView?.getCellHeight() ?: 0f
 
         if (cellWidth <= 0f || cellHeight <= 0f) {
-            // Fallback estimation if homeView is not measured yet
+
             val dm = context.resources.displayMetrics
             val screenWidth = dm.widthPixels
             val screenHeight = dm.heightPixels
@@ -39,13 +39,11 @@ object WidgetSizingUtils {
         var spanX: Int
         var spanY: Int
 
-        // Android 12+ provides targetCellWidth/Height which are already in spans
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && (info.targetCellWidth > 0 || info.targetCellHeight > 0)) {
             spanX = info.targetCellWidth.coerceAtLeast(1)
             spanY = info.targetCellHeight.coerceAtLeast(1)
         } else {
-            // Use cell metrics for accurate span calculation
-            // If cell dimensions are invalid, fallback to standard 70dp formula
+
             if (cellWidth > 0 && cellHeight > 0) {
                 spanX = ceil(info.minWidth * density / cellWidth).toInt().coerceAtLeast(1)
                 spanY = ceil(info.minHeight * density / cellHeight).toInt().coerceAtLeast(1)
@@ -55,7 +53,6 @@ object WidgetSizingUtils {
             }
         }
 
-        // Clamp span values to launcher grid maximum to avoid unrealistic sizes
         spanX = min(spanX, maxColumns)
         spanY = min(spanY, maxRows)
 
@@ -69,7 +66,7 @@ object WidgetSizingUtils {
         } else {
             ceil((minWidth + 30) / 70.0).toInt().coerceAtLeast(1)
         }
-        return min(spanX, HomeView.GRID_COLUMNS) // Note: HomeView.GRID_COLUMNS is 4, but we should ideally use SettingsManager.columns if available
+        return min(spanX, HomeView.GRID_COLUMNS)
     }
 
     fun getMinSpanY(info: AppWidgetProviderInfo, cellHeight: Float, density: Float): Int {

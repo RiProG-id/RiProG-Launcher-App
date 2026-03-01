@@ -45,12 +45,12 @@ class WidgetSizingUtilsTest {
     @Test
     fun testGetMinSpanX_Clamping() {
         val info = AppWidgetProviderInfo()
-        info.minWidth = 500 // 500dp
+        info.minWidth = 500
         val density = 3.0f
-        val cellWidth = 200f // pixels. 500 * 3 / 200 = 7.5 -> 8
+        val cellWidth = 200f
 
         val spanX = WidgetSizingUtils.getMinSpanX(info, cellWidth, density)
-        assertEquals(4, spanX) // Should be clamped to HomeView.GRID_COLUMNS (4)
+        assertEquals(4, spanX)
     }
 
     @Test
@@ -58,10 +58,8 @@ class WidgetSizingUtilsTest {
         val info = AppWidgetProviderInfo()
         info.maxResizeWidth = 1000
         val density = 3.0f
-        val cellWidth = 100f // 1000 * 3 / 100 = 30
+        val cellWidth = 100f
 
-        // This test will hit the 'else' block because Build.VERSION.SDK_INT is not >= S in unit tests
-        // But the result should still be clamped to HomeView.GRID_COLUMNS (4)
         val spanX = WidgetSizingUtils.getMaxSpanX(info, cellWidth, density)
         assertEquals(4, spanX)
     }

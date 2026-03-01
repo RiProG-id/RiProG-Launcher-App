@@ -24,16 +24,13 @@ object ThemeUtils {
         return if (settingsManager.isAcrylic) AcrylicTheme else StandardTheme
     }
 
-
     fun getThemedSurface(context: Context, settingsManager: SettingsManager): Drawable {
         return getThemedSurface(context, settingsManager, 28f)
     }
 
-
     fun getThemedSurface(context: Context, settingsManager: SettingsManager, cornerRadiusDp: Float): Drawable {
         return getModule(settingsManager).getThemedSurface(context, cornerRadiusDp)
     }
-
 
     fun getAdaptiveColor(context: Context, backgroundColor: Int): Int {
         val luminance = (0.2126 * Color.red(backgroundColor) +
@@ -42,11 +39,9 @@ object ThemeUtils {
         return if (luminance > 0.5) context.getColor(R.color.foreground) else Color.WHITE
     }
 
-
     fun getAdaptiveColor(context: Context, settingsManager: SettingsManager, isOnAcrylic: Boolean): Int {
         return getModule(settingsManager).getAdaptiveColor(context, isOnAcrylic)
     }
-
 
     fun applyBlurIfSupported(view: View, enabled: Boolean) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
@@ -57,7 +52,6 @@ object ThemeUtils {
             }
         }
     }
-
 
     fun applyWindowBlur(window: Window, enabled: Boolean) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
@@ -72,7 +66,6 @@ object ThemeUtils {
             window.attributes = lp
         }
     }
-
 
     fun updateStatusBarContrast(activity: Activity) {
         val window = activity.window

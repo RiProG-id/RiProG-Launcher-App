@@ -34,7 +34,7 @@ class AppRepository(context: Context) {
 
     init {
         val maxMemory = (Runtime.getRuntime().maxMemory() / 1024).toInt()
-        // Reduced RAM footprint: from 24MB to 8MB max, or 1/20th of RAM
+
         val cacheSize = Math.min(8 * 1024, maxMemory / 20)
         iconCache = object : LruCache<String, Bitmap>(cacheSize) {
             override fun sizeOf(key: String, bitmap: Bitmap): Int {
@@ -51,7 +51,7 @@ class AppRepository(context: Context) {
         if (level >= ComponentCallbacks2.TRIM_MEMORY_UI_HIDDEN) {
             iconCache.trimToSize(iconCache.size() / 2)
         }
-        if (level >= 60 /* ComponentCallbacks2.TRIM_MEMORY_MODERATE */) {
+        if (level >= 60 ) {
             iconCache.evictAll()
             System.gc()
         } else if (level >= ComponentCallbacks2.TRIM_MEMORY_BACKGROUND) {
@@ -63,12 +63,8 @@ class AppRepository(context: Context) {
         executor.shutdown()
     }
 
-    /**
-     * Intelligent Load: Returns cached app list immediately if available,
-     * then refreshes from PackageManager in background.
-     */
     fun loadApps(listener: OnAppsLoadedListener) {
-        // 1. Try to load from disk cache first for instant UI response
+
         executor.execute {
             val cachedJson = diskCache.getData("app_list")
             if (cachedJson != null) {
@@ -78,7 +74,6 @@ class AppRepository(context: Context) {
                 }
             }
 
-            // 2. Query PackageManager for source of truth
             val mainIntent = Intent(Intent.ACTION_MAIN, null)
             mainIntent.addCategory(Intent.CATEGORY_LAUNCHER)
             val infos = pm.queryIntentActivities(mainIntent, 0)
@@ -127,7 +122,7 @@ class AppRepository(context: Context) {
         }
 
         executor.execute {
-            // Hybrid Cache: Check disk before querying PackageManager
+
             var bitmap = diskCache.getBitmap(item.packageName)
 
             if (bitmap == null) {

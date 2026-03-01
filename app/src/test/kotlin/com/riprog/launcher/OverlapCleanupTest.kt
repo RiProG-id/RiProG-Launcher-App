@@ -17,17 +17,15 @@ class OverlapCleanupTest {
 
     @Test
     fun testSmallerMovesWhenDroppedOnLarge() {
-        // Large item already at (0,0)
+
         val large = HomeItem.createApp("large", "cls", 0f, 0f, 0)
         large.spanX = 2f
         large.spanY = 2f
 
-        // Small item dropped at (1,1). Overlaps large.
         val small = HomeItem.createApp("small", "cls", 1f, 1f, 0)
         small.spanX = 1f
         small.spanY = 1f
 
-        // Simulating Case 1: small is smaller -> small moves
         if (intersects(small, large)) {
             val nearest = findNearestEmptyArea(0, 1, 1, 1, 1, listOf(large))
             if (nearest != null) {
@@ -43,17 +41,15 @@ class OverlapCleanupTest {
 
     @Test
     fun testSmallerMovesWhenLargeDroppedOnSmall() {
-        // Small item already at (1,1)
+
         val small = HomeItem.createApp("small", "cls", 1f, 1f, 0)
         small.spanX = 1f
         small.spanY = 1f
 
-        // Large item dropped at (0,0). Overlaps small.
         val large = HomeItem.createApp("large", "cls", 0f, 0f, 0)
         large.spanX = 2f
         large.spanY = 2f
 
-        // Simulating Case 1: small is smaller -> small moves
         if (intersects(large, small)) {
             val nearest = findNearestEmptyArea(0, 1, 1, 1, 1, listOf(large))
             if (nearest != null) {
@@ -69,19 +65,17 @@ class OverlapCleanupTest {
 
     @Test
     fun testSwapWhenSameSize() {
-        // Item A at (0,0)
+
         val itemA = HomeItem.createApp("A", "cls", 0f, 0f, 0)
         itemA.spanX = 1f
         itemA.spanY = 1f
 
-        // Item B dropped at (0,0) from elsewhere
-        val itemB = HomeItem.createApp("B", "cls", 2f, 2f, 0) // was at (2,2)
+        val itemB = HomeItem.createApp("B", "cls", 2f, 2f, 0)
         itemB.spanX = 1f
         itemB.spanY = 1f
         val targetBCol = 0f
         val targetBRow = 0f
 
-        // Simulating Case 2: same size -> swap
         if (targetBCol == itemA.col && targetBRow == itemA.row) {
             val oldBCol = itemB.col
             val oldBRow = itemB.row

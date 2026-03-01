@@ -14,5 +14,4 @@ class WidgetManager(
 ) {
     private val widgetPreviewExecutor = Executors.newFixedThreadPool(4)
 
-    // Old pickWidget implementation removed in favor of WidgetPickerActivity
 }

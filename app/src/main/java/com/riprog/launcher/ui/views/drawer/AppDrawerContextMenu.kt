@@ -25,7 +25,7 @@ class AppDrawerContextMenu(context: Context, private val settingsManager: Settin
 
     init {
         setBackgroundColor(0x00000000)
-        // Consume all touches to block background interaction
+
         isClickable = true
         isFocusable = true
         setOnClickListener { callback.dismiss() }

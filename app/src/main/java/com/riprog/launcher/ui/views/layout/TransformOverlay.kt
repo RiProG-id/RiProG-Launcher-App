@@ -98,7 +98,6 @@ class TransformOverlay(context: Context, private val targetView: View, private v
         gestureInitialX = targetView.x
         gestureInitialY = targetView.y
 
-        // Ensure width and height are captured correctly even if not laid out
         gestureInitialWidth = if (targetView.width > 0) targetView.width else {
             val cw = (context as? MainActivity)?.homeView?.getCellWidth() ?: 0f
             (cw * item.spanX).toInt()
@@ -115,7 +114,7 @@ class TransformOverlay(context: Context, private val targetView: View, private v
         gestureInitialRow = item.row
         currentDrx = 0f
         currentDry = 0f
-        hasPassedThreshold = true // Already long pressed
+        hasPassedThreshold = true
         onSaveListener?.onMoveStart(x, y)
     }
 
@@ -191,7 +190,6 @@ class TransformOverlay(context: Context, private val targetView: View, private v
         invalidate()
     }
 
-
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
 
@@ -218,7 +216,6 @@ class TransformOverlay(context: Context, private val targetView: View, private v
         var right = (bounds.right - (if (isEdgeResizing) gestureInitialWidth / 2f else targetView.pivotX)) * sx
         var bottom = (bounds.bottom - (if (isEdgeResizing) gestureInitialHeight / 2f else targetView.pivotY)) * sy
 
-        // Adjust guideline based on continuous displacement
         if (isEdgeResizing) {
             when (activeHandle) {
                 HANDLE_RIGHT -> right += currentDrx
@@ -238,7 +235,6 @@ class TransformOverlay(context: Context, private val targetView: View, private v
         paint.strokeWidth = dpToPx(1.2f).toFloat()
         paint.alpha = 80
 
-        // Only show directional guide lines (rectangle) for widgets in freeform mode
         if (isFreeform && isWidget) {
             canvas.drawRect(left, top, right, bottom, paint)
         }
@@ -252,7 +248,6 @@ class TransformOverlay(context: Context, private val targetView: View, private v
             drawHandle(canvas, left, bottom, hs, true, foregroundColor)
         }
 
-        // Only show directional handles for widgets
         if (isWidget) {
             drawHandle(canvas, (left + right) / 2f, top, hs, false, foregroundColor)
             drawHandle(canvas, right, (top + bottom) / 2f, hs, false, foregroundColor)
@@ -312,7 +307,6 @@ class TransformOverlay(context: Context, private val targetView: View, private v
         paint.strokeWidth = dpToPx(0.8f).toFloat()
         paint.color = ThemeUtils.getAdaptiveColor(context, settingsManager, false)
 
-        // Use very subtle lines for the grid
         for (i in 0..rows) {
             val y = offsetY + i * cellHeight
             paint.alpha = 30
@@ -324,7 +318,6 @@ class TransformOverlay(context: Context, private val targetView: View, private v
             canvas.drawLine(x, offsetY, x, offsetY + rows * cellHeight, paint)
         }
 
-        // Draw slightly stronger corners for each cell to indicate target spots
         paint.alpha = 60
         val cornerSize = dpToPx(8f).toFloat()
         for (r in 0 until rows) {
@@ -334,16 +327,15 @@ class TransformOverlay(context: Context, private val targetView: View, private v
                 val rx = lx + cellWidth
                 val by = ty + cellHeight
 
-                // Top-left corner
                 canvas.drawLine(lx, ty, lx + cornerSize, ty, paint)
                 canvas.drawLine(lx, ty, lx, ty + cornerSize, paint)
-                // Top-right
+
                 canvas.drawLine(rx, ty, rx - cornerSize, ty, paint)
                 canvas.drawLine(rx, ty, rx, ty + cornerSize, paint)
-                // Bottom-left
+
                 canvas.drawLine(lx, by, lx + cornerSize, by, paint)
                 canvas.drawLine(lx, by, lx, by - cornerSize, paint)
-                // Bottom-right
+
                 canvas.drawLine(rx, by, rx - cornerSize, by, paint)
                 canvas.drawLine(rx, by, rx, by - cornerSize, paint)
             }
@@ -370,7 +362,6 @@ class TransformOverlay(context: Context, private val targetView: View, private v
         val offsetX = homeLoc[0] - overlayLoc[0] + horizontalPadding
         val offsetY = homeLoc[1] - overlayLoc[1] + homeView.recyclerView.paddingTop.toFloat()
 
-        // Calculate where it would snap
         val midX = targetView.x + vBounds.centerX()
         val midY = targetView.y + vBounds.centerY()
 
@@ -536,7 +527,6 @@ class TransformOverlay(context: Context, private val targetView: View, private v
             val newX = gestureInitialX + (tx - initialTouchX)
             val newY = gestureInitialY + (ty - initialTouchY)
 
-            // Smooth movement during drag for "light" feel
             targetView.x = newX
             targetView.y = newY
             onSaveListener?.onMove(tx, ty)
@@ -550,7 +540,7 @@ class TransformOverlay(context: Context, private val targetView: View, private v
         } else if (activeHandle == HANDLE_TOP || activeHandle == HANDLE_BOTTOM || activeHandle == HANDLE_LEFT || activeHandle == HANDLE_RIGHT) {
             handleEdgeResize(tx, ty)
         } else {
-            // Corner-based scaling (freeform only)
+
             if (!isFreeform) return
 
             val initialDist = dist(initialTouchX, initialTouchY, cx, cy)
@@ -569,7 +559,6 @@ class TransformOverlay(context: Context, private val targetView: View, private v
         val cellHeight = activity.homeView.getCellHeight()
         if (cellWidth <= 0 || cellHeight <= 0) return
 
-        // Use local coordinates for better accuracy if rotated
         val rotAngle = Math.toRadians((-targetView.rotation).toDouble()).toFloat()
         val cx = gestureInitialX + targetView.pivotX
         val cy = gestureInitialY + targetView.pivotY
@@ -581,7 +570,6 @@ class TransformOverlay(context: Context, private val targetView: View, private v
         currentDrx = rx - irx
         currentDry = ry - iry
 
-        // Follow finger exactly without real-time grid snapping
         val lp = targetView.layoutParams
         when (activeHandle) {
             HANDLE_RIGHT -> {

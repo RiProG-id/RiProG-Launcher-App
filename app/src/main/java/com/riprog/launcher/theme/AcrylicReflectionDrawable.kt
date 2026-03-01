@@ -31,14 +31,12 @@ class AcrylicReflectionDrawable(
         if (bounds.isEmpty) return
         val width = bounds.width().toFloat()
 
-        // Intensity adapts to theme brightness - subtle and elegant
         val colors = if (isNight) {
-            intArrayOf(0x00FFFFFF, 0x0AFFFFFF, 0x00FFFFFF) // ~4% alpha for dark
+            intArrayOf(0x00FFFFFF, 0x0AFFFFFF, 0x00FFFFFF)
         } else {
-            intArrayOf(0x00FFFFFF, 0x14FFFFFF, 0x00FFFFFF) // ~8% alpha for light
+            intArrayOf(0x00FFFFFF, 0x14FFFFFF, 0x00FFFFFF)
         }
 
-        // Horizontal shimmer that will be rotated
         val shader = LinearGradient(
             0f, 0f, width * 0.6f, 0f,
             colors, null, Shader.TileMode.CLAMP
@@ -55,10 +53,8 @@ class AcrylicReflectionDrawable(
         val bounds = bounds
         if (bounds.isEmpty) return
 
-        // 1. Draw base acrylic background
         baseDrawable.draw(canvas)
 
-        // 2. Draw static reflection highlight for surface depth
         val width = bounds.width().toFloat()
         val height = bounds.height().toFloat()
 
@@ -89,7 +85,7 @@ class AcrylicReflectionDrawable(
         reflectionPaint.colorFilter = colorFilter
     }
 
-    @Deprecated("Deprecated in Java", ReplaceWith("PixelFormat.TRANSLUCENT"))
+    @Deprecated("")
     override fun getOpacity(): Int = PixelFormat.TRANSLUCENT
 
     override fun start() {

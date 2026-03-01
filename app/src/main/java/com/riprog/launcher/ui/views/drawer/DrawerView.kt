@@ -58,12 +58,11 @@ class DrawerView(context: Context) : FrameLayout(context) {
     }
 
     init {
-        // Root is now FrameLayout. We add a dedicated background layer.
+
         backgroundView = View(context)
         backgroundView.background = ThemeUtils.getThemedSurface(context, settingsManager, 0f)
         addView(backgroundView, LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
 
-        // Content layer
         contentLayout = LinearLayout(context)
         contentLayout.orientation = LinearLayout.VERTICAL
         contentLayout.setPadding(0, dpToPx(48), 0, 0)

@@ -128,7 +128,7 @@ class SettingsManager(context: Context) {
                 prefs.edit().putString(KEY_HOME_ITEMS, "[]").apply()
             }
         } catch (e: Exception) {
-            // Prevent partial save if serialization fails
+
         }
     }
 
@@ -189,7 +189,7 @@ class SettingsManager(context: Context) {
             }
             items.addAll(tempItems)
         } catch (e: Exception) {
-            // Return empty list only if the entire JSON is corrupt
+
         }
         return items
     }
@@ -221,7 +221,6 @@ class SettingsManager(context: Context) {
         if (item.spanY <= 0) item.spanY = 1f
         item.page = obj.optInt("page", 0)
 
-        // Recovery: ensure items are not placed on impossible pages/positions
         item.page = item.page.coerceAtLeast(0)
         item.col = item.col.coerceIn(-2f, columns.toFloat())
         item.row = item.row.coerceIn(-2f, 10f)
@@ -250,7 +249,6 @@ class SettingsManager(context: Context) {
             }
         }
 
-        // Final validation for specific types
         return when (item.type) {
             HomeItem.Type.APP -> if (item.packageName == null) null else item
             HomeItem.Type.WIDGET -> if (item.widgetId == -1) null else item
