@@ -13,6 +13,7 @@ import android.graphics.drawable.Drawable
 import android.os.Handler
 import android.os.Looper
 import android.util.LruCache
+import androidx.core.graphics.createBitmap
 import org.json.JSONArray
 import org.json.JSONObject
 import java.util.*
@@ -196,7 +197,7 @@ class AppRepository(context: Context) {
         val size = 192
 
         return try {
-            val bitmap = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
+            val bitmap = createBitmap(size, size, Bitmap.Config.ARGB_8888)
             val canvas = Canvas(bitmap)
             drawable.setBounds(0, 0, canvas.width, canvas.height)
             drawable.draw(canvas)

@@ -1,13 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="background">#000000</color>
     <color name="background_acrylic">#99000000</color>
     <color name="surface">#000000</color>
     <color name="surface_stroke">#4D4D4D</color>
     <color name="foreground">#FFFFFF</color>
     <color name="foreground_dim">#AAAAAA</color>
-    <color name="item_background">#1AFFFFFF</color>
-    <color name="item_background_acrylic">#26FFFFFF</color>
     <color name="search_background">#15FFFFFF</color>
     <color name="acrylic_stroke">#4DFFFFFF</color>
     <color name="accent_blue">#0A84FF</color>

@@ -19,9 +19,11 @@ import android.os.Build
 import android.os.Bundle
 import android.text.method.LinkMovementMethod
 import android.text.util.Linkify
+import android.util.AttributeSet
 import android.util.TypedValue
 import android.view.*
 import android.widget.*
+import androidx.core.content.edit
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
@@ -166,7 +168,7 @@ class SettingsActivity : ComponentActivity() {
 
         override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): RecyclerView.ViewHolder {
             val context = parent.context
-            val type = SettingType.values()[viewType]
+            val type = SettingType.entries[viewType]
             val adaptiveColor = ThemeUtils.getAdaptiveColor(context, settingsManager, true)
 
             return when (type) {
@@ -443,15 +445,15 @@ class SettingsActivity : ComponentActivity() {
     }
 
     private fun eraseData() {
-
         val prefs = getSharedPreferences("riprog_launcher_prefs", Context.MODE_PRIVATE)
-        prefs.edit().clear().commit()
+        prefs.edit {
+            clear()
+        }
 
         try {
             val awh = android.appwidget.AppWidgetHost(this, 1024)
             awh.deleteHost()
-        } catch (e: Exception) {
-
+        } catch (ignored: Exception) {
         }
 
         val dataDir = java.io.File(applicationInfo.dataDir)

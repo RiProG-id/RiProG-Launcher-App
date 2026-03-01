@@ -48,6 +48,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.net.toUri
 import android.widget.*
 import java.util.*
 
@@ -289,7 +290,6 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun setupDefaultHome() {
-
         saveHomeState()
     }
 
@@ -370,7 +370,7 @@ class MainActivity : ComponentActivity() {
         if (packageName.isNullOrEmpty()) return
         try {
             val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
-            intent.data = Uri.parse("package:$packageName")
+            intent.data = "package:$packageName".toUri()
             intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             startActivity(intent)
         } catch (e: Exception) {
@@ -705,15 +705,12 @@ class MainActivity : ComponentActivity() {
     }
 
     fun updateContentBlur() {
-
         val isDrawerOpen = if (::mainLayout.isInitialized) mainLayout.isDrawerOpen() else false
         val isFolderOpen = folderManager.isFolderOpen()
         val isAcrylic = settingsManager.isAcrylic
 
         ThemeUtils.applyBlurIfSupported(homeView, (isDrawerOpen || isFolderOpen) && isAcrylic)
-
         ThemeUtils.applyBlurIfSupported(drawerView, isFolderOpen && isDrawerOpen && isAcrylic)
-
         ThemeUtils.applyWindowBlur(window, (isFolderOpen || isDrawerOpen) && isAcrylic)
     }
 

@@ -1,6 +1,7 @@
 package com.riprog.launcher.ui.views.drawer
 
 import android.content.Context
+import android.util.AttributeSet
 import android.util.TypedValue
 import android.view.Gravity
 import android.view.View
@@ -13,7 +14,13 @@ import com.riprog.launcher.R
 import com.riprog.launcher.logic.managers.SettingsManager
 import com.riprog.launcher.theme.ThemeUtils
 
-class AppDrawerContextMenu(context: Context, private val settingsManager: SettingsManager, private val callback: Callback) : FrameLayout(context) {
+class AppDrawerContextMenu @JvmOverloads constructor(
+    context: Context,
+    private val settingsManager: SettingsManager? = null,
+    private val callback: Callback? = null,
+    attrs: AttributeSet? = null,
+    defStyleAttr: Int = 0
+) : FrameLayout(context, attrs, defStyleAttr) {
 
     interface Callback {
         fun onAddToHome()
@@ -25,23 +32,25 @@ class AppDrawerContextMenu(context: Context, private val settingsManager: Settin
 
     init {
         setBackgroundColor(0x00000000)
-
         isClickable = true
         isFocusable = true
-        setOnClickListener { callback.dismiss() }
+        setOnClickListener { callback?.dismiss() }
 
         recyclerView = RecyclerView(context)
         recyclerView.layoutManager = LinearLayoutManager(context)
-        recyclerView.background = ThemeUtils.getThemedSurface(context, settingsManager, 12f)
+        if (settingsManager != null) {
+            recyclerView.background = ThemeUtils.getThemedSurface(context, settingsManager, 12f)
+            recyclerView.elevation = if (settingsManager.isAcrylic) dpToPx(8).toFloat() else dpToPx(2).toFloat()
+        }
         recyclerView.clipToPadding = false
         recyclerView.setPadding(dpToPx(4), dpToPx(4), dpToPx(4), dpToPx(4))
-        recyclerView.elevation = if (settingsManager.isAcrylic) dpToPx(8).toFloat() else dpToPx(2).toFloat()
 
-        val items = mutableListOf<ContextMenuItem>()
-        items.add(ContextMenuItem(R.string.action_add_to_home) { callback.onAddToHome() })
-        items.add(ContextMenuItem(R.string.action_app_info) { callback.onAppInfo() })
-
-        recyclerView.adapter = ContextMenuAdapter(items)
+        if (callback != null && settingsManager != null) {
+            val items = mutableListOf<ContextMenuItem>()
+            items.add(ContextMenuItem(R.string.action_add_to_home) { callback.onAddToHome() })
+            items.add(ContextMenuItem(R.string.action_app_info) { callback.onAppInfo() })
+            recyclerView.adapter = ContextMenuAdapter(items, settingsManager, callback)
+        }
 
         addView(recyclerView, LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT))
     }
@@ -51,25 +60,28 @@ class AppDrawerContextMenu(context: Context, private val settingsManager: Settin
         val onClick: () -> Unit
     )
 
-    private inner class ContextMenuAdapter(val items: List<ContextMenuItem>) : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
+    private inner class ContextMenuAdapter(
+        val items: List<ContextMenuItem>,
+        val settings: SettingsManager,
+        val cb: Callback
+    ) : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
         override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): RecyclerView.ViewHolder {
             val tv = TextView(parent.context)
             tv.textSize = 14f
             tv.setPadding(dpToPx(16), dpToPx(12), dpToPx(16), dpToPx(12))
             tv.layoutParams = RecyclerView.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
-
             return object : RecyclerView.ViewHolder(tv) {}
         }
 
         override fun onBindViewHolder(holder: RecyclerView.ViewHolder, position: Int) {
             val item = items[position]
             val tv = holder.itemView as TextView
-            val adaptiveColor = ThemeUtils.getAdaptiveColor(tv.context, settingsManager, true)
+            val adaptiveColor = ThemeUtils.getAdaptiveColor(tv.context, settings, true)
             tv.setText(item.textRes)
             tv.setTextColor(adaptiveColor)
             tv.setOnClickListener {
                 item.onClick()
-                callback.dismiss()
+                cb.dismiss()
             }
         }
 

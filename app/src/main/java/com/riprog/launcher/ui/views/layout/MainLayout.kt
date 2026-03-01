@@ -8,6 +8,7 @@ import com.riprog.launcher.R
 import android.content.Context
 import android.graphics.Color
 import android.os.Handler
+import android.util.AttributeSet
 import android.util.TypedValue
 import android.os.Looper
 import android.view.Gravity
@@ -23,7 +24,13 @@ import androidx.recyclerview.widget.RecyclerView
 import kotlin.math.abs
 import kotlin.math.sqrt
 
-class MainLayout(private val activity: MainActivity) : FrameLayout(activity) {
+class MainLayout @JvmOverloads constructor(
+    context: Context,
+    attrs: AttributeSet? = null,
+    defStyleAttr: Int = 0
+) : FrameLayout(context, attrs, defStyleAttr) {
+
+    private val activity: MainActivity? = context as? MainActivity
     private var isDrawerOpen = false
     var startX = 0f
         private set
@@ -35,13 +42,14 @@ class MainLayout(private val activity: MainActivity) : FrameLayout(activity) {
         private set
     private var downTime: Long = 0
     private var isGestureCanceled = false
-    private val touchSlop: Int = ViewConfiguration.get(activity).scaledTouchSlop
+    private val touchSlop: Int = ViewConfiguration.get(context).scaledTouchSlop
     private val longPressHandler = Handler(Looper.getMainLooper())
     private var touchedView: View? = null
     private var longPressTriggered = false
     private var isDragging = false
 
     private val longPressRunnable = Runnable {
+        if (activity == null) return@Runnable
         if (System.currentTimeMillis() - activity.lastOverlayDismissTime < 300) {
             return@Runnable
         }
@@ -58,6 +66,7 @@ class MainLayout(private val activity: MainActivity) : FrameLayout(activity) {
     }
 
     override fun onInterceptTouchEvent(ev: MotionEvent): Boolean {
+        if (activity == null) return false
         lastX = ev.x
         lastY = ev.y
 
@@ -148,6 +157,7 @@ class MainLayout(private val activity: MainActivity) : FrameLayout(activity) {
     }
 
     override fun onTouchEvent(event: MotionEvent): Boolean {
+        if (activity == null) return false
         lastX = event.x
         lastY = event.y
 
@@ -182,7 +192,6 @@ class MainLayout(private val activity: MainActivity) : FrameLayout(activity) {
 
         when (event.action and MotionEvent.ACTION_MASK) {
             MotionEvent.ACTION_DOWN -> {
-
                 return true
             }
 
@@ -239,6 +248,7 @@ class MainLayout(private val activity: MainActivity) : FrameLayout(activity) {
     }
 
     fun findTouchedHomeItem(x: Float, y: Float, exclude: View? = null): View? {
+        if (activity == null) return null
         val homeView = activity.homeView
         val rv = homeView.recyclerView
 
@@ -282,7 +292,7 @@ class MainLayout(private val activity: MainActivity) : FrameLayout(activity) {
     }
 
     fun openDrawer() {
-        if (isDrawerOpen) return
+        if (activity == null || isDrawerOpen) return
         isDrawerOpen = true
         activity.settingsManager.drawerOpenCount = activity.settingsManager.drawerOpenCount + 1
         activity.drawerView.visibility = View.VISIBLE
@@ -308,6 +318,7 @@ class MainLayout(private val activity: MainActivity) : FrameLayout(activity) {
     }
 
     fun startExternalDrag(v: View) {
+        if (activity == null) return
         isDragging = true
         touchedView = v
 
@@ -350,7 +361,7 @@ class MainLayout(private val activity: MainActivity) : FrameLayout(activity) {
     fun isDrawerOpen(): Boolean = isDrawerOpen
 
     fun closeDrawer(): Boolean {
-        if (!isDrawerOpen) return false
+        if (activity == null || !isDrawerOpen) return false
         isDrawerOpen = false
 
         if (activity.settingsManager.isAcrylic) {
@@ -383,6 +394,7 @@ class MainLayout(private val activity: MainActivity) : FrameLayout(activity) {
     }
 
     fun handleItemClick(v: View) {
+        if (activity == null) return
         val item = v.tag as HomeItem? ?: return
         if (item.type == HomeItem.Type.APP) {
             val intent = activity.packageManager.getLaunchIntentForPackage(item.packageName!!)

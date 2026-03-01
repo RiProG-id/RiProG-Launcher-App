@@ -4,6 +4,7 @@ import com.riprog.launcher.data.model.HomeItem
 
 import android.content.Context
 import android.content.SharedPreferences
+import androidx.core.content.edit
 import org.json.JSONArray
 import org.json.JSONException
 import org.json.JSONObject
@@ -13,7 +14,7 @@ class SettingsManager(context: Context) {
 
     init {
         if (!prefs.contains(KEY_FIRST_RUN)) {
-            prefs.edit().apply {
+            prefs.edit {
                 putString(KEY_THEME_MODE, "light")
                 putBoolean(KEY_ACRYLIC, true)
                 putBoolean(KEY_DARKEN_WALLPAPER, true)
@@ -21,7 +22,6 @@ class SettingsManager(context: Context) {
                 putBoolean(KEY_HIDE_LABELS, false)
                 putInt(KEY_PAGE_COUNT, 1)
                 putBoolean(KEY_FIRST_RUN, true)
-                apply()
             }
         }
     }
@@ -29,25 +29,25 @@ class SettingsManager(context: Context) {
     var pageCount: Int
         get() = prefs.getInt(KEY_PAGE_COUNT, 2)
         set(count) {
-            prefs.edit().putInt(KEY_PAGE_COUNT, count).apply()
+            prefs.edit { putInt(KEY_PAGE_COUNT, count) }
         }
 
     var columns: Int
         get() = prefs.getInt(KEY_COLUMNS, 4)
         set(columns) {
-            prefs.edit().putInt(KEY_COLUMNS, columns).apply()
+            prefs.edit { putInt(KEY_COLUMNS, columns) }
         }
 
     var widgetId: Int
         get() = prefs.getInt(KEY_WIDGET_ID, -1)
         set(widgetId) {
-            prefs.edit().putInt(KEY_WIDGET_ID, widgetId).apply()
+            prefs.edit { putInt(KEY_WIDGET_ID, widgetId) }
         }
 
     var isFreeformHome: Boolean
         get() = prefs.getBoolean(KEY_FREEFORM_HOME, false)
         set(freeform) {
-            prefs.edit().putBoolean(KEY_FREEFORM_HOME, freeform).apply()
+            prefs.edit { putBoolean(KEY_FREEFORM_HOME, freeform) }
         }
 
     val iconScale: Float
@@ -56,30 +56,30 @@ class SettingsManager(context: Context) {
     var isHideLabels: Boolean
         get() = prefs.getBoolean(KEY_HIDE_LABELS, false)
         set(hide) {
-            prefs.edit().putBoolean(KEY_HIDE_LABELS, hide).apply()
+            prefs.edit { putBoolean(KEY_HIDE_LABELS, hide) }
         }
 
     var themeMode: String?
         get() = prefs.getString(KEY_THEME_MODE, "system")
         set(mode) {
-            prefs.edit().putString(KEY_THEME_MODE, mode).apply()
+            prefs.edit { putString(KEY_THEME_MODE, mode) }
         }
 
     var isAcrylic: Boolean
         get() = prefs.getBoolean(KEY_ACRYLIC, false)
         set(enabled) {
-            prefs.edit().putBoolean(KEY_ACRYLIC, enabled).apply()
+            prefs.edit { putBoolean(KEY_ACRYLIC, enabled) }
         }
 
     var isDarkenWallpaper: Boolean
         get() = prefs.getBoolean(KEY_DARKEN_WALLPAPER, false)
         set(enabled) {
-            prefs.edit().putBoolean(KEY_DARKEN_WALLPAPER, enabled).apply()
+            prefs.edit { putBoolean(KEY_DARKEN_WALLPAPER, enabled) }
         }
 
     fun incrementUsage(packageName: String) {
         val current = prefs.getInt(KEY_USAGE_PREFIX + packageName, 0)
-        prefs.edit().putInt(KEY_USAGE_PREFIX + packageName, current + 1).apply()
+        prefs.edit { putInt(KEY_USAGE_PREFIX + packageName, current + 1) }
     }
 
     fun getUsage(packageName: String): Int {
@@ -89,7 +89,7 @@ class SettingsManager(context: Context) {
     var drawerOpenCount: Int
         get() = prefs.getInt(KEY_DRAWER_OPEN_COUNT, 0)
         set(count) {
-            prefs.edit().putInt(KEY_DRAWER_OPEN_COUNT, count).apply()
+            prefs.edit { putInt(KEY_DRAWER_OPEN_COUNT, count) }
         }
 
     fun incrementDrawerOpenCount() {
@@ -99,13 +99,13 @@ class SettingsManager(context: Context) {
     var lastDefaultPromptTimestamp: Long
         get() = prefs.getLong(KEY_DEFAULT_PROMPT_TIMESTAMP, 0)
         set(ts) {
-            prefs.edit().putLong(KEY_DEFAULT_PROMPT_TIMESTAMP, ts).apply()
+            prefs.edit { putLong(KEY_DEFAULT_PROMPT_TIMESTAMP, ts) }
         }
 
     var defaultPromptCount: Int
         get() = prefs.getInt(KEY_DEFAULT_PROMPT_COUNT, 0)
         set(count) {
-            prefs.edit().putInt(KEY_DEFAULT_PROMPT_COUNT, count).apply()
+            prefs.edit { putInt(KEY_DEFAULT_PROMPT_COUNT, count) }
         }
 
     fun incrementDefaultPromptCount() {
@@ -123,12 +123,11 @@ class SettingsManager(context: Context) {
             }
             val json = array.toString()
             if (json.isNotEmpty() && json != "[]") {
-                prefs.edit().putString(KEY_HOME_ITEMS, json).apply()
+                prefs.edit { putString(KEY_HOME_ITEMS, json) }
             } else if (items.isEmpty()) {
-                prefs.edit().putString(KEY_HOME_ITEMS, "[]").apply()
+                prefs.edit { putString(KEY_HOME_ITEMS, "[]") }
             }
-        } catch (e: Exception) {
-
+        } catch (ignored: Exception) {
         }
     }
 
@@ -188,8 +187,7 @@ class SettingsManager(context: Context) {
                 }
             }
             items.addAll(tempItems)
-        } catch (e: Exception) {
-
+        } catch (ignored: Exception) {
         }
         return items
     }

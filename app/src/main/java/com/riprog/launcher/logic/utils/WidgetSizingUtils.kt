@@ -7,6 +7,7 @@ import android.os.Build
 import android.view.View
 import android.view.ViewGroup
 import android.widget.TextView
+import androidx.core.view.isVisible
 import com.riprog.launcher.data.model.HomeItem
 import com.riprog.launcher.ui.views.home.HomeView
 import com.riprog.launcher.logic.managers.SettingsManager
@@ -26,10 +27,8 @@ object WidgetSizingUtils {
         var cellHeight = homeView?.getCellHeight() ?: 0f
 
         if (cellWidth <= 0f || cellHeight <= 0f) {
-
             val dm = context.resources.displayMetrics
             val screenWidth = dm.widthPixels
-            val screenHeight = dm.heightPixels
 
             val horizontalPadding = HomeView.HORIZONTAL_PADDING_DP * density * 2
             cellWidth = if (screenWidth > horizontalPadding) (screenWidth - horizontalPadding) / maxColumns.toFloat() else 0f
@@ -43,7 +42,6 @@ object WidgetSizingUtils {
             spanX = info.targetCellWidth.coerceAtLeast(1)
             spanY = info.targetCellHeight.coerceAtLeast(1)
         } else {
-
             if (cellWidth > 0 && cellHeight > 0) {
                 spanX = ceil(info.minWidth * density / cellWidth).toInt().coerceAtLeast(1)
                 spanY = ceil(info.minHeight * density / cellHeight).toInt().coerceAtLeast(1)
@@ -60,7 +58,7 @@ object WidgetSizingUtils {
     }
 
     fun getMinSpanX(info: AppWidgetProviderInfo, cellWidth: Float, density: Float): Int {
-        val minWidth = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN && info.minResizeWidth > 0) info.minResizeWidth else info.minWidth
+        val minWidth = if (info.minResizeWidth > 0) info.minResizeWidth else info.minWidth
         val spanX = if (cellWidth > 0) {
             ceil(minWidth * density / cellWidth).toInt().coerceAtLeast(1)
         } else {
@@ -70,7 +68,7 @@ object WidgetSizingUtils {
     }
 
     fun getMinSpanY(info: AppWidgetProviderInfo, cellHeight: Float, density: Float): Int {
-        val minHeight = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN && info.minResizeHeight > 0) info.minResizeHeight else info.minHeight
+        val minHeight = if (info.minResizeHeight > 0) info.minResizeHeight else info.minHeight
         val spanY = if (cellHeight > 0) {
             ceil(minHeight * density / cellHeight).toInt().coerceAtLeast(1)
         } else {
@@ -110,7 +108,7 @@ object WidgetSizingUtils {
 
         for (i in 0 until view.childCount) {
             val child = view.getChildAt(i)
-            if (child.visibility == View.VISIBLE) {
+            if (child.isVisible) {
                 val clp = child.layoutParams
                 val cw = if (child.width > 0) child.width.toFloat() else if (clp != null && clp.width > 0) clp.width.toFloat() else if (clp != null && clp.width == -1) vWidth else 0f
                 val ch = if (child.height > 0) child.height.toFloat() else if (clp != null && clp.height > 0) clp.height.toFloat() else if (clp != null && clp.height == -1) vHeight else 0f
