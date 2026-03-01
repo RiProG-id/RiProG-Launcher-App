@@ -289,7 +289,7 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun setupDefaultHome() {
-        // Default home layout must be clean (empty).
+
         saveHomeState()
     }
 
@@ -356,8 +356,6 @@ class MainActivity : ComponentActivity() {
         return null
     }
 
-
-
     fun removeHomeItem(item: HomeItem?, view: View?) {
         homeItems.remove(item)
         if (view != null && view.parent is ViewGroup) {
@@ -380,14 +378,12 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-
     private fun findApp(packageName: String): AppItem? {
         for (app in allApps) {
             if (app.packageName == packageName) return app
         }
         return null
     }
-
 
     private fun openWallpaperPicker() {
         val intent = Intent(Intent.ACTION_SET_WALLPAPER)
@@ -546,7 +542,6 @@ class MainActivity : ComponentActivity() {
         super.onDestroy()
         if (packageReceiver != null) unregisterReceiver(packageReceiver)
     }
-
 
     private fun configureWidget(data: Intent) {
         val appWidgetId = data.getIntExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, -1)
@@ -710,19 +705,15 @@ class MainActivity : ComponentActivity() {
     }
 
     fun updateContentBlur() {
-        // Only apply global fullscreen blur for deep UI layers.
-        // We must ensure the active foreground layer (Drawer) remains sharp.
+
         val isDrawerOpen = if (::mainLayout.isInitialized) mainLayout.isDrawerOpen() else false
         val isFolderOpen = folderManager.isFolderOpen()
         val isAcrylic = settingsManager.isAcrylic
 
-        // homeView blurs if drawer or folder is open to show depth.
         ThemeUtils.applyBlurIfSupported(homeView, (isDrawerOpen || isFolderOpen) && isAcrylic)
 
-        // drawerView only blurs if a folder is open on top of it.
         ThemeUtils.applyBlurIfSupported(drawerView, isFolderOpen && isDrawerOpen && isAcrylic)
 
-        // Apply window blur for both Folders and App Drawer in Acrylic mode.
         ThemeUtils.applyWindowBlur(window, (isFolderOpen || isDrawerOpen) && isAcrylic)
     }
 

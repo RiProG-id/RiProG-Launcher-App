@@ -3,7 +3,6 @@ package com.riprog.launcher.data.model
 class HomeItem {
     enum class Type { APP, WIDGET, CLOCK, FOLDER }
 
-
     var type: Type? = null
 
     var packageName: String? = null
@@ -31,7 +30,6 @@ class HomeItem {
     var originalPage: Int = 0
 
     var widgetId: Int = -1
-
 
     var rotation: Float = 0f
 
@@ -64,7 +62,6 @@ class HomeItem {
             return item
         }
 
-
         fun createWidget(widgetId: Int, col: Float, row: Float, spanX: Int, spanY: Int, page: Int): HomeItem {
             val item = HomeItem()
             item.type = Type.WIDGET
@@ -82,7 +79,6 @@ class HomeItem {
             return item
         }
 
-
         fun createClock(col: Float, row: Float, spanX: Int, spanY: Int, page: Int): HomeItem {
             val item = HomeItem()
             item.type = Type.CLOCK
@@ -98,7 +94,6 @@ class HomeItem {
             item.originalPage = page
             return item
         }
-
 
         fun createFolder(name: String, col: Float, row: Float, page: Int): HomeItem {
             val item = HomeItem()

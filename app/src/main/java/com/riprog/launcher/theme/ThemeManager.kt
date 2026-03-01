@@ -16,7 +16,6 @@ import android.widget.LinearLayout
 
 object ThemeManager {
 
-
     fun applyThemeMode(context: Context, mode: String?) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             val uiModeManager = context.getSystemService(Context.UI_MODE_SERVICE) as UiModeManager
@@ -28,7 +27,6 @@ object ThemeManager {
             uiModeManager.setApplicationNightMode(nightMode)
         }
     }
-
 
     fun applyThemeToContext(base: Context, mode: String?): Context {
         if (mode == null || "system" == mode) return base
@@ -43,7 +41,6 @@ object ThemeManager {
         return base.createConfigurationContext(config)
     }
 
-
     fun getSystemAccentColor(context: Context): Int? {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             return try {
@@ -54,7 +51,6 @@ object ThemeManager {
         }
         return null
     }
-
 
     fun applySettingItemStyle(context: Context, item: LinearLayout, settingsManager: SettingsManager) {
         item.isClickable = true

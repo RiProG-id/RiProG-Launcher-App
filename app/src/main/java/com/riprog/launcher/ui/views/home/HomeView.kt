@@ -265,14 +265,10 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
         view.tag = item
         page.addView(view)
 
-        // Synchronize visual state to avoid data drift/re-render loops
         item.originalPage = item.page
 
-        // Ensure last interaction / last placed item is on top (Z-order)
         view.bringToFront()
 
-        // Initial add flow for all items in Non-Freeform mode:
-        // Wait until rendered, then detect actual visual span and lock position.
         if (!settingsManager.isFreeformHome && item.visualOffsetX < 0) {
             view.post {
                 snapToGrid(item, view)
@@ -299,7 +295,7 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
             return Pair(item.col * cellWidth + horizontalPadding, item.row * cellHeight)
         } else {
             val vBounds = WidgetSizingUtils.getVisualBounds(view)
-            // Use stored offsets to ensure pixel-perfect locked position after save/restore
+
             val vCenterX = if (item.visualOffsetX >= 0) item.visualOffsetX else if (vBounds.width() > 0) vBounds.centerX() else (item.spanX * cellWidth) / 2f
             val vCenterY = if (item.visualOffsetY >= 0) item.visualOffsetY else if (vBounds.height() > 0) vBounds.centerY() else (item.spanY * cellHeight) / 2f
 
@@ -355,7 +351,7 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
             var absY = v.y
             val p = v.parent as View?
             if (p != null) {
-                // If it was in a page (which is now in RecyclerView), we need to account for its position
+
                 val pageLoc = IntArray(2)
                 (p as View).getLocationInWindow(pageLoc)
                 val homeLoc = IntArray(2)
@@ -464,7 +460,7 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
                     val newView = activity.renderHomeItem(item)
                     if (newView != null) {
                         val pageLoc = IntArray(2)
-                        // We need to wait for the page to be bound/laid out if it's not visible
+
                         recyclerView.scrollToPosition(targetPage)
                         recyclerView.post {
                             val holder = recyclerView.findViewHolderForAdapterPosition(targetPage) as? HomePagerAdapter.ViewHolder
@@ -474,7 +470,7 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
                                 newView.y = absYInWindow - pageLoc[1].toFloat()
                                 snapToGrid(item, newView)
                             } else {
-                                // Fallback if holder is not available
+
                                 snapToGrid(item, newView)
                             }
                         }
@@ -649,7 +645,6 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
         } else {
             val horizontalPadding = dpToPx(HORIZONTAL_PADDING_DP)
 
-            // 1. Calculate visual span (EXACT)
             val sX: Int
             val sY: Int
             if (item.type == HomeItem.Type.WIDGET) {
@@ -660,11 +655,9 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
                 sY = 1
             }
 
-            // Store FINAL visual offsets as single source of truth to lock position and prevent post-save shifts
             item.visualOffsetX = vBounds.centerX()
             item.visualOffsetY = vBounds.centerY()
 
-            // 2. Scan grid behind object position for nearest valid grid area matching EXACT span
             val visualCenterX = v.x + vBounds.centerX()
             val visualCenterY = v.y + vBounds.centerY()
 
@@ -674,7 +667,6 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
             targetCol = targetCol.coerceIn(0, settingsManager.columns - sX)
             targetRow = targetRow.coerceIn(0, GRID_ROWS - sY)
 
-            // 3. Apply SNAP RESULT and handle overlaps
             applyNewGridLogic(item, v, targetCol, targetRow, sX, sY)
 
             val pageChanged = item.page != item.originalPage
@@ -752,7 +744,6 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
         val oldSpanX = droppedItem.spanX
         val oldSpanY = droppedItem.spanY
 
-        // Temporarily set dropped item at target position to check for overlaps
         droppedItem.col = targetCol.toFloat()
         droppedItem.row = targetRow.toFloat()
         droppedItem.spanX = spanX.toFloat()
@@ -760,10 +751,8 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
 
         val droppedArea = getVisualArea(droppedItem, droppedView)
 
-        // Items on the same page, excluding the one we just dropped
         val pageItems = activity.homeItems.filter { it.page == droppedItem.page && it !== droppedItem }
 
-        // Detect all visual overlaps
         val overlaps = pageItems.filter { other ->
             val otherView = findViewForItem(other)
             if (otherView != null) {
@@ -778,13 +767,13 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
             val otherArea = getVisualArea(firstOther, findViewForItem(firstOther))
 
             if (overlaps.size == 1 && kotlin.math.abs(droppedArea - otherArea) < 0.1f) {
-                // CASE 2: Same size -> Swap
+
                 if (oldPage == droppedItem.page && oldCol >= 0 && oldRow >= 0) {
                     firstOther.col = oldCol
                     firstOther.row = oldRow
                     firstOther.spanX = oldSpanX
                     firstOther.spanY = oldSpanY
-                    // Re-capture offsets for center locking
+
                     val otherView = findViewForItem(firstOther)
                     if (otherView != null) {
                         val vBounds = WidgetSizingUtils.getVisualBounds(otherView)
@@ -796,18 +785,18 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
                     moveItemToNearestEmpty(firstOther, activity.homeItems)
                 }
             } else {
-                // CASE 1: Different sizes or multiple overlaps
+
                 val existsLarger = overlaps.any { getVisualArea(it, findViewForItem(it)) > droppedArea + 0.1f }
 
                 if (existsLarger) {
-                    // droppedItem is smaller than at least one item it overlaps -> droppedItem moves
+
                     val nearest = findNearestEmptyArea(droppedItem.page, spanX, spanY, targetCol, targetRow, pageItems)
                     if (nearest != null) {
                         droppedItem.col = nearest.first.toFloat()
                         droppedItem.row = nearest.second.toFloat()
                     }
                 } else {
-                    // droppedItem is larger than all items it overlaps -> all overlapping items move
+
                     for (other in overlaps) {
                         moveItemToNearestEmpty(other, activity.homeItems)
                     }
@@ -877,7 +866,7 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
                     val d = Math.sqrt(Math.pow((i - prefRow).toDouble(), 2.0) + Math.pow((j - prefCol).toDouble(), 2.0))
                     if (d < minDest) {
                         minDest = d
-                        bestPos = Pair(j, i) // Note: returning (col, row)
+                        bestPos = Pair(j, i)
                     }
                 }
             }
@@ -983,13 +972,12 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
                     val item = v.tag as HomeItem? ?: continue
 
                     if (!freeform) {
-                        // Reset transforms during conversion or refresh in grid mode
+
                         item.rotation = 0f
                         item.scale = 1.0f
                         item.tiltX = 0f
                         item.tiltY = 0f
 
-                        // Ensure it's snapped to grid if not already
                         val colInt = item.col.roundToInt().toFloat()
                         val rowInt = item.row.roundToInt().toFloat()
                         if (item.col != colInt || item.row != rowInt || item.visualOffsetX < 0) {
@@ -1073,10 +1061,8 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
         val pageW = if (firstView.width > 0) firstView.width else pageWidth
         if (pageW <= 0) return 0
 
-        // Account for edge preview translation
         val adjustedX = x - recyclerView.translationX
 
-        // Use scrollOffset calculation for better precision
         val scrollX = -firstView.left + first * pageW
         val relativeX = adjustedX + scrollX
         val index = floor((relativeX / pageW).toDouble()).toInt()

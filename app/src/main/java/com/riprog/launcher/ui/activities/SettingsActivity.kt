@@ -52,10 +52,8 @@ class SettingsActivity : ComponentActivity() {
 
         val rootContainer = FrameLayout(this)
 
-        // Add dimming layer at the very bottom
         autoDimmingBackground = AutoDimmingBackground(this, rootContainer, settingsManager)
 
-        // Add content layer with acrylic background
         val contentLayer = FrameLayout(this)
         contentLayer.background = ThemeUtils.getThemedSurface(this, settingsManager, 0f)
         rootContainer.addView(contentLayer, FrameLayout.LayoutParams(
@@ -67,7 +65,6 @@ class SettingsActivity : ComponentActivity() {
         recyclerView.isVerticalScrollBarEnabled = false
         recyclerView.clipToPadding = false
 
-        // Initial padding
         recyclerView.setPadding(dpToPx(24), dpToPx(32), dpToPx(24), dpToPx(32))
 
         contentLayer.addView(recyclerView, FrameLayout.LayoutParams(
@@ -446,26 +443,23 @@ class SettingsActivity : ComponentActivity() {
     }
 
     private fun eraseData() {
-        // 1. Clear SharedPreferences
+
         val prefs = getSharedPreferences("riprog_launcher_prefs", Context.MODE_PRIVATE)
         prefs.edit().clear().commit()
 
-        // 2. Clear AppWidgetHost
         try {
             val awh = android.appwidget.AppWidgetHost(this, 1024)
             awh.deleteHost()
         } catch (e: Exception) {
-            // Ignored
+
         }
 
-        // 3. Clear Internal Storage
         val dataDir = java.io.File(applicationInfo.dataDir)
         deleteRecursive(java.io.File(dataDir, "shared_prefs"))
         deleteRecursive(java.io.File(dataDir, "files"))
         deleteRecursive(java.io.File(dataDir, "cache"))
         deleteRecursive(java.io.File(dataDir, "databases"))
 
-        // 4. Force Restart
         forceRestart()
     }
 
