@@ -5,6 +5,7 @@ import com.riprog.launcher.theme.ThemeUtils
 import com.riprog.launcher.data.model.HomeItem
 import com.riprog.launcher.data.model.AppItem
 import com.riprog.launcher.ui.views.home.HomeView
+import com.riprog.launcher.R
 
 import androidx.core.view.ViewCompat
 import android.content.ClipData
@@ -35,7 +36,116 @@ import java.util.*
 
 class FolderManager(private val activity: MainActivity, private val settingsManager: SettingsManager) {
     private var currentFolderOverlay: View? = null
+    private var currentRecyclerView: RecyclerView? = null
+    private var currentFolderItem: HomeItem? = null
     private var isProcessingDrop = false
+
+    fun handleManualDrag(x: Float, y: Float): Boolean {
+        val overlay = currentFolderOverlay?.findViewById<LinearLayout>(R.id.folder_overlay_container) ?: return false
+        val rv = currentRecyclerView ?: return false
+        val folderItem = currentFolderItem ?: return false
+
+        val draggedView = activity.mainLayout.findViewById<View>(R.id.dragged_item_view) ?: return false
+        val draggedItem = draggedView.tag as? HomeItem ?: return false
+
+        val containerLocation = IntArray(2)
+        currentFolderOverlay!!.getLocationInWindow(containerLocation)
+
+        val xInWindow = x
+        val yInWindow = y
+
+        val overlayLocation = IntArray(2)
+        overlay.getLocationInWindow(overlayLocation)
+
+        val isInsideOverlay = xInWindow >= overlayLocation[0] && xInWindow <= overlayLocation[0] + overlay.width &&
+                            yInWindow >= overlayLocation[1] && yInWindow <= overlayLocation[1] + overlay.height
+
+        if (!isInsideOverlay) {
+            val targetPage = activity.homeView.currentPage
+            draggedItem.page = targetPage
+
+            val homeLocation = IntArray(2)
+            activity.homeView.getLocationInWindow(homeLocation)
+
+            val dropXOnHome = x - homeLocation[0]
+            val dropYOnHome = y - homeLocation[1]
+
+            closeFolder()
+            removeFromFolder(folderItem, draggedItem, activity.homeItems)
+
+            if (!activity.homeItems.contains(draggedItem)) {
+                activity.homeItems.add(draggedItem)
+            }
+
+            (draggedView.parent as? ViewGroup)?.removeView(draggedView)
+            activity.homeView.addItemView(draggedItem, draggedView)
+
+            draggedView.x = dropXOnHome - draggedView.width / 2f
+            draggedView.y = dropYOnHome - draggedView.height / 2f
+
+            activity.homeView.snapToGrid(draggedItem, draggedView)
+            return false
+        }
+
+        val rvLocation = IntArray(2)
+        rv.getLocationInWindow(rvLocation)
+
+        val relativeX = xInWindow - rvLocation[0]
+        val relativeY = yInWindow - rvLocation[1]
+
+        var targetView = rv.findChildViewUnder(relativeX, relativeY)
+        if (targetView == null) {
+            val slop = dpToPx(8f)
+            for (dx in listOf(-slop, 0, slop)) {
+                for (dy in listOf(-slop, 0, slop)) {
+                    targetView = rv.findChildViewUnder(relativeX + dx, relativeY + dy)
+                    if (targetView != null) break
+                }
+                if (targetView != null) break
+            }
+        }
+
+        if (targetView != null) {
+            val targetIndex = rv.getChildAdapterPosition(targetView)
+            val adapter = rv.adapter as? FolderAdapter ?: return true
+            val currentIndex = adapter.items.indexOf(draggedItem)
+            if (targetIndex != RecyclerView.NO_POSITION && targetIndex != currentIndex) {
+                val item = adapter.items.removeAt(currentIndex)
+                adapter.items.add(targetIndex, item)
+                adapter.notifyItemMoved(currentIndex, targetIndex)
+                refreshFolderIconsOnHome(folderItem)
+            }
+        }
+        return true
+    }
+
+    fun handleManualDrop(v: View): Boolean {
+        val overlay = currentFolderOverlay?.findViewById<LinearLayout>(R.id.folder_overlay_container) ?: return false
+        val rv = currentRecyclerView ?: return false
+
+        val draggedItem = v.tag as? HomeItem ?: return false
+
+        val xInWindow = v.x + v.width / 2f
+        val yInWindow = v.y + v.height / 2f
+
+        val overlayLocation = IntArray(2)
+        overlay.getLocationInWindow(overlayLocation)
+
+        if (xInWindow >= overlayLocation[0] && xInWindow <= overlayLocation[0] + overlay.width &&
+            yInWindow >= overlayLocation[1] && yInWindow <= overlayLocation[1] + overlay.height) {
+
+            val adapter = rv.adapter as? FolderAdapter ?: return false
+            adapter.draggedItem = null
+            v.isVisible = true
+            val pos = adapter.items.indexOf(draggedItem)
+            if (pos != RecyclerView.NO_POSITION) {
+                adapter.notifyItemChanged(pos)
+            }
+            activity.saveHomeState()
+            return true
+        }
+        return false
+    }
 
     fun openFolder(folderItem: HomeItem, folderView: View?, homeItems: MutableList<HomeItem>, allApps: List<AppItem>) {
         val wasOpen = currentFolderOverlay != null
@@ -78,6 +188,7 @@ class FolderManager(private val activity: MainActivity, private val settingsMana
         val isAcrylic = settingsManager.isAcrylic
 
         val overlay = LinearLayout(activity)
+        overlay.id = R.id.folder_overlay_container
         overlay.orientation = LinearLayout.VERTICAL
         overlay.background = ThemeUtils.getThemedSurface(activity, settingsManager, 12f)
         overlay.elevation = if (isAcrylic) dpToPx(16f).toFloat() else dpToPx(2f).toFloat()
@@ -156,147 +267,8 @@ class FolderManager(private val activity: MainActivity, private val settingsMana
         val adapter = FolderAdapter(folderItem.folderItems)
         recyclerView.adapter = adapter
         overlay.addView(recyclerView)
-
-        val dragListener = View.OnDragListener { v, event ->
-            when (event.action) {
-                DragEvent.ACTION_DRAG_STARTED -> {
-                    isProcessingDrop = false
-                    true
-                }
-                DragEvent.ACTION_DRAG_LOCATION -> {
-                    val draggedView = event.localState as? View
-                    val draggedItem = draggedView?.tag as? HomeItem
-                    if (draggedItem != null) {
-                        adapter.draggedItem = draggedItem
-
-                        val x = event.x
-                        val y = event.y
-
-                        val containerLocation = IntArray(2)
-                        container.getLocationInWindow(containerLocation)
-
-                        val xInWindow = x + containerLocation[0]
-                        val yInWindow = y + containerLocation[1]
-
-                        val overlayLocation = IntArray(2)
-                        overlay.getLocationInWindow(overlayLocation)
-
-                        val isInsideOverlay = xInWindow >= overlayLocation[0] && xInWindow <= overlayLocation[0] + overlay.width &&
-                                            yInWindow >= overlayLocation[1] && yInWindow <= overlayLocation[1] + overlay.height
-
-                        if (!isInsideOverlay) {
-                            closeFolder()
-                            removeFromFolder(folderItem, draggedItem, homeItems)
-
-                            val homeLocation = IntArray(2)
-                            activity.homeView.getLocationInWindow(homeLocation)
-
-                            val dropXOnHome = xInWindow - homeLocation[0]
-                            val dropYOnHome = yInWindow - homeLocation[1]
-
-                            draggedView.isVisible = true
-                            (draggedView.parent as? ViewGroup)?.removeView(draggedView)
-
-                            activity.mainLayout.startX = dropXOnHome
-                            activity.mainLayout.startY = dropYOnHome
-                            activity.mainLayout.startExternalDrag(draggedView, dropXOnHome, dropYOnHome)
-                            return@OnDragListener true
-                        }
-
-                        val rvLocation = IntArray(2)
-                        recyclerView.getLocationInWindow(rvLocation)
-
-                        val relativeX = xInWindow - rvLocation[0]
-                        val relativeY = yInWindow - rvLocation[1]
-
-                        var targetView = recyclerView.findChildViewUnder(relativeX, relativeY)
-                        if (targetView == null) {
-                            val slop = dpToPx(8f)
-                            for (dx in listOf(-slop, 0, slop)) {
-                                for (dy in listOf(-slop, 0, slop)) {
-                                    targetView = recyclerView.findChildViewUnder(relativeX + dx, relativeY + dy)
-                                    if (targetView != null) break
-                                }
-                                if (targetView != null) break
-                            }
-                        }
-
-                        if (targetView != null) {
-                            val targetIndex = recyclerView.getChildAdapterPosition(targetView)
-                            val currentIndex = adapter.items.indexOf(draggedItem)
-                            if (targetIndex != RecyclerView.NO_POSITION && targetIndex != currentIndex) {
-                                val item = adapter.items.removeAt(currentIndex)
-                                adapter.items.add(targetIndex, item)
-                                adapter.notifyItemMoved(currentIndex, targetIndex)
-                                refreshFolderIconsOnHome(folderItem)
-                            }
-                        }
-                    }
-                    true
-                }
-                DragEvent.ACTION_DROP -> {
-                    if (isProcessingDrop) return@OnDragListener false
-                    isProcessingDrop = true
-
-                    val draggedView = event.localState as? View
-                    val draggedItem = draggedView?.tag as? HomeItem
-                    if (draggedItem != null) {
-                        adapter.draggedItem = null
-                        draggedView.isVisible = true
-                        val pos = adapter.items.indexOf(draggedItem)
-                        if (pos != RecyclerView.NO_POSITION) {
-                            adapter.notifyItemChanged(pos)
-                        }
-                        activity.saveHomeState()
-                    }
-                    true
-                }
-                DragEvent.ACTION_DRAG_EXITED -> {
-                    val draggedView = event.localState as? View
-                    val draggedItem = draggedView?.tag as? HomeItem
-                    if (draggedItem != null && !isProcessingDrop) {
-                        closeFolder()
-                        removeFromFolder(folderItem, draggedItem, homeItems)
-
-                        val containerLocation = IntArray(2)
-                        container.getLocationInWindow(containerLocation)
-
-                        val xInWindow = event.x + containerLocation[0]
-                        val yInWindow = event.y + containerLocation[1]
-
-                        val homeLocation = IntArray(2)
-                        activity.homeView.getLocationInWindow(homeLocation)
-
-                        val dropXOnHome = xInWindow - homeLocation[0]
-                        val dropYOnHome = yInWindow - homeLocation[1]
-
-                        draggedView.isVisible = true
-                        (draggedView.parent as? ViewGroup)?.removeView(draggedView)
-
-                        activity.mainLayout.startX = dropXOnHome
-                        activity.mainLayout.startY = dropYOnHome
-                        activity.mainLayout.startExternalDrag(draggedView, dropXOnHome, dropYOnHome)
-                    }
-                    true
-                }
-                DragEvent.ACTION_DRAG_ENDED -> {
-                    val draggedView = event.localState as? View
-                    adapter.draggedItem = null
-                    draggedView?.isVisible = true
-                    val draggedItem = draggedView?.tag as? HomeItem
-                    if (draggedItem != null) {
-                        val pos = adapter.items.indexOf(draggedItem)
-                        if (pos != RecyclerView.NO_POSITION) {
-                            adapter.notifyItemChanged(pos)
-                        }
-                    }
-                    activity.saveHomeState()
-                    true
-                }
-                else -> true
-            }
-        }
-        container.setOnDragListener(dragListener)
+        currentRecyclerView = recyclerView
+        currentFolderItem = folderItem
 
         val lp = FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.CENTER)
         lp.setMargins(dpToPx(24f), 0, dpToPx(24f), 0)
@@ -371,11 +343,21 @@ class FolderManager(private val activity: MainActivity, private val settingsMana
         override fun onBindViewHolder(holder: FolderViewHolder, position: Int) {
             val item = items[position]
             holder.bind(item, item === draggedItem) { view ->
-                val data = ClipData.newPlainText("index", holder.bindingAdapterPosition.toString())
-                val shadow = View.DragShadowBuilder(view)
-                ViewCompat.startDragAndDrop(view, data, shadow, view, 0)
+                val vLoc = IntArray(2)
+                view.getLocationInWindow(vLoc)
+
+                val newItem = HomeItem.createApp(item.packageName!!, item.className!!, item.col, item.row, item.page)
+                val dragView = activity.itemViewFactory.createAppView(newItem, activity.allApps)
+                dragView.tag = item
+
                 draggedItem = item
                 view.isVisible = false
+
+                if (settingsManager.isFreeformHome) {
+                    activity.freeformInteraction.showTransformOverlay(dragView, vLoc[0] + view.width / 2f, vLoc[1] + view.height / 2f)
+                } else {
+                    activity.mainLayout.startExternalDrag(dragView, vLoc[0] + view.width / 2f, vLoc[1] + view.height / 2f)
+                }
             }
         }
 
@@ -386,6 +368,8 @@ class FolderManager(private val activity: MainActivity, private val settingsMana
         if (currentFolderOverlay != null) {
             val overlay = currentFolderOverlay!!
             currentFolderOverlay = null
+            currentRecyclerView = null
+            currentFolderItem = null
             activity.mainLayout.removeView(overlay)
             activity.updateContentBlur()
             val imm = activity.getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager?

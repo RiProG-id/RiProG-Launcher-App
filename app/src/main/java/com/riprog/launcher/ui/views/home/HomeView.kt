@@ -379,6 +379,15 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
 
     fun handleDrag(x: Float, y: Float) {
         draggingView?.let { v ->
+            if (context is MainActivity) {
+                val activity = context as MainActivity
+                if (activity.folderManager.isFolderOpen()) {
+                    if (activity.folderManager.handleManualDrag(x, y)) {
+                        // Reordering handled by folder manager
+                    }
+                }
+            }
+
             val dx = x - lastX
             val dy = y - lastY
             v.x = v.x + dx
@@ -617,6 +626,12 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
                             break
                         }
                     }
+                }
+            }
+
+            if (activity.folderManager.isFolderOpen()) {
+                if (activity.folderManager.handleManualDrop(v)) {
+                    return true
                 }
             }
 

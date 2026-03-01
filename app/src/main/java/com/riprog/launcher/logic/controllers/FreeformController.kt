@@ -66,6 +66,11 @@ class FreeformController(
         val homeView = (activity as? MainActivity)?.homeView
         currentTransformOverlay = TransformOverlay(activity, v, preferences, object : TransformOverlay.OnSaveListener {
             override fun onMove(x: Float, y: Float) {
+                if (activity is MainActivity) {
+                    if (activity.folderManager.isFolderOpen()) {
+                        activity.folderManager.handleManualDrag(x, y)
+                    }
+                }
                 homeView?.checkEdgeScroll(x)
                 homeView?.pageIndicator?.setCurrentPage(homeView.resolvePageIndex(x))
             }
@@ -163,6 +168,12 @@ class FreeformController(
 
             if (midX >= ox && midX <= ox + cBounds.width() &&
                 midY >= oy && midY <= oy + cBounds.height()) {
+                if (mainActivity.folderManager.isFolderOpen()) {
+                    if (mainActivity.folderManager.handleManualDrop(v)) {
+                        closeTransformOverlay()
+                        return true
+                    }
+                }
                 if (!preferences.isFreeformHome && handleFolderDrop(v, otherView)) {
                     closeTransformOverlay()
                     return true

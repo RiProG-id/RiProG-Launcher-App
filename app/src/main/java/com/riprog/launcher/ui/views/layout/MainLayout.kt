@@ -76,6 +76,9 @@ class MainLayout @JvmOverloads constructor(
         }
 
         if (activity.isAnyOverlayVisible()) {
+            if (activity.folderManager.isFolderOpen() && isDragging) {
+                return true
+            }
             return false
         }
         if (isDrawerOpen) {
@@ -168,7 +171,11 @@ class MainLayout @JvmOverloads constructor(
         }
 
         if (activity.isAnyOverlayVisible()) {
-            return true
+            if (activity.folderManager.isFolderOpen() && isDragging) {
+                // Continue to MotionEvent.ACTION_MOVE
+            } else {
+                return true
+            }
         }
 
         if (isDrawerOpen) {
@@ -317,7 +324,12 @@ class MainLayout @JvmOverloads constructor(
 
     fun startExternalDrag(v: View, x: Float = lastX, y: Float = lastY) {
         if (activity == null) return
+        if (isDragging && touchedView != null) {
+            // If already dragging (e.g. from folder transition), reuse current drag
+            return
+        }
         isDragging = true
+        v.id = R.id.dragged_item_view
         touchedView = v
         lastX = x
         lastY = y
