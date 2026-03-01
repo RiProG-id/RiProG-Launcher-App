@@ -42,6 +42,12 @@ class HomeItem {
     var visualOffsetX: Float = -1f
     var visualOffsetY: Float = -1f
 
+    @Transient
+    var isMoving: Boolean = false
+
+    @Transient
+    var isBeingDraggedOut: Boolean = false
+
     companion object {
 
         fun createApp(packageName: String, className: String, col: Float, row: Float, page: Int): HomeItem {

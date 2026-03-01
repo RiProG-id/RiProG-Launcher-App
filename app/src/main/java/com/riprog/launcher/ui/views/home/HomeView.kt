@@ -432,7 +432,7 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
         stopEdgeEffect()
     }
 
-    fun endDragging() {
+    fun endDragging(dropX: Float? = null, dropY: Float? = null) {
         draggingView?.let { v ->
             if (settingsManager.isAcrylic) {
                 v.animate().scaleX(1.0f).scaleY(1.0f).alpha(1.0f).setDuration(150).start()
@@ -443,10 +443,18 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
             }
             val item = v.tag as HomeItem?
             if (item != null) {
-                val absXInWindow = IntArray(2).apply { v.getLocationInWindow(this) }[0]
-                val absYInWindow = IntArray(2).apply { v.getLocationInWindow(this) }[1]
+                item.isMoving = false
+                item.isBeingDraggedOut = false
+                val homeLoc = IntArray(2).apply { getLocationInWindow(this) }
+                val vBounds = WidgetSizingUtils.getVisualBounds(v)
 
-                val targetPage = resolvePageIndex(v.x + v.width / 2f)
+                val midX = dropX ?: (v.x + vBounds.centerX())
+                val midY = dropY ?: (v.y + vBounds.centerY())
+
+                val absXInWindow = (midX + homeLoc[0] - vBounds.centerX()).toInt()
+                val absYInWindow = (midY + homeLoc[1] - vBounds.centerY()).toInt()
+
+                val targetPage = resolvePageIndex(midX)
                 item.page = targetPage
 
                 if (!settingsManager.isFreeformHome) {
@@ -454,10 +462,6 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
                     val cellHeight = getCellHeight()
                     val horizontalPadding = dpToPx(HORIZONTAL_PADDING_DP).toFloat()
                     val offsetY = recyclerView.paddingTop.toFloat()
-
-                    val vBounds = WidgetSizingUtils.getVisualBounds(v)
-                    val midX = v.x + vBounds.centerX()
-                    val midY = v.y + vBounds.centerY()
 
                     val sX = if (item.type == HomeItem.Type.WIDGET) (vBounds.width() / cellWidth).roundToInt().coerceAtLeast(1) else 1
                     val sY = if (item.type == HomeItem.Type.WIDGET) (vBounds.height() / cellHeight).roundToInt().coerceAtLeast(1) else 1
@@ -502,6 +506,11 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
                         }
                     }
                 }
+            }
+            if (context is MainActivity) {
+                item?.isMoving = false
+                item?.isBeingDraggedOut = false
+                (context as MainActivity).saveHomeState()
             }
             cleanupDraggingState()
             val m = model

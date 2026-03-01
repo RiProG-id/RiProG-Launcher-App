@@ -179,11 +179,17 @@ class FolderManager(private val activity: MainActivity, private val settingsMana
                         val isOutside = xInWindow < overlayLocation[0] || xInWindow > overlayLocation[0] + overlay.width ||
                                         yInWindow < overlayLocation[1] || yInWindow > overlayLocation[1] + overlay.height
 
-                        if (isOutside) {
-                            isProcessingDrop = true
+                        if (isOutside && !draggedItem.isBeingDraggedOut) {
+                            draggedItem.isBeingDraggedOut = true
+                            draggedItem.isMoving = true
                             closeFolder()
-                            removeFromFolder(folderItem, draggedItem, activity.homeItems)
 
+                            // 1. Remove from folder and commit
+                            removeFromFolder(folderItem, draggedItem, activity.homeItems)
+                            activity.saveHomeState()
+                            refreshFolderIconsOnHome(folderItem)
+
+                            // 2. Add to home model immediately as a MOVE
                             if (!activity.homeItems.contains(draggedItem)) {
                                 draggedItem.page = activity.homeView.currentPage
                                 activity.homeItems.add(draggedItem)
@@ -192,12 +198,14 @@ class FolderManager(private val activity: MainActivity, private val settingsMana
                             if (!settingsManager.isFreeformHome) {
                                 draggedItem.visualOffsetX = -1f
                                 draggedItem.visualOffsetY = -1f
-                                activity.saveHomeState()
                             }
+
+                            // 3. Persist the move to home layout
+                            activity.saveHomeState()
 
                             val newView = activity.renderHomeItem(draggedItem)
                             if (newView != null) {
-                                (activity.mainLayout as? com.riprog.launcher.ui.views.layout.MainLayout)?.startHandoverDrag(newView, xInWindow, yInWindow)
+                                activity.mainLayout.startHandoverDrag(newView, xInWindow, yInWindow)
                             }
                             return@OnDragListener true
                         }
@@ -236,7 +244,7 @@ class FolderManager(private val activity: MainActivity, private val settingsMana
                     true
                 }
                 DragEvent.ACTION_DROP -> {
-                    if (isProcessingDrop) return@OnDragListener false
+                    if (isProcessingDrop || (event.localState as? View)?.tag?.let { (it as? HomeItem)?.isBeingDraggedOut } == true) return@OnDragListener false
                     isProcessingDrop = true
 
                     val draggedView = event.localState as? View
@@ -263,7 +271,8 @@ class FolderManager(private val activity: MainActivity, private val settingsMana
                                 adapter.notifyItemChanged(pos)
                             }
                             activity.saveHomeState()
-                        } else {
+                        } else if (!draggedItem.isMoving) {
+                            draggedItem.isMoving = true
                             closeFolder()
                             removeFromFolder(folderItem, draggedItem, homeItems)
 
@@ -307,6 +316,8 @@ class FolderManager(private val activity: MainActivity, private val settingsMana
                     draggedView?.isVisible = true
                     val draggedItem = draggedView?.tag as? HomeItem
                     if (draggedItem != null) {
+                        draggedItem.isMoving = false
+                        draggedItem.isBeingDraggedOut = false
                         val pos = adapter.items.indexOf(draggedItem)
                         if (pos != RecyclerView.NO_POSITION) {
                             adapter.notifyItemChanged(pos)
@@ -397,6 +408,7 @@ class FolderManager(private val activity: MainActivity, private val settingsMana
                 val shadow = View.DragShadowBuilder(view)
                 ViewCompat.startDragAndDrop(view, data, shadow, view, 0)
                 draggedItem = item
+                item.isMoving = true
                 view.isVisible = false
             }
         }
