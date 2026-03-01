@@ -179,7 +179,24 @@ class FolderManager(private val activity: MainActivity, private val settingsMana
                         val relativeX = xInWindow - rvLocation[0]
                         val relativeY = yInWindow - rvLocation[1]
 
-                        val targetView = recyclerView.findChildViewUnder(relativeX, relativeY)
+                        var targetView: View? = null
+                        var minDistance = Float.MAX_VALUE
+
+                        for (i in 0 until recyclerView.childCount) {
+                            val child = recyclerView.getChildAt(i)
+                            val childCenterX = child.x + child.width / 2f
+                            val childCenterY = child.y + child.height / 2f
+                            val distance = Math.sqrt(
+                                Math.pow((relativeX - childCenterX).toDouble(), 2.0) +
+                                        Math.pow((relativeY - childCenterY).toDouble(), 2.0)
+                            ).toFloat()
+
+                            if (distance < minDistance && distance < child.width * 0.8f) {
+                                minDistance = distance
+                                targetView = child
+                            }
+                        }
+
                         if (targetView != null) {
                             val targetIndex = recyclerView.getChildAdapterPosition(targetView)
                             val currentIndex = adapter.items.indexOf(draggedItem)
@@ -211,9 +228,10 @@ class FolderManager(private val activity: MainActivity, private val settingsMana
 
                         val overlayLocation = IntArray(2)
                         overlay.getLocationInWindow(overlayLocation)
+                        val tolerance = dpToPx(16f)
 
-                        if (dropXInWindow >= overlayLocation[0] && dropXInWindow <= overlayLocation[0] + overlay.width &&
-                            dropYInWindow >= overlayLocation[1] && dropYInWindow <= overlayLocation[1] + overlay.height) {
+                        if (dropXInWindow >= overlayLocation[0] - tolerance && dropXInWindow <= overlayLocation[0] + overlay.width + tolerance &&
+                            dropYInWindow >= overlayLocation[1] - tolerance && dropYInWindow <= overlayLocation[1] + overlay.height + tolerance) {
                             adapter.draggedItem = null
                             draggedView.isVisible = true
                             val pos = adapter.items.indexOf(draggedItem)
@@ -224,19 +242,20 @@ class FolderManager(private val activity: MainActivity, private val settingsMana
                         } else {
                             closeFolder()
                             removeFromFolder(folderItem, draggedItem, homeItems)
-
-                            val targetPage = activity.homeView.currentPage
-                            draggedItem.page = targetPage
+                            if (!homeItems.contains(draggedItem)) {
+                                homeItems.add(draggedItem)
+                            }
 
                             val homeLocation = IntArray(2)
                             activity.homeView.getLocationInWindow(homeLocation)
+                            val dropXOnHome = dropXInWindow - homeLocation[0]
+
+                            val targetPage = activity.homeView.resolvePageIndex(dropXOnHome)
+                            draggedItem.page = targetPage
 
                             val rv = activity.homeView.recyclerView
                             val layoutManager = rv.layoutManager as androidx.recyclerview.widget.LinearLayoutManager
                             val currentPageView = layoutManager.findViewByPosition(targetPage)
-
-                            val dropXOnHome = dropXInWindow - homeLocation[0]
-                            val dropYOnHome = dropYInWindow - homeLocation[1]
 
                             if (currentPageView != null) {
                                 val pageLoc = IntArray(2)
