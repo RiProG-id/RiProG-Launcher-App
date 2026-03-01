@@ -4,6 +4,7 @@ import com.riprog.launcher.ui.views.layout.MainLayout
 import com.riprog.launcher.ui.views.layout.AutoDimmingBackground
 import com.riprog.launcher.ui.views.home.HomeView
 import com.riprog.launcher.ui.views.home.HomeMenuOverlay
+import com.riprog.launcher.ui.views.home.HomeItemViewFactory
 import com.riprog.launcher.ui.views.folder.FolderViewFactory
 import com.riprog.launcher.ui.views.drawer.DrawerView
 import com.riprog.launcher.ui.views.drawer.AppDrawerContextMenu
@@ -13,6 +14,7 @@ import com.riprog.launcher.logic.managers.WidgetManager
 import com.riprog.launcher.logic.managers.SettingsManager
 import com.riprog.launcher.logic.managers.FolderManager
 import com.riprog.launcher.logic.controllers.FreeformController
+import com.riprog.launcher.logic.receivers.PackageReceiver
 import com.riprog.launcher.logic.utils.WidgetSizingUtils
 import com.riprog.launcher.ui.activities.WidgetPickerActivity
 import com.riprog.launcher.data.repository.AppRepository
@@ -61,11 +63,10 @@ class MainActivity : ComponentActivity() {
     lateinit var mainLayout: MainLayout
     lateinit var homeView: HomeView
     lateinit var drawerView: DrawerView
-    private var appInstallReceiver: AppInstallReceiver? = null
+    lateinit var itemViewFactory: HomeItemViewFactory
+    private var packageReceiver: PackageReceiver? = null
     var homeItems: MutableList<HomeItem> = ArrayList()
     var allApps: List<AppItem> = ArrayList()
-    private var lastGridCol: Float = 0f
-    private var lastGridRow: Float = 0f
     private var pendingSpanX: Int = 2
     private var pendingSpanY: Int = 1
     private var currentDefaultPrompt: View? = null
@@ -102,7 +103,7 @@ class MainActivity : ComponentActivity() {
         mainLayout.addView(drawerView)
         drawerView.visibility = View.GONE
 
-        freeformInteraction = FreeformController(this, mainLayout, settingsManager, object : FreeformController.InteractionCallback {
+        freeformInteraction = FreeformController(this, mainLayout, settingsManager, object : FreeformController.FreeformInteractionListener {
             override fun onSaveState() {
                 saveHomeState()
             }
@@ -140,9 +141,12 @@ class MainActivity : ComponentActivity() {
 
         folderManager = FolderManager(this, settingsManager)
         folderUI = FolderViewFactory(this, settingsManager)
-        widgetManager = WidgetManager(this, settingsManager, AppWidgetManager.getInstance(this), AppWidgetHost(this, APPWIDGET_HOST_ID))
+        appWidgetManager = AppWidgetManager.getInstance(this)
+        appWidgetHost = AppWidgetHost(this, APPWIDGET_HOST_ID)
+        itemViewFactory = HomeItemViewFactory(this, settingsManager, model, appWidgetManager, appWidgetHost)
+        widgetManager = WidgetManager(this, settingsManager, appWidgetManager, appWidgetHost)
         loadApps()
-        registerAppInstallReceiver()
+        registerPackageReceiver()
 
         homeView.post {
             restoreHomeState()
@@ -252,9 +256,9 @@ class MainActivity : ComponentActivity() {
         if (item == null) return null
         var view: View? = null
         when (item.type) {
-            HomeItem.Type.APP -> view = createAppView(item)
-            HomeItem.Type.WIDGET -> view = createWidgetView(item)
-            HomeItem.Type.CLOCK -> view = createClockView(item)
+            HomeItem.Type.APP -> view = itemViewFactory.createAppView(item, allApps)
+            HomeItem.Type.WIDGET -> view = itemViewFactory.createWidgetView(item)
+            HomeItem.Type.CLOCK -> view = itemViewFactory.createClockView()
             HomeItem.Type.FOLDER -> view = folderUI.createFolderView(
                 item,
                 true,
@@ -312,56 +316,6 @@ class MainActivity : ComponentActivity() {
         return null
     }
 
-    fun createAppView(item: HomeItem): View {
-        val container = LinearLayout(this)
-        container.orientation = LinearLayout.VERTICAL
-        container.gravity = Gravity.CENTER
-
-        val iconView = ImageView(this)
-        iconView.scaleType = ImageView.ScaleType.FIT_CENTER
-        val baseSize = resources.getDimensionPixelSize(R.dimen.grid_icon_size)
-        val scale = settingsManager.iconScale
-        val size = (baseSize * scale).toInt()
-
-        val iconParams = LinearLayout.LayoutParams(size, size)
-        iconView.layoutParams = iconParams
-
-        val labelView = TextView(this)
-        labelView.setTextColor(getColor(R.color.foreground))
-        labelView.setTextSize(TypedValue.COMPLEX_UNIT_SP, 10 * scale)
-        labelView.gravity = Gravity.CENTER
-        labelView.maxLines = 1
-        labelView.ellipsize = TextUtils.TruncateAt.END
-
-        val packageName = item.packageName ?: return container
-        val app = findApp(packageName)
-        if (app != null) {
-            model.loadIcon(app) { bitmap -> iconView.setImageBitmap(bitmap) }
-            labelView.text = app.label
-        } else {
-            iconView.setImageResource(android.R.drawable.sym_def_app_icon)
-            labelView.text = "..."
-        }
-
-        container.addView(iconView)
-        container.addView(labelView)
-        if (settingsManager.isHideLabels) {
-            labelView.visibility = View.GONE
-        }
-        return container
-    }
-
-    private fun createWidgetView(item: HomeItem?): View? {
-        if (item == null) return null
-        val info = appWidgetManager.getAppWidgetInfo(item.widgetId) ?: return null
-        return try {
-            val hostView = appWidgetHost.createView(this, item.widgetId, info)
-            hostView.setAppWidget(item.widgetId, info)
-            hostView
-        } catch (e: Exception) {
-            null
-        }
-    }
 
 
     fun removeHomeItem(item: HomeItem?, view: View?) {
@@ -386,35 +340,6 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    private fun createClockView(item: HomeItem): View {
-        val clockRoot = LinearLayout(this)
-        clockRoot.orientation = LinearLayout.VERTICAL
-        clockRoot.gravity = Gravity.CENTER
-
-        val tvTime = TextView(this)
-        tvTime.textSize = 64f
-        tvTime.setTextColor(getColor(R.color.foreground))
-        tvTime.typeface = Typeface.create("sans-serif-thin", Typeface.NORMAL)
-
-        val tvDate = TextView(this)
-        tvDate.textSize = 18f
-        tvDate.setTextColor(getColor(R.color.foreground_dim))
-        tvDate.gravity = Gravity.CENTER
-
-        clockRoot.addView(tvTime)
-        clockRoot.addView(tvDate)
-
-        val updateTask: Runnable = object : Runnable {
-            override fun run() {
-                val cal = Calendar.getInstance()
-                tvTime.text = DateFormat.getTimeFormat(this@MainActivity).format(cal.time)
-                tvDate.text = DateFormat.getMediumDateFormat(this@MainActivity).format(cal.time)
-                tvTime.postDelayed(this, 10000)
-            }
-        }
-        tvTime.post(updateTask)
-        return clockRoot
-    }
 
     private fun findApp(packageName: String): AppItem? {
         for (app in allApps) {
@@ -480,7 +405,7 @@ class MainActivity : ComponentActivity() {
                         shouldRemove = true
                     } else {
                         try {
-                            pm.getApplicationInfo(item.packageName!!, 0)
+                            item.packageName?.let { pm.getApplicationInfo(it, 0) } ?: throw Exception()
                         } catch (e: Exception) {
                             shouldRemove = true
                         }
@@ -502,7 +427,7 @@ class MainActivity : ComponentActivity() {
                                 changed = true
                             } else {
                                 try {
-                                    pm.getApplicationInfo(subItem.packageName!!, 0)
+                                    subItem.packageName?.let { pm.getApplicationInfo(it, 0) } ?: throw Exception()
                                 } catch (e: Exception) {
                                     folderIterator.remove()
                                     changed = true
@@ -530,16 +455,18 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    private fun registerAppInstallReceiver() {
-        appInstallReceiver = AppInstallReceiver()
+    private fun registerPackageReceiver() {
+        packageReceiver = PackageReceiver(model) {
+            loadApps()
+        }
         val filter = IntentFilter()
         filter.addAction(Intent.ACTION_PACKAGE_ADDED)
         filter.addAction(Intent.ACTION_PACKAGE_REMOVED)
         filter.addDataScheme("package")
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            registerReceiver(appInstallReceiver, filter, RECEIVER_NOT_EXPORTED)
+            registerReceiver(packageReceiver, filter, RECEIVER_NOT_EXPORTED)
         } else {
-            registerReceiver(appInstallReceiver, filter)
+            registerReceiver(packageReceiver, filter)
         }
     }
 
@@ -577,7 +504,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onDestroy() {
         super.onDestroy()
-        if (appInstallReceiver != null) unregisterReceiver(appInstallReceiver)
+        if (packageReceiver != null) unregisterReceiver(packageReceiver)
     }
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
@@ -589,7 +516,11 @@ class MainActivity : ComponentActivity() {
             return
         }
         if (requestCode == REQUEST_PICK_WIDGET_SCREEN && resultCode == RESULT_OK && data != null) {
-            val info = androidx.core.content.IntentCompat.getParcelableExtra(data, "EXTRA_WIDGET_INFO", AppWidgetProviderInfo::class.java)
+            val info = try {
+                androidx.core.content.IntentCompat.getParcelableExtra(data, "EXTRA_WIDGET_INFO", AppWidgetProviderInfo::class.java)
+            } catch (e: Exception) {
+                null
+            }
             val spanX = data.getIntExtra("EXTRA_SPAN_X", 2)
             val spanY = data.getIntExtra("EXTRA_SPAN_Y", 1)
             if (info != null) {
@@ -713,7 +644,7 @@ class MainActivity : ComponentActivity() {
         val allowed = appWidgetManager.bindAppWidgetIdIfAllowed(appWidgetId, info.provider)
         if (allowed) {
             val item = HomeItem.createWidget(appWidgetId, 0f, 0f, sX, sY, homeView.currentPage)
-            val view = createWidgetView(item)
+            val view = itemViewFactory.createWidgetView(item)
             if (view != null) {
                 view.tag = item
                 mainLayout.startExternalDrag(view)
@@ -940,17 +871,6 @@ class MainActivity : ComponentActivity() {
         return TypedValue.applyDimension(
             TypedValue.COMPLEX_UNIT_DIP, dp.toFloat(), resources.displayMetrics
         ).toInt()
-    }
-
-    private inner class AppInstallReceiver : BroadcastReceiver() {
-        override fun onReceive(context: Context, intent: Intent) {
-            val packageName = intent.data?.schemeSpecificPart
-            if (packageName != null) {
-                // Intelligent Invalidation: only clear affected app's cache
-                model.invalidateIcon(packageName)
-            }
-            loadApps()
-        }
     }
 
     companion object {

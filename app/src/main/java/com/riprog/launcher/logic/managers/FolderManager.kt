@@ -290,7 +290,7 @@ class FolderManager(private val activity: MainActivity, private val settingsMana
             val subView = if (container.childCount > 0) {
                 container.getChildAt(0)
             } else {
-                val v = activity.createAppView(item)
+                val v = activity.itemViewFactory.createAppView(item, activity.allApps)
                 container.addView(v)
                 v
             }
