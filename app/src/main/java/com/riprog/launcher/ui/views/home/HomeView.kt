@@ -443,6 +443,8 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
             }
             val item = v.tag as HomeItem?
             if (item != null) {
+                item.isMoving = false
+                item.isBeingDraggedOut = false
                 val homeLoc = IntArray(2).apply { getLocationInWindow(this) }
                 val vBounds = WidgetSizingUtils.getVisualBounds(v)
 
@@ -473,11 +475,6 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
 
                     item.visualOffsetX = vBounds.centerX()
                     item.visualOffsetY = vBounds.centerY()
-
-                    if (dropX != null && dropY != null) {
-                        item.visualOffsetX = vBounds.centerX()
-                        item.visualOffsetY = vBounds.centerY()
-                    }
                 }
 
                 removeView(v)
@@ -509,6 +506,11 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
                         }
                     }
                 }
+            }
+            if (context is MainActivity) {
+                item?.isMoving = false
+                item?.isBeingDraggedOut = false
+                (context as MainActivity).saveHomeState()
             }
             cleanupDraggingState()
             val m = model
