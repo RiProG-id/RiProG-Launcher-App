@@ -7,6 +7,7 @@ import com.riprog.launcher.ui.views.layout.AutoDimmingBackground
 import com.riprog.launcher.R
 
 import androidx.activity.ComponentActivity
+import androidx.activity.enableEdgeToEdge
 import android.app.Activity
 import android.app.ActivityManager
 import android.content.Context
@@ -39,6 +40,7 @@ class SettingsActivity : ComponentActivity() {
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        enableEdgeToEdge()
         super.onCreate(savedInstanceState)
         settingsManager = SettingsManager(this)
         ThemeManager.applyThemeMode(this, settingsManager.themeMode)
