@@ -51,7 +51,7 @@ class AppRepository(context: Context) {
         if (level >= ComponentCallbacks2.TRIM_MEMORY_UI_HIDDEN) {
             iconCache.trimToSize(iconCache.size() / 2)
         }
-        if (level >= 60 /* ComponentCallbacks2.TRIM_MEMORY_RUNNING_MODERATE */) {
+        if (level >= 60 /* ComponentCallbacks2.TRIM_MEMORY_MODERATE */) {
             iconCache.evictAll()
             System.gc()
         } else if (level >= ComponentCallbacks2.TRIM_MEMORY_BACKGROUND) {

@@ -46,10 +46,50 @@ import android.view.inputmethod.InputMethodManager
 import androidx.core.view.WindowCompat
 import androidx.activity.ComponentActivity
 import androidx.activity.OnBackPressedCallback
+import androidx.activity.enableEdgeToEdge
+import androidx.activity.result.contract.ActivityResultContracts
 import android.widget.*
 import java.util.*
 
 class MainActivity : ComponentActivity() {
+
+    private val settingsLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+        if (result.resultCode == Activity.RESULT_OK) {
+            loadApps()
+            homeView.refreshLayout()
+            drawerView.refreshTheme()
+        }
+    }
+
+    private val widgetPickerLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+        if (result.resultCode == Activity.RESULT_OK && result.data != null) {
+            val data = result.data!!
+            val info = try {
+                androidx.core.content.IntentCompat.getParcelableExtra(data, "EXTRA_WIDGET_INFO", AppWidgetProviderInfo::class.java)
+            } catch (e: Exception) {
+                null
+            }
+            val spanX = data.getIntExtra("EXTRA_SPAN_X", 2)
+            val spanY = data.getIntExtra("EXTRA_SPAN_Y", 1)
+            if (info != null) {
+                spawnWidget(info, spanX, spanY)
+            }
+        }
+    }
+
+    private val bindWidgetLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+        if (result.resultCode == Activity.RESULT_OK && result.data != null) {
+            configureWidget(result.data!!)
+        }
+    }
+
+    private val createWidgetLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+        if (result.resultCode == Activity.RESULT_OK && result.data != null) {
+            createWidget(result.data!!)
+        }
+    }
+
+    private val wallPaperPickerLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { }
 
     lateinit var model: AppRepository
     lateinit var settingsManager: SettingsManager
@@ -77,6 +117,7 @@ class MainActivity : ComponentActivity() {
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        enableEdgeToEdge()
         super.onCreate(savedInstanceState)
         settingsManager = SettingsManager(this)
         ThemeManager.applyThemeMode(this, settingsManager.themeMode)
@@ -279,7 +320,6 @@ class MainActivity : ComponentActivity() {
 
     fun refreshFolderPreview(folder: HomeItem, grid: GridLayout) {
         grid.removeAllViews()
-        if (folder.folderItems == null) return
         val count = Math.min(folder.folderItems.size, 4)
         val scale = settingsManager.iconScale
         val size = (dpToPx(18) * scale).toInt()
@@ -352,12 +392,12 @@ class MainActivity : ComponentActivity() {
     private fun openWallpaperPicker() {
         val intent = Intent(Intent.ACTION_SET_WALLPAPER)
         try {
-            startActivity(intent)
+            wallPaperPickerLauncher.launch(intent)
         } catch (e: Exception) {
             try {
                 val pickIntent = Intent(Intent.ACTION_GET_CONTENT)
                 pickIntent.type = "image/*"
-                startActivity(Intent.createChooser(pickIntent, getString(R.string.title_select_wallpaper)))
+                wallPaperPickerLauncher.launch(Intent.createChooser(pickIntent, getString(R.string.title_select_wallpaper)))
             } catch (e2: Exception) {
                 Toast.makeText(this, getString(R.string.wallpaper_picker_failed), Toast.LENGTH_SHORT).show()
             }
@@ -366,7 +406,7 @@ class MainActivity : ComponentActivity() {
 
     private fun openSettings() {
         val intent = Intent(this, SettingsActivity::class.java)
-        startActivityForResult(intent, 100)
+        settingsLauncher.launch(intent)
     }
 
     private fun applyDynamicColors() {
@@ -507,35 +547,6 @@ class MainActivity : ComponentActivity() {
         if (packageReceiver != null) unregisterReceiver(packageReceiver)
     }
 
-    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
-        super.onActivityResult(requestCode, resultCode, data)
-        if (requestCode == 100) {
-            loadApps()
-            homeView.refreshLayout()
-            drawerView.refreshTheme()
-            return
-        }
-        if (requestCode == REQUEST_PICK_WIDGET_SCREEN && resultCode == RESULT_OK && data != null) {
-            val info = try {
-                androidx.core.content.IntentCompat.getParcelableExtra(data, "EXTRA_WIDGET_INFO", AppWidgetProviderInfo::class.java)
-            } catch (e: Exception) {
-                null
-            }
-            val spanX = data.getIntExtra("EXTRA_SPAN_X", 2)
-            val spanY = data.getIntExtra("EXTRA_SPAN_Y", 1)
-            if (info != null) {
-                spawnWidget(info, spanX, spanY)
-            }
-            return
-        }
-        if (resultCode == RESULT_OK && data != null) {
-            if (requestCode == REQUEST_PICK_APPWIDGET) {
-                configureWidget(data)
-            } else if (requestCode == REQUEST_CREATE_APPWIDGET) {
-                createWidget(data)
-            }
-        }
-    }
 
     private fun configureWidget(data: Intent) {
         val appWidgetId = data.getIntExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, -1)
@@ -544,7 +555,7 @@ class MainActivity : ComponentActivity() {
             val intent = Intent(AppWidgetManager.ACTION_APPWIDGET_CONFIGURE)
             intent.component = info.configure
             intent.putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, appWidgetId)
-            startActivityForResult(intent, REQUEST_CREATE_APPWIDGET)
+            createWidgetLauncher.launch(intent)
         } else {
             createWidget(data)
         }
@@ -588,7 +599,7 @@ class MainActivity : ComponentActivity() {
 
     fun pickWidget() {
         val intent = Intent(this, WidgetPickerActivity::class.java)
-        startActivityForResult(intent, REQUEST_PICK_WIDGET_SCREEN)
+        widgetPickerLauncher.launch(intent)
     }
 
     fun spawnWidget(info: AppWidgetProviderInfo, spanX: Int, spanY: Int) {
@@ -632,7 +643,7 @@ class MainActivity : ComponentActivity() {
             val intent = Intent(AppWidgetManager.ACTION_APPWIDGET_BIND)
             intent.putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, appWidgetId)
             intent.putExtra(AppWidgetManager.EXTRA_APPWIDGET_PROVIDER, info.provider)
-            startActivityForResult(intent, REQUEST_PICK_APPWIDGET)
+            bindWidgetLauncher.launch(intent)
         }
     }
 
@@ -653,7 +664,7 @@ class MainActivity : ComponentActivity() {
             val intent = Intent(AppWidgetManager.ACTION_APPWIDGET_BIND)
             intent.putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, appWidgetId)
             intent.putExtra(AppWidgetManager.EXTRA_APPWIDGET_PROVIDER, info.provider)
-            startActivityForResult(intent, REQUEST_PICK_APPWIDGET)
+            bindWidgetLauncher.launch(intent)
         }
     }
 
