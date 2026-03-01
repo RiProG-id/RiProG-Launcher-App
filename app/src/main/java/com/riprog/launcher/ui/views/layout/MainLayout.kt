@@ -33,9 +33,7 @@ class MainLayout @JvmOverloads constructor(
     private val activity: MainActivity? = context as? MainActivity
     private var isDrawerOpen = false
     var startX = 0f
-        private set
     var startY = 0f
-        private set
     var lastX = 0f
         private set
     var lastY = 0f
@@ -317,10 +315,12 @@ class MainLayout @JvmOverloads constructor(
         activity.updateContentBlur()
     }
 
-    fun startExternalDrag(v: View) {
+    fun startExternalDrag(v: View, x: Float = lastX, y: Float = lastY) {
         if (activity == null) return
         isDragging = true
         touchedView = v
+        lastX = x
+        lastY = y
 
         val cellWidth = activity.homeView.getCellWidth()
         val cellHeight = activity.homeView.getCellHeight()
@@ -352,10 +352,10 @@ class MainLayout @JvmOverloads constructor(
         v.pivotX = w / 2f
         v.pivotY = h / 2f
 
-        v.x = lastX - w / 2f
-        v.y = lastY - h / 2f
+        v.x = x - w / 2f
+        v.y = y - h / 2f
 
-        activity.homeView.startDragging(v, lastX, lastY)
+        activity.homeView.startDragging(v, x, y)
     }
 
     fun isDrawerOpen(): Boolean = isDrawerOpen
