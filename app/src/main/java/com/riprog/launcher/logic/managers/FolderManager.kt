@@ -186,8 +186,10 @@ class FolderManager(private val activity: MainActivity, private val settingsMana
 
                             if (!activity.homeItems.contains(draggedItem)) {
                                 draggedItem.page = activity.homeView.currentPage
+                                draggedItem.originalPage = draggedItem.page
                                 activity.homeItems.add(draggedItem)
                             }
+                            activity.saveHomeState()
 
                             val newView = activity.renderHomeItem(draggedItem)
                             if (newView != null) {
@@ -299,14 +301,17 @@ class FolderManager(private val activity: MainActivity, private val settingsMana
                     val draggedView = event.localState as? View
                     adapter.draggedItem = null
                     draggedView?.isVisible = true
-                    val draggedItem = draggedView?.tag as? HomeItem
-                    if (draggedItem != null) {
-                        val pos = adapter.items.indexOf(draggedItem)
+                    val item = draggedView?.tag as? HomeItem
+                    if (item != null) {
+                        val pos = adapter.items.indexOf(item)
                         if (pos != RecyclerView.NO_POSITION) {
                             adapter.notifyItemChanged(pos)
                         }
                     }
-                    activity.saveHomeState()
+                    if (!isProcessingDrop) {
+                        activity.saveHomeState()
+                    }
+                    isProcessingDrop = false
                     true
                 }
                 else -> true

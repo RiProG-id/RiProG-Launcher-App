@@ -447,6 +447,21 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
                 val targetPage = resolvePageIndex(v.x + v.width / 2f)
                 item.page = targetPage
 
+                if (!settingsManager.isFreeformHome) {
+                    val cellWidth = getCellWidth()
+                    val cellHeight = getCellHeight()
+                    if (cellWidth > 0 && cellHeight > 0) {
+                        val horizontalPadding = dpToPx(HORIZONTAL_PADDING_DP)
+                        val visualCenterX = v.x + v.width / 2f
+                        val visualCenterY = v.y + v.height / 2f
+                        item.col = ((visualCenterX - horizontalPadding - cellWidth / 2f) / cellWidth).roundToInt().toFloat()
+                        item.row = ((visualCenterY - cellHeight / 2f) / cellHeight).roundToInt().toFloat()
+                        item.originalCol = item.col
+                        item.originalRow = item.row
+                        item.originalPage = targetPage
+                    }
+                }
+
                 removeView(v)
 
                 if (context is MainActivity) {
@@ -462,7 +477,8 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
                         val pageLoc = IntArray(2)
 
                         recyclerView.scrollToPosition(targetPage)
-                        recyclerView.post {
+
+                        val snapAndSave = {
                             val holder = recyclerView.findViewHolderForAdapterPosition(targetPage) as? HomePagerAdapter.ViewHolder
                             if (holder != null) {
                                 holder.container.getLocationInWindow(pageLoc)
@@ -470,12 +486,27 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
                                 newView.y = absYInWindow - pageLoc[1].toFloat()
                                 snapToGrid(item, newView)
                             } else {
-
                                 snapToGrid(item, newView)
                             }
+
+                            if (!settingsManager.isFreeformHome) {
+                                item.originalCol = item.col
+                                item.originalRow = item.row
+                                item.originalSpanX = item.spanX
+                                item.originalSpanY = item.spanY
+                                item.originalPage = item.page
+                            }
+                            activity.saveHomeState()
                         }
+
+                        if (recyclerView.isComputingLayout) {
+                            recyclerView.post(snapAndSave)
+                        } else {
+                            snapAndSave()
+                        }
+                    } else {
+                        activity.saveHomeState()
                     }
-                    activity.saveHomeState()
                 }
             }
             cleanupDraggingState()
