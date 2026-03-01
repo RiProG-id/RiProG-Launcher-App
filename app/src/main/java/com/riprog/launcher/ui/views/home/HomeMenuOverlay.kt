@@ -2,6 +2,7 @@ package com.riprog.launcher.ui.views.home
 
 import android.content.Context
 import android.graphics.Typeface
+import android.util.AttributeSet
 import android.util.TypedValue
 import android.view.Gravity
 import android.view.View
@@ -16,7 +17,13 @@ import com.riprog.launcher.R
 import com.riprog.launcher.logic.managers.SettingsManager
 import com.riprog.launcher.theme.ThemeUtils
 
-class HomeMenuOverlay(context: Context, private val settingsManager: SettingsManager, private val callback: Callback) : FrameLayout(context) {
+class HomeMenuOverlay @JvmOverloads constructor(
+    context: Context,
+    private val settingsManager: SettingsManager? = null,
+    private val callback: Callback? = null,
+    attrs: AttributeSet? = null,
+    defStyleAttr: Int = 0
+) : FrameLayout(context, attrs, defStyleAttr) {
 
     interface Callback {
         fun onAddPageLeft()
@@ -31,33 +38,34 @@ class HomeMenuOverlay(context: Context, private val settingsManager: SettingsMan
 
     init {
         setBackgroundColor(android.graphics.Color.TRANSPARENT)
-
         isClickable = true
         isFocusable = true
-        setOnClickListener { callback.dismiss() }
+        setOnClickListener { callback?.dismiss() }
 
-        val recyclerView = RecyclerView(context)
-        recyclerView.layoutManager = GridLayoutManager(context, 3)
-        recyclerView.setHasFixedSize(true)
-        recyclerView.clipToPadding = false
-        recyclerView.setPadding(dpToPx(8), dpToPx(8), dpToPx(8), dpToPx(8))
-        recyclerView.background = null
-        recyclerView.elevation = 0f
+        if (settingsManager != null && callback != null) {
+            val recyclerView = RecyclerView(context)
+            recyclerView.layoutManager = GridLayoutManager(context, 3)
+            recyclerView.setHasFixedSize(true)
+            recyclerView.clipToPadding = false
+            recyclerView.setPadding(dpToPx(8), dpToPx(8), dpToPx(8), dpToPx(8))
+            recyclerView.background = null
+            recyclerView.elevation = 0f
 
-        val items = mutableListOf<MenuItem>()
-        items.add(MenuItem(R.drawable.ic_layout, context.getString(R.string.action_add_page_left)) { callback.onAddPageLeft() })
-        items.add(MenuItem(R.drawable.ic_remove, context.getString(R.string.layout_remove_page), isEnabled = callback.getPageCount() > 1) { callback.onRemovePage() })
-        items.add(MenuItem(R.drawable.ic_layout, context.getString(R.string.action_add_page_right)) { callback.onAddPageRight() })
-        items.add(MenuItem(R.drawable.ic_widgets, context.getString(R.string.menu_widgets)) { callback.onPickWidget() })
-        items.add(MenuItem(R.drawable.ic_wallpaper, context.getString(R.string.menu_wallpaper)) { callback.onOpenWallpaper() })
-        items.add(MenuItem(R.drawable.ic_settings, context.getString(R.string.menu_settings)) { callback.onOpenSettings() })
+            val items = mutableListOf<MenuItem>()
+            items.add(MenuItem(R.drawable.ic_layout, context.getString(R.string.action_add_page_left)) { callback.onAddPageLeft() })
+            items.add(MenuItem(R.drawable.ic_remove, context.getString(R.string.action_remove), isEnabled = callback.getPageCount() > 1) { callback.onRemovePage() })
+            items.add(MenuItem(R.drawable.ic_layout, context.getString(R.string.action_add_page_right)) { callback.onAddPageRight() })
+            items.add(MenuItem(R.drawable.ic_widgets, context.getString(R.string.menu_widgets)) { callback.onPickWidget() })
+            items.add(MenuItem(R.drawable.ic_wallpaper, context.getString(R.string.menu_wallpaper)) { callback.onOpenWallpaper() })
+            items.add(MenuItem(R.drawable.ic_settings, context.getString(R.string.menu_settings)) { callback.onOpenSettings() })
 
-        recyclerView.adapter = MenuAdapter(items)
+            recyclerView.adapter = MenuAdapter(items, settingsManager, callback)
 
-        val lp = LayoutParams(dpToPx(330), LayoutParams.WRAP_CONTENT)
-        lp.gravity = Gravity.CENTER
-        lp.setMargins(dpToPx(8), dpToPx(8), dpToPx(8), dpToPx(8))
-        addView(recyclerView, lp)
+            val lp = LayoutParams(dpToPx(330), LayoutParams.WRAP_CONTENT)
+            lp.gravity = Gravity.CENTER
+            lp.setMargins(dpToPx(8), dpToPx(8), dpToPx(8), dpToPx(8))
+            addView(recyclerView, lp)
+        }
     }
 
     private data class MenuItem(
@@ -67,7 +75,11 @@ class HomeMenuOverlay(context: Context, private val settingsManager: SettingsMan
         val onClick: () -> Unit
     )
 
-    private inner class MenuAdapter(val items: List<MenuItem>) : RecyclerView.Adapter<MenuViewHolder>() {
+    private inner class MenuAdapter(
+        val items: List<MenuItem>,
+        val settings: SettingsManager,
+        val cb: Callback
+    ) : RecyclerView.Adapter<MenuViewHolder>() {
         override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): MenuViewHolder {
             val btn = LinearLayout(parent.context)
             btn.orientation = LinearLayout.VERTICAL
@@ -75,8 +87,8 @@ class HomeMenuOverlay(context: Context, private val settingsManager: SettingsMan
             val lp = RecyclerView.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dpToPx(80))
             lp.setMargins(dpToPx(4), dpToPx(4), dpToPx(4), dpToPx(4))
             btn.layoutParams = lp
-            btn.background = ThemeUtils.getThemedSurface(parent.context, settingsManager, 16f)
-            val isAcrylic = settingsManager.isAcrylic
+            btn.background = ThemeUtils.getThemedSurface(parent.context, settings, 16f)
+            val isAcrylic = settings.isAcrylic
             btn.elevation = if (isAcrylic) dpToPx(6).toFloat() else dpToPx(2).toFloat()
             btn.isClickable = true
             btn.isFocusable = true
@@ -97,7 +109,7 @@ class HomeMenuOverlay(context: Context, private val settingsManager: SettingsMan
 
         override fun onBindViewHolder(holder: MenuViewHolder, position: Int) {
             val item = items[position]
-            val adaptiveColor = ThemeUtils.getAdaptiveColor(holder.itemView.context, settingsManager, true)
+            val adaptiveColor = ThemeUtils.getAdaptiveColor(holder.itemView.context, settings, true)
 
             holder.icon.setImageResource(item.iconRes)
             holder.icon.setColorFilter(adaptiveColor)
@@ -115,7 +127,7 @@ class HomeMenuOverlay(context: Context, private val settingsManager: SettingsMan
                 holder.btn.isFocusable = true
                 holder.btn.setOnClickListener {
                     item.onClick()
-                    callback.dismiss()
+                    cb.dismiss()
                 }
             }
         }

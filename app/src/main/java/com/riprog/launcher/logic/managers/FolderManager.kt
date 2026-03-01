@@ -27,6 +27,8 @@ import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.GridLayout
+import androidx.core.view.isNotEmpty
+import androidx.core.view.isVisible
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import java.util.*
@@ -101,14 +103,14 @@ class FolderManager(private val activity: MainActivity, private val settingsMana
         titleEdit.gravity = Gravity.CENTER
         titleEdit.imeOptions = EditorInfo.IME_ACTION_DONE
         titleEdit.isSingleLine = true
-        titleEdit.visibility = View.GONE
+        titleEdit.isVisible = false
 
         val finishRename = {
             val newName = titleEdit.text.toString()
             folderItem.folderName = newName
             titleText.text = if (newName.isEmpty()) "Folder" else newName
-            titleEdit.visibility = View.GONE
-            titleText.visibility = View.VISIBLE
+            titleEdit.isVisible = false
+            titleText.isVisible = true
             val imm = activity.getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager?
             imm?.hideSoftInputFromWindow(titleEdit.windowToken, 0)
             activity.saveHomeState()
@@ -126,8 +128,8 @@ class FolderManager(private val activity: MainActivity, private val settingsMana
         overlay.addView(titleEdit)
 
         titleText.setOnClickListener {
-            titleText.visibility = View.GONE
-            titleEdit.visibility = View.VISIBLE
+            titleText.isVisible = false
+            titleEdit.isVisible = true
             titleEdit.requestFocus()
             titleEdit.setSelection(titleEdit.text.length)
             val imm = activity.getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager?
@@ -143,7 +145,7 @@ class FolderManager(private val activity: MainActivity, private val settingsMana
         }
 
         overlay.setOnClickListener {
-            if (titleEdit.visibility == View.VISIBLE) {
+            if (titleEdit.isVisible) {
                 finishRename()
             }
         }
@@ -213,7 +215,7 @@ class FolderManager(private val activity: MainActivity, private val settingsMana
                         if (dropXInWindow >= overlayLocation[0] && dropXInWindow <= overlayLocation[0] + overlay.width &&
                             dropYInWindow >= overlayLocation[1] && dropYInWindow <= overlayLocation[1] + overlay.height) {
                             adapter.draggedItem = null
-                            draggedView.visibility = View.VISIBLE
+                            draggedView.isVisible = true
                             val pos = adapter.items.indexOf(draggedItem)
                             if (pos != RecyclerView.NO_POSITION) {
                                 adapter.notifyItemChanged(pos)
@@ -251,7 +253,7 @@ class FolderManager(private val activity: MainActivity, private val settingsMana
                                 activity.homeView.addItemView(draggedItem, draggedView)
                             }
 
-                            draggedView.visibility = View.VISIBLE
+                            draggedView.isVisible = true
                             activity.homeView.snapToGrid(draggedItem, draggedView)
                         }
                     }
@@ -260,7 +262,7 @@ class FolderManager(private val activity: MainActivity, private val settingsMana
                 DragEvent.ACTION_DRAG_ENDED -> {
                     val draggedView = event.localState as? View
                     adapter.draggedItem = null
-                    draggedView?.visibility = View.VISIBLE
+                    draggedView?.isVisible = true
                     val draggedItem = draggedView?.tag as? HomeItem
                     if (draggedItem != null) {
                         val pos = adapter.items.indexOf(draggedItem)
@@ -287,7 +289,7 @@ class FolderManager(private val activity: MainActivity, private val settingsMana
 
     private inner class FolderViewHolder(val container: FrameLayout) : RecyclerView.ViewHolder(container) {
         fun bind(item: HomeItem, isDragged: Boolean, onLongClick: (View) -> Unit) {
-            val subView = if (container.childCount > 0) {
+            val subView = if (container.isNotEmpty()) {
                 container.getChildAt(0)
             } else {
                 val v = activity.itemViewFactory.createAppView(item, activity.allApps)
@@ -300,7 +302,7 @@ class FolderManager(private val activity: MainActivity, private val settingsMana
                 subView.tag = item
             }
 
-            subView.visibility = if (isDragged) View.INVISIBLE else View.VISIBLE
+            subView.isVisible = !isDragged
 
             subView.setOnClickListener {
                 activity.handleAppLaunch(item.packageName!!)
@@ -353,7 +355,7 @@ class FolderManager(private val activity: MainActivity, private val settingsMana
                 val shadow = View.DragShadowBuilder(view)
                 ViewCompat.startDragAndDrop(view, data, shadow, view, 0)
                 draggedItem = item
-                view.visibility = View.INVISIBLE
+                view.isVisible = false
             }
         }
 

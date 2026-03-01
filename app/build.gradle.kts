@@ -70,10 +70,10 @@ android {
 }
 
 dependencies {
-    implementation("androidx.core:core-ktx:1.15.0")
-    implementation("androidx.activity:activity-ktx:1.10.0")
-    implementation("androidx.recyclerview:recyclerview:1.3.2")
+    implementation("androidx.core:core-ktx:1.17.0")
+    implementation("androidx.activity:activity-ktx:1.12.4")
+    implementation("androidx.recyclerview:recyclerview:1.4.0")
     testImplementation("junit:junit:4.13.2")
-    testImplementation("org.mockito:mockito-core:5.11.0")
-    testImplementation("org.mockito.kotlin:mockito-kotlin:5.2.1")
+    testImplementation("org.mockito:mockito-core:5.22.0")
+    testImplementation("org.mockito.kotlin:mockito-kotlin:6.2.3")
 }

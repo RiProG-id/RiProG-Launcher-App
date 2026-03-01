@@ -8,12 +8,12 @@ import com.riprog.launcher.ui.views.home.HomeView
 import com.riprog.launcher.ui.activities.MainActivity
 import com.riprog.launcher.R
 
-import android.annotation.SuppressLint
 import android.appwidget.AppWidgetHostView
 import android.appwidget.AppWidgetProviderInfo
 import android.content.Context
 import android.graphics.Canvas
 import android.graphics.Color
+import android.util.AttributeSet
 import android.util.TypedValue
 import android.graphics.Paint
 import android.graphics.RectF
@@ -25,11 +25,19 @@ import android.view.ViewGroup
 import android.widget.FrameLayout
 import android.widget.LinearLayout
 import android.widget.TextView
+import androidx.core.graphics.withTranslation
 import kotlin.math.*
 
-class TransformOverlay(context: Context, private val targetView: View, private val settingsManager: SettingsManager, private val onSaveListener: OnSaveListener?) : FrameLayout(context) {
+class TransformOverlay @JvmOverloads constructor(
+    context: Context,
+    private val targetView: View? = null,
+    private val settingsManager: SettingsManager? = null,
+    private val onSaveListener: OnSaveListener? = null,
+    attrs: AttributeSet? = null,
+    defStyleAttr: Int = 0
+) : FrameLayout(context, attrs, defStyleAttr) {
 
-    private val item: HomeItem = targetView.tag as HomeItem
+    private val item: HomeItem? = targetView?.tag as? HomeItem
     private var buttonsContainer: View? = null
     private val paint = Paint(Paint.ANTI_ALIAS_FLAG)
     private val handleSize: Float = dpToPx(12f).toFloat()
@@ -46,22 +54,12 @@ class TransformOverlay(context: Context, private val targetView: View, private v
     private var gestureInitialWidth = 0
     private var gestureInitialHeight = 0
     private var gestureInitialBounds: RectF? = null
-    private var gestureInitialSpanX = 1f
-    private var gestureInitialSpanY = 1f
-    private var gestureInitialCol = 0f
-    private var gestureInitialRow = 0f
     private var currentDrx = 0f
     private var currentDry = 0f
     private var hasPassedThreshold = false
     private var activeHandle = -1
     private var canResizeHorizontal = true
     private var canResizeVertical = true
-
-    private val initialRotation: Float = targetView.rotation
-    private val initialScaleX: Float = targetView.scaleX
-    private val initialScaleY: Float = targetView.scaleY
-    private val initialX: Float = targetView.x
-    private val initialY: Float = targetView.y
 
     interface OnSaveListener {
         fun onMove(x: Float, y: Float)
@@ -84,10 +82,13 @@ class TransformOverlay(context: Context, private val targetView: View, private v
             }
         }
         setWillNotDraw(false)
-        setupButtons()
+        if (settingsManager != null && item != null) {
+            setupButtons()
+        }
     }
 
     fun startImmediateDrag(x: Float, y: Float) {
+        if (targetView == null || item == null) return
         activeHandle = ACTION_MOVE
         initialTouchX = x
         initialTouchY = y
@@ -108,10 +109,6 @@ class TransformOverlay(context: Context, private val targetView: View, private v
         }
 
         gestureInitialBounds = contentBounds
-        gestureInitialSpanX = item.spanX
-        gestureInitialSpanY = item.spanY
-        gestureInitialCol = item.col
-        gestureInitialRow = item.row
         currentDrx = 0f
         currentDry = 0f
         hasPassedThreshold = true
@@ -119,6 +116,7 @@ class TransformOverlay(context: Context, private val targetView: View, private v
     }
 
     private fun setupButtons() {
+        if (settingsManager == null || item == null) return
         val adaptiveColor = ThemeUtils.getAdaptiveColor(context, settingsManager, true)
 
         val container = LinearLayout(context)
@@ -161,6 +159,7 @@ class TransformOverlay(context: Context, private val targetView: View, private v
 
     private fun reset() {
         val activity = context as? MainActivity ?: return
+        if (targetView == null || item == null) return
 
         targetView.rotation = 0f
         targetView.scaleX = 1.0f
@@ -192,6 +191,7 @@ class TransformOverlay(context: Context, private val targetView: View, private v
 
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
+        if (settingsManager == null || item == null || targetView == null) return
 
         if (!settingsManager.isFreeformHome && activeHandle != -1 && hasPassedThreshold) {
             drawGridOverlay(canvas)
@@ -225,44 +225,42 @@ class TransformOverlay(context: Context, private val targetView: View, private v
             }
         }
 
-        canvas.save()
-        canvas.translate(cx, cy)
-        canvas.rotate(r)
+        canvas.withTranslation(cx, cy) {
+            rotate(r)
 
-        val foregroundColor = ThemeUtils.getAdaptiveColor(context, settingsManager, false)
-        paint.color = foregroundColor
-        paint.style = Paint.Style.STROKE
-        paint.strokeWidth = dpToPx(1.2f).toFloat()
-        paint.alpha = 80
-
-        if (isFreeform && isWidget) {
-            canvas.drawRect(left, top, right, bottom, paint)
-        }
-
-        val hs = handleSize / 2f
-
-        if (isFreeform) {
-            drawHandle(canvas, left, top, hs, true, foregroundColor)
-            drawHandle(canvas, right, top, hs, true, foregroundColor)
-            drawHandle(canvas, right, bottom, hs, true, foregroundColor)
-            drawHandle(canvas, left, bottom, hs, true, foregroundColor)
-        }
-
-        if (isWidget) {
-            drawHandle(canvas, (left + right) / 2f, top, hs, false, foregroundColor)
-            drawHandle(canvas, right, (top + bottom) / 2f, hs, false, foregroundColor)
-            drawHandle(canvas, (left + right) / 2f, bottom, hs, false, foregroundColor)
-            drawHandle(canvas, left, (top + bottom) / 2f, hs, false, foregroundColor)
-        }
-
-        if (isFreeform) {
+            val foregroundColor = ThemeUtils.getAdaptiveColor(context, settingsManager, false)
             paint.color = foregroundColor
-            paint.alpha = 100
-            canvas.drawLine((left + right) / 2f, top, (left + right) / 2f, top - rotationHandleDist, paint)
-            drawHandle(canvas, (left + right) / 2f, top - rotationHandleDist, hs * 1.1f, true, foregroundColor)
-        }
+            paint.style = Paint.Style.STROKE
+            paint.strokeWidth = dpToPx(1.2f).toFloat()
+            paint.alpha = 80
 
-        canvas.restore()
+            if (isFreeform && isWidget) {
+                drawRect(left, top, right, bottom, paint)
+            }
+
+            val hs = handleSize / 2f
+
+            if (isFreeform) {
+                drawHandle(this, left, top, hs, true, foregroundColor)
+                drawHandle(this, right, top, hs, true, foregroundColor)
+                drawHandle(this, right, bottom, hs, true, foregroundColor)
+                drawHandle(this, left, bottom, hs, true, foregroundColor)
+            }
+
+            if (isWidget) {
+                drawHandle(this, (left + right) / 2f, top, hs, false, foregroundColor)
+                drawHandle(this, right, (top + bottom) / 2f, hs, false, foregroundColor)
+                drawHandle(this, (left + right) / 2f, bottom, hs, false, foregroundColor)
+                drawHandle(this, left, (top + bottom) / 2f, hs, false, foregroundColor)
+            }
+
+            if (isFreeform) {
+                paint.color = foregroundColor
+                paint.alpha = 100
+                drawLine((left + right) / 2f, top, (left + right) / 2f, top - rotationHandleDist, paint)
+                drawHandle(this, (left + right) / 2f, top - rotationHandleDist, hs * 1.1f, true, foregroundColor)
+            }
+        }
     }
 
     private fun drawHandle(canvas: Canvas, cx: Float, cy: Float, radius: Float, isPrimary: Boolean, foregroundColor: Int) {
@@ -280,10 +278,11 @@ class TransformOverlay(context: Context, private val targetView: View, private v
 
     private val contentBounds: RectF
         get() {
-            return WidgetSizingUtils.getVisualBounds(targetView)
+            return if (targetView != null) WidgetSizingUtils.getVisualBounds(targetView) else RectF()
         }
 
     private fun drawGridOverlay(canvas: Canvas) {
+        if (settingsManager == null) return
         val activity = context as? MainActivity ?: return
         val homeView = activity.homeView
         val cellWidth = homeView.getCellWidth()
@@ -343,6 +342,7 @@ class TransformOverlay(context: Context, private val targetView: View, private v
     }
 
     private fun drawSnapPreview(canvas: Canvas) {
+        if (settingsManager == null || item == null || targetView == null) return
         val activity = context as? MainActivity ?: return
         val homeView = activity.homeView
         val cellWidth = homeView.getCellWidth()
@@ -387,6 +387,7 @@ class TransformOverlay(context: Context, private val targetView: View, private v
     }
 
     override fun onTouchEvent(event: MotionEvent): Boolean {
+        if (targetView == null || item == null || settingsManager == null) return false
         val x = event.x
         val y = event.y
 
@@ -409,10 +410,6 @@ class TransformOverlay(context: Context, private val targetView: View, private v
                     gestureInitialWidth = targetView.width
                     gestureInitialHeight = targetView.height
                     gestureInitialBounds = contentBounds
-                    gestureInitialSpanX = item.spanX
-                    gestureInitialSpanY = item.spanY
-                    gestureInitialCol = item.col
-                    gestureInitialRow = item.row
                     currentDrx = 0f
                     currentDry = 0f
                     hasPassedThreshold = false
@@ -478,6 +475,7 @@ class TransformOverlay(context: Context, private val targetView: View, private v
     }
 
     private fun findHandle(tx: Float, ty: Float): Int {
+        if (targetView == null || item == null || settingsManager == null) return ACTION_OUTSIDE
         val isFreeform = settingsManager.isFreeformHome
         val isWidget = item.type == HomeItem.Type.WIDGET
         val sx = targetView.scaleX
@@ -517,6 +515,7 @@ class TransformOverlay(context: Context, private val targetView: View, private v
     }
 
     private fun handleInteraction(tx: Float, ty: Float) {
+        if (targetView == null || settingsManager == null) return
         val isFreeform = settingsManager.isFreeformHome
         val sx = gestureInitialScaleX
         val sy = gestureInitialScaleY
@@ -540,7 +539,6 @@ class TransformOverlay(context: Context, private val targetView: View, private v
         } else if (activeHandle == HANDLE_TOP || activeHandle == HANDLE_BOTTOM || activeHandle == HANDLE_LEFT || activeHandle == HANDLE_RIGHT) {
             handleEdgeResize(tx, ty)
         } else {
-
             if (!isFreeform) return
 
             val initialDist = dist(initialTouchX, initialTouchY, cx, cy)
@@ -554,6 +552,7 @@ class TransformOverlay(context: Context, private val targetView: View, private v
     }
 
     private fun handleEdgeResize(tx: Float, ty: Float) {
+        if (targetView == null) return
         val activity = context as? MainActivity ?: return
         val cellWidth = activity.homeView.getCellWidth()
         val cellHeight = activity.homeView.getCellHeight()
@@ -573,14 +572,14 @@ class TransformOverlay(context: Context, private val targetView: View, private v
         val lp = targetView.layoutParams
         when (activeHandle) {
             HANDLE_RIGHT -> {
-                lp.width = (gestureInitialWidth + currentDrx).toInt().coerceAtLeast(dpToPx(40f))
+                lp.width = (gestureInitialWidth + currentDrx).toInt().coerceAtMost(dpToPx(40f))
             }
             HANDLE_LEFT -> {
-                lp.width = (gestureInitialWidth - currentDrx).toInt().coerceAtLeast(dpToPx(40f))
+                lp.width = (gestureInitialWidth - currentDrx).toInt().coerceAtMost(dpToPx(40f))
                 targetView.x = gestureInitialX + currentDrx
             }
             HANDLE_BOTTOM -> {
-                lp.height = (gestureInitialHeight + currentDry).toInt().coerceAtLeast(dpToPx(40f))
+                lp.height = (gestureInitialHeight + currentDry).toInt().coerceAtMost(dpToPx(40f))
             }
             HANDLE_TOP -> {
                 lp.height = (gestureInitialHeight - currentDry).toInt().coerceAtLeast(dpToPx(40f))
