@@ -179,7 +179,11 @@ class FolderManager(private val activity: MainActivity, private val settingsMana
                         val relativeX = xInWindow - rvLocation[0]
                         val relativeY = yInWindow - rvLocation[1]
 
-                        val targetView = recyclerView.findChildViewUnder(relativeX, relativeY)
+                        val targetView = if (relativeX >= 0 && relativeX <= recyclerView.width &&
+                            relativeY >= 0 && relativeY <= recyclerView.height) {
+                            findNearestChildView(recyclerView, relativeX, relativeY)
+                        } else null
+
                         if (targetView != null) {
                             val targetIndex = recyclerView.getChildAdapterPosition(targetView)
                             val currentIndex = adapter.items.indexOf(draggedItem)
@@ -224,9 +228,14 @@ class FolderManager(private val activity: MainActivity, private val settingsMana
                         } else {
                             closeFolder()
                             removeFromFolder(folderItem, draggedItem, homeItems)
+                            if (!homeItems.contains(draggedItem)) {
+                                homeItems.add(draggedItem)
+                            }
 
                             val targetPage = activity.homeView.currentPage
                             draggedItem.page = targetPage
+                            draggedItem.visualOffsetX = -1f
+                            draggedItem.visualOffsetY = -1f
 
                             val homeLocation = IntArray(2)
                             activity.homeView.getLocationInWindow(homeLocation)
@@ -517,6 +526,25 @@ class FolderManager(private val activity: MainActivity, private val settingsMana
 
     fun isFolderOpen(): Boolean {
         return currentFolderOverlay != null
+    }
+
+    private fun findNearestChildView(recyclerView: RecyclerView, x: Float, y: Float): View? {
+        var nearestChild: View? = null
+        var minDistance = Double.MAX_VALUE
+
+        val threshold = dpToPx(48f)
+
+        for (i in 0 until recyclerView.childCount) {
+            val child = recyclerView.getChildAt(i)
+            val centerX = child.x + child.width / 2f
+            val centerY = child.y + child.height / 2f
+            val distance = Math.sqrt(Math.pow((x - centerX).toDouble(), 2.0) + Math.pow((y - centerY).toDouble(), 2.0))
+            if (distance < minDistance && distance < threshold) {
+                minDistance = distance
+                nearestChild = child
+            }
+        }
+        return nearestChild
     }
 
     private fun dpToPx(dp: Float): Int {

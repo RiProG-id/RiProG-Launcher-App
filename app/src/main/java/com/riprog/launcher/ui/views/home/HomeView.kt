@@ -253,6 +253,19 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
 
     fun addItemView(item: HomeItem?, view: View?) {
         if (item == null || view == null) return
+
+        var actContext = context
+        while (actContext !is MainActivity && actContext is android.content.ContextWrapper) {
+            actContext = actContext.baseContext
+        }
+
+        if (actContext is MainActivity) {
+            val activity = actContext
+            if (!activity.homeItems.contains(item)) {
+                activity.homeItems.add(item)
+            }
+        }
+
         while (item.page >= pages.size) {
             addPage()
         }
