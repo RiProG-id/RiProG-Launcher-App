@@ -459,10 +459,19 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
                     val midX = v.x + vBounds.centerX()
                     val midY = v.y + vBounds.centerY()
 
+                    val pageW = pageWidth
+                    val adjustedX = midX - recyclerView.translationX
+                    val lm = recyclerView.layoutManager as LinearLayoutManager
+                    val first = lm.findFirstVisibleItemPosition()
+                    val firstView = lm.findViewByPosition(first)
+                    val scrollX = if (firstView != null) -firstView.left + first * pageW else targetPage * pageW
+                    val relativeX = adjustedX + scrollX
+                    val pageRelativeMidX = relativeX - targetPage * pageW
+
                     val sX = if (item.type == HomeItem.Type.WIDGET) (vBounds.width() / cellWidth).roundToInt().coerceAtLeast(1) else 1
                     val sY = if (item.type == HomeItem.Type.WIDGET) (vBounds.height() / cellHeight).roundToInt().coerceAtLeast(1) else 1
 
-                    item.col = ((midX - horizontalPadding - (cellWidth * sX / 2f)) / cellWidth).roundToInt()
+                    item.col = ((pageRelativeMidX - horizontalPadding - (cellWidth * sX / 2f)) / cellWidth).roundToInt()
                         .coerceIn(0, settingsManager.columns - sX).toFloat()
                     item.row = ((midY - offsetY - (cellHeight * sY / 2f)) / cellHeight).roundToInt()
                         .coerceIn(0, GRID_ROWS - sY).toFloat()

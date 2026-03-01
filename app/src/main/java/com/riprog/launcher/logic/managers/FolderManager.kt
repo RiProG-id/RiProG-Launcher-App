@@ -495,7 +495,7 @@ class FolderManager(private val activity: MainActivity, private val settingsMana
         val page = folder.page
 
         try {
-            folder.folderItems.removeAll { it === item }
+            folder.folderItems.removeAll { it === item || (it.packageName == item.packageName && it.className == item.className && it.type == item.type) }
 
             if (folder.folderItems.size <= 1) {
                 if (folder.folderItems.size == 1) {
