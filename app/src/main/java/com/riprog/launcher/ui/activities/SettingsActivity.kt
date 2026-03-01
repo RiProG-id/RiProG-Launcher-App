@@ -6,6 +6,7 @@ import com.riprog.launcher.logic.managers.SettingsManager
 import com.riprog.launcher.ui.views.layout.AutoDimmingBackground
 import com.riprog.launcher.R
 
+import androidx.activity.ComponentActivity
 import android.app.Activity
 import android.app.ActivityManager
 import android.content.Context
@@ -26,7 +27,7 @@ import androidx.core.view.WindowInsetsCompat
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 
-class SettingsActivity : Activity() {
+class SettingsActivity : ComponentActivity() {
 
     private lateinit var settingsManager: SettingsManager
     private lateinit var recyclerView: RecyclerView
@@ -44,8 +45,6 @@ class SettingsActivity : Activity() {
 
         val w = window
         w.setFlags(WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS, WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS)
-        w.statusBarColor = Color.TRANSPARENT
-        w.navigationBarColor = Color.TRANSPARENT
         WindowCompat.setDecorFitsSystemWindows(w, false)
         ThemeUtils.applyWindowBlur(w, settingsManager.isAcrylic)
 

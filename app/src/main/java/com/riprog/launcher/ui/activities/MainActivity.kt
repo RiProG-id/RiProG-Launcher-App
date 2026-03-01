@@ -42,10 +42,12 @@ import android.util.TypedValue
 import android.view.*
 import android.view.inputmethod.InputMethodManager
 import androidx.core.view.WindowCompat
+import androidx.activity.ComponentActivity
+import androidx.activity.OnBackPressedCallback
 import android.widget.*
 import java.util.*
 
-class MainActivity : Activity() {
+class MainActivity : ComponentActivity() {
 
     lateinit var model: AppRepository
     lateinit var settingsManager: SettingsManager
@@ -81,8 +83,6 @@ class MainActivity : Activity() {
 
         val w = window
         w.setFlags(WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS, WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS)
-        w.statusBarColor = Color.TRANSPARENT
-        w.navigationBarColor = Color.TRANSPARENT
 
         WindowCompat.setDecorFitsSystemWindows(w, false)
 
@@ -125,6 +125,19 @@ class MainActivity : Activity() {
         appWidgetHost.startListening()
 
         applyDynamicColors()
+
+        onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
+            override fun handleOnBackPressed() {
+                if (isAnyOverlayVisible()) {
+                    dismissAllOverlays()
+                    return
+                }
+                if (mainLayout.closeDrawer()) {
+                    return
+                }
+            }
+        })
+
         folderManager = FolderManager(this, settingsManager)
         folderUI = FolderViewFactory(this, settingsManager)
         widgetManager = WidgetManager(this, settingsManager, AppWidgetManager.getInstance(this), AppWidgetHost(this, APPWIDGET_HOST_ID))
@@ -532,17 +545,7 @@ class MainActivity : Activity() {
 
     override fun onTrimMemory(level: Int) {
         super.onTrimMemory(level)
-    }
-
-    override fun onBackPressed() {
-        if (isAnyOverlayVisible()) {
-            dismissAllOverlays()
-            return
-        }
-        if (mainLayout.closeDrawer()) {
-            return
-        }
-        // Don't call super.onBackPressed() to prevent closing the launcher
+        model.onTrimMemory(level)
     }
 
     override fun onResume() {
@@ -586,7 +589,7 @@ class MainActivity : Activity() {
             return
         }
         if (requestCode == REQUEST_PICK_WIDGET_SCREEN && resultCode == RESULT_OK && data != null) {
-            val info = data.getParcelableExtra<AppWidgetProviderInfo>("EXTRA_WIDGET_INFO")
+            val info = androidx.core.content.IntentCompat.getParcelableExtra(data, "EXTRA_WIDGET_INFO", AppWidgetProviderInfo::class.java)
             val spanX = data.getIntExtra("EXTRA_SPAN_X", 2)
             val spanY = data.getIntExtra("EXTRA_SPAN_Y", 1)
             if (info != null) {
