@@ -183,6 +183,8 @@ class FolderManager(private val activity: MainActivity, private val settingsMana
                             isProcessingDrop = true
                             closeFolder()
                             removeFromFolder(folderItem, draggedItem, activity.homeItems)
+                            activity.saveHomeState()
+                            refreshFolderIconsOnHome(folderItem)
 
                             if (!activity.homeItems.contains(draggedItem)) {
                                 draggedItem.page = activity.homeView.currentPage
@@ -197,7 +199,7 @@ class FolderManager(private val activity: MainActivity, private val settingsMana
 
                             val newView = activity.renderHomeItem(draggedItem)
                             if (newView != null) {
-                                (activity.mainLayout as? com.riprog.launcher.ui.views.layout.MainLayout)?.startHandoverDrag(newView, xInWindow, yInWindow)
+                                activity.mainLayout.startHandoverDrag(newView, xInWindow, yInWindow)
                             }
                             return@OnDragListener true
                         }

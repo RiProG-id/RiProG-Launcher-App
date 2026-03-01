@@ -229,7 +229,8 @@ class MainLayout @JvmOverloads constructor(
             MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
                 longPressHandler.removeCallbacks(longPressRunnable)
                 if (isDragging) {
-                    activity.homeView.endDragging()
+                    val (relativeX, relativeY) = toHomeCoords(event.x, event.y)
+                    activity.homeView.endDragging(relativeX, relativeY)
                     isDragging = false
                     return true
                 }
@@ -293,6 +294,13 @@ class MainLayout @JvmOverloads constructor(
         return null
     }
 
+    private fun toHomeCoords(x: Float, y: Float): Pair<Float, Float> {
+        val homeView = activity?.homeView ?: return Pair(x, y)
+        val homeLoc = IntArray(2).apply { homeView.getLocationInWindow(this) }
+        val rootLoc = IntArray(2).apply { getLocationInWindow(this) }
+        return Pair(x - (homeLoc[0] - rootLoc[0]), y - (homeLoc[1] - rootLoc[1]))
+    }
+
     fun openDrawer() {
         if (activity == null || isDrawerOpen) return
         isDrawerOpen = true
@@ -354,10 +362,11 @@ class MainLayout @JvmOverloads constructor(
         v.pivotX = w / 2f
         v.pivotY = h / 2f
 
-        v.x = lastX - w / 2f
-        v.y = lastY - h / 2f
+        val (relativeX, relativeY) = toHomeCoords(lastX, lastY)
+        v.x = relativeX - w / 2f
+        v.y = relativeY - h / 2f
 
-        activity.homeView.startDragging(v, lastX, lastY)
+        activity.homeView.startDragging(v, relativeX, relativeY)
     }
 
     fun startHandoverDrag(v: View, x: Float, y: Float) {
@@ -374,15 +383,12 @@ class MainLayout @JvmOverloads constructor(
         val w = if (v.width > 0) v.width.toFloat() else (v.layoutParams?.width?.toFloat() ?: 0f)
         val h = if (v.height > 0) v.height.toFloat() else (v.layoutParams?.height?.toFloat() ?: 0f)
 
-        val homeLoc = IntArray(2)
-        activity.homeView.getLocationInWindow(homeLoc)
-        val rootLoc = IntArray(2)
-        getLocationInWindow(rootLoc)
+        val (relativeX, relativeY) = toHomeCoords(x, y)
 
-        v.x = x - (homeLoc[0] - rootLoc[0]) - w / 2f
-        v.y = y - (homeLoc[1] - rootLoc[1]) - h / 2f
+        v.x = relativeX - w / 2f
+        v.y = relativeY - h / 2f
 
-        activity.homeView.startDragging(v, x, y)
+        activity.homeView.startDragging(v, relativeX, relativeY)
     }
 
     override fun onDragEvent(event: DragEvent): Boolean {
@@ -394,10 +400,12 @@ class MainLayout @JvmOverloads constructor(
 
         when (event.action) {
             DragEvent.ACTION_DRAG_LOCATION -> {
-                activity?.homeView?.handleDrag(event.x, event.y)
+                val (relativeX, relativeY) = toHomeCoords(event.x, event.y)
+                activity?.homeView?.handleDrag(relativeX, relativeY)
             }
             DragEvent.ACTION_DROP -> {
-                activity?.homeView?.endDragging()
+                val (relativeX, relativeY) = toHomeCoords(event.x, event.y)
+                activity?.homeView?.endDragging(relativeX, relativeY)
                 isHandoverDragging = false
             }
             DragEvent.ACTION_DRAG_ENDED -> {
