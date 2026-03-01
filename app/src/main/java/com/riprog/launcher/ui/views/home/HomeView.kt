@@ -52,6 +52,7 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
     private var accentColor = Color.WHITE
     private var model: AppRepository? = null
     private var allApps: List<AppItem>? = null
+    private val gridPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG)
 
     private var draggingView: View? = null
     private var lastX: Float = 0f
@@ -389,6 +390,7 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
 
             val resolvedPage = resolvePageIndex(x)
             pageIndicator.setCurrentPage(resolvedPage)
+            invalidate()
         }
     }
 
@@ -447,6 +449,39 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
                 val targetPage = resolvePageIndex(v.x + v.width / 2f)
                 item.page = targetPage
 
+                if (!settingsManager.isFreeformHome) {
+                    val cellWidth = getCellWidth()
+                    val cellHeight = getCellHeight()
+                    val horizontalPadding = dpToPx(HORIZONTAL_PADDING_DP).toFloat()
+                    val offsetY = recyclerView.paddingTop.toFloat()
+
+                    val vBounds = WidgetSizingUtils.getVisualBounds(v)
+                    val midX = v.x + vBounds.centerX()
+                    val midY = v.y + vBounds.centerY()
+
+                    val pageW = pageWidth
+                    val adjustedX = midX - recyclerView.translationX
+                    val lm = recyclerView.layoutManager as LinearLayoutManager
+                    val first = lm.findFirstVisibleItemPosition()
+                    val firstView = lm.findViewByPosition(first)
+                    val scrollX = if (firstView != null) -firstView.left + first * pageW else targetPage * pageW
+                    val relativeX = adjustedX + scrollX
+                    val pageRelativeMidX = relativeX - targetPage * pageW
+
+                    val sX = if (item.type == HomeItem.Type.WIDGET) (vBounds.width() / cellWidth).roundToInt().coerceAtLeast(1) else 1
+                    val sY = if (item.type == HomeItem.Type.WIDGET) (vBounds.height() / cellHeight).roundToInt().coerceAtLeast(1) else 1
+
+                    item.col = ((pageRelativeMidX - horizontalPadding - (cellWidth * sX / 2f)) / cellWidth).roundToInt()
+                        .coerceIn(0, settingsManager.columns - sX).toFloat()
+                    item.row = ((midY - offsetY - (cellHeight * sY / 2f)) / cellHeight).roundToInt()
+                        .coerceIn(0, GRID_ROWS - sY).toFloat()
+                    item.spanX = sX.toFloat()
+                    item.spanY = sY.toFloat()
+
+                    item.visualOffsetX = vBounds.centerX()
+                    item.visualOffsetY = vBounds.centerY()
+                }
+
                 removeView(v)
 
                 if (context is MainActivity) {
@@ -456,6 +491,7 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
                     if (!activity.homeItems.contains(item)) {
                         activity.homeItems.add(item)
                     }
+                    activity.saveHomeState()
 
                     val newView = activity.renderHomeItem(item)
                     if (newView != null) {
@@ -470,12 +506,10 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
                                 newView.y = absYInWindow - pageLoc[1].toFloat()
                                 snapToGrid(item, newView)
                             } else {
-
                                 snapToGrid(item, newView)
                             }
                         }
                     }
-                    activity.saveHomeState()
                 }
             }
             cleanupDraggingState()
@@ -872,6 +906,62 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
             }
         }
         return bestPos
+    }
+
+    override fun dispatchDraw(canvas: android.graphics.Canvas) {
+        super.dispatchDraw(canvas)
+        if (draggingView != null && !settingsManager.isFreeformHome) {
+            drawGrid(canvas)
+        }
+    }
+
+    private fun drawGrid(canvas: android.graphics.Canvas) {
+        val cellWidth = getCellWidth()
+        val cellHeight = getCellHeight()
+        if (cellWidth <= 0 || cellHeight <= 0) return
+
+        val columns = settingsManager.columns
+        val rows = GRID_ROWS
+        val horizontalPadding = dpToPx(HORIZONTAL_PADDING_DP).toFloat()
+        val offsetY = recyclerView.paddingTop.toFloat()
+
+        gridPaint.color = Color.WHITE
+        gridPaint.style = android.graphics.Paint.Style.STROKE
+        gridPaint.strokeWidth = dpToPx(1).toFloat()
+
+        gridPaint.alpha = 30
+        for (i in 0..rows) {
+            val y = offsetY + i * cellHeight
+            canvas.drawLine(horizontalPadding, y, horizontalPadding + columns * cellWidth, y, gridPaint)
+        }
+        for (i in 0..columns) {
+            val x = horizontalPadding + i * cellWidth
+            canvas.drawLine(x, offsetY, x, offsetY + rows * cellHeight, gridPaint)
+        }
+
+        draggingView?.let { v ->
+            val item = v.tag as? HomeItem ?: return@let
+            val vBounds = WidgetSizingUtils.getVisualBounds(v)
+            val midX = v.x + vBounds.centerX()
+            val midY = v.y + vBounds.centerY()
+
+            val sX = if (item.type == HomeItem.Type.WIDGET) (vBounds.width() / cellWidth).roundToInt().coerceAtLeast(1) else 1
+            val sY = if (item.type == HomeItem.Type.WIDGET) (vBounds.height() / cellHeight).roundToInt().coerceAtLeast(1) else 1
+
+            val targetCol = ((midX - horizontalPadding - (cellWidth * sX / 2f)) / cellWidth).roundToInt()
+                .coerceIn(0, columns - sX)
+            val targetRow = ((midY - offsetY - (cellHeight * sY / 2f)) / cellHeight).roundToInt()
+                .coerceIn(0, rows - sY)
+
+            val snapX = horizontalPadding + targetCol * cellWidth
+            val snapY = offsetY + targetRow * cellHeight
+            val snapW = sX * cellWidth
+            val snapH = sY * cellHeight
+
+            gridPaint.style = android.graphics.Paint.Style.FILL
+            gridPaint.alpha = 40
+            canvas.drawRoundRect(snapX, snapY, snapX + snapW, snapY + snapH, dpToPx(8).toFloat(), dpToPx(8).toFloat(), gridPaint)
+        }
     }
 
     fun scrollToPage(page: Int) {

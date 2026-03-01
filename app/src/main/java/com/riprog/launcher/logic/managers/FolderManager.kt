@@ -189,6 +189,12 @@ class FolderManager(private val activity: MainActivity, private val settingsMana
                                 activity.homeItems.add(draggedItem)
                             }
 
+                            if (!settingsManager.isFreeformHome) {
+                                draggedItem.visualOffsetX = -1f
+                                draggedItem.visualOffsetY = -1f
+                                activity.saveHomeState()
+                            }
+
                             val newView = activity.renderHomeItem(draggedItem)
                             if (newView != null) {
                                 (activity.mainLayout as? com.riprog.launcher.ui.views.layout.MainLayout)?.startHandoverDrag(newView, xInWindow, yInWindow)
@@ -489,7 +495,7 @@ class FolderManager(private val activity: MainActivity, private val settingsMana
         val page = folder.page
 
         try {
-            folder.folderItems.removeAll { it === item }
+            folder.folderItems.removeAll { it === item || (it.packageName == item.packageName && it.className == item.className && it.type == item.type) }
 
             if (folder.folderItems.size <= 1) {
                 if (folder.folderItems.size == 1) {
