@@ -5,7 +5,7 @@ import com.riprog.launcher.logic.managers.SettingsManager
 import com.riprog.launcher.data.repository.AppRepository
 import com.riprog.launcher.data.model.HomeItem
 import com.riprog.launcher.data.model.AppItem
-import com.riprog.launcher.callback.PageActionCallback
+import com.riprog.launcher.logic.callbacks.PageActionCallback
 import com.riprog.launcher.logic.utils.WidgetSizingUtils
 import com.riprog.launcher.R
 
@@ -157,8 +157,10 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
                     if (pos != RecyclerView.NO_POSITION) {
                         currentPage = pos
                         pageIndicator.setCurrentPage(currentPage)
-                        if (model != null && allApps != null) {
-                            refreshIcons(model!!, allApps!!)
+                        val m = model
+                        val a = allApps
+                        if (m != null && a != null) {
+                            refreshIcons(m, a)
                         }
                     }
                 }
@@ -380,11 +382,11 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
     }
 
     fun handleDrag(x: Float, y: Float) {
-        if (draggingView != null) {
+        draggingView?.let { v ->
             val dx = x - lastX
             val dy = y - lastY
-            draggingView!!.x = draggingView!!.x + dx
-            draggingView!!.y = draggingView!!.y + dy
+            v.x = v.x + dx
+            v.y = v.y + dy
             lastX = x
             lastY = y
             checkEdgeScroll(x)
@@ -433,8 +435,7 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
     }
 
     fun endDragging() {
-        if (draggingView != null) {
-            val v = draggingView!!
+        draggingView?.let { v ->
             if (settingsManager.isAcrylic) {
                 v.animate().scaleX(1.0f).scaleY(1.0f).alpha(1.0f).setDuration(150).start()
             } else {
@@ -482,8 +483,10 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
                 }
             }
             cleanupDraggingState()
-            if (model != null && allApps != null) {
-                refreshIcons(model!!, allApps!!)
+            val m = model
+            val a = allApps
+            if (m != null && a != null) {
+                refreshIcons(m, a)
             }
         }
     }
@@ -1003,10 +1006,6 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
                 (context as MainActivity).saveHomeState()
             }
         }
-    }
-
-    private fun resolveAllOverlaps(pageIndex: Int) {
-        // Disabled per requirements: Object locks permanently, no secondary auto layout.
     }
 
     private fun findNearestAvailable(occupied: Array<BooleanArray>, r: Int, c: Int, spanX: Int, spanY: Int): Pair<Int, Int>? {

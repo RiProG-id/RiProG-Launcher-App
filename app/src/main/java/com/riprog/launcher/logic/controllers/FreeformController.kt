@@ -21,7 +21,7 @@ class FreeformController(
     private val activity: Activity,
     private val rootLayout: FrameLayout,
     private val preferences: SettingsManager,
-    private val callback: InteractionCallback
+    private val listener: FreeformInteractionListener
 ) {
     var currentTransformOverlay: TransformOverlay? = null
         private set
@@ -29,7 +29,7 @@ class FreeformController(
     private var transformingViewOriginalParent: ViewGroup? = null
     private var transformingViewOriginalIndex = -1
 
-    interface InteractionCallback {
+    interface FreeformInteractionListener {
         fun onSaveState()
         fun onRemoveItem(item: HomeItem?, view: View?)
         fun onShowAppInfo(item: HomeItem?)
@@ -81,12 +81,12 @@ class FreeformController(
             }
             override fun onRemove() {
                 val item = v.tag as HomeItem?
-                callback.onRemoveItem(item, v)
+                listener.onRemoveItem(item, v)
                 transformingView = null
                 closeTransformOverlay()
             }
             override fun onAppInfo() {
-                callback.onShowAppInfo(v.tag as HomeItem?)
+                listener.onShowAppInfo(v.tag as HomeItem?)
             }
             override fun onCollision(otherView: View) {
                 if (handleFolderDrop(v, otherView)) {
@@ -369,7 +369,7 @@ class FreeformController(
             item.tiltX = transformingView!!.rotationX
             item.tiltY = transformingView!!.rotationY
         }
-        callback.onSaveState()
+        listener.onSaveState()
     }
 
     private fun handleFolderDrop(draggedView: View, targetView: View): Boolean {
