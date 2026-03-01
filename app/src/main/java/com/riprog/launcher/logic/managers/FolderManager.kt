@@ -32,6 +32,7 @@ import androidx.core.view.isVisible
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import java.util.*
+import kotlin.math.*
 
 class FolderManager(private val activity: MainActivity, private val settingsManager: SettingsManager) {
     private var currentFolderOverlay: View? = null
@@ -168,20 +169,55 @@ class FolderManager(private val activity: MainActivity, private val settingsMana
                     val draggedItem = draggedView?.tag as? HomeItem
                     if (draggedItem != null) {
                         adapter.draggedItem = draggedItem
-                        val rvLocation = IntArray(2)
-                        recyclerView.getLocationInWindow(rvLocation)
                         val containerLocation = IntArray(2)
                         container.getLocationInWindow(containerLocation)
-
                         val xInWindow = event.x + containerLocation[0]
                         val yInWindow = event.y + containerLocation[1]
 
+                        val overlayLocation = IntArray(2)
+                        overlay.getLocationInWindow(overlayLocation)
+                        val isOutside = xInWindow < overlayLocation[0] || xInWindow > overlayLocation[0] + overlay.width ||
+                                        yInWindow < overlayLocation[1] || yInWindow > overlayLocation[1] + overlay.height
+
+                        if (isOutside) {
+                            isProcessingDrop = true
+                            closeFolder()
+                            removeFromFolder(folderItem, draggedItem, activity.homeItems)
+
+                            if (!activity.homeItems.contains(draggedItem)) {
+                                draggedItem.page = activity.homeView.currentPage
+                                activity.homeItems.add(draggedItem)
+                            }
+
+                            val newView = activity.renderHomeItem(draggedItem)
+                            if (newView != null) {
+                                (activity.mainLayout as? com.riprog.launcher.ui.views.layout.MainLayout)?.startHandoverDrag(newView, xInWindow, yInWindow)
+                            }
+                            return@OnDragListener true
+                        }
+
+                        val rvLocation = IntArray(2)
+                        recyclerView.getLocationInWindow(rvLocation)
                         val relativeX = xInWindow - rvLocation[0]
                         val relativeY = yInWindow - rvLocation[1]
 
-                        val targetView = recyclerView.findChildViewUnder(relativeX, relativeY)
-                        if (targetView != null) {
-                            val targetIndex = recyclerView.getChildAdapterPosition(targetView)
+                        var nearestView: View? = null
+                        var minDistance = Float.MAX_VALUE
+                        val threshold = dpToPx(80f).toFloat()
+
+                        for (i in 0 until recyclerView.childCount) {
+                            val child = recyclerView.getChildAt(i)
+                            val centerX = child.x + child.width / 2f
+                            val centerY = child.y + child.height / 2f
+                            val dist = sqrt((relativeX - centerX).toDouble().pow(2.0) + (relativeY - centerY).toDouble().pow(2.0)).toFloat()
+                            if (dist < minDistance && dist < threshold) {
+                                minDistance = dist
+                                nearestView = child
+                            }
+                        }
+
+                        if (nearestView != null) {
+                            val targetIndex = recyclerView.getChildAdapterPosition(nearestView)
                             val currentIndex = adapter.items.indexOf(draggedItem)
                             if (targetIndex != RecyclerView.NO_POSITION && targetIndex != currentIndex) {
                                 val item = adapter.items.removeAt(currentIndex)

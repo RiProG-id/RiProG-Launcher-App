@@ -6,6 +6,7 @@ import com.riprog.launcher.data.model.HomeItem
 import com.riprog.launcher.R
 
 import android.content.Context
+import android.view.DragEvent
 import android.graphics.Color
 import android.os.Handler
 import android.util.AttributeSet
@@ -47,6 +48,7 @@ class MainLayout @JvmOverloads constructor(
     private var touchedView: View? = null
     private var longPressTriggered = false
     private var isDragging = false
+    private var isHandoverDragging = false
 
     private val longPressRunnable = Runnable {
         if (activity == null) return@Runnable
@@ -356,6 +358,56 @@ class MainLayout @JvmOverloads constructor(
         v.y = lastY - h / 2f
 
         activity.homeView.startDragging(v, lastX, lastY)
+    }
+
+    fun startHandoverDrag(v: View, x: Float, y: Float) {
+        if (activity == null) return
+        isHandoverDragging = true
+        touchedView = v
+        lastX = x
+        lastY = y
+
+        if (v.parent is ViewGroup) {
+            (v.parent as ViewGroup).removeView(v)
+        }
+
+        val w = if (v.width > 0) v.width.toFloat() else (v.layoutParams?.width?.toFloat() ?: 0f)
+        val h = if (v.height > 0) v.height.toFloat() else (v.layoutParams?.height?.toFloat() ?: 0f)
+
+        val homeLoc = IntArray(2)
+        activity.homeView.getLocationInWindow(homeLoc)
+        val rootLoc = IntArray(2)
+        getLocationInWindow(rootLoc)
+
+        v.x = x - (homeLoc[0] - rootLoc[0]) - w / 2f
+        v.y = y - (homeLoc[1] - rootLoc[1]) - h / 2f
+
+        activity.homeView.startDragging(v, x, y)
+    }
+
+    override fun onDragEvent(event: DragEvent): Boolean {
+        if (event.action == DragEvent.ACTION_DRAG_STARTED) {
+            return true
+        }
+
+        if (!isHandoverDragging) return super.onDragEvent(event)
+
+        when (event.action) {
+            DragEvent.ACTION_DRAG_LOCATION -> {
+                activity?.homeView?.handleDrag(event.x, event.y)
+            }
+            DragEvent.ACTION_DROP -> {
+                activity?.homeView?.endDragging()
+                isHandoverDragging = false
+            }
+            DragEvent.ACTION_DRAG_ENDED -> {
+                if (isHandoverDragging) {
+                    activity?.homeView?.endDragging()
+                }
+                isHandoverDragging = false
+            }
+        }
+        return true
     }
 
     fun isDrawerOpen(): Boolean = isDrawerOpen
