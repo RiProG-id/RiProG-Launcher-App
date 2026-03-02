@@ -126,7 +126,9 @@ class TransformOverlay @JvmOverloads constructor(
         container.background = ThemeUtils.getThemedSurface(context, settingsManager, 12f)
 
         addButton(container, R.string.action_remove, adaptiveColor) { onSaveListener?.onRemove() }
-        addButton(container, R.string.action_reset, adaptiveColor) { reset() }
+        if (item.type != HomeItem.Type.FOLDER || settingsManager.isFreeformHome) {
+            addButton(container, R.string.action_reset, adaptiveColor) { reset() }
+        }
         addButton(container, R.string.action_save, adaptiveColor) { onSaveListener?.onSave() }
 
         if (item.type == HomeItem.Type.APP) {
@@ -191,14 +193,14 @@ class TransformOverlay @JvmOverloads constructor(
         super.onDraw(canvas)
         if (settingsManager == null || item == null || targetView == null) return
 
-        if (item.type != HomeItem.Type.FOLDER && !settingsManager.isFreeformHome && activeHandle != -1 && hasPassedThreshold) {
+        if (!settingsManager.isFreeformHome && activeHandle != -1 && hasPassedThreshold) {
             drawGridOverlay(canvas)
             if (activeHandle == ACTION_MOVE) {
                 drawSnapPreview(canvas)
             }
         }
 
-        val isFreeform = settingsManager.isFreeformHome || item.type == HomeItem.Type.FOLDER
+        val isFreeform = settingsManager.isFreeformHome
         val isWidget = item.type == HomeItem.Type.WIDGET
         val sx = targetView.scaleX
         val sy = targetView.scaleY
@@ -474,7 +476,7 @@ class TransformOverlay @JvmOverloads constructor(
 
     private fun findHandle(tx: Float, ty: Float): Int {
         if (targetView == null || item == null || settingsManager == null) return ACTION_OUTSIDE
-        val isFreeform = settingsManager.isFreeformHome || item.type == HomeItem.Type.FOLDER
+        val isFreeform = settingsManager.isFreeformHome
         val isWidget = item.type == HomeItem.Type.WIDGET
         val sx = targetView.scaleX
         val sy = targetView.scaleY
@@ -514,7 +516,7 @@ class TransformOverlay @JvmOverloads constructor(
 
     private fun handleInteraction(tx: Float, ty: Float) {
         if (targetView == null || settingsManager == null || item == null) return
-        val isFreeform = settingsManager.isFreeformHome || item.type == HomeItem.Type.FOLDER
+        val isFreeform = settingsManager.isFreeformHome
         val sx = gestureInitialScaleX
         val sy = gestureInitialScaleY
         val cx = gestureInitialX + targetView.pivotX
