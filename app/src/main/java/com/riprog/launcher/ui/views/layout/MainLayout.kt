@@ -48,7 +48,6 @@ class MainLayout @JvmOverloads constructor(
     private var touchedView: View? = null
     private var longPressTriggered = false
     private var isDragging = false
-    private var isHandoverDragging = false
 
     private val longPressRunnable = Runnable {
         if (activity == null) return@Runnable
@@ -369,54 +368,6 @@ class MainLayout @JvmOverloads constructor(
         activity.homeView.startDragging(v, relativeX, relativeY)
     }
 
-    fun startHandoverDrag(v: View, x: Float, y: Float) {
-        if (activity == null) return
-        isHandoverDragging = true
-        touchedView = v
-        lastX = x
-        lastY = y
-
-        if (v.parent is ViewGroup) {
-            (v.parent as ViewGroup).removeView(v)
-        }
-
-        val w = if (v.width > 0) v.width.toFloat() else (v.layoutParams?.width?.toFloat() ?: 0f)
-        val h = if (v.height > 0) v.height.toFloat() else (v.layoutParams?.height?.toFloat() ?: 0f)
-
-        val (relativeX, relativeY) = toHomeCoords(x, y)
-
-        v.x = relativeX - w / 2f
-        v.y = relativeY - h / 2f
-
-        activity.homeView.startDragging(v, relativeX, relativeY)
-    }
-
-    override fun onDragEvent(event: DragEvent): Boolean {
-        if (event.action == DragEvent.ACTION_DRAG_STARTED) {
-            return true
-        }
-
-        if (!isHandoverDragging) return super.onDragEvent(event)
-
-        when (event.action) {
-            DragEvent.ACTION_DRAG_LOCATION -> {
-                val (relativeX, relativeY) = toHomeCoords(event.x, event.y)
-                activity?.homeView?.handleDrag(relativeX, relativeY)
-            }
-            DragEvent.ACTION_DROP -> {
-                val (relativeX, relativeY) = toHomeCoords(event.x, event.y)
-                activity?.homeView?.endDragging(relativeX, relativeY)
-                isHandoverDragging = false
-            }
-            DragEvent.ACTION_DRAG_ENDED -> {
-                if (isHandoverDragging) {
-                    activity?.homeView?.endDragging()
-                }
-                isHandoverDragging = false
-            }
-        }
-        return true
-    }
 
     fun isDrawerOpen(): Boolean = isDrawerOpen
 

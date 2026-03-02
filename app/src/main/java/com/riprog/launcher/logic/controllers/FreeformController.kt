@@ -68,6 +68,7 @@ class FreeformController(
             override fun onMove(x: Float, y: Float) {
                 homeView?.checkEdgeScroll(x)
                 homeView?.pageIndicator?.setCurrentPage(homeView.resolvePageIndex(x))
+                (activity as? MainActivity)?.folderManager?.checkFolderReorderOrExit(x, y)
             }
 
             override fun onMoveStart(x: Float, y: Float) {}
