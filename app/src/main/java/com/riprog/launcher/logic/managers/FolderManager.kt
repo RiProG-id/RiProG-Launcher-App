@@ -165,6 +165,7 @@ class FolderManager(private val activity: MainActivity, private val settingsMana
                     true
                 }
                 DragEvent.ACTION_DRAG_LOCATION -> {
+                    if (isProcessingDrop) return@OnDragListener true
                     val draggedView = event.localState as? View
                     val draggedItem = draggedView?.tag as? HomeItem
                     if (draggedItem != null) {
@@ -181,21 +182,21 @@ class FolderManager(private val activity: MainActivity, private val settingsMana
 
                         if (isOutside) {
                             isProcessingDrop = true
+                            val isFreeformOff = !settingsManager.isFreeformHome
                             closeFolder()
-                            removeFromFolder(folderItem, draggedItem, activity.homeItems)
-                            activity.saveHomeState()
-                            refreshFolderIconsOnHome(folderItem)
+                            removeFromFolder(folderItem, draggedItem, activity.homeItems, isFreeformOff)
+                            adapter.notifyDataSetChanged()
 
                             if (!activity.homeItems.contains(draggedItem)) {
                                 draggedItem.page = activity.homeView.currentPage
                                 activity.homeItems.add(draggedItem)
                             }
 
-                            if (!settingsManager.isFreeformHome) {
+                            if (isFreeformOff) {
                                 draggedItem.visualOffsetX = -1f
                                 draggedItem.visualOffsetY = -1f
-                                activity.saveHomeState()
                             }
+                            activity.saveHomeState()
 
                             val newView = activity.renderHomeItem(draggedItem)
                             if (newView != null) {
@@ -267,7 +268,7 @@ class FolderManager(private val activity: MainActivity, private val settingsMana
                             activity.saveHomeState()
                         } else {
                             closeFolder()
-                            removeFromFolder(folderItem, draggedItem, homeItems)
+                            removeFromFolder(folderItem, draggedItem, homeItems, !settingsManager.isFreeformHome)
 
                             val targetPage = activity.homeView.currentPage
                             draggedItem.page = targetPage
@@ -304,6 +305,7 @@ class FolderManager(private val activity: MainActivity, private val settingsMana
                     true
                 }
                 DragEvent.ACTION_DRAG_ENDED -> {
+                    isProcessingDrop = false
                     val draggedView = event.localState as? View
                     adapter.draggedItem = null
                     draggedView?.isVisible = true
@@ -491,9 +493,9 @@ class FolderManager(private val activity: MainActivity, private val settingsMana
         }
     }
 
-    fun removeFromFolder(folder: HomeItem, item: HomeItem, homeItems: MutableList<HomeItem>) {
-        val backupHomeItems = ArrayList(homeItems)
-        val backupFolderItems = ArrayList(folder.folderItems)
+    fun removeFromFolder(folder: HomeItem, item: HomeItem, homeItems: MutableList<HomeItem>, skipRollback: Boolean = false) {
+        val backupHomeItems = if (skipRollback) null else ArrayList(homeItems)
+        val backupFolderItems = if (skipRollback) null else ArrayList(folder.folderItems)
         val page = folder.page
 
         try {
@@ -527,10 +529,12 @@ class FolderManager(private val activity: MainActivity, private val settingsMana
             }
             activity.saveHomeState()
         } catch (e: Exception) {
-            folder.folderItems.clear()
-            folder.folderItems.addAll(backupFolderItems)
-            homeItems.clear()
-            homeItems.addAll(backupHomeItems)
+            if (!skipRollback && backupFolderItems != null && backupHomeItems != null) {
+                folder.folderItems.clear()
+                folder.folderItems.addAll(backupFolderItems)
+                homeItems.clear()
+                homeItems.addAll(backupHomeItems)
+            }
             activity.homeView.refreshIcons(activity.model, activity.allApps)
         }
     }
