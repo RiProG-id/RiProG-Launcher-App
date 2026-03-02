@@ -163,10 +163,7 @@ class FreeformController(
 
             if (midX >= ox && midX <= ox + cBounds.width() &&
                 midY >= oy && midY <= oy + cBounds.height()) {
-                if (!preferences.isFreeformHome && handleFolderDrop(v, otherView)) {
-                    closeTransformOverlay()
-                    return true
-                }
+                // Folder drop is now handled unified via onCollision in both modes.
             }
         }
 
@@ -196,7 +193,12 @@ class FreeformController(
             v.y - (rv.paddingTop + (rvLoc[1] - rootLoc[1]))
         }
 
-        if (preferences.isFreeformHome) {
+        val otherItem = (rootLayout as? MainLayout)?.findTouchedHomeItem(midX, midY, v)?.tag as? HomeItem
+        val isFolderInteraction = item.type == HomeItem.Type.FOLDER ||
+                                 otherItem?.type == HomeItem.Type.FOLDER ||
+                                 (item.type == HomeItem.Type.APP && otherItem?.type == HomeItem.Type.APP)
+
+        if (preferences.isFreeformHome || isFolderInteraction) {
             item.col = (relativeX + vBounds.centerX() - horizontalPadding - (cellWidth * item.spanX / 2f)) / cellWidth
             item.row = (relativeY + vBounds.centerY() - (cellHeight * item.spanY / 2f)) / cellHeight
             item.spanX = v.width / cellWidth
@@ -326,7 +328,7 @@ class FreeformController(
                 absY - (rv.paddingTop + (rvLoc[1] - rootLoc[1]))
             }
 
-            if (preferences.isFreeformHome) {
+            if (preferences.isFreeformHome || item.type == HomeItem.Type.FOLDER) {
                 item.col = (relativeX - horizontalPadding) / cellWidth
                 item.row = relativeY / cellHeight
                 item.spanX = transformingView!!.width / cellWidth
@@ -361,7 +363,7 @@ class FreeformController(
             }
         }
 
-        if (preferences.isFreeformHome) {
+        if (preferences.isFreeformHome || item.type == HomeItem.Type.FOLDER) {
             item.rotation = transformingView!!.rotation
             item.scale = transformingView!!.scaleX
             item.tiltX = transformingView!!.rotationX

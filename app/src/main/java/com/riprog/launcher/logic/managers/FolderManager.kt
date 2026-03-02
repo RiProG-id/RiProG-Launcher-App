@@ -191,11 +191,9 @@ class FolderManager(private val activity: MainActivity, private val settingsMana
                                 activity.homeItems.add(draggedItem)
                             }
 
-                            if (!settingsManager.isFreeformHome) {
-                                draggedItem.visualOffsetX = -1f
-                                draggedItem.visualOffsetY = -1f
-                                activity.saveHomeState()
-                            }
+                            draggedItem.visualOffsetX = -1f
+                            draggedItem.visualOffsetY = -1f
+                            activity.saveHomeState()
 
                             val newView = activity.renderHomeItem(draggedItem)
                             if (newView != null) {

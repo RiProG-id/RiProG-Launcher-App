@@ -126,9 +126,7 @@ class TransformOverlay @JvmOverloads constructor(
         container.background = ThemeUtils.getThemedSurface(context, settingsManager, 12f)
 
         addButton(container, R.string.action_remove, adaptiveColor) { onSaveListener?.onRemove() }
-        if (settingsManager.isFreeformHome || item.type == HomeItem.Type.WIDGET) {
-            addButton(container, R.string.action_reset, adaptiveColor) { reset() }
-        }
+        addButton(container, R.string.action_reset, adaptiveColor) { reset() }
         addButton(container, R.string.action_save, adaptiveColor) { onSaveListener?.onSave() }
 
         if (item.type == HomeItem.Type.APP) {
@@ -193,18 +191,18 @@ class TransformOverlay @JvmOverloads constructor(
         super.onDraw(canvas)
         if (settingsManager == null || item == null || targetView == null) return
 
-        if (!settingsManager.isFreeformHome && activeHandle != -1 && hasPassedThreshold) {
+        if (item.type != HomeItem.Type.FOLDER && !settingsManager.isFreeformHome && activeHandle != -1 && hasPassedThreshold) {
             drawGridOverlay(canvas)
             if (activeHandle == ACTION_MOVE) {
                 drawSnapPreview(canvas)
             }
         }
 
-        val isFreeform = settingsManager.isFreeformHome
+        val isFreeform = settingsManager.isFreeformHome || item.type == HomeItem.Type.FOLDER
         val isWidget = item.type == HomeItem.Type.WIDGET
         val sx = targetView.scaleX
         val sy = targetView.scaleY
-        val r = if (isFreeform) targetView.rotation else 0f
+        val r = targetView.rotation
 
         val isEdgeResizing = activeHandle == HANDLE_TOP || activeHandle == HANDLE_BOTTOM || activeHandle == HANDLE_LEFT || activeHandle == HANDLE_RIGHT
         val cx = if (isEdgeResizing) gestureInitialX + gestureInitialWidth / 2f else targetView.x + targetView.pivotX
@@ -476,14 +474,14 @@ class TransformOverlay @JvmOverloads constructor(
 
     private fun findHandle(tx: Float, ty: Float): Int {
         if (targetView == null || item == null || settingsManager == null) return ACTION_OUTSIDE
-        val isFreeform = settingsManager.isFreeformHome
+        val isFreeform = settingsManager.isFreeformHome || item.type == HomeItem.Type.FOLDER
         val isWidget = item.type == HomeItem.Type.WIDGET
         val sx = targetView.scaleX
         val sy = targetView.scaleY
         val cx = targetView.x + targetView.pivotX
         val cy = targetView.y + targetView.pivotY
 
-        val angle = if (isFreeform) Math.toRadians((-targetView.rotation).toDouble()) else 0.0
+        val angle = Math.toRadians((-targetView.rotation).toDouble())
         val rx = (cos(angle) * (tx - cx) - sin(angle) * (ty - cy)).toFloat()
         val ry = (sin(angle) * (tx - cx) + cos(angle) * (ty - cy)).toFloat()
 
@@ -515,8 +513,8 @@ class TransformOverlay @JvmOverloads constructor(
     }
 
     private fun handleInteraction(tx: Float, ty: Float) {
-        if (targetView == null || settingsManager == null) return
-        val isFreeform = settingsManager.isFreeformHome
+        if (targetView == null || settingsManager == null || item == null) return
+        val isFreeform = settingsManager.isFreeformHome || item.type == HomeItem.Type.FOLDER
         val sx = gestureInitialScaleX
         val sy = gestureInitialScaleY
         val cx = gestureInitialX + targetView.pivotX
