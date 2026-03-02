@@ -616,7 +616,7 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
                 }
             }
 
-            if (!settingsManager.isFreeformHome && otherView != null && item.type == HomeItem.Type.APP && otherView.parent != null) {
+            if (otherView != null && item.type == HomeItem.Type.APP && otherView.parent != null) {
                 val otherItem = otherView.tag as HomeItem?
                 if (otherItem != null && otherItem !== item) {
                     if (otherItem.type == HomeItem.Type.APP) {
@@ -966,6 +966,7 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
     }
 
     fun refreshLayout() {
+        if (draggingView != null) return
         post {
             val freeform = settingsManager.isFreeformHome
             for (i in pages.indices) {

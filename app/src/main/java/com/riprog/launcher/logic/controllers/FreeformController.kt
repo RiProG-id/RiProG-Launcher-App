@@ -163,7 +163,7 @@ class FreeformController(
 
             if (midX >= ox && midX <= ox + cBounds.width() &&
                 midY >= oy && midY <= oy + cBounds.height()) {
-                if (!preferences.isFreeformHome && handleFolderDrop(v, otherView)) {
+                if (handleFolderDrop(v, otherView)) {
                     closeTransformOverlay()
                     return true
                 }

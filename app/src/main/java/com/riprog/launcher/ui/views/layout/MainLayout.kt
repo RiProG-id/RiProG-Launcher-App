@@ -68,7 +68,7 @@ class MainLayout(private val activity: MainActivity) : FrameLayout(activity) {
             }
         }
 
-        if (activity.isAnyOverlayVisible()) {
+        if (activity.isAnyOverlayVisible() && !isDragging) {
             return false
         }
         if (isDrawerOpen) {
@@ -159,7 +159,7 @@ class MainLayout(private val activity: MainActivity) : FrameLayout(activity) {
             }
         }
 
-        if (activity.isAnyOverlayVisible()) {
+        if (activity.isAnyOverlayVisible() && !isDragging) {
             return true // Consume all events to block underlying gestures
         }
 
@@ -192,6 +192,10 @@ class MainLayout(private val activity: MainActivity) : FrameLayout(activity) {
 
                 if (isDragging) {
                     activity.homeView.handleDrag(event.x, event.y)
+                    val draggedItem = touchedView?.tag as? HomeItem
+                    if (draggedItem != null && activity.folderManager.isFolderOpen()) {
+                        activity.folderManager.handleManualDrag(event.x, event.y, draggedItem)
+                    }
                     return true
                 }
 
