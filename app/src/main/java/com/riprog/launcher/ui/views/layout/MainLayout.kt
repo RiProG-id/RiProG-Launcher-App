@@ -399,10 +399,6 @@ class MainLayout @JvmOverloads constructor(
         lastX = x
         lastY = y
 
-        if (v.parent is ViewGroup) {
-            (v.parent as ViewGroup).removeView(v)
-        }
-
         val w = if (v.width > 0) v.width.toFloat() else (v.layoutParams?.width?.toFloat() ?: 0f)
         val h = if (v.height > 0) v.height.toFloat() else (v.layoutParams?.height?.toFloat() ?: 0f)
 
@@ -410,13 +406,16 @@ class MainLayout @JvmOverloads constructor(
             v.layoutParams = LayoutParams(w.toInt(), h.toInt())
         }
 
+        val (relativeX, relativeY) = toHomeCoords(x, y)
+        activity.homeView.startDragging(v, relativeX, relativeY)
+
+        if (v.parent is ViewGroup) {
+            (v.parent as ViewGroup).removeView(v)
+        }
         addView(v)
         v.isVisible = true
         v.x = x - w / 2f
         v.y = y - h / 2f
-
-        val (relativeX, relativeY) = toHomeCoords(x, y)
-        activity.homeView.startDragging(v, relativeX, relativeY)
     }
 
     fun transferDragToHome(x: Float, y: Float) {
@@ -444,11 +443,13 @@ class MainLayout @JvmOverloads constructor(
         when (event.action) {
             DragEvent.ACTION_DRAG_LOCATION -> {
                 val (relativeX, relativeY) = toHomeCoords(event.x, event.y)
-                if (touchedView?.parent === this) {
-                    val w = if (touchedView!!.width > 0) touchedView!!.width.toFloat() else (touchedView!!.layoutParams?.width?.toFloat() ?: 0f)
-                    val h = if (touchedView!!.height > 0) touchedView!!.height.toFloat() else (touchedView!!.layoutParams?.height?.toFloat() ?: 0f)
-                    touchedView!!.x = event.x - w / 2f
-                    touchedView!!.y = event.y - h / 2f
+                touchedView?.let { v ->
+                    if (v.parent === this) {
+                        val w = if (v.width > 0) v.width.toFloat() else (v.layoutParams?.width?.toFloat() ?: 0f)
+                        val h = if (v.height > 0) v.height.toFloat() else (v.layoutParams?.height?.toFloat() ?: 0f)
+                        v.x = event.x - w / 2f
+                        v.y = event.y - h / 2f
+                    }
                 }
                 activity?.homeView?.handleDrag(relativeX, relativeY)
             }

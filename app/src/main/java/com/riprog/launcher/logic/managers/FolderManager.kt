@@ -37,6 +37,8 @@ import kotlin.math.*
 class FolderManager(private val activity: MainActivity, private val settingsManager: SettingsManager) {
     private var currentFolderOverlay: View? = null
     private var isProcessingDrop = false
+    private var lastSwapTime = 0L
+    private var dragOutsideStartTime = 0L
 
     private class TransparentDragShadowBuilder(view: View) : View.DragShadowBuilder(view) {
         override fun onDrawShadow(canvas: android.graphics.Canvas) {}
@@ -166,6 +168,7 @@ class FolderManager(private val activity: MainActivity, private val settingsMana
             when (event.action) {
                 DragEvent.ACTION_DRAG_STARTED -> {
                     isProcessingDrop = false
+                    dragOutsideStartTime = 0L
                     true
                 }
                 DragEvent.ACTION_DRAG_LOCATION -> {
@@ -184,22 +187,28 @@ class FolderManager(private val activity: MainActivity, private val settingsMana
                                         yInWindow < overlayLocation[1] || yInWindow > overlayLocation[1] + overlay.height
 
                         if (isOutside) {
-                            isProcessingDrop = true
-                            activity.mainLayout.transferDragToHome(xInWindow, yInWindow)
-                            closeFolder()
-                            removeFromFolder(folderItem, draggedItem, activity.homeItems)
+                            if (dragOutsideStartTime == 0L) {
+                                dragOutsideStartTime = System.currentTimeMillis()
+                            } else if (System.currentTimeMillis() - dragOutsideStartTime > 500) {
+                                isProcessingDrop = true
+                                activity.mainLayout.transferDragToHome(xInWindow, yInWindow)
+                                closeFolder()
+                                removeFromFolder(folderItem, draggedItem, activity.homeItems)
 
-                            if (!activity.homeItems.contains(draggedItem)) {
-                                draggedItem.page = activity.homeView.currentPage
-                                activity.homeItems.add(draggedItem)
+                                if (!activity.homeItems.contains(draggedItem)) {
+                                    draggedItem.page = activity.homeView.currentPage
+                                    activity.homeItems.add(draggedItem)
+                                }
+
+                                draggedItem.visualOffsetX = -1f
+                                draggedItem.visualOffsetY = -1f
+                                activity.saveHomeState()
+                                refreshFolderIconsOnHome(folderItem)
+                                dragOutsideStartTime = 0L
                             }
-
-                            draggedItem.visualOffsetX = -1f
-                            draggedItem.visualOffsetY = -1f
-                            activity.saveHomeState()
-                            refreshFolderIconsOnHome(folderItem)
-
                             return@OnDragListener true
+                        } else {
+                            dragOutsideStartTime = 0L
                         }
 
                         val rvLocation = IntArray(2)
@@ -209,23 +218,29 @@ class FolderManager(private val activity: MainActivity, private val settingsMana
 
                         var nearestView: View? = null
                         var minDistance = Float.MAX_VALUE
-                        val threshold = dpToPx(80f).toFloat()
 
                         for (i in 0 until recyclerView.childCount) {
                             val child = recyclerView.getChildAt(i)
                             val centerX = child.x + child.width / 2f
                             val centerY = child.y + child.height / 2f
                             val dist = sqrt((relativeX - centerX).toDouble().pow(2.0) + (relativeY - centerY).toDouble().pow(2.0)).toFloat()
-                            if (dist < minDistance && dist < threshold) {
+
+                            val isOverChild = relativeX >= child.x && relativeX <= child.x + child.width &&
+                                            relativeY >= child.y && relativeY <= child.y + child.height
+
+                            if (isOverChild || dist < minDistance) {
                                 minDistance = dist
                                 nearestView = child
+                                if (isOverChild) break
                             }
                         }
 
                         if (nearestView != null) {
                             val targetIndex = recyclerView.getChildAdapterPosition(nearestView)
                             val currentIndex = adapter.items.indexOf(draggedItem)
-                            if (targetIndex != RecyclerView.NO_POSITION && targetIndex != currentIndex) {
+                            val now = System.currentTimeMillis()
+                            if (targetIndex != RecyclerView.NO_POSITION && targetIndex != currentIndex && now - lastSwapTime > 150) {
+                                lastSwapTime = now
                                 val item = adapter.items.removeAt(currentIndex)
                                 adapter.items.add(targetIndex, item)
                                 adapter.notifyItemMoved(currentIndex, targetIndex)
