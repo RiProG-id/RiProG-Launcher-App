@@ -53,8 +53,10 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
     private var model: AppRepository? = null
     private var allApps: List<AppItem>? = null
 
-    private var draggingView: View? = null
-    private var lastX: Float = 0f
+    internal var draggingView: View? = null
+    internal var lastX: Float = 0f
+    internal var grabOffsetX: Float = 0f
+    internal var grabOffsetY: Float = 0f
     private var lastY: Float = 0f
     private val edgeScrollHandler = Handler(Looper.getMainLooper())
     private var isEdgeScrolling = false

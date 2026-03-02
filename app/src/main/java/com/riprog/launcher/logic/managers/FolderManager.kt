@@ -156,6 +156,8 @@ class FolderManager(private val activity: MainActivity, private val settingsMana
         recyclerView.adapter = adapter
         overlay.addView(recyclerView)
 
+        var isDraggingOut = false
+
         val dragListener = View.OnDragListener { v, event ->
             when (event.action) {
                 DragEvent.ACTION_DRAG_STARTED -> {
@@ -175,10 +177,50 @@ class FolderManager(private val activity: MainActivity, private val settingsMana
                         val xInWindow = event.x + containerLocation[0]
                         val yInWindow = event.y + containerLocation[1]
 
+                        val overlayLocation = IntArray(2)
+                        overlay.getLocationInWindow(overlayLocation)
+                        if (!isDraggingOut && (xInWindow < overlayLocation[0] || xInWindow > overlayLocation[0] + overlay.width ||
+                            yInWindow < overlayLocation[1] || yInWindow > overlayLocation[1] + overlay.height)) {
+                            isDraggingOut = true
+                            closeFolder()
+                            removeFromFolder(folderItem, draggedItem, homeItems)
+
+                            if (!activity.homeItems.contains(draggedItem)) {
+                                activity.homeItems.add(draggedItem)
+                            }
+
+                            val homeLocation = IntArray(2)
+                            activity.homeView.getLocationInWindow(homeLocation)
+
+                            (draggedView.parent as? ViewGroup)?.removeView(draggedView)
+                            activity.homeView.addItemView(draggedItem, draggedView)
+
+                            draggedView.visibility = View.VISIBLE
+                            activity.homeView.draggingView = draggedView
+                            activity.homeView.grabOffsetX = draggedView.width / 2f
+                            activity.homeView.grabOffsetY = draggedView.height / 2f
+                            activity.homeView.lastX = xInWindow - homeLocation[0]
+                            return@OnDragListener true
+                        }
+
                         val relativeX = xInWindow - rvLocation[0]
                         val relativeY = yInWindow - rvLocation[1]
 
-                        val targetView = recyclerView.findChildViewUnder(relativeX, relativeY)
+                        var targetView = recyclerView.findChildViewUnder(relativeX, relativeY)
+                        if (targetView == null) {
+                            var minDistance = Float.MAX_VALUE
+                            for (i in 0 until recyclerView.childCount) {
+                                val child = recyclerView.getChildAt(i)
+                                val centerX = child.x + child.width / 2f
+                                val centerY = child.y + child.height / 2f
+                                val dist = Math.sqrt(Math.pow((relativeX - centerX).toDouble(), 2.0) + Math.pow((relativeY - centerY).toDouble(), 2.0)).toFloat()
+                                if (dist < minDistance && dist < child.width * 0.75f) {
+                                    minDistance = dist
+                                    targetView = child
+                                }
+                            }
+                        }
+
                         if (targetView != null) {
                             val targetIndex = recyclerView.getChildAdapterPosition(targetView)
                             val currentIndex = adapter.items.indexOf(draggedItem)

@@ -41,6 +41,46 @@ class MainLayout(private val activity: MainActivity) : FrameLayout(activity) {
     private var longPressTriggered = false
     private var isDragging = false
 
+    init {
+        setOnDragListener { _, event ->
+            val draggingView = activity.homeView.draggingView
+            when (event.action) {
+                android.view.DragEvent.ACTION_DRAG_STARTED -> {
+                    true
+                }
+                android.view.DragEvent.ACTION_DRAG_LOCATION -> {
+                    if (draggingView != null) {
+                        val homeLocation = IntArray(2)
+                        activity.homeView.getLocationInWindow(homeLocation)
+                        val rootLocation = IntArray(2)
+                        getLocationInWindow(rootLocation)
+
+                        val xInHome = event.x - (homeLocation[0] - rootLocation[0])
+                        val yInHome = event.y - (homeLocation[1] - rootLocation[1])
+
+                        draggingView.x = xInHome - activity.homeView.grabOffsetX
+                        draggingView.y = yInHome - activity.homeView.grabOffsetY
+                        activity.homeView.checkEdgeScroll(event.x)
+                    }
+                    true
+                }
+                android.view.DragEvent.ACTION_DROP -> {
+                    if (activity.homeView.draggingView != null) {
+                        activity.homeView.endDragging()
+                    }
+                    true
+                }
+                android.view.DragEvent.ACTION_DRAG_ENDED -> {
+                    if (activity.homeView.draggingView != null) {
+                        activity.homeView.endDragging()
+                    }
+                    true
+                }
+                else -> true
+            }
+        }
+    }
+
     private val longPressRunnable = Runnable {
         if (System.currentTimeMillis() - activity.lastOverlayDismissTime < 300) {
             return@Runnable
