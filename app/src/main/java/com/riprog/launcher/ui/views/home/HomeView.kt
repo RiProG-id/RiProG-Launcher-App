@@ -7,6 +7,7 @@ import com.riprog.launcher.data.model.HomeItem
 import com.riprog.launcher.data.model.AppItem
 import com.riprog.launcher.logic.callbacks.PageActionCallback
 import com.riprog.launcher.logic.utils.WidgetSizingUtils
+import com.riprog.launcher.theme.ThemeUtils
 import com.riprog.launcher.R
 
 import android.appwidget.AppWidgetHostView
@@ -923,9 +924,10 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
         val horizontalPadding = dpToPx(HORIZONTAL_PADDING_DP).toFloat()
         val offsetY = recyclerView.paddingTop.toFloat()
 
-        gridPaint.color = Color.WHITE
+        val adaptiveColor = ThemeUtils.getAdaptiveColor(context, settingsManager, false)
+        gridPaint.color = adaptiveColor
         gridPaint.style = android.graphics.Paint.Style.STROKE
-        gridPaint.strokeWidth = dpToPx(1).toFloat()
+        gridPaint.strokeWidth = dpToPx(0.8f).toFloat()
 
         gridPaint.alpha = 30
         for (i in 0..rows) {
@@ -935,6 +937,29 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
         for (i in 0..columns) {
             val x = horizontalPadding + i * cellWidth
             canvas.drawLine(x, offsetY, x, offsetY + rows * cellHeight, gridPaint)
+        }
+
+        gridPaint.alpha = 60
+        val cornerSize = dpToPx(8f).toFloat()
+        for (r in 0 until rows) {
+            for (c in 0 until columns) {
+                val lx = horizontalPadding + c * cellWidth
+                val ty = offsetY + r * cellHeight
+                val rx = lx + cellWidth
+                val by = ty + cellHeight
+
+                canvas.drawLine(lx, ty, lx + cornerSize, ty, gridPaint)
+                canvas.drawLine(lx, ty, lx, ty + cornerSize, gridPaint)
+
+                canvas.drawLine(rx, ty, rx - cornerSize, ty, gridPaint)
+                canvas.drawLine(rx, ty, rx, ty + cornerSize, gridPaint)
+
+                canvas.drawLine(lx, by, lx + cornerSize, by, gridPaint)
+                canvas.drawLine(lx, by, lx, by - cornerSize, gridPaint)
+
+                canvas.drawLine(rx, by, rx - cornerSize, by, gridPaint)
+                canvas.drawLine(rx, by, rx, by - cornerSize, gridPaint)
+            }
         }
 
         draggingView?.let { v ->
@@ -956,6 +981,7 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
             val snapW = sX * cellWidth
             val snapH = sY * cellHeight
 
+            gridPaint.color = adaptiveColor
             gridPaint.style = android.graphics.Paint.Style.FILL
             gridPaint.alpha = 40
             canvas.drawRoundRect(snapX, snapY, snapX + snapW, snapY + snapH, dpToPx(8).toFloat(), dpToPx(8).toFloat(), gridPaint)
@@ -1157,10 +1183,14 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
         return index.coerceIn(0, pages.size - 1)
     }
 
-    private fun dpToPx(dp: Int): Int {
+    private fun dpToPx(dp: Float): Int {
         return TypedValue.applyDimension(
-            TypedValue.COMPLEX_UNIT_DIP, dp.toFloat(), resources.displayMetrics
+            TypedValue.COMPLEX_UNIT_DIP, dp, resources.displayMetrics
         ).toInt()
+    }
+
+    private fun dpToPx(dp: Int): Int {
+        return dpToPx(dp.toFloat())
     }
 
     inner class HomePagerAdapter : RecyclerView.Adapter<HomePagerAdapter.ViewHolder>() {

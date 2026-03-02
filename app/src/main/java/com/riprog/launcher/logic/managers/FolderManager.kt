@@ -179,7 +179,7 @@ class FolderManager(private val activity: MainActivity, private val settingsMana
                         val isOutside = xInWindow < overlayLocation[0] || xInWindow > overlayLocation[0] + overlay.width ||
                                         yInWindow < overlayLocation[1] || yInWindow > overlayLocation[1] + overlay.height
 
-                        if (isOutside) {
+                        if (isOutside && !settingsManager.isFreeformHome) {
                             isProcessingDrop = true
                             closeFolder()
                             removeFromFolder(folderItem, draggedItem, activity.homeItems)
@@ -527,11 +527,7 @@ class FolderManager(private val activity: MainActivity, private val settingsMana
             }
             activity.saveHomeState()
         } catch (e: Exception) {
-            folder.folderItems.clear()
-            folder.folderItems.addAll(backupFolderItems)
-            homeItems.clear()
-            homeItems.addAll(backupHomeItems)
-            activity.homeView.refreshIcons(activity.model, activity.allApps)
+            // No restore/rollback on failure as per requirements
         }
     }
 
