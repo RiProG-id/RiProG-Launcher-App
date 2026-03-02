@@ -382,8 +382,10 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
         draggingView?.let { v ->
             val dx = x - lastX
             val dy = y - lastY
-            v.x = v.x + dx
-            v.y = v.y + dy
+            if (v.parent === this) {
+                v.x = v.x + dx
+                v.y = v.y + dy
+            }
             lastX = x
             lastY = y
             checkEdgeScroll(x)
@@ -480,7 +482,9 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
                     }
                 }
 
-                removeView(v)
+                if (v.parent is ViewGroup) {
+                    (v.parent as ViewGroup).removeView(v)
+                }
 
                 if (context is MainActivity) {
                     val activity = context as MainActivity

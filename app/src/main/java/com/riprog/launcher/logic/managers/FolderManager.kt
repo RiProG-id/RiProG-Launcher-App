@@ -38,6 +38,10 @@ class FolderManager(private val activity: MainActivity, private val settingsMana
     private var currentFolderOverlay: View? = null
     private var isProcessingDrop = false
 
+    private class TransparentDragShadowBuilder(view: View) : View.DragShadowBuilder(view) {
+        override fun onDrawShadow(canvas: android.graphics.Canvas) {}
+    }
+
     fun openFolder(folderItem: HomeItem, folderView: View?, homeItems: MutableList<HomeItem>, allApps: List<AppItem>) {
         val wasOpen = currentFolderOverlay != null
         if (wasOpen) {
@@ -181,10 +185,9 @@ class FolderManager(private val activity: MainActivity, private val settingsMana
 
                         if (isOutside) {
                             isProcessingDrop = true
+                            activity.mainLayout.transferDragToHome(xInWindow, yInWindow)
                             closeFolder()
                             removeFromFolder(folderItem, draggedItem, activity.homeItems)
-                            activity.saveHomeState()
-                            refreshFolderIconsOnHome(folderItem)
 
                             if (!activity.homeItems.contains(draggedItem)) {
                                 draggedItem.page = activity.homeView.currentPage
@@ -194,11 +197,8 @@ class FolderManager(private val activity: MainActivity, private val settingsMana
                             draggedItem.visualOffsetX = -1f
                             draggedItem.visualOffsetY = -1f
                             activity.saveHomeState()
+                            refreshFolderIconsOnHome(folderItem)
 
-                            val newView = activity.renderHomeItem(draggedItem)
-                            if (newView != null) {
-                                activity.mainLayout.startHandoverDrag(newView, xInWindow, yInWindow)
-                            }
                             return@OnDragListener true
                         }
 
@@ -394,10 +394,18 @@ class FolderManager(private val activity: MainActivity, private val settingsMana
             val item = items[position]
             holder.bind(item, item === draggedItem) { view ->
                 val data = ClipData.newPlainText("index", holder.bindingAdapterPosition.toString())
-                val shadow = View.DragShadowBuilder(view)
+                val shadow = TransparentDragShadowBuilder(view)
+
+                val location = IntArray(2)
+                view.getLocationInWindow(location)
+                val centerX = location[0] + view.width / 2f
+                val centerY = location[1] + view.height / 2f
+
                 ViewCompat.startDragAndDrop(view, data, shadow, view, 0)
                 draggedItem = item
                 view.isVisible = false
+
+                activity.mainLayout.startFolderHandoverDrag(view, centerX, centerY)
             }
         }
 
