@@ -38,10 +38,6 @@ class FolderManager(private val activity: MainActivity, private val settingsMana
     private var currentFolderOverlay: View? = null
     private var isProcessingDrop = false
 
-    private class TransparentDragShadowBuilder(view: View) : View.DragShadowBuilder(view) {
-        override fun onDrawShadow(canvas: android.graphics.Canvas) {}
-    }
-
     fun openFolder(folderItem: HomeItem, folderView: View?, homeItems: MutableList<HomeItem>, allApps: List<AppItem>) {
         val wasOpen = currentFolderOverlay != null
         if (wasOpen) {
@@ -394,7 +390,7 @@ class FolderManager(private val activity: MainActivity, private val settingsMana
             val item = items[position]
             holder.bind(item, item === draggedItem) { view ->
                 val data = ClipData.newPlainText("index", holder.bindingAdapterPosition.toString())
-                val shadow = TransparentDragShadowBuilder(view)
+                val shadow = View.DragShadowBuilder(view)
 
                 val location = IntArray(2)
                 view.getLocationInWindow(location)

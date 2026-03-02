@@ -270,7 +270,7 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
 
         view.bringToFront()
 
-        if ((!settingsManager.isFreeformHome && item.type != HomeItem.Type.FOLDER) && item.visualOffsetX < 0) {
+        if (!settingsManager.isFreeformHome && item.visualOffsetX < 0) {
             view.post {
                 snapToGrid(item, view)
             }
@@ -292,7 +292,7 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
         val cellHeight = getCellHeight()
         val horizontalPadding = dpToPx(HORIZONTAL_PADDING_DP)
 
-        if (settingsManager.isFreeformHome || item.type == HomeItem.Type.FOLDER) {
+        if (settingsManager.isFreeformHome) {
             return Pair(item.col * cellWidth + horizontalPadding, item.row * cellHeight)
         } else {
             val vBounds = WidgetSizingUtils.getVisualBounds(view)
@@ -347,7 +347,10 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
         lastX = x
         lastY = y
 
-        if (v.parent !== this) {
+        val parentGroup = v.parent as? ViewGroup
+        val inMainLayout = parentGroup != null && parentGroup.javaClass.simpleName == "MainLayout"
+
+        if (v.parent !== this && !inMainLayout) {
             var absX = v.x
             var absY = v.y
             val p = v.parent as View?
@@ -457,7 +460,7 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
                 val targetPage = resolvePageIndex(midX)
                 item.page = targetPage
 
-                if (!settingsManager.isFreeformHome && item.type != HomeItem.Type.FOLDER) {
+                if (!settingsManager.isFreeformHome) {
                     val cellWidth = getCellWidth()
                     val cellHeight = getCellHeight()
                     val horizontalPadding = dpToPx(HORIZONTAL_PADDING_DP).toFloat()
@@ -670,7 +673,7 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
             }
         }
 
-        if (settingsManager.isFreeformHome || item.type == HomeItem.Type.FOLDER) {
+        if (settingsManager.isFreeformHome) {
             val horizontalPadding = dpToPx(HORIZONTAL_PADDING_DP)
             item.col = (v.x - horizontalPadding) / cellWidth
             item.row = v.y / cellHeight
@@ -912,8 +915,7 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
 
     override fun dispatchDraw(canvas: android.graphics.Canvas) {
         super.dispatchDraw(canvas)
-        val draggedItem = draggingView?.tag as? HomeItem
-        if (draggingView != null && !settingsManager.isFreeformHome && draggedItem?.type != HomeItem.Type.FOLDER) {
+        if (draggingView != null && !settingsManager.isFreeformHome) {
             drawGrid(canvas)
         }
     }
@@ -1064,7 +1066,7 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
                     val v = page.getChildAt(j)
                     val item = v.tag as HomeItem? ?: continue
 
-                    if (!freeform && item.type != HomeItem.Type.FOLDER) {
+                    if (!freeform) {
 
                         item.rotation = 0f
                         item.scale = 1.0f
