@@ -346,6 +346,7 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
         draggingView = v
         lastX = x
         lastY = y
+        (v.tag as? HomeItem)?.isMoving = true
 
         if (v.parent !== this) {
             var absX = v.x
@@ -434,6 +435,7 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
 
     fun endDragging(dropX: Float? = null, dropY: Float? = null) {
         draggingView?.let { v ->
+            (v.tag as? HomeItem)?.isMoving = false
             if (settingsManager.isAcrylic) {
                 v.animate().scaleX(1.0f).scaleY(1.0f).alpha(1.0f).setDuration(150).start()
             } else {
@@ -528,6 +530,7 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
     }
 
     fun cancelDragging() {
+        (draggingView?.tag as? HomeItem)?.isMoving = false
         draggingView = null
         isEdgeScrolling = false
         edgeScrollHandler.removeCallbacks(edgeScrollRunnable)

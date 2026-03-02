@@ -13,6 +13,8 @@ class HomeItem {
 
     var folderItems: MutableList<HomeItem> = mutableListOf()
 
+    var isMoving: Boolean = false
+
     var row: Float = 0f
 
     var col: Float = 0f

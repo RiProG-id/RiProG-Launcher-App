@@ -160,6 +160,7 @@ class SettingsManager(context: Context) {
             if (item.folderItems.isNotEmpty()) {
                 val folderArray = JSONArray()
                 for (subItem in item.folderItems) {
+                    if (subItem.isMoving) continue
                     val serializedSub = serializeItem(subItem)
                     if (serializedSub.has("type")) {
                         folderArray.put(serializedSub)
