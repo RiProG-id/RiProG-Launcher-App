@@ -376,18 +376,7 @@ class MainLayout @JvmOverloads constructor(
         lastX = x
         lastY = y
 
-        if (v.parent is ViewGroup) {
-            (v.parent as ViewGroup).removeView(v)
-        }
-
-        val w = if (v.width > 0) v.width.toFloat() else (v.layoutParams?.width?.toFloat() ?: 0f)
-        val h = if (v.height > 0) v.height.toFloat() else (v.layoutParams?.height?.toFloat() ?: 0f)
-
         val (relativeX, relativeY) = toHomeCoords(x, y)
-
-        v.x = relativeX - w / 2f
-        v.y = relativeY - h / 2f
-
         activity.homeView.startDragging(v, relativeX, relativeY)
     }
 

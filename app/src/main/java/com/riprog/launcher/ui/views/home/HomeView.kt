@@ -348,25 +348,46 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
         lastY = y
         (v.tag as? HomeItem)?.isMoving = true
 
-        if (v.parent !== this) {
+        var actContext = context
+        while (actContext !is MainActivity && actContext is ContextWrapper) {
+            actContext = actContext.baseContext
+        }
+        val activity = actContext as? MainActivity
+        val targetParent = if (!settingsManager.isFreeformHome && activity != null) activity.mainLayout else this
+
+        if (v.parent !== targetParent) {
             var absX = v.x
             var absY = v.y
             val p = v.parent as View?
             if (p != null) {
+                val pLoc = IntArray(2)
+                p.getLocationInWindow(pLoc)
+                val targetLoc = IntArray(2)
+                targetParent.getLocationInWindow(targetLoc)
 
-                val pageLoc = IntArray(2)
-                (p as View).getLocationInWindow(pageLoc)
-                val homeLoc = IntArray(2)
-                this.getLocationInWindow(homeLoc)
-
-                absX += pageLoc[0] - homeLoc[0]
-                absY += pageLoc[1] - homeLoc[1]
+                absX += pLoc[0].toFloat() - targetLoc[0].toFloat()
+                absY += pLoc[1].toFloat() - targetLoc[1].toFloat()
 
                 (p as ViewGroup).removeView(v)
             }
-            addView(v)
+            targetParent.addView(v)
             v.x = absX
             v.y = absY
+        }
+
+        if (!settingsManager.isFreeformHome) {
+            val targetLoc = IntArray(2)
+            targetParent.getLocationInWindow(targetLoc)
+            val homeLoc = IntArray(2)
+            getLocationInWindow(homeLoc)
+            val centerX = x + (homeLoc[0] - targetLoc[0])
+            val centerY = y + (homeLoc[1] - targetLoc[1])
+
+            v.x = centerX - v.width / 2f
+            v.y = centerY - v.height / 2f
+            v.elevation = 0f
+            v.translationZ = 0f
+            v.stateListAnimator = null
         }
 
         if (settingsManager.isAcrylic) {
@@ -376,6 +397,7 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
             v.scaleY = 1.1f
             v.alpha = 0.8f
         }
+        v.bringToFront()
         v.performHapticFeedback(android.view.HapticFeedbackConstants.LONG_PRESS)
     }
 
@@ -387,6 +409,7 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
             v.y = v.y + dy
             lastX = x
             lastY = y
+            v.bringToFront()
             checkEdgeScroll(x)
 
             val resolvedPage = resolvePageIndex(x)
@@ -482,8 +505,6 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
                     }
                 }
 
-                removeView(v)
-
                 if (context is MainActivity) {
                     val activity = context as MainActivity
                     pageIndicator.setCurrentPage(targetPage)
@@ -499,6 +520,9 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
 
                         recyclerView.scrollToPosition(targetPage)
                         recyclerView.post {
+                            if (v.parent is ViewGroup) {
+                                (v.parent as ViewGroup).removeView(v)
+                            }
                             val holder = recyclerView.findViewHolderForAdapterPosition(targetPage) as? HomePagerAdapter.ViewHolder
                             if (holder != null) {
                                 holder.container.getLocationInWindow(pageLoc)
@@ -509,7 +533,11 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
                                 snapToGrid(item, newView)
                             }
                         }
+                    } else if (v.parent is ViewGroup) {
+                        (v.parent as ViewGroup).removeView(v)
                     }
+                } else if (v.parent is ViewGroup) {
+                    (v.parent as ViewGroup).removeView(v)
                 }
             }
             cleanupDraggingState()
@@ -531,6 +559,9 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
 
     fun cancelDragging() {
         (draggingView?.tag as? HomeItem)?.isMoving = false
+        if (draggingView?.parent is ViewGroup) {
+            (draggingView?.parent as ViewGroup).removeView(draggingView)
+        }
         draggingView = null
         isEdgeScrolling = false
         edgeScrollHandler.removeCallbacks(edgeScrollRunnable)

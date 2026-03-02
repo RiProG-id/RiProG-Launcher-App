@@ -198,6 +198,17 @@ class FolderManager(private val activity: MainActivity, private val settingsMana
 
                             val newView = activity.renderHomeItem(draggedItem)
                             if (newView != null) {
+                                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+                                    v.updateDragShadow(object : View.DragShadowBuilder() {
+                                        override fun onProvideShadowMetrics(outShadowSize: android.graphics.Point?, outShadowTouchPoint: android.graphics.Point?) {
+                                            outShadowSize?.set(1, 1)
+                                            outShadowTouchPoint?.set(0, 0)
+                                        }
+                                        override fun onDrawShadow(canvas: android.graphics.Canvas) {}
+                                    })
+                                }
+                                overlay.invalidate()
+                                container.invalidate()
                                 activity.mainLayout.startHandoverDrag(newView, xInWindow, yInWindow)
                             }
                             return@OnDragListener true
