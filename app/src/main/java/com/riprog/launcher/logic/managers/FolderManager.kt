@@ -5,6 +5,7 @@ import com.riprog.launcher.theme.ThemeUtils
 import com.riprog.launcher.data.model.HomeItem
 import com.riprog.launcher.data.model.AppItem
 import com.riprog.launcher.ui.views.home.HomeView
+import com.riprog.launcher.logic.utils.WidgetSizingUtils
 
 import androidx.core.view.ViewCompat
 import android.content.ClipData
@@ -398,8 +399,9 @@ class FolderManager(private val activity: MainActivity, private val settingsMana
 
                 val location = IntArray(2)
                 view.getLocationInWindow(location)
-                val centerX = location[0] + view.width / 2f
-                val centerY = location[1] + view.height / 2f
+                val vBounds = WidgetSizingUtils.getVisualBounds(view)
+                val centerX = location[0] + vBounds.centerX()
+                val centerY = location[1] + vBounds.centerY()
 
                 ViewCompat.startDragAndDrop(view, data, shadow, view, 0)
                 draggedItem = item
