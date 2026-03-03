@@ -11,6 +11,8 @@ import android.content.ClipData
 import android.content.Context
 import android.graphics.Typeface
 import android.os.Build
+import android.os.Handler
+import android.os.Looper
 import android.text.Editable
 import android.text.TextWatcher
 import android.view.DragEvent
@@ -37,6 +39,9 @@ import kotlin.math.*
 class FolderManager(private val activity: MainActivity, private val settingsManager: SettingsManager) {
     private var currentFolderOverlay: View? = null
     private var isProcessingDrop = false
+
+    private val exitHandler = Handler(Looper.getMainLooper())
+    private var exitRunnable: Runnable? = null
 
     private class TransparentDragShadowBuilder(view: View) : View.DragShadowBuilder(view) {
         override fun onDrawShadow(canvas: android.graphics.Canvas) {}
@@ -195,22 +200,31 @@ class FolderManager(private val activity: MainActivity, private val settingsMana
                         }
 
                         if (isOutside) {
-                            isProcessingDrop = true
-                            activity.mainLayout.transferDragToHome(xInWindow, yInWindow)
-                            closeFolder()
-                            removeFromFolder(folderItem, draggedItem, activity.homeItems)
+                            if (exitRunnable == null) {
+                                val runnable = Runnable {
+                                    isProcessingDrop = true
+                                    activity.mainLayout.transferDragToHome(xInWindow, yInWindow)
+                                    closeFolder()
+                                    removeFromFolder(folderItem, draggedItem, activity.homeItems)
 
-                            if (!activity.homeItems.contains(draggedItem)) {
-                                draggedItem.page = activity.homeView.currentPage
-                                activity.homeItems.add(draggedItem)
+                                    if (!activity.homeItems.contains(draggedItem)) {
+                                        draggedItem.page = activity.homeView.currentPage
+                                        activity.homeItems.add(draggedItem)
+                                    }
+
+                                    draggedItem.visualOffsetX = -1f
+                                    draggedItem.visualOffsetY = -1f
+                                    activity.saveHomeState()
+                                    refreshFolderIconsOnHome(folderItem)
+                                    exitRunnable = null
+                                }
+                                exitRunnable = runnable
+                                exitHandler.postDelayed(runnable, 500)
                             }
-
-                            draggedItem.visualOffsetX = -1f
-                            draggedItem.visualOffsetY = -1f
-                            activity.saveHomeState()
-                            refreshFolderIconsOnHome(folderItem)
-
                             return@OnDragListener true
+                        } else {
+                            exitRunnable?.let { exitHandler.removeCallbacks(it) }
+                            exitRunnable = null
                         }
 
                         val rvLocation = IntArray(2)
@@ -247,6 +261,8 @@ class FolderManager(private val activity: MainActivity, private val settingsMana
                     true
                 }
                 DragEvent.ACTION_DROP -> {
+                    exitRunnable?.let { exitHandler.removeCallbacks(it) }
+                    exitRunnable = null
                     if (isProcessingDrop) return@OnDragListener false
                     isProcessingDrop = true
 
@@ -313,6 +329,8 @@ class FolderManager(private val activity: MainActivity, private val settingsMana
                     true
                 }
                 DragEvent.ACTION_DRAG_ENDED -> {
+                    exitRunnable?.let { exitHandler.removeCallbacks(it) }
+                    exitRunnable = null
                     val draggedView = event.localState as? View
                     adapter.draggedItem = null
                     draggedView?.isVisible = true

@@ -9,6 +9,8 @@ import com.riprog.launcher.logic.utils.WidgetSizingUtils
 import com.riprog.launcher.data.model.HomeItem
 
 import android.app.Activity
+import android.os.Handler
+import android.os.Looper
 import android.view.View
 import android.view.ViewGroup
 import android.widget.FrameLayout
@@ -28,6 +30,10 @@ class FreeformController(
     private var transformingView: View? = null
     private var transformingViewOriginalParent: ViewGroup? = null
     private var transformingViewOriginalIndex = -1
+
+    private val hoverHandler = Handler(Looper.getMainLooper())
+    private var hoverRunnable: Runnable? = null
+    private var lastHoveredFolder: View? = null
 
     interface FreeformInteractionListener {
         fun onSaveState()
@@ -68,6 +74,34 @@ class FreeformController(
             override fun onMove(x: Float, y: Float) {
                 homeView?.checkEdgeScroll(x)
                 homeView?.pageIndicator?.setCurrentPage(homeView.resolvePageIndex(x))
+
+                val mainActivity = activity as? MainActivity
+                val mainLayout = rootLayout as? MainLayout
+                val hoveredView = mainLayout?.findTouchedHomeItem(x, y, v)
+                val hoveredItem = hoveredView?.tag as? HomeItem
+
+                if (mainActivity != null && hoveredItem?.type == HomeItem.Type.FOLDER && !mainActivity.folderManager.isFolderOpen()) {
+                    if (hoveredView !== lastHoveredFolder) {
+                        hoverRunnable?.let { hoverHandler.removeCallbacks(it) }
+                        lastHoveredFolder = hoveredView
+                        val runnable = Runnable {
+                            mainActivity.folderManager.openFolder(
+                                hoveredItem,
+                                hoveredView,
+                                mainActivity.homeItems,
+                                mainActivity.allApps
+                            )
+                            v.bringToFront()
+                            currentTransformOverlay?.bringToFront()
+                        }
+                        hoverRunnable = runnable
+                        hoverHandler.postDelayed(runnable, 500)
+                    }
+                } else {
+                    hoverRunnable?.let { hoverHandler.removeCallbacks(it) }
+                    hoverRunnable = null
+                    lastHoveredFolder = null
+                }
             }
 
             override fun onMoveStart(x: Float, y: Float) {}
