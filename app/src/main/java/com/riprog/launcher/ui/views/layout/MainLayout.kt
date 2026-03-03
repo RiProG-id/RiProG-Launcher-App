@@ -463,16 +463,20 @@ class MainLayout @JvmOverloads constructor(
                     handoverDraggedView!!.x = event.x - w / 2f
                     handoverDraggedView!!.y = event.y - h / 2f
                 }
-                activity?.homeView?.handleDrag(relativeX, relativeY)
+                if (activity?.folderManager?.isFolderOpen() != true) {
+                    activity?.homeView?.handleDrag(relativeX, relativeY)
+                }
             }
             DragEvent.ACTION_DROP -> {
                 val (relativeX, relativeY) = toHomeCoords(event.x, event.y)
-                activity?.homeView?.endDragging(relativeX, relativeY)
+                if (activity?.folderManager?.isFolderOpen() != true) {
+                    activity?.homeView?.endDragging(relativeX, relativeY)
+                }
                 isHandoverDragging = false
             }
             DragEvent.ACTION_DRAG_ENDED -> {
                 if (isHandoverDragging) {
-                    activity?.homeView?.endDragging()
+                    activity?.homeView?.cancelDragging()
                 }
                 if (handoverDraggedView?.parent === this) {
                     removeView(handoverDraggedView)
