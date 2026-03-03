@@ -532,6 +532,15 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
     }
 
     fun cancelDragging() {
+        draggingView?.let { v ->
+            if (settingsManager.isAcrylic) {
+                v.animate().scaleX(1.0f).scaleY(1.0f).alpha(1.0f).setDuration(150).start()
+            } else {
+                v.scaleX = 1.0f
+                v.scaleY = 1.0f
+                v.alpha = 1.0f
+            }
+        }
         draggingView = null
         isEdgeScrolling = false
         edgeScrollHandler.removeCallbacks(edgeScrollRunnable)
