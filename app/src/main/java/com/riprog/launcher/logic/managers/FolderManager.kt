@@ -312,6 +312,8 @@ class FolderManager(private val activity: MainActivity, private val settingsMana
                             adapter.notifyItemChanged(pos)
                         }
                     }
+                    // Ensure the folder grid is fully refreshed to show the dropped item
+                    adapter.notifyDataSetChanged()
                     activity.saveHomeState()
                     true
                 }

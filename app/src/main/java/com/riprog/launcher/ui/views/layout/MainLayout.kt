@@ -414,9 +414,6 @@ class MainLayout @JvmOverloads constructor(
         v.isVisible = true
         v.x = x - w / 2f
         v.y = y - h / 2f
-
-        val (relativeX, relativeY) = toHomeCoords(x, y)
-        activity.homeView.startDragging(v, relativeX, relativeY)
     }
 
     fun transferDragToHome(x: Float, y: Float) {
@@ -431,6 +428,7 @@ class MainLayout @JvmOverloads constructor(
             activity.homeView.addView(v)
             v.x = relativeX - w / 2f
             v.y = relativeY - h / 2f
+            activity.homeView.startDragging(v, relativeX, relativeY)
         }
     }
 
@@ -461,6 +459,15 @@ class MainLayout @JvmOverloads constructor(
                 if (isHandoverDragging) {
                     activity?.homeView?.endDragging()
                 }
+                // Only remove if it's still our child (meaning it was never handed over to HomeView)
+                // and it wasn't a successful drop (event.result is false if not handled by any Drop listener)
+                // Actually, for folder internal drags, it's NOT handled by a DROP listener in FolderManager
+                // if it's just a reorder. It's handled in ACTION_DRAG_LOCATION.
+                // So event.result might be false even if reorder happened.
+                if (touchedView?.parent === this) {
+                    removeView(touchedView)
+                }
+                touchedView = null
                 isHandoverDragging = false
             }
         }
