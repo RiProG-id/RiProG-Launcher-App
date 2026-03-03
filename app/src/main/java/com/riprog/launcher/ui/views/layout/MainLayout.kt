@@ -46,6 +46,7 @@ class MainLayout @JvmOverloads constructor(
     private var isGestureCanceled = false
     private val touchSlop: Int = ViewConfiguration.get(context).scaledTouchSlop
     private val longPressHandler = Handler(Looper.getMainLooper())
+    private var handoverDraggedView: View? = null
     private var touchedView: View? = null
     private var longPressTriggered = false
     private var isDragging = false
@@ -295,7 +296,7 @@ class MainLayout @JvmOverloads constructor(
         return null
     }
 
-    private fun toHomeCoords(x: Float, y: Float): Pair<Float, Float> {
+    fun toHomeCoords(x: Float, y: Float): Pair<Float, Float> {
         val homeView = activity?.homeView ?: return Pair(x, y)
         val homeLoc = IntArray(2).apply { homeView.getLocationInWindow(this) }
         val rootLoc = IntArray(2).apply { getLocationInWindow(this) }
@@ -373,7 +374,7 @@ class MainLayout @JvmOverloads constructor(
     fun startHandoverDrag(v: View, x: Float, y: Float) {
         if (activity == null) return
         isHandoverDragging = true
-        touchedView = v
+        handoverDraggedView = v
         lastX = x
         lastY = y
 
@@ -395,7 +396,7 @@ class MainLayout @JvmOverloads constructor(
     fun startFolderHandoverDrag(v: View, x: Float, y: Float) {
         if (activity == null) return
         isHandoverDragging = true
-        touchedView = v
+        handoverDraggedView = v
         lastX = x
         lastY = y
 
@@ -410,28 +411,39 @@ class MainLayout @JvmOverloads constructor(
             v.layoutParams = LayoutParams(w.toInt(), h.toInt())
         }
 
+        val rootLoc = IntArray(2).apply { getLocationInWindow(this) }
+        val localX = x - rootLoc[0]
+        val localY = y - rootLoc[1]
+
         addView(v)
         v.bringToFront()
         v.isVisible = true
-        v.x = x - w / 2f
-        v.y = y - h / 2f
+        v.x = localX - w / 2f
+        v.y = localY - h / 2f
 
-        val (relativeX, relativeY) = toHomeCoords(x, y)
+        val (relativeX, relativeY) = toHomeCoords(localX, localY)
         activity.homeView.startDragging(v, relativeX, relativeY, false)
     }
 
     fun transferDragToHome(x: Float, y: Float) {
-        if (activity == null || touchedView == null) return
-        val v = touchedView!!
+        if (activity == null || handoverDraggedView == null) return
+        val v = handoverDraggedView!!
         if (v.parent === this) {
             removeView(v)
-            val (relativeX, relativeY) = toHomeCoords(x, y)
+
+            val rootLoc = IntArray(2).apply { getLocationInWindow(this) }
+            val localX = x - rootLoc[0]
+            val localY = y - rootLoc[1]
+
+            val (relativeX, relativeY) = toHomeCoords(localX, localY)
             val w = if (v.width > 0) v.width.toFloat() else (v.layoutParams?.width?.toFloat() ?: 0f)
             val h = if (v.height > 0) v.height.toFloat() else (v.layoutParams?.height?.toFloat() ?: 0f)
 
             activity.homeView.addView(v)
             v.x = relativeX - w / 2f
             v.y = relativeY - h / 2f
+
+            activity.homeView.handleDrag(relativeX, relativeY)
         }
     }
 
@@ -445,11 +457,11 @@ class MainLayout @JvmOverloads constructor(
         when (event.action) {
             DragEvent.ACTION_DRAG_LOCATION -> {
                 val (relativeX, relativeY) = toHomeCoords(event.x, event.y)
-                if (touchedView?.parent === this) {
-                    val w = if (touchedView!!.width > 0) touchedView!!.width.toFloat() else (touchedView!!.layoutParams?.width?.toFloat() ?: 0f)
-                    val h = if (touchedView!!.height > 0) touchedView!!.height.toFloat() else (touchedView!!.layoutParams?.height?.toFloat() ?: 0f)
-                    touchedView!!.x = event.x - w / 2f
-                    touchedView!!.y = event.y - h / 2f
+                if (handoverDraggedView?.parent === this) {
+                    val w = if (handoverDraggedView!!.width > 0) handoverDraggedView!!.width.toFloat() else (handoverDraggedView!!.layoutParams?.width?.toFloat() ?: 0f)
+                    val h = if (handoverDraggedView!!.height > 0) handoverDraggedView!!.height.toFloat() else (handoverDraggedView!!.layoutParams?.height?.toFloat() ?: 0f)
+                    handoverDraggedView!!.x = event.x - w / 2f
+                    handoverDraggedView!!.y = event.y - h / 2f
                 }
                 activity?.homeView?.handleDrag(relativeX, relativeY)
             }
@@ -462,7 +474,11 @@ class MainLayout @JvmOverloads constructor(
                 if (isHandoverDragging) {
                     activity?.homeView?.endDragging()
                 }
+                if (handoverDraggedView?.parent === this) {
+                    removeView(handoverDraggedView)
+                }
                 isHandoverDragging = false
+                handoverDraggedView = null
             }
         }
         return true

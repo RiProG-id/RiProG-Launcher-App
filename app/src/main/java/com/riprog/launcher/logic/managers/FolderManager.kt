@@ -183,6 +183,17 @@ class FolderManager(private val activity: MainActivity, private val settingsMana
                         val isOutside = xInWindow < overlayLocation[0] || xInWindow > overlayLocation[0] + overlay.width ||
                                         yInWindow < overlayLocation[1] || yInWindow > overlayLocation[1] + overlay.height
 
+                        if (draggedView.parent === activity.mainLayout) {
+                            val rootLoc = IntArray(2).apply { activity.mainLayout.getLocationInWindow(this) }
+                            val localX = xInWindow - rootLoc[0]
+                            val localY = yInWindow - rootLoc[1]
+                            val (relativeX, relativeY) = activity.mainLayout.toHomeCoords(localX, localY)
+
+                            draggedView.x = localX - draggedView.width / 2f
+                            draggedView.y = localY - draggedView.height / 2f
+                            activity.homeView.handleDrag(relativeX, relativeY)
+                        }
+
                         if (isOutside) {
                             isProcessingDrop = true
                             activity.mainLayout.transferDragToHome(xInWindow, yInWindow)
