@@ -467,12 +467,16 @@ class MainLayout @JvmOverloads constructor(
             }
             DragEvent.ACTION_DROP -> {
                 val (relativeX, relativeY) = toHomeCoords(event.x, event.y)
-                activity?.homeView?.endDragging(relativeX, relativeY)
+                if (handoverDraggedView?.parent === this) {
+                    activity?.homeView?.cancelDragging()
+                } else {
+                    activity?.homeView?.endDragging(relativeX, relativeY)
+                }
                 isHandoverDragging = false
             }
             DragEvent.ACTION_DRAG_ENDED -> {
                 if (isHandoverDragging) {
-                    activity?.homeView?.endDragging()
+                    activity?.homeView?.cancelDragging()
                 }
                 if (handoverDraggedView?.parent === this) {
                     removeView(handoverDraggedView)
