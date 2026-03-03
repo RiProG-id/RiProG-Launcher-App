@@ -342,12 +342,12 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
         }
     }
 
-    fun startDragging(v: View, x: Float, y: Float) {
+    fun startDragging(v: View, x: Float, y: Float, moveView: Boolean = true) {
         draggingView = v
         lastX = x
         lastY = y
 
-        if (v.parent !== this) {
+        if (moveView && v.parent !== this) {
             var absX = v.x
             var absY = v.y
             val p = v.parent as View?

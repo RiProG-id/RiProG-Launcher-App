@@ -411,12 +411,13 @@ class MainLayout @JvmOverloads constructor(
         }
 
         addView(v)
+        v.bringToFront()
         v.isVisible = true
         v.x = x - w / 2f
         v.y = y - h / 2f
 
         val (relativeX, relativeY) = toHomeCoords(x, y)
-        activity.homeView.startDragging(v, relativeX, relativeY)
+        activity.homeView.startDragging(v, relativeX, relativeY, false)
     }
 
     fun transferDragToHome(x: Float, y: Float) {
