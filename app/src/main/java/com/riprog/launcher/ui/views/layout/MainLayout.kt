@@ -310,6 +310,8 @@ class MainLayout @JvmOverloads constructor(
         activity.drawerView.visibility = View.VISIBLE
 
         if (activity.settingsManager.isAcrylic) {
+            activity.drawerView.animate().cancel()
+            activity.homeView.animate().cancel()
             activity.drawerView.alpha = 0f
             activity.drawerView.translationY = height / 4f
             activity.drawerView.animate()
@@ -495,6 +497,8 @@ class MainLayout @JvmOverloads constructor(
         isDrawerOpen = false
 
         if (activity.settingsManager.isAcrylic) {
+            activity.drawerView.animate().cancel()
+            activity.homeView.animate().cancel()
             activity.drawerView.animate()
                 .translationY(height / 4f)
                 .alpha(0f)

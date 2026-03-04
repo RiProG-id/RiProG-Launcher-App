@@ -757,6 +757,7 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
 
             if (settingsManager.isAcrylic) {
                 val pos = getSnapPosition(item, v)
+                v.animate().cancel()
                 v.animate()
                     .x(pos.first)
                     .y(pos.second)
@@ -1009,6 +1010,10 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
 
     fun scrollToPage(page: Int) {
         if (page < 0 || page >= pages.size) return
+        if (page == currentPage) {
+            stopEdgeEffect()
+            return
+        }
         currentPage = page
         recyclerView.smoothScrollToPosition(page)
         pageIndicator.setCurrentPage(page)
@@ -1247,38 +1252,49 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
         }
 
         fun setPageCount(count: Int) {
-            this.count = count
-            updateDots()
+            if (this.count != count) {
+                this.count = count
+                updateDots(true)
+            }
         }
 
         fun setCurrentPage(current: Int) {
-            this.current = current
-            updateDots()
+            if (this.current != current) {
+                this.current = current
+                updateDots(false)
+            }
         }
 
         fun setAccentColor(color: Int) {
             this.accentColor = color
-            updateDots()
+            updateDots(true)
         }
 
-        private fun updateDots() {
-            removeAllViews()
-            for (i in 0 until count) {
-                val dot = View(context)
-                val size = dpToPx(6)
-                val lp = LayoutParams(size, size)
-                lp.setMargins(dpToPx(4), 0, dpToPx(4), 0)
-                dot.layoutParams = lp
+        private fun updateDots(forceRebuild: Boolean) {
+            if (forceRebuild || childCount != count) {
+                removeAllViews()
+                for (i in 0 until count) {
+                    val dot = View(context)
+                    val size = dpToPx(6)
+                    val lp = LayoutParams(size, size)
+                    lp.setMargins(dpToPx(4), 0, dpToPx(4), 0)
+                    dot.layoutParams = lp
 
-                val shape = GradientDrawable()
-                shape.shape = GradientDrawable.OVAL
+                    val shape = GradientDrawable()
+                    shape.shape = GradientDrawable.OVAL
+                    dot.background = shape
+                    addView(dot)
+                }
+            }
+
+            for (i in 0 until childCount) {
+                val dot = getChildAt(i)
+                val shape = dot.background as? GradientDrawable ?: continue
                 if (i == current) {
                     shape.setColor(accentColor)
                 } else {
                     shape.setColor(Color.GRAY and 0x80FFFFFF.toInt())
                 }
-                dot.background = shape
-                addView(dot)
             }
         }
     }
