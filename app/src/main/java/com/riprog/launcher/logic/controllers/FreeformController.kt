@@ -266,12 +266,14 @@ class FreeformController(
             }
 
             if (preferences.isAcrylic) {
+                v.animate().cancel()
                 v.x = snappedX
                 v.y = snappedY
                 v.rotation = 0f
                 v.scaleX = 1f
                 v.scaleY = 1f
             } else {
+                v.animate().cancel()
                 v.animate()
                     .x(snappedX)
                     .y(snappedY)

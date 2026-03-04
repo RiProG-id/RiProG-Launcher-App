@@ -337,6 +337,20 @@ class FolderManager(private val activity: MainActivity, private val settingsMana
 
         activity.mainLayout.addView(container, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
         currentFolderOverlay = container
+
+        if (settingsManager.isAcrylic) {
+            overlay.alpha = 0f
+            overlay.scaleX = 0.8f
+            overlay.scaleY = 0.8f
+            overlay.animate()
+                .alpha(1f)
+                .scaleX(1f)
+                .scaleY(1f)
+                .setDuration(250)
+                .setInterpolator(android.view.animation.DecelerateInterpolator())
+                .start()
+        }
+
         activity.updateContentBlur()
     }
 
@@ -425,13 +439,33 @@ class FolderManager(private val activity: MainActivity, private val settingsMana
 
     fun closeFolder() {
         if (currentFolderOverlay != null) {
-            val overlay = currentFolderOverlay!!
+            val container = currentFolderOverlay!!
             currentFolderOverlay = null
-            activity.mainLayout.removeView(overlay)
-            activity.updateContentBlur()
+
+            val overlay = if (container is ViewGroup && container.childCount > 0) container.getChildAt(0) else null
+
+            if (settingsManager.isAcrylic && overlay != null) {
+                overlay.animate().cancel()
+                overlay.animate()
+                    .alpha(0f)
+                    .scaleX(0.8f)
+                    .scaleY(0.8f)
+                    .setDuration(200)
+                    .setInterpolator(android.view.animation.AccelerateInterpolator())
+                    .withEndAction {
+                        activity.mainLayout.removeView(container)
+                        activity.updateContentBlur()
+                        activity.homeView.refreshIcons(activity.model, activity.allApps)
+                    }
+                    .start()
+            } else {
+                activity.mainLayout.removeView(container)
+                activity.updateContentBlur()
+                activity.homeView.refreshIcons(activity.model, activity.allApps)
+            }
+
             val imm = activity.getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager?
             imm?.hideSoftInputFromWindow(activity.mainLayout.windowToken, 0)
-            activity.homeView.refreshIcons(activity.model, activity.allApps)
         }
     }
 
