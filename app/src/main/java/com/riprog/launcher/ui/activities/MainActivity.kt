@@ -561,7 +561,7 @@ class MainActivity : ComponentActivity() {
         val info = appWidgetManager.getAppWidgetInfo(appWidgetId) ?: return
 
         val sX = pendingSpanX.coerceAtMost(settingsManager.columns)
-        val sY = pendingSpanY.coerceAtMost(HomeView.GRID_ROWS)
+        val sY = pendingSpanY.coerceAtMost(homeView.getGridRows())
 
         var col = 0
         var row = 0
@@ -578,9 +578,9 @@ class MainActivity : ComponentActivity() {
             col = slot.third
         } else {
             col = maxOf(0, (settingsManager.columns - sX) / 2)
-            row = maxOf(0, (HomeView.GRID_ROWS - sY) / 2)
+            row = maxOf(0, (homeView.getGridRows() - sY) / 2)
             if (col + sX > settingsManager.columns) col = settingsManager.columns - sX
-            if (row + sY > HomeView.GRID_ROWS) row = HomeView.GRID_ROWS - sY
+            if (row + sY > homeView.getGridRows()) row = homeView.getGridRows() - sY
         }
 
         val item = HomeItem.createWidget(appWidgetId, col.toFloat(), row.toFloat(), sX, sY, page)
@@ -599,7 +599,7 @@ class MainActivity : ComponentActivity() {
 
     fun spawnWidget(info: AppWidgetProviderInfo, spanX: Int, spanY: Int) {
         val sX = spanX.coerceAtMost(settingsManager.columns)
-        val sY = spanY.coerceAtMost(HomeView.GRID_ROWS)
+        val sY = spanY.coerceAtMost(homeView.getGridRows())
 
         pendingSpanX = sX
         pendingSpanY = sY
@@ -622,9 +622,9 @@ class MainActivity : ComponentActivity() {
                 col = slot.third
             } else {
                 col = maxOf(0, (settingsManager.columns - sX) / 2)
-                row = maxOf(0, (HomeView.GRID_ROWS - sY) / 2)
+                row = maxOf(0, (homeView.getGridRows() - sY) / 2)
                 if (col + sX > settingsManager.columns) col = settingsManager.columns - sX
-                if (row + sY > HomeView.GRID_ROWS) row = HomeView.GRID_ROWS - sY
+                if (row + sY > homeView.getGridRows()) row = homeView.getGridRows() - sY
             }
 
             val item = HomeItem.createWidget(appWidgetId, col.toFloat(), row.toFloat(), sX, sY, page)
@@ -793,15 +793,16 @@ class MainActivity : ComponentActivity() {
     private fun findFirstAvailableSlot(spanX: Int, spanY: Int): Triple<Int, Int, Int>? {
         val startPage = homeView.currentPage
         val pageCount = homeView.getPageCount()
+        val gridRows = homeView.getGridRows()
 
         for (p in startPage until pageCount) {
             val occupied = homeView.getOccupiedCells(p)
-            for (r in 0..HomeView.GRID_ROWS - spanY) {
+            for (r in 0..gridRows - spanY) {
                 for (c in 0..settingsManager.columns - spanX) {
                     var canPlace = true
                     for (ri in r until r + spanY) {
                         for (ci in c until c + spanX) {
-                            if (ri >= HomeView.GRID_ROWS || ci >= settingsManager.columns || occupied[ri][ci]) {
+                            if (ri >= gridRows || ci >= settingsManager.columns || occupied[ri][ci]) {
                                 canPlace = false
                                 break
                             }
@@ -815,12 +816,12 @@ class MainActivity : ComponentActivity() {
 
         for (p in 0 until startPage) {
             val occupied = homeView.getOccupiedCells(p)
-            for (r in 0..HomeView.GRID_ROWS - spanY) {
+            for (r in 0..gridRows - spanY) {
                 for (c in 0..settingsManager.columns - spanX) {
                     var canPlace = true
                     for (ri in r until r + spanY) {
                         for (ci in c until c + spanX) {
-                            if (ri >= HomeView.GRID_ROWS || ci >= settingsManager.columns || occupied[ri][ci]) {
+                            if (ri >= gridRows || ci >= settingsManager.columns || occupied[ri][ci]) {
                                 canPlace = false
                                 break
                             }
@@ -849,7 +850,7 @@ class MainActivity : ComponentActivity() {
                 return
             } else {
                 col = (settingsManager.columns - sX) / 2f
-                row = (HomeView.GRID_ROWS - sY) / 2f
+                row = (homeView.getGridRows() - sY) / 2f
             }
         } else {
             page = slot.first

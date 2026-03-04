@@ -21,7 +21,7 @@ object WidgetSizingUtils {
         val density = context.resources.displayMetrics.density
         val settingsManager = SettingsManager(context)
         val maxColumns = settingsManager.columns
-        val maxRows = HomeView.GRID_ROWS
+        val maxRows = homeView?.getGridRows() ?: HomeView.GRID_ROWS
 
         var cellWidth = homeView?.getCellWidth() ?: 0f
         var cellHeight = homeView?.getCellHeight() ?: 0f
@@ -67,14 +67,14 @@ object WidgetSizingUtils {
         return min(spanX, HomeView.GRID_COLUMNS)
     }
 
-    fun getMinSpanY(info: AppWidgetProviderInfo, cellHeight: Float, density: Float): Int {
+    fun getMinSpanY(info: AppWidgetProviderInfo, cellHeight: Float, density: Float, maxRows: Int = HomeView.GRID_ROWS): Int {
         val minHeight = if (info.minResizeHeight > 0) info.minResizeHeight else info.minHeight
         val spanY = if (cellHeight > 0) {
             ceil(minHeight * density / cellHeight).toInt().coerceAtLeast(1)
         } else {
             ceil((minHeight + 30) / 70.0).toInt().coerceAtLeast(1)
         }
-        return min(spanY, HomeView.GRID_ROWS)
+        return min(spanY, maxRows)
     }
 
     fun getMaxSpanX(info: AppWidgetProviderInfo, cellWidth: Float, density: Float): Int {
@@ -85,12 +85,12 @@ object WidgetSizingUtils {
         return HomeView.GRID_COLUMNS
     }
 
-    fun getMaxSpanY(info: AppWidgetProviderInfo, cellHeight: Float, density: Float): Int {
+    fun getMaxSpanY(info: AppWidgetProviderInfo, cellHeight: Float, density: Float, maxRows: Int = HomeView.GRID_ROWS): Int {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && info.maxResizeHeight > 0 && cellHeight > 0) {
             val spanY = (info.maxResizeHeight * density / cellHeight).toInt().coerceAtLeast(1)
-            return min(spanY, HomeView.GRID_ROWS)
+            return min(spanY, maxRows)
         }
-        return HomeView.GRID_ROWS
+        return maxRows
     }
 
     fun getVisualBounds(view: View): RectF {
