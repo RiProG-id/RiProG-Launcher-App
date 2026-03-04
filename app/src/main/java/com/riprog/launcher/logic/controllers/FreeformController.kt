@@ -9,6 +9,7 @@ import com.riprog.launcher.logic.utils.WidgetSizingUtils
 import com.riprog.launcher.data.model.HomeItem
 
 import android.app.Activity
+import android.graphics.RectF
 import android.view.View
 import android.view.ViewGroup
 import android.widget.FrameLayout
@@ -102,8 +103,8 @@ class FreeformController(
                 return mainLayout.findTouchedHomeItem(x, y, exclude)
             }
 
-            override fun onSnapToGrid(v: View, isResize: Boolean): Boolean {
-                return snapToGrid(v, isResize)
+            override fun onSnapToGrid(v: View, isResize: Boolean, drx: Float, dry: Float, activeHandle: Int): Boolean {
+                return snapToGrid(v, isResize, drx, dry, activeHandle)
             }
         })
 
@@ -131,7 +132,7 @@ class FreeformController(
         )
     }
 
-    private fun snapToGrid(v: View, isResize: Boolean = false): Boolean {
+    private fun snapToGrid(v: View, isResize: Boolean = false, drx: Float = 0f, dry: Float = 0f, activeHandle: Int = -1): Boolean {
         val mainActivity = activity as? MainActivity ?: return false
         val homeView = mainActivity.homeView
         val item = v.tag as? HomeItem ?: return false
@@ -145,9 +146,43 @@ class FreeformController(
         val density = activity.resources.displayMetrics.density
         val horizontalPadding = (HomeView.HORIZONTAL_PADDING_DP * density).toInt().toFloat()
 
-        val vBounds = WidgetSizingUtils.getVisualBounds(v)
-        val midX = v.x + vBounds.centerX()
-        val midY = v.y + vBounds.centerY()
+        val isEdgeResize = activeHandle == TransformOverlay.HANDLE_TOP ||
+                activeHandle == TransformOverlay.HANDLE_BOTTOM ||
+                activeHandle == TransformOverlay.HANDLE_LEFT ||
+                activeHandle == TransformOverlay.HANDLE_RIGHT
+
+        val vBounds = if (isResize && isEdgeResize) RectF(0f, 0f, (cellWidth * item.spanX), (cellHeight * item.spanY)) else WidgetSizingUtils.getVisualBounds(v)
+        val midX = if (isResize && isEdgeResize) {
+            val homeLoc = IntArray(2).apply { homeView.getLocationInWindow(this) }
+            val rootLoc = IntArray(2).apply { rootLayout.getLocationInWindow(this) }
+            val offsetX = homeLoc[0] - rootLoc[0] + horizontalPadding
+            val initialX = item.col * cellWidth + offsetX
+            var currentX = initialX
+            var currentWidth = item.spanX * cellWidth
+            if (activeHandle == TransformOverlay.HANDLE_LEFT) {
+                currentX += drx
+                currentWidth -= drx
+            } else if (activeHandle == TransformOverlay.HANDLE_RIGHT) {
+                currentWidth += drx
+            }
+            currentX + currentWidth / 2f
+        } else v.x + vBounds.centerX()
+
+        val midY = if (isResize && isEdgeResize) {
+            val homeLoc = IntArray(2).apply { homeView.getLocationInWindow(this) }
+            val rootLoc = IntArray(2).apply { rootLayout.getLocationInWindow(this) }
+            val offsetY = homeLoc[1] - rootLoc[1] + homeView.recyclerView.paddingTop.toFloat()
+            val initialY = item.row * cellHeight + offsetY
+            var currentY = initialY
+            var currentHeight = item.spanY * cellHeight
+            if (activeHandle == TransformOverlay.HANDLE_TOP) {
+                currentY += dry
+                currentHeight -= dry
+            } else if (activeHandle == TransformOverlay.HANDLE_BOTTOM) {
+                currentHeight += dry
+            }
+            currentY + currentHeight / 2f
+        } else v.y + vBounds.centerY()
 
         val otherView = (rootLayout as? MainLayout)?.findTouchedHomeItem(midX, midY, v)
         if (otherView != null) {
@@ -199,22 +234,48 @@ class FreeformController(
                                  (item.type == HomeItem.Type.APP && otherItem?.type == HomeItem.Type.APP)
 
         if (preferences.isFreeformHome || isFolderInteraction) {
-            item.col = (relativeX + vBounds.centerX() - horizontalPadding - (cellWidth * item.spanX / 2f)) / cellWidth
-            item.row = (relativeY + vBounds.centerY() - (cellHeight * item.spanY / 2f)) / cellHeight
-            item.spanX = v.width / cellWidth
-            item.spanY = v.height / cellHeight
+            if (isResize && isEdgeResize) {
+                var currentWidth = item.spanX * cellWidth
+                var currentHeight = item.spanY * cellHeight
+                var currentCol = item.col
+                var currentRow = item.row
+                if (activeHandle == TransformOverlay.HANDLE_LEFT) { currentCol += drx / cellWidth; currentWidth -= drx }
+                else if (activeHandle == TransformOverlay.HANDLE_RIGHT) { currentWidth += drx }
+                else if (activeHandle == TransformOverlay.HANDLE_TOP) { currentRow += dry / cellHeight; currentHeight -= dry }
+                else if (activeHandle == TransformOverlay.HANDLE_BOTTOM) { currentHeight += dry }
+                item.col = currentCol
+                item.row = currentRow
+                item.spanX = currentWidth / cellWidth
+                item.spanY = currentHeight / cellHeight
+            } else {
+                item.col = (relativeX + vBounds.centerX() - horizontalPadding - (cellWidth * item.spanX / 2f)) / cellWidth
+                item.row = (relativeY + vBounds.centerY() - (cellHeight * item.spanY / 2f)) / cellHeight
+                item.spanX = v.width / cellWidth
+                item.spanY = v.height / cellHeight
+            }
             item.page = targetPage
         } else {
             val sX: Int
             val sY: Int
 
             if (item.type == HomeItem.Type.WIDGET) {
-                val newSpanX = (vBounds.width() / cellWidth).roundToInt().coerceIn(1, preferences.columns)
-                val newSpanY = (vBounds.height() / cellHeight).roundToInt().coerceIn(1, homeView.getGridRows())
+                val currentWidth = if (isResize && isEdgeResize) {
+                    if (activeHandle == TransformOverlay.HANDLE_LEFT || activeHandle == TransformOverlay.HANDLE_RIGHT) {
+                        item.spanX * cellWidth + (if (activeHandle == TransformOverlay.HANDLE_LEFT) -drx else drx)
+                    } else item.spanX * cellWidth
+                } else vBounds.width()
 
-                if (isResize) {
+                val currentHeight = if (isResize && isEdgeResize) {
+                    if (activeHandle == TransformOverlay.HANDLE_TOP || activeHandle == TransformOverlay.HANDLE_BOTTOM) {
+                        item.spanY * cellHeight + (if (activeHandle == TransformOverlay.HANDLE_TOP) -dry else dry)
+                    } else item.spanY * cellHeight
+                } else vBounds.height()
+
+                val newSpanX = (currentWidth / cellWidth).roundToInt().coerceIn(1, preferences.columns)
+                val newSpanY = (currentHeight / cellHeight).roundToInt().coerceIn(1, homeView.getGridRows())
+
+                if (isResize && !isEdgeResize) {
                     if (newSpanX.toFloat() == item.spanX && newSpanY.toFloat() == item.spanY) {
-
                         homeView.updateViewPosition(item, v)
                         return false
                     }
@@ -222,7 +283,6 @@ class FreeformController(
                 sX = newSpanX
                 sY = newSpanY
             } else {
-
                 sX = 1
                 sY = 1
             }
@@ -233,8 +293,27 @@ class FreeformController(
             item.visualOffsetX = vBounds.centerX()
             item.visualOffsetY = vBounds.centerY()
 
-            val newCol = max(0, min(preferences.columns - sX, ((relativeX + vBounds.centerX() - horizontalPadding - (cellWidth * sX / 2f)) / cellWidth).roundToInt()))
-            val newRow = max(0, min(homeView.getGridRows() - sY, ((relativeY + vBounds.centerY() - (cellHeight * sY / 2f)) / cellHeight).roundToInt()))
+            val newCol = if (isResize && isEdgeResize) {
+                var c = item.col.roundToInt()
+                if (activeHandle == TransformOverlay.HANDLE_LEFT) {
+                    val deltaSpanX = sX - item.spanX.roundToInt()
+                    c -= deltaSpanX
+                }
+                max(0, min(preferences.columns - sX, c))
+            } else {
+                max(0, min(preferences.columns - sX, ((relativeX + vBounds.centerX() - horizontalPadding - (cellWidth * sX / 2f)) / cellWidth).roundToInt()))
+            }
+
+            val newRow = if (isResize && isEdgeResize) {
+                var r = item.row.roundToInt()
+                if (activeHandle == TransformOverlay.HANDLE_TOP) {
+                    val deltaSpanY = sY - item.spanY.roundToInt()
+                    r -= deltaSpanY
+                }
+                max(0, min(homeView.getGridRows() - sY, r))
+            } else {
+                max(0, min(homeView.getGridRows() - sY, ((relativeY + vBounds.centerY() - (cellHeight * sY / 2f)) / cellHeight).roundToInt()))
+            }
 
             item.page = targetPage
             homeView.applyNewGridLogic(item, v, newCol, newRow, sX, sY)
