@@ -58,6 +58,10 @@ class TransformOverlay @JvmOverloads constructor(
     private var currentDry = 0f
     private var hasPassedThreshold = false
     private var activeHandle = -1
+    private var previewSpanX = -1
+    private var previewSpanY = -1
+    private var previewCol = -1
+    private var previewRow = -1
     private var canResizeHorizontal = true
     private var canResizeVertical = true
 
@@ -197,6 +201,8 @@ class TransformOverlay @JvmOverloads constructor(
             drawGridOverlay(canvas)
             if (activeHandle == ACTION_MOVE) {
                 drawSnapPreview(canvas)
+            } else if (previewSpanX != -1) {
+                drawResizePreview(canvas)
             }
         }
 
@@ -382,6 +388,44 @@ class TransformOverlay @JvmOverloads constructor(
         canvas.drawRoundRect(snapX, snapY, snapX + snapW, snapY + snapH, dpToPx(8f).toFloat(), dpToPx(8f).toFloat(), paint)
     }
 
+    private fun drawResizePreview(canvas: Canvas) {
+        if (settingsManager == null || item == null || targetView == null) return
+        val activity = context as? MainActivity ?: return
+        val homeView = activity.homeView
+        val cellWidth = homeView.getCellWidth()
+        val cellHeight = homeView.getCellHeight()
+        if (cellWidth <= 0 || cellHeight <= 0) return
+
+        val density = resources.displayMetrics.density
+        val horizontalPadding = HomeView.HORIZONTAL_PADDING_DP * density
+
+        val homeLoc = IntArray(2)
+        homeView.getLocationInWindow(homeLoc)
+        val overlayLoc = IntArray(2)
+        this.getLocationInWindow(overlayLoc)
+
+        val offsetX = homeLoc[0] - overlayLoc[0] + horizontalPadding
+        val offsetY = homeLoc[1] - overlayLoc[1] + homeView.recyclerView.paddingTop.toFloat()
+
+        val snapX = offsetX + previewCol * cellWidth
+        val snapY = offsetY + previewRow * cellHeight
+        val snapW = previewSpanX * cellWidth
+        val snapH = previewSpanY * cellHeight
+
+        val adaptiveColor = ThemeUtils.getAdaptiveColor(context, settingsManager, false)
+
+        paint.style = Paint.Style.FILL
+        paint.color = adaptiveColor
+        paint.alpha = 60
+        canvas.drawRoundRect(snapX, snapY, snapX + snapW, snapY + snapH, dpToPx(12f).toFloat(), dpToPx(12f).toFloat(), paint)
+
+        paint.style = Paint.Style.STROKE
+        paint.strokeWidth = dpToPx(2.5f).toFloat()
+        paint.color = adaptiveColor
+        paint.alpha = 200
+        canvas.drawRoundRect(snapX, snapY, snapX + snapW, snapY + snapH, dpToPx(12f).toFloat(), dpToPx(12f).toFloat(), paint)
+    }
+
     override fun performClick(): Boolean {
         return super.performClick()
     }
@@ -412,6 +456,10 @@ class TransformOverlay @JvmOverloads constructor(
                     gestureInitialBounds = contentBounds
                     currentDrx = 0f
                     currentDry = 0f
+                    previewSpanX = item.spanX.toInt()
+                    previewSpanY = item.spanY.toInt()
+                    previewCol = item.col.toInt()
+                    previewRow = item.row.toInt()
                     hasPassedThreshold = false
                     return true
                 } else {
@@ -449,24 +497,36 @@ class TransformOverlay @JvmOverloads constructor(
             MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
                 buttonsContainer?.visibility = View.VISIBLE
                 if (activeHandle != -1 && activeHandle != ACTION_OUTSIDE && hasPassedThreshold) {
-                    val midX = targetView.x + targetView.width / 2f
-                    val midY = targetView.y + targetView.height / 2f
+                    val isEdgeResize = activeHandle == HANDLE_TOP || activeHandle == HANDLE_BOTTOM ||
+                            activeHandle == HANDLE_LEFT || activeHandle == HANDLE_RIGHT
 
-                    val isResize = activeHandle == HANDLE_TOP || activeHandle == HANDLE_BOTTOM ||
-                                   activeHandle == HANDLE_LEFT || activeHandle == HANDLE_RIGHT ||
-                                   activeHandle == HANDLE_TOP_LEFT || activeHandle == HANDLE_TOP_RIGHT ||
-                                   activeHandle == HANDLE_BOTTOM_LEFT || activeHandle == HANDLE_BOTTOM_RIGHT
+                    if (isEdgeResize && !settingsManager.isFreeformHome && previewSpanX != -1) {
+                        item.spanX = previewSpanX.toFloat()
+                        item.spanY = previewSpanY.toFloat()
+                        item.col = previewCol.toFloat()
+                        item.row = previewRow.toFloat()
+                        onSaveListener?.onSnapToGrid(targetView, true)
+                    } else {
+                        val midX = targetView.x + targetView.width / 2f
+                        val midY = targetView.y + targetView.height / 2f
 
-                    onSaveListener?.onSnapToGrid(targetView, isResize)
+                        val isResize = isEdgeResize ||
+                                activeHandle == HANDLE_TOP_LEFT || activeHandle == HANDLE_TOP_RIGHT ||
+                                activeHandle == HANDLE_BOTTOM_LEFT || activeHandle == HANDLE_BOTTOM_RIGHT
 
-                    if (activeHandle == ACTION_MOVE) {
-                        val other = onSaveListener?.findItemAt(midX, midY, targetView)
-                        if (other != null) {
-                            onSaveListener?.onCollision(other)
+                        onSaveListener?.onSnapToGrid(targetView, isResize)
+
+                        if (activeHandle == ACTION_MOVE) {
+                            val other = onSaveListener?.findItemAt(midX, midY, targetView)
+                            if (other != null) {
+                                onSaveListener?.onCollision(other)
+                            }
                         }
                     }
                 }
                 activeHandle = -1
+                previewSpanX = -1
+                previewSpanY = -1
                 hasPassedThreshold = false
                 return true
             }
@@ -552,10 +612,11 @@ class TransformOverlay @JvmOverloads constructor(
     }
 
     private fun handleEdgeResize(tx: Float, ty: Float) {
-        if (targetView == null) return
+        if (targetView == null || item == null) return
         val activity = context as? MainActivity ?: return
-        val cellWidth = activity.homeView.getCellWidth()
-        val cellHeight = activity.homeView.getCellHeight()
+        val homeView = activity.homeView
+        val cellWidth = homeView.getCellWidth()
+        val cellHeight = homeView.getCellHeight()
         if (cellWidth <= 0 || cellHeight <= 0) return
 
         val rotAngle = Math.toRadians((-targetView.rotation).toDouble()).toFloat()
@@ -569,24 +630,87 @@ class TransformOverlay @JvmOverloads constructor(
         currentDrx = rx - irx
         currentDry = ry - iry
 
-        val lp = targetView.layoutParams
-        when (activeHandle) {
-            HANDLE_RIGHT -> {
-                lp.width = (gestureInitialWidth + currentDrx).toInt().coerceAtMost(dpToPx(40f))
+        if (settingsManager?.isFreeformHome == true) {
+            val lp = targetView.layoutParams
+            when (activeHandle) {
+                HANDLE_RIGHT -> {
+                    lp.width = (gestureInitialWidth + currentDrx).toInt().coerceAtLeast(dpToPx(40f))
+                }
+                HANDLE_LEFT -> {
+                    lp.width = (gestureInitialWidth - currentDrx).toInt().coerceAtLeast(dpToPx(40f))
+                    targetView.x = gestureInitialX + currentDrx
+                }
+                HANDLE_BOTTOM -> {
+                    lp.height = (gestureInitialHeight + currentDry).toInt().coerceAtLeast(dpToPx(40f))
+                }
+                HANDLE_TOP -> {
+                    lp.height = (gestureInitialHeight - currentDry).toInt().coerceAtLeast(dpToPx(40f))
+                    targetView.y = gestureInitialY + currentDry
+                }
             }
-            HANDLE_LEFT -> {
-                lp.width = (gestureInitialWidth - currentDrx).toInt().coerceAtMost(dpToPx(40f))
-                targetView.x = gestureInitialX + currentDrx
+            targetView.layoutParams = lp
+        } else {
+            // Precise widget resizing logic for grid mode
+            val columns = settingsManager?.columns ?: 4
+            val rows = homeView.getGridRows()
+            val density = resources.displayMetrics.density
+
+            var newSpanX = item.spanX.toInt()
+            var newSpanY = item.spanY.toInt()
+            var newCol = item.col.toInt()
+            var newRow = item.row.toInt()
+
+            val widgetInfo = (targetView as? AppWidgetHostView)?.appWidgetInfo
+            val minSpanX = if (widgetInfo != null) WidgetSizingUtils.getMinSpanX(widgetInfo, cellWidth, density) else 1
+            val minSpanY = if (widgetInfo != null) WidgetSizingUtils.getMinSpanY(widgetInfo, cellHeight, density, rows) else 1
+            val maxSpanX = if (widgetInfo != null) WidgetSizingUtils.getMaxSpanX(widgetInfo, cellWidth, density) else columns
+            val maxSpanY = if (widgetInfo != null) WidgetSizingUtils.getMaxSpanY(widgetInfo, cellHeight, density, rows) else rows
+
+            when (activeHandle) {
+                HANDLE_RIGHT -> {
+                    if (canResizeHorizontal) {
+                        val totalWidth = gestureInitialWidth + currentDrx
+                        newSpanX = (totalWidth / cellWidth).roundToInt().coerceIn(minSpanX, maxSpanX)
+                        if (newCol + newSpanX > columns) newSpanX = columns - newCol
+                    }
+                }
+                HANDLE_LEFT -> {
+                    if (canResizeHorizontal) {
+                        val totalWidth = gestureInitialWidth - currentDrx
+                        val potentialSpanX = (totalWidth / cellWidth).roundToInt().coerceIn(minSpanX, maxSpanX)
+                        val colDiff = potentialSpanX - item.spanX.toInt()
+                        newCol = (item.col.toInt() - colDiff).coerceIn(0, (item.col + item.spanX - minSpanX).toInt())
+                        newSpanX = (item.col + item.spanX - newCol).toInt().coerceIn(minSpanX, maxSpanX)
+                    }
+                }
+                HANDLE_BOTTOM -> {
+                    if (canResizeVertical) {
+                        val totalHeight = gestureInitialHeight + currentDry
+                        newSpanY = (totalHeight / cellHeight).roundToInt().coerceIn(minSpanY, maxSpanY)
+                        if (newRow + newSpanY > rows) newSpanY = rows - newRow
+                    }
+                }
+                HANDLE_TOP -> {
+                    if (canResizeVertical) {
+                        val totalHeight = gestureInitialHeight - currentDry
+                        val potentialSpanY = (totalHeight / cellHeight).roundToInt().coerceIn(minSpanY, maxSpanY)
+                        val rowDiff = potentialSpanY - item.spanY.toInt()
+                        newRow = (item.row.toInt() - rowDiff).coerceIn(0, (item.row + item.spanY - minSpanY).toInt())
+                        newSpanY = (item.row + item.spanY - newRow).toInt().coerceIn(minSpanY, maxSpanY)
+                    }
+                }
             }
-            HANDLE_BOTTOM -> {
-                lp.height = (gestureInitialHeight + currentDry).toInt().coerceAtMost(dpToPx(40f))
-            }
-            HANDLE_TOP -> {
-                lp.height = (gestureInitialHeight - currentDry).toInt().coerceAtLeast(dpToPx(40f))
-                targetView.y = gestureInitialY + currentDry
+
+            if (homeView.isSpanValid(item, newSpanX.toFloat(), newSpanY.toFloat(), newCol, newRow)) {
+                previewSpanX = newSpanX
+                previewSpanY = newSpanY
+                previewCol = newCol
+                previewRow = newRow
+            } else {
+                previewSpanX = -1
+                previewSpanY = -1
             }
         }
-        targetView.layoutParams = lp
     }
 
     private fun dist(x1: Float, y1: Float, x2: Float, y2: Float): Float {

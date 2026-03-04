@@ -207,24 +207,25 @@ class FreeformController(
         } else {
             val sX: Int
             val sY: Int
+            val newCol: Int
+            val newRow: Int
 
-            if (item.type == HomeItem.Type.WIDGET) {
-                val newSpanX = (vBounds.width() / cellWidth).roundToInt().coerceIn(1, preferences.columns)
-                val newSpanY = (vBounds.height() / cellHeight).roundToInt().coerceIn(1, homeView.getGridRows())
-
-                if (isResize) {
-                    if (newSpanX.toFloat() == item.spanX && newSpanY.toFloat() == item.spanY) {
-
-                        homeView.updateViewPosition(item, v)
-                        return false
-                    }
-                }
-                sX = newSpanX
-                sY = newSpanY
+            if (isResize && item.type == HomeItem.Type.WIDGET) {
+                // Use dimensions already set by TransformOverlay for precise resizing
+                sX = item.spanX.toInt()
+                sY = item.spanY.toInt()
+                newCol = item.col.toInt()
+                newRow = item.row.toInt()
+            } else if (item.type == HomeItem.Type.WIDGET) {
+                sX = (vBounds.width() / cellWidth).roundToInt().coerceIn(1, preferences.columns)
+                sY = (vBounds.height() / cellHeight).roundToInt().coerceIn(1, homeView.getGridRows())
+                newCol = max(0, min(preferences.columns - sX, ((relativeX + vBounds.centerX() - horizontalPadding - (cellWidth * sX / 2f)) / cellWidth).roundToInt()))
+                newRow = max(0, min(homeView.getGridRows() - sY, ((relativeY + vBounds.centerY() - (cellHeight * sY / 2f)) / cellHeight).roundToInt()))
             } else {
-
                 sX = 1
                 sY = 1
+                newCol = max(0, min(preferences.columns - sX, ((relativeX + vBounds.centerX() - horizontalPadding - (cellWidth * sX / 2f)) / cellWidth).roundToInt()))
+                newRow = max(0, min(homeView.getGridRows() - sY, ((relativeY + vBounds.centerY() - (cellHeight * sY / 2f)) / cellHeight).roundToInt()))
             }
 
             item.spanX = sX.toFloat()
@@ -232,9 +233,6 @@ class FreeformController(
 
             item.visualOffsetX = vBounds.centerX()
             item.visualOffsetY = vBounds.centerY()
-
-            val newCol = max(0, min(preferences.columns - sX, ((relativeX + vBounds.centerX() - horizontalPadding - (cellWidth * sX / 2f)) / cellWidth).roundToInt()))
-            val newRow = max(0, min(homeView.getGridRows() - sY, ((relativeY + vBounds.centerY() - (cellHeight * sY / 2f)) / cellHeight).roundToInt()))
 
             item.page = targetPage
             homeView.applyNewGridLogic(item, v, newCol, newRow, sX, sY)
