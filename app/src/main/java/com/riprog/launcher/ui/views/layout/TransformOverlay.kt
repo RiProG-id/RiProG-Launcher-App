@@ -204,7 +204,7 @@ class TransformOverlay @JvmOverloads constructor(
         val isWidget = item.type == HomeItem.Type.WIDGET
         val sx = targetView.scaleX
         val sy = targetView.scaleY
-        val r = targetView.rotation
+        val r = if (isFreeform) targetView.rotation else 0f
 
         val isEdgeResizing = activeHandle == HANDLE_TOP || activeHandle == HANDLE_BOTTOM || activeHandle == HANDLE_LEFT || activeHandle == HANDLE_RIGHT
         val cx = if (isEdgeResizing) gestureInitialX + gestureInitialWidth / 2f else targetView.x + targetView.pivotX
@@ -483,7 +483,7 @@ class TransformOverlay @JvmOverloads constructor(
         val cx = targetView.x + targetView.pivotX
         val cy = targetView.y + targetView.pivotY
 
-        val angle = Math.toRadians((-targetView.rotation).toDouble())
+        val angle = if (isFreeform) Math.toRadians((-targetView.rotation).toDouble()) else 0.0
         val rx = (cos(angle) * (tx - cx) - sin(angle) * (ty - cy)).toFloat()
         val ry = (sin(angle) * (tx - cx) + cos(angle) * (ty - cy)).toFloat()
 
@@ -569,20 +569,25 @@ class TransformOverlay @JvmOverloads constructor(
         currentDrx = rx - irx
         currentDry = ry - iry
 
+        val minSize = dpToPx(40f)
         val lp = targetView.layoutParams
         when (activeHandle) {
             HANDLE_RIGHT -> {
-                lp.width = (gestureInitialWidth + currentDrx).toInt().coerceAtMost(dpToPx(40f))
+                lp.width = max(minSize, (gestureInitialWidth + currentDrx).toInt())
+                currentDrx = (lp.width - gestureInitialWidth).toFloat()
             }
             HANDLE_LEFT -> {
-                lp.width = (gestureInitialWidth - currentDrx).toInt().coerceAtMost(dpToPx(40f))
+                lp.width = max(minSize, (gestureInitialWidth - currentDrx).toInt())
+                currentDrx = (gestureInitialWidth - lp.width).toFloat()
                 targetView.x = gestureInitialX + currentDrx
             }
             HANDLE_BOTTOM -> {
-                lp.height = (gestureInitialHeight + currentDry).toInt().coerceAtMost(dpToPx(40f))
+                lp.height = max(minSize, (gestureInitialHeight + currentDry).toInt())
+                currentDry = (lp.height - gestureInitialHeight).toFloat()
             }
             HANDLE_TOP -> {
-                lp.height = (gestureInitialHeight - currentDry).toInt().coerceAtLeast(dpToPx(40f))
+                lp.height = max(minSize, (gestureInitialHeight - currentDry).toInt())
+                currentDry = (gestureInitialHeight - lp.height).toFloat()
                 targetView.y = gestureInitialY + currentDry
             }
         }

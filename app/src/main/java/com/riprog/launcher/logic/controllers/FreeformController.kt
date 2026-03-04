@@ -214,7 +214,7 @@ class FreeformController(
 
                 if (isResize) {
                     if (newSpanX.toFloat() == item.spanX && newSpanY.toFloat() == item.spanY) {
-
+                        // Span didn't change, ignore resize result and revert
                         homeView.updateViewPosition(item, v)
                         return false
                     }
@@ -222,7 +222,7 @@ class FreeformController(
                 sX = newSpanX
                 sY = newSpanY
             } else {
-
+                // Apps and Folders are always 1x1 in non-freeform mode
                 sX = 1
                 sY = 1
             }
