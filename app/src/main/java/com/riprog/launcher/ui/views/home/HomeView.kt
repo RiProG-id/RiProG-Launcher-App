@@ -280,7 +280,11 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
 
         item.originalPage = item.page
 
-        view.bringToFront()
+        if (settingsManager.isFreeformHome) {
+            reorderFreeformItems(page)
+        } else {
+            view.bringToFront()
+        }
 
         if (!settingsManager.isFreeformHome && item.visualOffsetX < 0) {
             view.post {
@@ -717,6 +721,10 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
             item.scale = v.scaleX
             item.tiltX = v.rotationX
             item.tiltY = v.rotationY
+            item.lastInteractionTime = System.currentTimeMillis()
+            if (item.page < pages.size) {
+                reorderFreeformItems(pages[item.page])
+            }
         } else {
             val horizontalPadding = dpToPx(HORIZONTAL_PADDING_DP)
 
@@ -1129,6 +1137,9 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
                         updateViewPosition(item, v)
                     }
                 }
+                if (freeform) {
+                    reorderFreeformItems(page)
+                }
             }
             if (context is MainActivity) {
                 (context as MainActivity).saveHomeState()
@@ -1165,6 +1176,29 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
             }
         }
         return true
+    }
+
+    private fun reorderFreeformItems(page: FrameLayout) {
+        if (!settingsManager.isFreeformHome) return
+
+        val children = mutableListOf<View>()
+        for (i in 0 until page.childCount) {
+            val child = page.getChildAt(i)
+            if (child.tag is HomeItem) {
+                children.add(child)
+            }
+        }
+
+        children.sortWith(compareByDescending<View> { v ->
+            val item = v.tag as HomeItem
+            item.spanX * item.spanY
+        }.thenBy { v ->
+            (v.tag as HomeItem).lastInteractionTime
+        })
+
+        for (child in children) {
+            child.bringToFront()
+        }
     }
 
     private fun findViewForItem(item: HomeItem): View? {

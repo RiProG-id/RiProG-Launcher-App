@@ -530,6 +530,8 @@ class MainLayout @JvmOverloads constructor(
     fun handleItemClick(v: View) {
         if (activity == null) return
         val item = v.tag as HomeItem? ?: return
+        item.lastInteractionTime = System.currentTimeMillis()
+        activity.homeView.refreshLayout()
         if (item.type == HomeItem.Type.APP) {
             val intent = activity.packageManager.getLaunchIntentForPackage(item.packageName!!)
             if (intent != null) activity.startActivity(intent)

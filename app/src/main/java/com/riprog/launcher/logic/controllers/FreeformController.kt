@@ -42,6 +42,7 @@ class FreeformController(
         }
 
         transformingView = v
+        (v.tag as? HomeItem)?.lastInteractionTime = System.currentTimeMillis()
         transformingViewOriginalParent = v.parent as? ViewGroup
         if (transformingViewOriginalParent != null) {
             transformingViewOriginalIndex = transformingViewOriginalParent!!.indexOfChild(v)
@@ -370,6 +371,7 @@ class FreeformController(
             item.scale = transformingView!!.scaleX
             item.tiltX = transformingView!!.rotationX
             item.tiltY = transformingView!!.rotationY
+            item.lastInteractionTime = System.currentTimeMillis()
         }
         listener.onSaveState()
     }

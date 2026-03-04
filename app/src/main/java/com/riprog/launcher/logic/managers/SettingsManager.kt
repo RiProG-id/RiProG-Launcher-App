@@ -156,6 +156,7 @@ class SettingsManager(context: Context) {
             obj.put("tiltY", item.tiltY.toDouble())
             obj.put("visualOffsetX", item.visualOffsetX.toDouble())
             obj.put("visualOffsetY", item.visualOffsetY.toDouble())
+            obj.put("lastInteractionTime", item.lastInteractionTime)
 
             if (item.folderItems.isNotEmpty()) {
                 val folderArray = JSONArray()
@@ -238,6 +239,7 @@ class SettingsManager(context: Context) {
         item.tiltY = obj.optDouble("tiltY", 0.0).toFloat()
         item.visualOffsetX = obj.optDouble("visualOffsetX", -1.0).toFloat()
         item.visualOffsetY = obj.optDouble("visualOffsetY", -1.0).toFloat()
+        item.lastInteractionTime = obj.optLong("lastInteractionTime", 0)
 
         if (obj.has("folderItems")) {
             val folderArray = obj.getJSONArray("folderItems")

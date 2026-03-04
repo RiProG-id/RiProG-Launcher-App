@@ -42,6 +42,8 @@ class HomeItem {
     var visualOffsetX: Float = -1f
     var visualOffsetY: Float = -1f
 
+    var lastInteractionTime: Long = 0
+
     companion object {
 
         fun createApp(packageName: String, className: String, col: Float, row: Float, page: Int): HomeItem {
@@ -59,6 +61,7 @@ class HomeItem {
             item.originalSpanX = 1f
             item.originalSpanY = 1f
             item.originalPage = page
+            item.lastInteractionTime = System.currentTimeMillis()
             return item
         }
 
@@ -76,6 +79,7 @@ class HomeItem {
             item.originalSpanX = spanX.toFloat()
             item.originalSpanY = spanY.toFloat()
             item.originalPage = page
+            item.lastInteractionTime = System.currentTimeMillis()
             return item
         }
 
@@ -92,6 +96,7 @@ class HomeItem {
             item.originalSpanX = spanX.toFloat()
             item.originalSpanY = spanY.toFloat()
             item.originalPage = page
+            item.lastInteractionTime = System.currentTimeMillis()
             return item
         }
 
@@ -109,6 +114,7 @@ class HomeItem {
             item.originalSpanX = 1f
             item.originalSpanY = 1f
             item.originalPage = page
+            item.lastInteractionTime = System.currentTimeMillis()
             return item
         }
     }
