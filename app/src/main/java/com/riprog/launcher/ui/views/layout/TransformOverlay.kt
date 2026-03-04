@@ -290,7 +290,7 @@ class TransformOverlay @JvmOverloads constructor(
         if (cellWidth <= 0 || cellHeight <= 0) return
 
         val columns = settingsManager.columns
-        val rows = HomeView.GRID_ROWS
+        val rows = homeView.getGridRows()
         val density = resources.displayMetrics.density
         val horizontalPadding = HomeView.HORIZONTAL_PADDING_DP * density
 
@@ -369,7 +369,7 @@ class TransformOverlay @JvmOverloads constructor(
         val targetCol = ((midX - offsetX - (cellWidth * item.spanX / 2f)) / cellWidth).roundToInt()
             .coerceIn(0, columns - item.spanX.toInt())
         val targetRow = ((midY - offsetY - (cellHeight * item.spanY / 2f)) / cellHeight).roundToInt()
-            .coerceIn(0, HomeView.GRID_ROWS - item.spanY.toInt())
+            .coerceIn(0, homeView.getGridRows() - item.spanY.toInt())
 
         val snapX = offsetX + targetCol * cellWidth
         val snapY = offsetY + targetRow * cellHeight

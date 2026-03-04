@@ -210,7 +210,7 @@ class FreeformController(
 
             if (item.type == HomeItem.Type.WIDGET) {
                 val newSpanX = (vBounds.width() / cellWidth).roundToInt().coerceIn(1, preferences.columns)
-                val newSpanY = (vBounds.height() / cellHeight).roundToInt().coerceIn(1, HomeView.GRID_ROWS)
+                val newSpanY = (vBounds.height() / cellHeight).roundToInt().coerceIn(1, homeView.getGridRows())
 
                 if (isResize) {
                     if (newSpanX.toFloat() == item.spanX && newSpanY.toFloat() == item.spanY) {
@@ -234,7 +234,7 @@ class FreeformController(
             item.visualOffsetY = vBounds.centerY()
 
             val newCol = max(0, min(preferences.columns - sX, ((relativeX + vBounds.centerX() - horizontalPadding - (cellWidth * sX / 2f)) / cellWidth).roundToInt()))
-            val newRow = max(0, min(HomeView.GRID_ROWS - sY, ((relativeY + vBounds.centerY() - (cellHeight * sY / 2f)) / cellHeight).roundToInt()))
+            val newRow = max(0, min(homeView.getGridRows() - sY, ((relativeY + vBounds.centerY() - (cellHeight * sY / 2f)) / cellHeight).roundToInt()))
 
             item.page = targetPage
             homeView.applyNewGridLogic(item, v, newCol, newRow, sX, sY)
@@ -340,7 +340,7 @@ class FreeformController(
 
                 if (item.type == HomeItem.Type.WIDGET) {
                     sX = (vBounds.width() / cellWidth).roundToInt().coerceIn(1, preferences.columns)
-                    sY = (vBounds.height() / cellHeight).roundToInt().coerceIn(1, HomeView.GRID_ROWS)
+                    sY = (vBounds.height() / cellHeight).roundToInt().coerceIn(1, homeView.getGridRows())
                 } else {
                     sX = 1
                     sY = 1
@@ -352,7 +352,7 @@ class FreeformController(
                 item.visualOffsetY = vBounds.centerY()
 
                 val targetCol = max(0, min(preferences.columns - sX, ((relativeX + vBounds.centerX() - horizontalPadding - (cellWidth * sX / 2f)) / cellWidth).roundToInt()))
-                val targetRow = max(0, min(HomeView.GRID_ROWS - sY, ((relativeY + vBounds.centerY() - (cellHeight * sY / 2f)) / cellHeight).roundToInt()))
+                val targetRow = max(0, min(homeView.getGridRows() - sY, ((relativeY + vBounds.centerY() - (cellHeight * sY / 2f)) / cellHeight).roundToInt()))
 
                 homeView.applyNewGridLogic(item, transformingView!!, targetCol, targetRow, sX, sY)
 

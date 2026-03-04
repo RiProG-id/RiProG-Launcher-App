@@ -289,14 +289,32 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
         }
     }
 
+    fun getAvailableHeight(): Float {
+        val topPadding = recyclerView.paddingTop
+        val bottomArea = systemBottomInset + dpToPx(64)
+        return max(0f, height.toFloat() - topPadding - bottomArea)
+    }
+
+    fun getGridRows(): Int {
+        if (settingsManager.isFreeformHome) return GRID_ROWS
+        val h = getAvailableHeight()
+        val cellW = getCellWidth()
+        if (h <= 0 || cellW <= 0) return GRID_ROWS
+        return max(GRID_ROWS, (h / cellW).toInt())
+    }
+
     fun getCellWidth(): Float {
         val horizontalPadding = dpToPx(HORIZONTAL_PADDING_DP) * 2
         val columnCount = settingsManager.columns
-        return if (width > horizontalPadding) (width - horizontalPadding) / columnCount.toFloat() else 0f
+        val w = if (width > 0) width else resources.displayMetrics.widthPixels
+        return if (w > horizontalPadding) (w - horizontalPadding) / columnCount.toFloat() else 0f
     }
 
     fun getCellHeight(): Float {
-        return getCellWidth()
+        if (settingsManager.isFreeformHome) return getCellWidth()
+        val h = getAvailableHeight()
+        val rows = getGridRows()
+        return if (rows > 0) h / rows else getCellWidth()
     }
 
     fun getSnapPosition(item: HomeItem, view: View): Pair<Float, Float> {
@@ -481,7 +499,7 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
                     item.col = ((midX - horizontalPadding - (cellWidth * sX / 2f)) / cellWidth).roundToInt()
                         .coerceIn(0, settingsManager.columns - sX).toFloat()
                     item.row = ((midY - offsetY - (cellHeight * sY / 2f)) / cellHeight).roundToInt()
-                        .coerceIn(0, GRID_ROWS - sY).toFloat()
+                        .coerceIn(0, getGridRows() - sY).toFloat()
                     item.spanX = sX.toFloat()
                     item.spanY = sY.toFloat()
 
@@ -722,7 +740,7 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
             var targetRow = ((visualCenterY - (cellHeight * sY / 2f)) / cellHeight).roundToInt()
 
             targetCol = targetCol.coerceIn(0, settingsManager.columns - sX)
-            targetRow = targetRow.coerceIn(0, GRID_ROWS - sY)
+            targetRow = targetRow.coerceIn(0, getGridRows() - sY)
 
             applyNewGridLogic(item, v, targetCol, targetRow, sX, sY)
 
@@ -887,12 +905,13 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
 
     private fun findNearestEmptyArea(pageIndex: Int, spanX: Int, spanY: Int, prefCol: Int, prefRow: Int, otherItems: List<HomeItem>): Pair<Int, Int>? {
         val cols = settingsManager.columns
-        val occupied = Array(GRID_ROWS) { BooleanArray(cols) }
+        val rows = getGridRows()
+        val occupied = Array(rows) { BooleanArray(cols) }
 
         for (item in otherItems) {
             if (item.page == pageIndex) {
                 val rStart = max(0, item.row.roundToInt())
-                val rEnd = min(GRID_ROWS - 1, (item.row + item.spanY).roundToInt() - 1)
+                val rEnd = min(rows - 1, (item.row + item.spanY).roundToInt() - 1)
                 val cStart = max(0, item.col.roundToInt())
                 val cEnd = min(cols - 1, (item.col + item.spanX).roundToInt() - 1)
                 for (r in rStart..rEnd) {
@@ -906,7 +925,7 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
         var minDest = Double.MAX_VALUE
         var bestPos: Pair<Int, Int>? = null
 
-        for (i in 0..GRID_ROWS - spanY) {
+        for (i in 0..rows - spanY) {
             for (j in 0..cols - spanX) {
                 var canPlace = true
                 for (ri in i until i + spanY) {
@@ -945,7 +964,7 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
         if (cellWidth <= 0 || cellHeight <= 0) return
 
         val columns = settingsManager.columns
-        val rows = GRID_ROWS
+        val rows = getGridRows()
         val horizontalPadding = dpToPx(HORIZONTAL_PADDING_DP).toFloat()
         val offsetY = recyclerView.paddingTop.toFloat()
 
@@ -1116,8 +1135,9 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
         var minDest = Double.MAX_VALUE
         var bestPos: Pair<Int, Int>? = null
         val columns = settingsManager.columns
+        val rows = getGridRows()
 
-        for (i in 0..GRID_ROWS - spanY) {
+        for (i in 0..rows - spanY) {
             for (j in 0..columns - spanX) {
                 if (canPlace(occupied, i, j, spanX, spanY)) {
                     val d = Math.sqrt(Math.pow((i - r).toDouble(), 2.0) + Math.pow((j - c).toDouble(), 2.0))
@@ -1133,9 +1153,10 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
 
     private fun canPlace(occupied: Array<BooleanArray>, r: Int, c: Int, spanX: Int, spanY: Int): Boolean {
         val columns = settingsManager.columns
+        val rows = getGridRows()
         for (i in r until r + spanY) {
             for (j in c until c + spanX) {
-                if (i >= GRID_ROWS || j >= columns || occupied[i][j]) return false
+                if (i >= rows || j >= columns || occupied[i][j]) return false
             }
         }
         return true
@@ -1264,19 +1285,20 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
 
     fun getOccupiedCells(pageIndex: Int, excludeItem: HomeItem? = null): Array<BooleanArray> {
         val columns = settingsManager.columns
-        val occupied = Array(GRID_ROWS) { BooleanArray(columns) }
+        val rows = getGridRows()
+        val occupied = Array(rows) { BooleanArray(columns) }
         if (context is MainActivity) {
             val activity = context as MainActivity
             for (item in activity.homeItems) {
                 if (item === excludeItem) continue
                 if (item.page == pageIndex) {
                     val rStart = max(0, floor(item.row.toDouble() + 0.01).toInt())
-                    val rEnd = min(GRID_ROWS - 1, ceil((item.row + item.spanY).toDouble() - 0.01).toInt() - 1)
+                    val rEnd = min(rows - 1, ceil((item.row + item.spanY).toDouble() - 0.01).toInt() - 1)
                     val cStart = max(0, floor(item.col.toDouble() + 0.01).toInt())
                     val cEnd = min(columns - 1, ceil((item.col + item.spanX).toDouble() - 0.01).toInt() - 1)
                     for (r in rStart..rEnd) {
                         for (c in cStart..cEnd) {
-                            if (r >= 0 && r < GRID_ROWS && c >= 0 && c < columns) occupied[r][c] = true
+                            if (r >= 0 && r < rows && c >= 0 && c < columns) occupied[r][c] = true
                         }
                     }
                 }
@@ -1287,24 +1309,27 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
 
     fun isSpanValid(item: HomeItem, newSpanX: Float, newSpanY: Float, newCol: Int, newRow: Int): Boolean {
         val columns = settingsManager.columns
-        if (newCol < 0 || newRow < 0 || newCol + newSpanX.roundToInt() > columns || newRow + newSpanY.roundToInt() > GRID_ROWS) return false
+        val rows = getGridRows()
+        if (newCol < 0 || newRow < 0 || newCol + newSpanX.roundToInt() > columns || newRow + newSpanY.roundToInt() > rows) return false
         val occupied = getOccupiedCells(item.page, item)
         return canPlace(occupied, newRow, newCol, newSpanX.roundToInt(), newSpanY.roundToInt())
     }
 
     fun doesFit(spanX: Float, spanY: Float, col: Int, row: Int, pageIndex: Int, excludeItem: HomeItem? = null): Boolean {
         val columns = settingsManager.columns
+        val rows = getGridRows()
         val sX = ceil(spanX.toDouble() - 0.01).toInt()
         val sY = ceil(spanY.toDouble() - 0.01).toInt()
-        if (col < 0 || row < 0 || col + sX > columns || row + sY > GRID_ROWS) return false
+        if (col < 0 || row < 0 || col + sX > columns || row + sY > rows) return false
         val occupied = getOccupiedCells(pageIndex, excludeItem)
         return canPlace(occupied, row, col, sX, sY)
     }
 
     fun hasAnySpace(spanX: Float, spanY: Float, pageIndex: Int): Boolean {
         val columns = settingsManager.columns
+        val rows = getGridRows()
         val occupied = getOccupiedCells(pageIndex)
-        for (r in 0..GRID_ROWS - spanY.roundToInt()) {
+        for (r in 0..rows - spanY.roundToInt()) {
             for (c in 0..columns - spanX.roundToInt()) {
                 if (canPlace(occupied, r, c, spanX.roundToInt(), spanY.roundToInt())) return true
             }
