@@ -152,17 +152,29 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
         snapHelper.attachToRecyclerView(recyclerView)
 
         recyclerView.addOnScrollListener(object : RecyclerView.OnScrollListener() {
+            override fun onScrolled(recyclerView: RecyclerView, dx: Int, dy: Int) {
+                val centerX = recyclerView.width / 2f
+                for (i in 0 until recyclerView.childCount) {
+                    val child = recyclerView.getChildAt(i)
+                    val childCenterX = child.left + child.width / 2f
+                    val distanceFromCenter = Math.abs(centerX - childCenterX)
+                    val factor = (distanceFromCenter / centerX).coerceIn(0f, 1f)
+
+                    val scale = 1f - 0.05f * factor
+                    val alpha = 1f - 0.3f * factor
+
+                    child.scaleX = scale
+                    child.scaleY = scale
+                    child.alpha = alpha
+                }
+            }
+
             override fun onScrollStateChanged(recyclerView: RecyclerView, newState: Int) {
                 if (newState == RecyclerView.SCROLL_STATE_IDLE) {
                     val pos = layoutManager.findFirstCompletelyVisibleItemPosition()
                     if (pos != RecyclerView.NO_POSITION) {
                         currentPage = pos
                         pageIndicator.setCurrentPage(currentPage)
-                        val m = model
-                        val a = allApps
-                        if (m != null && a != null) {
-                            refreshIcons(m, a)
-                        }
                     }
                 }
             }
@@ -1025,10 +1037,12 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
                         val app = appMap[item.packageName]
                         if (iv != null && app != null) {
                             val finalApp = app
-                            model.loadIcon(app) { bitmap ->
-                                if (bitmap != null) {
-                                    iv.setImageBitmap(bitmap)
-                                    if (tv != null) tv.text = finalApp.label
+                            if (iv.drawable == null || tv?.text != finalApp.label) {
+                                model.loadIcon(app) { bitmap ->
+                                    if (bitmap != null) {
+                                        iv.setImageBitmap(bitmap)
+                                        if (tv != null) tv.text = finalApp.label
+                                    }
                                 }
                             }
                         }
