@@ -51,6 +51,8 @@ class TransformOverlay @JvmOverloads constructor(
     private var gestureInitialScaleY = 0f
     private var gestureInitialX = 0f
     private var gestureInitialY = 0f
+    private var gestureInitialPivotX = 0f
+    private var gestureInitialPivotY = 0f
     private var gestureInitialWidth = 0
     private var gestureInitialHeight = 0
     private var gestureInitialBounds: RectF? = null
@@ -98,6 +100,8 @@ class TransformOverlay @JvmOverloads constructor(
         gestureInitialScaleY = targetView.scaleY
         gestureInitialX = targetView.x
         gestureInitialY = targetView.y
+        gestureInitialPivotX = targetView.pivotX
+        gestureInitialPivotY = targetView.pivotY
 
         gestureInitialWidth = if (targetView.width > 0) targetView.width else {
             val cw = (context as? MainActivity)?.homeView?.getCellWidth() ?: 0f
@@ -207,14 +211,14 @@ class TransformOverlay @JvmOverloads constructor(
         val r = if (isFreeform) targetView.rotation else 0f
 
         val isEdgeResizing = activeHandle == HANDLE_TOP || activeHandle == HANDLE_BOTTOM || activeHandle == HANDLE_LEFT || activeHandle == HANDLE_RIGHT
-        val cx = if (isEdgeResizing) gestureInitialX + gestureInitialWidth / 2f else targetView.x + targetView.pivotX
-        val cy = if (isEdgeResizing) gestureInitialY + gestureInitialHeight / 2f else targetView.y + targetView.pivotY
+        val cx = if (isEdgeResizing) gestureInitialX + gestureInitialPivotX else targetView.x + targetView.pivotX
+        val cy = if (isEdgeResizing) gestureInitialY + gestureInitialPivotY else targetView.y + targetView.pivotY
 
         val bounds = if (activeHandle != -1 && gestureInitialBounds != null) gestureInitialBounds!! else contentBounds
-        var left = (bounds.left - (if (isEdgeResizing) gestureInitialWidth / 2f else targetView.pivotX)) * sx
-        var top = (bounds.top - (if (isEdgeResizing) gestureInitialHeight / 2f else targetView.pivotY)) * sy
-        var right = (bounds.right - (if (isEdgeResizing) gestureInitialWidth / 2f else targetView.pivotX)) * sx
-        var bottom = (bounds.bottom - (if (isEdgeResizing) gestureInitialHeight / 2f else targetView.pivotY)) * sy
+        var left = (bounds.left - (if (isEdgeResizing) gestureInitialPivotX else targetView.pivotX)) * sx
+        var top = (bounds.top - (if (isEdgeResizing) gestureInitialPivotY else targetView.pivotY)) * sy
+        var right = (bounds.right - (if (isEdgeResizing) gestureInitialPivotX else targetView.pivotX)) * sx
+        var bottom = (bounds.bottom - (if (isEdgeResizing) gestureInitialPivotY else targetView.pivotY)) * sy
 
         if (isEdgeResizing) {
             when (activeHandle) {
@@ -407,6 +411,8 @@ class TransformOverlay @JvmOverloads constructor(
                     gestureInitialScaleY = targetView.scaleY
                     gestureInitialX = targetView.x
                     gestureInitialY = targetView.y
+                    gestureInitialPivotX = targetView.pivotX
+                    gestureInitialPivotY = targetView.pivotY
                     gestureInitialWidth = targetView.width
                     gestureInitialHeight = targetView.height
                     gestureInitialBounds = contentBounds
@@ -519,8 +525,8 @@ class TransformOverlay @JvmOverloads constructor(
         val isFreeform = settingsManager.isFreeformHome
         val sx = gestureInitialScaleX
         val sy = gestureInitialScaleY
-        val cx = gestureInitialX + targetView.pivotX
-        val cy = gestureInitialY + targetView.pivotY
+        val cx = gestureInitialX + gestureInitialPivotX
+        val cy = gestureInitialY + gestureInitialPivotY
 
         if (activeHandle == ACTION_MOVE) {
             val newX = gestureInitialX + (tx - initialTouchX)
@@ -559,8 +565,8 @@ class TransformOverlay @JvmOverloads constructor(
         if (cellWidth <= 0 || cellHeight <= 0) return
 
         val rotAngle = Math.toRadians((-targetView.rotation).toDouble()).toFloat()
-        val cx = gestureInitialX + targetView.pivotX
-        val cy = gestureInitialY + targetView.pivotY
+        val cx = gestureInitialX + gestureInitialPivotX
+        val cy = gestureInitialY + gestureInitialPivotY
         val rx = (cos(rotAngle.toDouble()) * (tx - cx) - sin(rotAngle.toDouble()) * (ty - cy)).toFloat()
         val ry = (sin(rotAngle.toDouble()) * (tx - cx) + cos(rotAngle.toDouble()) * (ty - cy)).toFloat()
         val irx = (cos(rotAngle.toDouble()) * (initialTouchX - cx) - sin(rotAngle.toDouble()) * (initialTouchY - cy)).toFloat()
