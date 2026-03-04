@@ -377,6 +377,11 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
         lastX = x
         lastY = y
 
+        val item = v.tag as? HomeItem
+        if (settingsManager.isFreeformHome && item != null) {
+            item.lastInteractionTime = System.currentTimeMillis()
+        }
+
         if (moveView && v.parent !== this) {
             var absX = v.x
             var absY = v.y
@@ -393,7 +398,18 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
 
                 (p as ViewGroup).removeView(v)
             }
-            addView(v)
+
+            if (settingsManager.isFreeformHome && item != null) {
+                val isWidget = item.type == HomeItem.Type.WIDGET || item.type == HomeItem.Type.CLOCK
+                if (isWidget) {
+                    addView(v, 0)
+                } else {
+                    addView(v)
+                }
+            } else {
+                addView(v)
+            }
+
             v.x = absX
             v.y = absY
         }
