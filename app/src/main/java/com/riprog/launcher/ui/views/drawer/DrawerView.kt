@@ -326,19 +326,19 @@ class DrawerView(context: Context) : FrameLayout(context) {
 
     fun onOpen() {
         if (::searchBar.isInitialized) {
-            searchBar.setText("")
+            if (searchBar.text.isNotEmpty()) {
+                searchBar.setText("")
+            }
             searchBar.clearFocus()
+        } else {
+            filter("")
         }
-        filter("")
     }
 
     fun onClose() {
         if (::searchBar.isInitialized) {
             searchBar.setText("")
         }
-        val oldSize = filteredApps.size
-        filteredApps.clear()
-        adapter.notifyItemRangeRemoved(1, oldSize)
     }
 
     fun refreshTheme() {
@@ -479,12 +479,14 @@ class DrawerView(context: Context) : FrameLayout(context) {
                 }
 
                 appHolder.label!!.text = item.label
-                appHolder.icon!!.setImageBitmap(null)
-                appHolder.icon!!.tag = item.packageName
-                if (model != null) {
-                    model!!.loadIcon(item) { bitmap ->
-                        if (bitmap != null && item.packageName == appHolder.icon!!.tag) {
-                            appHolder.icon!!.setImageBitmap(bitmap)
+                if (appHolder.icon!!.tag != item.packageName || appHolder.icon!!.drawable == null) {
+                    appHolder.icon!!.setImageBitmap(null)
+                    appHolder.icon!!.tag = item.packageName
+                    if (model != null) {
+                        model!!.loadIcon(item) { bitmap ->
+                            if (bitmap != null && item.packageName == appHolder.icon!!.tag) {
+                                appHolder.icon!!.setImageBitmap(bitmap)
+                            }
                         }
                     }
                 }
