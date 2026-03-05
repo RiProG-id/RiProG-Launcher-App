@@ -162,16 +162,7 @@ class TransformOverlay @JvmOverloads constructor(
     }
 
     private fun reset() {
-        val activity = context as? MainActivity ?: return
-        if (targetView == null || item == null) return
-
-        targetView.rotation = 0f
-        targetView.scaleX = 1.0f
-        targetView.scaleY = 1.0f
-        targetView.rotationX = 0f
-        targetView.rotationY = 0f
-
-        val pageChanged = item.page != item.originalPage
+        if (item == null) return
 
         item.col = item.originalCol
         item.row = item.originalRow
@@ -182,15 +173,10 @@ class TransformOverlay @JvmOverloads constructor(
         item.scale = 1.0f
         item.tiltX = 0f
         item.tiltY = 0f
+        item.visualOffsetX = -1f
+        item.visualOffsetY = -1f
 
-        if (pageChanged) {
-            activity.homeView.removeItemView(item)
-            activity.renderHomeItem(item)
-        } else {
-            activity.homeView.updateViewPosition(item, targetView)
-        }
-
-        invalidate()
+        onSaveListener?.onCancel()
     }
 
     override fun onDraw(canvas: Canvas) {
