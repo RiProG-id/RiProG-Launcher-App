@@ -116,7 +116,8 @@ class MainLayout @JvmOverloads constructor(
                 touchedView = findTouchedHomeItem(startX, startY)
                 longPressHandler.removeCallbacks(longPressRunnable)
                 if (!activity.freeformInteraction.isTransforming() && !activity.isAnyOverlayVisible()) {
-                    longPressHandler.postDelayed(longPressRunnable, 400)
+                    val longPressTimeout = if (touchedView != null) 400L else 800L
+                    longPressHandler.postDelayed(longPressRunnable, longPressTimeout)
                 }
                 return false
             }
