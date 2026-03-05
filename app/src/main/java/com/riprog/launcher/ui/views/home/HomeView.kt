@@ -160,12 +160,21 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
                     val distanceFromCenter = Math.abs(centerX - childCenterX)
                     val factor = (distanceFromCenter / centerX).coerceIn(0f, 1f)
 
-                    val scale = 1f - 0.05f * factor
-                    val alpha = 1f - 0.3f * factor
+                    val scale = 1f - 0.12f * factor
+                    val alpha = 1f - 0.6f * factor
 
                     child.scaleX = scale
                     child.scaleY = scale
                     child.alpha = alpha
+                    (child.background as? GradientDrawable)?.alpha = (factor * 30).toInt()
+                }
+
+                val scrollX = recyclerView.computeHorizontalScrollOffset()
+                val w = recyclerView.width
+                if (w > 0) {
+                    val position = scrollX / w
+                    val offset = (scrollX % w).toFloat() / w
+                    pageIndicator.setScroll(position, offset)
                 }
             }
 
@@ -1283,6 +1292,13 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
             frame.layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
             frame.clipChildren = false
             frame.clipToPadding = false
+
+            val bg = GradientDrawable()
+            bg.setColor(Color.WHITE)
+            bg.alpha = 0
+            bg.cornerRadius = dpToPx(16).toFloat()
+            frame.background = bg
+
             return ViewHolder(frame)
         }
 
@@ -1326,6 +1342,29 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
         fun setAccentColor(color: Int) {
             this.accentColor = color
             updateDots(true)
+        }
+
+        fun setScroll(position: Int, offset: Float) {
+            for (i in 0 until childCount) {
+                val dot = getChildAt(i)
+                val shape = dot.background as? GradientDrawable ?: continue
+                val selectionFactor: Float = when (i) {
+                    position -> 1f - offset
+                    position + 1 -> offset
+                    else -> 0f
+                }
+
+                val baseColor = Color.GRAY and 0x80FFFFFF.toInt()
+                val r = (Color.red(baseColor) + (Color.red(accentColor) - Color.red(baseColor)) * selectionFactor).toInt()
+                val g = (Color.green(baseColor) + (Color.green(accentColor) - Color.green(baseColor)) * selectionFactor).toInt()
+                val b = (Color.blue(baseColor) + (Color.blue(accentColor) - Color.blue(baseColor)) * selectionFactor).toInt()
+                val a = (Color.alpha(baseColor) + (Color.alpha(accentColor) - Color.alpha(baseColor)) * selectionFactor).toInt()
+                shape.setColor(Color.argb(a, r, g, b))
+
+                val scale = 1f + 0.3f * selectionFactor
+                dot.scaleX = scale
+                dot.scaleY = scale
+            }
         }
 
         private fun updateDots(forceRebuild: Boolean) {
