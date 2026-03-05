@@ -36,6 +36,13 @@ class SettingsActivity : ComponentActivity() {
     private lateinit var recyclerView: RecyclerView
     private var autoDimmingBackground: AutoDimmingBackground? = null
 
+    private lateinit var themedContext: Context
+    private lateinit var rootContainer: FrameLayout
+    private lateinit var contentLayer: FrameLayout
+    private lateinit var closeBtn: ImageView
+    private val themeUpdateHandler = android.os.Handler(android.os.Looper.getMainLooper())
+    private var themeUpdateRunnable: Runnable? = null
+
     override fun attachBaseContext(newBase: Context) {
         val sm = SettingsManager(newBase)
         super.attachBaseContext(ThemeManager.applyThemeToContext(newBase, sm.themeMode))
@@ -45,6 +52,7 @@ class SettingsActivity : ComponentActivity() {
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
         settingsManager = SettingsManager(this)
+        themedContext = ThemeManager.applyThemeToContext(this, settingsManager.themeMode)
         ThemeManager.applyThemeMode(this, settingsManager.themeMode)
 
         val w = window
@@ -52,12 +60,12 @@ class SettingsActivity : ComponentActivity() {
         WindowCompat.setDecorFitsSystemWindows(w, false)
         ThemeUtils.applyWindowBlur(w, settingsManager.isAcrylic)
 
-        val rootContainer = FrameLayout(this)
+        rootContainer = FrameLayout(this)
 
         autoDimmingBackground = AutoDimmingBackground(this, rootContainer, settingsManager)
 
-        val contentLayer = FrameLayout(this)
-        contentLayer.background = ThemeUtils.getThemedSurface(this, settingsManager, 0f)
+        contentLayer = FrameLayout(this)
+        contentLayer.background = ThemeUtils.getThemedSurface(themedContext, settingsManager, 0f)
         rootContainer.addView(contentLayer, FrameLayout.LayoutParams(
             ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT
         ))
@@ -73,10 +81,10 @@ class SettingsActivity : ComponentActivity() {
             ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT
         ))
 
-        val closeBtn = ImageView(this)
-        closeBtn.setImageResource(android.R.drawable.ic_menu_close_clear_cancel)
-        val adaptiveColor = ThemeUtils.getAdaptiveColor(this, settingsManager, true)
-        closeBtn.setColorFilter(adaptiveColor)
+        closeBtn = ImageView(this)
+        this.closeBtn.setImageResource(android.R.drawable.ic_menu_close_clear_cancel)
+        val adaptiveColor = ThemeUtils.getAdaptiveColor(themedContext, settingsManager, true)
+        this.closeBtn.setColorFilter(adaptiveColor)
         closeBtn.alpha = 0.6f
         closeBtn.setPadding(dpToPx(12), dpToPx(12), dpToPx(12), dpToPx(12))
         closeBtn.setOnClickListener { finish() }
@@ -110,6 +118,34 @@ class SettingsActivity : ComponentActivity() {
     override fun onResume() {
         super.onResume()
         autoDimmingBackground?.updateDimVisibility()
+    }
+
+    override fun onConfigurationChanged(newConfig: android.content.res.Configuration) {
+        super.onConfigurationChanged(newConfig)
+        applyThemeUpdates()
+    }
+
+    private fun applyThemeUpdates() {
+        themedContext = ThemeManager.applyThemeToContext(this, settingsManager.themeMode)
+
+        contentLayer.background = ThemeUtils.getThemedSurface(themedContext, settingsManager, 0f)
+
+        val adaptiveColor = ThemeUtils.getAdaptiveColor(themedContext, settingsManager, true)
+        closeBtn.setColorFilter(adaptiveColor)
+
+        ThemeUtils.applyWindowBlur(window, settingsManager.isAcrylic)
+        ThemeUtils.updateStatusBarContrast(this)
+        autoDimmingBackground?.updateDimVisibility()
+
+        recyclerView.adapter?.notifyDataSetChanged()
+    }
+
+    private fun refreshTheme() {
+        themeUpdateRunnable?.let { themeUpdateHandler.removeCallbacks(it) }
+        themeUpdateRunnable = Runnable {
+            applyThemeUpdates()
+        }
+        themeUpdateHandler.postDelayed(themeUpdateRunnable!!, 100)
     }
 
     private fun setupAdapter() {
@@ -169,7 +205,6 @@ class SettingsActivity : ComponentActivity() {
         override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): RecyclerView.ViewHolder {
             val context = parent.context
             val type = SettingType.entries[viewType]
-            val adaptiveColor = ThemeUtils.getAdaptiveColor(context, settingsManager, true)
 
             return when (type) {
                 SettingType.TITLE -> {
@@ -180,32 +215,29 @@ class SettingsActivity : ComponentActivity() {
 
                     val titleIcon = ImageView(context)
                     titleIcon.setImageResource(R.drawable.ic_settings)
-                    titleIcon.setColorFilter(adaptiveColor)
                     val iconParams = LinearLayout.LayoutParams(dpToPx(32), dpToPx(32))
                     iconParams.rightMargin = dpToPx(12)
                     titleLayout.addView(titleIcon, iconParams)
 
-                    val title = TextView(context)
-                    title.setText(R.string.title_settings)
-                    title.textSize = 32f
-                    title.typeface = Typeface.create("sans-serif-light", Typeface.NORMAL)
-                    title.setTextColor(adaptiveColor)
-                    titleLayout.addView(title)
-                    SimpleViewHolder(titleLayout)
+                    val titleText = TextView(context)
+                    titleText.setText(R.string.title_settings)
+                    titleText.textSize = 32f
+                    titleText.typeface = Typeface.create("sans-serif-light", Typeface.NORMAL)
+                    titleLayout.addView(titleText)
+                    TitleViewHolder(titleLayout, titleIcon, titleText)
                 }
                 SettingType.CATEGORY -> {
                     val layout = LinearLayout(context)
                     layout.orientation = LinearLayout.HORIZONTAL
                     layout.gravity = Gravity.CENTER_VERTICAL
                     layout.setPadding(0, dpToPx(24), 0, dpToPx(12))
-                    SimpleViewHolder(layout)
+                    CategoryViewHolder(layout)
                 }
                 SettingType.TOGGLE -> {
                     val item = LinearLayout(context)
                     item.orientation = LinearLayout.HORIZONTAL
                     item.gravity = Gravity.CENTER_VERTICAL
                     item.setPadding(dpToPx(16), dpToPx(16), dpToPx(16), dpToPx(16))
-                    ThemeManager.applySettingItemStyle(context as Activity, item, settingsManager)
 
                     val textLayout = LinearLayout(context)
                     textLayout.orientation = LinearLayout.VERTICAL
@@ -214,12 +246,10 @@ class SettingsActivity : ComponentActivity() {
 
                     val titleView = TextView(context)
                     titleView.textSize = 18f
-                    titleView.setTextColor(adaptiveColor)
                     textLayout.addView(titleView)
 
                     val summaryView = TextView(context)
                     summaryView.textSize = 14f
-                    summaryView.setTextColor(context.getColor(R.color.foreground_dim))
                     textLayout.addView(summaryView)
 
                     val toggle = Switch(context)
@@ -235,12 +265,10 @@ class SettingsActivity : ComponentActivity() {
                     val item = LinearLayout(context)
                     item.orientation = LinearLayout.VERTICAL
                     item.setPadding(dpToPx(16), dpToPx(16), dpToPx(16), dpToPx(16))
-                    ThemeManager.applySettingItemStyle(context as Activity, item, settingsManager)
 
                     val titleView = TextView(context)
                     titleView.setText(if (type == SettingType.THEME) R.string.setting_theme_mode else R.string.setting_theme_style)
                     titleView.textSize = 18f
-                    titleView.setTextColor(adaptiveColor)
                     item.addView(titleView)
 
                     val optionsLayout = LinearLayout(context)
@@ -251,7 +279,7 @@ class SettingsActivity : ComponentActivity() {
                     val lp = RecyclerView.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
                     lp.bottomMargin = dpToPx(8)
                     item.layoutParams = lp
-                    ThemeViewHolder(item, optionsLayout)
+                    ThemeViewHolder(item, titleView, optionsLayout)
                 }
                 SettingType.ABOUT -> {
                     val aboutContent = TextView(context)
@@ -266,7 +294,6 @@ class SettingsActivity : ComponentActivity() {
                     item.orientation = LinearLayout.HORIZONTAL
                     item.gravity = Gravity.CENTER_VERTICAL
                     item.setPadding(dpToPx(16), dpToPx(16), dpToPx(16), dpToPx(16))
-                    ThemeManager.applySettingItemStyle(context as Activity, item, settingsManager)
 
                     val textLayout = LinearLayout(context)
                     textLayout.orientation = LinearLayout.VERTICAL
@@ -275,12 +302,10 @@ class SettingsActivity : ComponentActivity() {
 
                     val titleView = TextView(context)
                     titleView.textSize = 18f
-                    titleView.setTextColor(adaptiveColor)
                     textLayout.addView(titleView)
 
                     val summaryView = TextView(context)
                     summaryView.textSize = 14f
-                    summaryView.setTextColor(context.getColor(R.color.foreground_dim))
                     textLayout.addView(summaryView)
 
                     val lp = RecyclerView.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
@@ -293,20 +318,28 @@ class SettingsActivity : ComponentActivity() {
 
         override fun onBindViewHolder(holder: RecyclerView.ViewHolder, position: Int) {
             val item = items[position]
-            val adaptiveColor = ThemeUtils.getAdaptiveColor(this@SettingsActivity, settingsManager, true)
+            val adaptiveColor = ThemeUtils.getAdaptiveColor(themedContext, settingsManager, true)
+            val dimColor = themedContext.getColor(R.color.foreground_dim)
+
             when (item.type) {
+                SettingType.TITLE -> {
+                    val h = holder as TitleViewHolder
+                    h.icon.setColorFilter(adaptiveColor)
+                    h.title.setTextColor(adaptiveColor)
+                }
                 SettingType.CATEGORY -> {
-                    val layout = holder.itemView as LinearLayout
+                    val h = holder as CategoryViewHolder
+                    val layout = h.itemView as LinearLayout
                     layout.removeAllViews()
                     if (item.iconRes != 0) {
-                        val icon = ImageView(layout.context)
+                        val icon = ImageView(themedContext)
                         icon.setImageResource(item.iconRes)
                         icon.setColorFilter(adaptiveColor)
                         val lp = LinearLayout.LayoutParams(dpToPx(20), dpToPx(20))
                         lp.rightMargin = dpToPx(8)
                         layout.addView(icon, lp)
                     }
-                    val tv = TextView(layout.context)
+                    val tv = TextView(themedContext)
                     tv.text = item.titleString
                     tv.textSize = 14f
                     tv.setTypeface(null, Typeface.BOLD)
@@ -316,8 +349,11 @@ class SettingsActivity : ComponentActivity() {
                 }
                 SettingType.TOGGLE -> {
                     val h = holder as ToggleViewHolder
+                    ThemeManager.applySettingItemStyle(themedContext, h.itemView as LinearLayout, settingsManager)
                     h.title.setText(item.titleRes)
+                    h.title.setTextColor(adaptiveColor)
                     h.summary.setText(item.summaryRes)
+                    h.summary.setTextColor(dimColor)
                     h.toggle.isChecked = item.isChecked
                     h.itemView.setOnClickListener {
                         val newState = !h.toggle.isChecked
@@ -328,6 +364,8 @@ class SettingsActivity : ComponentActivity() {
                 }
                 SettingType.THEME -> {
                     val h = holder as ThemeViewHolder
+                    ThemeManager.applySettingItemStyle(themedContext, h.itemView as LinearLayout, settingsManager)
+                    h.title.setTextColor(adaptiveColor)
                     h.options.removeAllViews()
                     val modes = arrayOf(getString(R.string.theme_system), getString(R.string.theme_light), getString(R.string.theme_dark))
                     val values = arrayOf("system", "light", "dark")
@@ -335,17 +373,17 @@ class SettingsActivity : ComponentActivity() {
 
                     for (i in modes.indices) {
                         val index = i
-                        val option = TextView(this@SettingsActivity)
+                        val option = TextView(themedContext)
                         option.text = modes[i]
                         option.setPadding(dpToPx(12), dpToPx(8), dpToPx(12), dpToPx(8))
                         option.textSize = 14f
 
                         val isSelected = values[i] == current
-                        option.setTextColor(if (isSelected) adaptiveColor else this@SettingsActivity.getColor(R.color.foreground_dim))
+                        option.setTextColor(if (isSelected) adaptiveColor else dimColor)
 
                         if (isSelected) {
                             val gd = GradientDrawable()
-                            gd.setColor(getColor(R.color.search_background))
+                            gd.setColor(themedContext.getColor(R.color.search_background))
                             gd.cornerRadius = dpToPx(8).toFloat()
                             option.background = gd
                         }
@@ -353,7 +391,7 @@ class SettingsActivity : ComponentActivity() {
                         option.setOnClickListener {
                             settingsManager.themeMode = values[index]
                             ThemeManager.applyThemeMode(this@SettingsActivity, values[index])
-                            recreate()
+                            refreshTheme()
                         }
 
                         val lp = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
@@ -363,6 +401,8 @@ class SettingsActivity : ComponentActivity() {
                 }
                 SettingType.STYLE -> {
                     val h = holder as ThemeViewHolder
+                    ThemeManager.applySettingItemStyle(themedContext, h.itemView as LinearLayout, settingsManager)
+                    h.title.setTextColor(adaptiveColor)
                     h.options.removeAllViews()
                     val styles = arrayOf(getString(R.string.theme_style_standard), getString(R.string.theme_style_acrylic))
                     val values = arrayOf(false, true)
@@ -370,24 +410,24 @@ class SettingsActivity : ComponentActivity() {
 
                     for (i in styles.indices) {
                         val index = i
-                        val option = TextView(this@SettingsActivity)
+                        val option = TextView(themedContext)
                         option.text = styles[i]
                         option.setPadding(dpToPx(12), dpToPx(8), dpToPx(12), dpToPx(8))
                         option.textSize = 14f
 
                         val isSelected = values[i] == current
-                        option.setTextColor(if (isSelected) adaptiveColor else this@SettingsActivity.getColor(R.color.foreground_dim))
+                        option.setTextColor(if (isSelected) adaptiveColor else dimColor)
 
                         if (isSelected) {
                             val gd = GradientDrawable()
-                            gd.setColor(getColor(R.color.search_background))
+                            gd.setColor(themedContext.getColor(R.color.search_background))
                             gd.cornerRadius = dpToPx(8).toFloat()
                             option.background = gd
                         }
 
                         option.setOnClickListener {
                             settingsManager.isAcrylic = values[index]
-                            recreate()
+                            refreshTheme()
                         }
 
                         val lp = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
@@ -397,14 +437,19 @@ class SettingsActivity : ComponentActivity() {
                 }
                 SettingType.ABOUT -> {
                     val tv = holder.itemView as TextView
+                    tv.setTextColor(dimColor)
+                    tv.setLinkTextColor(themedContext.getColor(R.color.accent_blue))
                     tv.setText(R.string.about_content)
                     Linkify.addLinks(tv, Linkify.WEB_URLS)
                     tv.movementMethod = LinkMovementMethod.getInstance()
                 }
                 SettingType.ACTION -> {
                     val h = holder as ActionViewHolder
+                    ThemeManager.applySettingItemStyle(themedContext, h.itemView as LinearLayout, settingsManager)
                     if (item.titleRes != 0) h.title.setText(item.titleRes) else h.title.text = item.titleString
+                    h.title.setTextColor(adaptiveColor)
                     if (item.summaryRes != 0) h.summary.setText(item.summaryRes) else h.summary.text = item.summaryString
+                    h.summary.setTextColor(dimColor)
 
                     h.itemView.setOnClickListener {
                         val currentTime = System.currentTimeMillis()
@@ -423,14 +468,15 @@ class SettingsActivity : ComponentActivity() {
                         }
                     }
                 }
-                else -> {}
             }
         }
     }
 
     private class SimpleViewHolder(view: View) : RecyclerView.ViewHolder(view)
+    private class TitleViewHolder(view: View, val icon: ImageView, val title: TextView) : RecyclerView.ViewHolder(view)
+    private class CategoryViewHolder(view: View) : RecyclerView.ViewHolder(view)
     private class ToggleViewHolder(view: View, val title: TextView, val summary: TextView, val toggle: Switch) : RecyclerView.ViewHolder(view)
-    private class ThemeViewHolder(view: View, val options: LinearLayout) : RecyclerView.ViewHolder(view)
+    private class ThemeViewHolder(view: View, val title: TextView, val options: LinearLayout) : RecyclerView.ViewHolder(view)
     private class ActionViewHolder(view: View, val title: TextView, val summary: TextView) : RecyclerView.ViewHolder(view) {
         var tapCount = 0
         var lastTapTime = 0L

@@ -29,6 +29,7 @@
 
         <activity
             android:name=".ui.activities.SettingsActivity"
+            android:configChanges="uiMode"
             android:screenOrientation="portrait" />
 
         <activity
