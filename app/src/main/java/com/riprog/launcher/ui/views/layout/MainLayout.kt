@@ -128,7 +128,7 @@ class MainLayout @JvmOverloads constructor(
                 touchedView = findTouchedHomeItem(startX, startY)
                 longPressHandler.removeCallbacks(longPressRunnable)
                 if (!activity.freeformInteraction.isTransforming() && !activity.isAnyOverlayVisible()) {
-                    val delay = if (touchedView == null) 800L else 400L
+                    val delay = if (touchedView == null) 1000L else 400L
                     longPressHandler.postDelayed(longPressRunnable, delay)
                 }
                 return false
@@ -142,7 +142,8 @@ class MainLayout @JvmOverloads constructor(
                     longPressHandler.removeCallbacks(longPressRunnable)
                     return true
                 }
-                if (abs(dx.toDouble()) > touchSlop || abs(dy.toDouble()) > touchSlop) {
+                val currentSlop = if (touchedView == null) touchSlop / 2 else touchSlop
+                if (abs(dx.toDouble()) > currentSlop || abs(dy.toDouble()) > currentSlop) {
                     longPressHandler.removeCallbacks(longPressRunnable)
                 }
                 return isDragging
@@ -221,7 +222,8 @@ class MainLayout @JvmOverloads constructor(
                     return true
                 }
 
-                if (!isGestureCanceled && (abs(dx.toDouble()) > touchSlop || abs(dy.toDouble()) > touchSlop)) {
+                val currentSlop = if (touchedView == null) touchSlop / 2 else touchSlop
+                if (!isGestureCanceled && (abs(dx.toDouble()) > currentSlop || abs(dy.toDouble()) > currentSlop)) {
                     longPressHandler.removeCallbacks(longPressRunnable)
                     if (abs(dy.toDouble()) > abs(dx.toDouble())) {
                         if (dy < -touchSlop * 2) {
