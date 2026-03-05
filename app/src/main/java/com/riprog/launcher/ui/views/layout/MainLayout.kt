@@ -57,12 +57,24 @@ class MainLayout @JvmOverloads constructor(
         if (System.currentTimeMillis() - activity.lastOverlayDismissTime < 300) {
             return@Runnable
         }
-        longPressTriggered = true
+
         if (touchedView != null) {
+            longPressTriggered = true
             activity.freeformInteraction.showTransformOverlay(touchedView!!, lastX, lastY)
         } else {
-            activity.showHomeMenu(lastX, lastY)
+            // Verify we are still on an empty area
+            if (findTouchedHomeItem(lastX, lastY) == null) {
+                longPressTriggered = true
+                activity.showHomeMenu(lastX, lastY)
+            }
         }
+    }
+
+    override fun requestDisallowInterceptTouchEvent(disallowIntercept: Boolean) {
+        if (disallowIntercept) {
+            longPressHandler.removeCallbacks(longPressRunnable)
+        }
+        super.requestDisallowInterceptTouchEvent(disallowIntercept)
     }
 
     override fun performClick(): Boolean {
@@ -116,7 +128,8 @@ class MainLayout @JvmOverloads constructor(
                 touchedView = findTouchedHomeItem(startX, startY)
                 longPressHandler.removeCallbacks(longPressRunnable)
                 if (!activity.freeformInteraction.isTransforming() && !activity.isAnyOverlayVisible()) {
-                    longPressHandler.postDelayed(longPressRunnable, 400)
+                    val delay = if (touchedView == null) 800L else 400L
+                    longPressHandler.postDelayed(longPressRunnable, delay)
                 }
                 return false
             }
