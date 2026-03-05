@@ -418,7 +418,15 @@ class MainLayout @JvmOverloads constructor(
         val localY = y - rootLoc[1]
 
         addView(v)
-        v.bringToFront()
+        val isFreeform = activity?.settingsManager?.isFreeformHome == true
+        val item = v.tag as? HomeItem
+        if (isFreeform && item != null) {
+            item.lastInteractionTime = System.currentTimeMillis()
+            val isWidget = item.type == HomeItem.Type.WIDGET || item.type == HomeItem.Type.CLOCK
+            v.translationZ = if (isWidget) 5f else 50f
+        } else {
+            v.bringToFront()
+        }
         v.isVisible = true
         v.x = localX - w / 2f
         v.y = localY - h / 2f
@@ -445,6 +453,14 @@ class MainLayout @JvmOverloads constructor(
             v.x = relativeX - w / 2f
             v.y = relativeY - h / 2f
 
+            val isFreeform = activity?.settingsManager?.isFreeformHome == true
+            val item = v.tag as? HomeItem
+            if (isFreeform && item != null) {
+                item.lastInteractionTime = System.currentTimeMillis()
+                val isWidget = item.type == HomeItem.Type.WIDGET || item.type == HomeItem.Type.CLOCK
+                v.translationZ = if (isWidget) 5f else 50f
+            }
+
             activity.homeView.handleDrag(relativeX, relativeY)
         }
     }
@@ -464,6 +480,16 @@ class MainLayout @JvmOverloads constructor(
                     val h = if (handoverDraggedView!!.height > 0) handoverDraggedView!!.height.toFloat() else (handoverDraggedView!!.layoutParams?.height?.toFloat() ?: 0f)
                     handoverDraggedView!!.x = event.x - w / 2f
                     handoverDraggedView!!.y = event.y - h / 2f
+
+                    val isFreeform = activity?.settingsManager?.isFreeformHome == true
+                    val item = handoverDraggedView!!.tag as? HomeItem
+                    if (isFreeform && item != null) {
+                        item.lastInteractionTime = System.currentTimeMillis()
+                        val isWidget = item.type == HomeItem.Type.WIDGET || item.type == HomeItem.Type.CLOCK
+                        handoverDraggedView!!.translationZ = if (isWidget) 5f else 50f
+                    } else {
+                        handoverDraggedView!!.bringToFront()
+                    }
                 }
                 activity?.homeView?.handleDrag(relativeX, relativeY)
             }
