@@ -59,7 +59,17 @@ class FreeformController(
         if (transformingViewOriginalParent != null) {
             transformingViewOriginalParent!!.removeView(v)
         }
+
+        val item = v.tag as? HomeItem
+        item?.lastInteractionTime = System.currentTimeMillis()
+
         rootLayout.addView(v)
+
+        if (preferences.isFreeformHome) {
+            val isWidget = item?.type == HomeItem.Type.WIDGET || item?.type == HomeItem.Type.CLOCK
+            v.translationZ = if (isWidget) 5f else 50f
+        }
+
         v.x = x
         v.y = y
 
@@ -204,6 +214,9 @@ class FreeformController(
             item.spanX = v.width / cellWidth
             item.spanY = v.height / cellHeight
             item.page = targetPage
+            if (preferences.isFreeformHome) {
+                item.lastInteractionTime = System.currentTimeMillis()
+            }
         } else {
             val sX: Int
             val sY: Int
@@ -335,6 +348,9 @@ class FreeformController(
                 item.row = relativeY / cellHeight
                 item.spanX = transformingView!!.width / cellWidth
                 item.spanY = transformingView!!.height / cellHeight
+                if (preferences.isFreeformHome) {
+                    item.lastInteractionTime = System.currentTimeMillis()
+                }
             } else {
                 val vBounds = WidgetSizingUtils.getVisualBounds(transformingView!!)
                 val sX: Int

@@ -201,6 +201,7 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
         pageIndicator = PageIndicator(context)
         pageIndicator.isClickable = false
         pageIndicator.isFocusable = false
+        pageIndicator.translationZ = 100f
         val indicatorParams = LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT)
         indicatorParams.gravity = Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL
         indicatorParams.bottomMargin = dpToPx(80)
@@ -280,13 +281,56 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
 
         item.originalPage = item.page
 
-        view.bringToFront()
+        if (settingsManager.isFreeformHome) {
+            if (item.lastInteractionTime == 0L) {
+                item.lastInteractionTime = System.currentTimeMillis()
+            }
+            refreshStackingOrder(page)
+        } else {
+            view.bringToFront()
+        }
 
         if (!settingsManager.isFreeformHome && item.visualOffsetX < 0) {
             view.post {
                 snapToGrid(item, view)
             }
         }
+    }
+
+    fun refreshStackingOrder(container: ViewGroup) {
+        if (!settingsManager.isFreeformHome) return
+
+        val children = mutableListOf<View>()
+        for (i in 0 until container.childCount) {
+            val child = container.getChildAt(i)
+            if (child.tag is HomeItem) {
+                children.add(child)
+            }
+        }
+
+        val widgets = children.filter {
+            val item = it.tag as? HomeItem
+            item?.type == HomeItem.Type.WIDGET || item?.type == HomeItem.Type.CLOCK
+        }.sortedBy { (it.tag as? HomeItem)?.lastInteractionTime ?: 0L }
+
+        val nonWidgets = children.filter {
+            val item = it.tag as? HomeItem
+            item?.type == HomeItem.Type.APP || item?.type == HomeItem.Type.FOLDER
+        }.sortedBy { (it.tag as? HomeItem)?.lastInteractionTime ?: 0L }
+
+        var z = 1f
+        widgets.forEach {
+            it.translationZ = z
+            z += 0.01f
+        }
+
+        z = 20f
+        nonWidgets.forEach {
+            it.translationZ = z
+            z += 0.01f
+        }
+
+        container.invalidate()
     }
 
     fun getAvailableHeight(): Float {
@@ -399,15 +443,10 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
                 (p as ViewGroup).removeView(v)
             }
 
+            addView(v)
             if (settingsManager.isFreeformHome && item != null) {
                 val isWidget = item.type == HomeItem.Type.WIDGET || item.type == HomeItem.Type.CLOCK
-                if (isWidget) {
-                    addView(v, 0)
-                } else {
-                    addView(v)
-                }
-            } else {
-                addView(v)
+                v.translationZ = if (isWidget) 5f else 50f
             }
 
             v.x = absX
@@ -733,6 +772,8 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
             item.scale = v.scaleX
             item.tiltX = v.rotationX
             item.tiltY = v.rotationY
+            item.lastInteractionTime = System.currentTimeMillis()
+            (v.parent as? ViewGroup)?.let { refreshStackingOrder(it) }
         } else {
             val horizontalPadding = dpToPx(HORIZONTAL_PADDING_DP)
 
@@ -1123,6 +1164,7 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
             val freeform = settingsManager.isFreeformHome
             for (i in pages.indices) {
                 val page = pages[i]
+                if (freeform) refreshStackingOrder(page)
                 for (j in 0 until page.childCount) {
                     val v = page.getChildAt(j)
                     val item = v.tag as HomeItem? ?: continue

@@ -395,6 +395,10 @@ class TransformOverlay @JvmOverloads constructor(
         val x = event.x
         val y = event.y
 
+        if (settingsManager.isFreeformHome) {
+            item.lastInteractionTime = System.currentTimeMillis()
+        }
+
         when (event.action) {
             MotionEvent.ACTION_DOWN -> {
                 performClick()
