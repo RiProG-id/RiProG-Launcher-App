@@ -90,17 +90,16 @@ class FreeformController(
             override fun onCancel() {
                 closeTransformOverlay()
             }
-            override fun onRemove() {
-                val item = v.tag as HomeItem?
+            override fun onRemove(item: HomeItem?) {
                 listener.onRemoveItem(item, v)
                 transformingView = null
                 closeTransformOverlay()
             }
-            override fun onAppInfo() {
-                listener.onShowAppInfo(v.tag as HomeItem?)
+            override fun onAppInfo(item: HomeItem?) {
+                listener.onShowAppInfo(item)
             }
-            override fun onUninstall() {
-                listener.onUninstallItem(v.tag as HomeItem?)
+            override fun onUninstall(item: HomeItem?) {
+                listener.onUninstallItem(item)
             }
             override fun onCollision(otherView: View) {
                 if (handleFolderDrop(v, otherView)) {

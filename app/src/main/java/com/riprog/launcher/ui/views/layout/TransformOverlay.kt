@@ -69,9 +69,9 @@ class TransformOverlay @JvmOverloads constructor(
         fun onMoveStart(x: Float, y: Float)
         fun onSave()
         fun onCancel()
-        fun onRemove()
-        fun onAppInfo()
-        fun onUninstall()
+        fun onRemove(item: HomeItem?)
+        fun onAppInfo(item: HomeItem?)
+        fun onUninstall(item: HomeItem?)
         fun onCollision(otherView: View)
         fun findItemAt(x: Float, y: Float, exclude: View): View?
         fun onSnapToGrid(v: View, isResize: Boolean): Boolean
@@ -131,17 +131,17 @@ class TransformOverlay @JvmOverloads constructor(
         container.setPadding(dpToPx(12f), dpToPx(6f), dpToPx(12f), dpToPx(6f))
         container.background = ThemeUtils.getThemedSurface(context, settingsManager, 12f)
 
-        addButton(container, R.string.action_remove, adaptiveColor) { onSaveListener?.onRemove() }
+        addButton(container, R.string.action_remove, adaptiveColor) { onSaveListener?.onRemove(item) }
         if (item.type != HomeItem.Type.FOLDER || settingsManager.isFreeformHome) {
             addButton(container, R.string.action_reset, adaptiveColor) { reset() }
         }
         addButton(container, R.string.action_save, adaptiveColor) { onSaveListener?.onSave() }
 
         if (item.type == HomeItem.Type.APP) {
-            addButton(container, R.string.action_app_info, adaptiveColor) { onSaveListener?.onAppInfo() }
+            addButton(container, R.string.action_app_info, adaptiveColor) { onSaveListener?.onAppInfo(item) }
             item.packageName?.let {
                 if (AppUtils.isUninstallable(context, it)) {
-                    addButton(container, R.string.action_uninstall, adaptiveColor) { onSaveListener?.onUninstall() }
+                    addButton(container, R.string.action_uninstall, adaptiveColor) { onSaveListener?.onUninstall(item) }
                 }
             }
         }
