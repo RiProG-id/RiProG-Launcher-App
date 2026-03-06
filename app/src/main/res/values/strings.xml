@@ -11,6 +11,7 @@
     <string name="title_pick_widget">Select Widget</string>
     <string name="action_reset">Reset</string>
     <string name="action_save">Save</string>
+    <string name="action_uninstall">Uninstall</string>
     <string name="action_app_info">App Info</string>
     <string name="widget_size_format">%1$dx%2$d</string>
     <string name="title_settings">Settings</string>

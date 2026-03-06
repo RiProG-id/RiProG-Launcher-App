@@ -15,6 +15,7 @@ import com.riprog.launcher.logic.managers.SettingsManager
 import com.riprog.launcher.logic.managers.FolderManager
 import com.riprog.launcher.logic.controllers.FreeformController
 import com.riprog.launcher.logic.receivers.PackageReceiver
+import com.riprog.launcher.logic.utils.UninstallUtils
 import com.riprog.launcher.logic.utils.WidgetSizingUtils
 import com.riprog.launcher.ui.activities.WidgetPickerActivity
 import com.riprog.launcher.data.repository.AppRepository
@@ -156,6 +157,12 @@ class MainActivity : ComponentActivity() {
 
             override fun onShowAppInfo(item: HomeItem?) {
                 this@MainActivity.showAppInfo(item)
+            }
+
+            override fun onUninstallItem(item: HomeItem?) {
+                item?.packageName?.let {
+                    UninstallUtils.triggerUninstall(this@MainActivity, it)
+                }
             }
         })
 
@@ -766,7 +773,7 @@ class MainActivity : ComponentActivity() {
 
     fun showAppDrawerMenu(anchor: View, app: AppItem) {
         if (isAnyOverlayVisible()) return
-        val menu = AppDrawerContextMenu(this, settingsManager, object : AppDrawerContextMenu.Callback {
+        val menu = AppDrawerContextMenu(this, settingsManager, app, object : AppDrawerContextMenu.Callback {
             override fun onAddToHome() {
                 spawnApp(app)
                 mainLayout.closeDrawer()
@@ -774,6 +781,10 @@ class MainActivity : ComponentActivity() {
 
             override fun onAppInfo() {
                 showAppInfo(HomeItem.createApp(app.packageName, app.className, 0f, 0f, 0))
+            }
+
+            override fun onUninstall() {
+                UninstallUtils.triggerUninstall(this@MainActivity, app.packageName)
             }
 
             override fun dismiss() {
