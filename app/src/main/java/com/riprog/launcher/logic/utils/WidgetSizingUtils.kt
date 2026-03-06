@@ -58,7 +58,7 @@ object WidgetSizingUtils {
     }
 
     fun getMinSpanX(info: AppWidgetProviderInfo, cellWidth: Float, density: Float): Int {
-        val minWidth = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN && info.minResizeWidth > 0) info.minResizeWidth else info.minWidth
+        val minWidth = if (info.minResizeWidth > 0) info.minResizeWidth else info.minWidth
         val spanX = if (cellWidth > 0) {
             ceil(minWidth * density / cellWidth).toInt().coerceAtLeast(1)
         } else {
@@ -68,7 +68,7 @@ object WidgetSizingUtils {
     }
 
     fun getMinSpanY(info: AppWidgetProviderInfo, cellHeight: Float, density: Float, maxRows: Int = HomeView.GRID_ROWS): Int {
-        val minHeight = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN && info.minResizeHeight > 0) info.minResizeHeight else info.minHeight
+        val minHeight = if (info.minResizeHeight > 0) info.minResizeHeight else info.minHeight
         val spanY = if (cellHeight > 0) {
             ceil(minHeight * density / cellHeight).toInt().coerceAtLeast(1)
         } else {

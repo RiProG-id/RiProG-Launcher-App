@@ -442,7 +442,7 @@ class FolderManager(private val activity: MainActivity, private val settingsMana
             val container = currentFolderOverlay!!
             currentFolderOverlay = null
 
-            val overlay = if (container is ViewGroup && container.childCount > 0) container.getChildAt(0) else null
+            val overlay = if (container is ViewGroup && container.isNotEmpty()) container.getChildAt(0) else null
 
             if (settingsManager.isAcrylic && overlay != null) {
                 overlay.animate().cancel()

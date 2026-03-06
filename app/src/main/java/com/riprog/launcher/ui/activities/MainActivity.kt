@@ -502,8 +502,19 @@ class MainActivity : ComponentActivity() {
                             if (userHandle == null) {
                                 shouldRemove = true
                             } else {
-                                val launcherApps = getSystemService(Context.LAUNCHER_APPS_SERVICE) as android.content.pm.LauncherApps
-                                launcherApps.getApplicationInfo(item.packageName!!, 0, userHandle)
+                                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                                    val launcherApps = getSystemService(Context.LAUNCHER_APPS_SERVICE) as android.content.pm.LauncherApps
+                                    launcherApps.getApplicationInfo(item.packageName!!, 0, userHandle)
+                                } else if (userHandle == android.os.Process.myUserHandle()) {
+                                    pm.getApplicationInfo(item.packageName!!, 0)
+                                } else {
+                                    // Can't verify for other users on old API, assume okay or remove?
+                                    // LauncherApps.getActivityList is available since 21, maybe use that.
+                                    val launcherApps = getSystemService(Context.LAUNCHER_APPS_SERVICE) as android.content.pm.LauncherApps
+                                    if (launcherApps.getActivityList(item.packageName!!, userHandle).isEmpty()) {
+                                        shouldRemove = true
+                                    }
+                                }
                             }
                         } catch (e: Exception) {
                             shouldRemove = true
@@ -532,8 +543,18 @@ class MainActivity : ComponentActivity() {
                                         folderIterator.remove()
                                         changed = true
                                     } else {
-                                        val launcherApps = getSystemService(Context.LAUNCHER_APPS_SERVICE) as android.content.pm.LauncherApps
-                                        launcherApps.getApplicationInfo(subItem.packageName!!, 0, userHandle)
+                                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                                            val launcherApps = getSystemService(Context.LAUNCHER_APPS_SERVICE) as android.content.pm.LauncherApps
+                                            launcherApps.getApplicationInfo(subItem.packageName!!, 0, userHandle)
+                                        } else if (userHandle == android.os.Process.myUserHandle()) {
+                                            pm.getApplicationInfo(subItem.packageName!!, 0)
+                                        } else {
+                                            val launcherApps = getSystemService(Context.LAUNCHER_APPS_SERVICE) as android.content.pm.LauncherApps
+                                            if (launcherApps.getActivityList(subItem.packageName!!, userHandle).isEmpty()) {
+                                                folderIterator.remove()
+                                                changed = true
+                                            }
+                                        }
                                     }
                                 } catch (e: Exception) {
                                     folderIterator.remove()
