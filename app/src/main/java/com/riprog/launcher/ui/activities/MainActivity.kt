@@ -163,7 +163,8 @@ class MainActivity : ComponentActivity() {
                 if (item != null && item.packageName != null) {
                     val userManager = getSystemService(Context.USER_SERVICE) as android.os.UserManager
                     val userHandle = if (item.userSerial != -1L) userManager.getUserForSerialNumber(item.userSerial) else android.os.Process.myUserHandle()
-                    requestUninstall(item.packageName!!, userHandle)
+                    val label = getAppName(item.packageName!!)
+                    requestUninstall(item.packageName!!, userHandle, label)
                 }
             }
         })
@@ -396,21 +397,39 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    private fun requestUninstall(packageName: String, userHandle: android.os.UserHandle? = null) {
+    private fun requestUninstall(packageName: String, userHandle: android.os.UserHandle? = null, label: String = "") {
+        Toast.makeText(this, "Debug: Uninstall button pressed", Toast.LENGTH_SHORT).show()
+        Toast.makeText(this, "Debug: Target - Label: $label, Pkg: $packageName", Toast.LENGTH_SHORT).show()
+
+        val isUninstallable = com.riprog.launcher.logic.utils.PackageUtils.isUninstallable(this, packageName, userHandle)
+        Toast.makeText(this, "Debug: Eligibility - isUninstallable: $isUninstallable", Toast.LENGTH_SHORT).show()
+
+        if (!isUninstallable) {
+            Toast.makeText(this, "Debug: Uninstall blocked by system/policy", Toast.LENGTH_SHORT).show()
+            return
+        }
+
         try {
             val targetUser = userHandle ?: android.os.Process.myUserHandle()
             if (Build.VERSION.SDK_INT >= 30) {
+                Toast.makeText(this, "Debug: Preparing modern PackageInstaller flow", Toast.LENGTH_SHORT).show()
                 val launcherApps = getSystemService(Context.LAUNCHER_APPS_SERVICE) as android.content.pm.LauncherApps
                 val method = launcherApps::class.java.getMethod("startPackageUninstallActivity", String::class.java, android.os.UserHandle::class.java, android.content.IntentSender::class.java)
+                Toast.makeText(this, "Debug: Triggering system uninstall UI (API 30+)", Toast.LENGTH_SHORT).show()
                 method.invoke(launcherApps, packageName, targetUser, null)
+                Toast.makeText(this, "Debug: System uninstall UI successfully requested", Toast.LENGTH_SHORT).show()
             } else {
+                Toast.makeText(this, "Debug: Preparing legacy ACTION_DELETE flow", Toast.LENGTH_SHORT).show()
                 val uri = Uri.fromParts("package", packageName, null)
                 val intent = Intent(Intent.ACTION_DELETE, uri)
                 intent.putExtra(Intent.EXTRA_USER, targetUser)
                 intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                Toast.makeText(this, "Debug: Triggering system uninstall UI (Legacy)", Toast.LENGTH_SHORT).show()
                 startActivity(intent)
+                Toast.makeText(this, "Debug: System uninstall UI successfully requested", Toast.LENGTH_SHORT).show()
             }
         } catch (e: Exception) {
+            Toast.makeText(this, "Debug Error: ${e.message ?: "Unknown failure"}", Toast.LENGTH_SHORT).show()
             Toast.makeText(this, R.string.uninstall_failed, Toast.LENGTH_SHORT).show()
         }
     }
@@ -899,7 +918,7 @@ class MainActivity : ComponentActivity() {
             }
 
             override fun onUninstall(app: AppItem) {
-                requestUninstall(app.packageName, app.userHandle)
+                requestUninstall(app.packageName, app.userHandle, app.label)
             }
 
             override fun dismiss() {
