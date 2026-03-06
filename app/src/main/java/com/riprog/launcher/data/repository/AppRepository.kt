@@ -5,6 +5,7 @@ import com.riprog.launcher.data.model.AppItem
 import android.content.ComponentCallbacks2
 import android.content.Context
 import android.content.Intent
+import android.content.pm.LauncherApps
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.graphics.Canvas
@@ -12,6 +13,8 @@ import android.graphics.drawable.BitmapDrawable
 import android.graphics.drawable.Drawable
 import android.os.Handler
 import android.os.Looper
+import android.os.Process
+import android.os.UserManager
 import android.util.LruCache
 import androidx.core.graphics.createBitmap
 import org.json.JSONArray
@@ -65,7 +68,6 @@ class AppRepository(context: Context) {
     }
 
     fun loadApps(listener: OnAppsLoadedListener) {
-
         executor.execute {
             val cachedJson = diskCache.getData("app_list")
             if (cachedJson != null) {
@@ -75,21 +77,24 @@ class AppRepository(context: Context) {
                 }
             }
 
-            val mainIntent = Intent(Intent.ACTION_MAIN, null)
-            mainIntent.addCategory(Intent.CATEGORY_LAUNCHER)
-            val infos = pm.queryIntentActivities(mainIntent, 0)
-
             val apps: MutableList<AppItem> = ArrayList()
             val selfPackage = context.packageName
 
-            for (info in infos) {
-                if (info.activityInfo.packageName != selfPackage) {
-                    val item = AppItem(
-                        info.loadLabel(pm).toString(),
-                        info.activityInfo.packageName,
-                        info.activityInfo.name
-                    )
-                    apps.add(item)
+            val launcherApps = context.getSystemService(Context.LAUNCHER_APPS_SERVICE) as LauncherApps
+            val userManager = context.getSystemService(Context.USER_SERVICE) as UserManager
+
+            for (user in userManager.userProfiles) {
+                val activities = launcherApps.getActivityList(null, user)
+                for (activity in activities) {
+                    if (activity.applicationInfo.packageName != selfPackage) {
+                        val item = AppItem(
+                            activity.label.toString(),
+                            activity.applicationInfo.packageName,
+                            activity.name,
+                            user
+                        )
+                        apps.add(item)
+                    }
                 }
             }
 
@@ -104,14 +109,16 @@ class AppRepository(context: Context) {
     }
 
     fun loadIcon(item: AppItem, listener: OnIconLoadedListener) {
+        val userHandle = item.getUserHandleOrDefault()
+        val cacheKey = "${item.packageName}_$userHandle"
         synchronized(pendingListeners) {
-            val cached = iconCache[item.packageName]
+            val cached = iconCache[cacheKey]
             if (cached != null) {
                 listener.onIconLoaded(cached)
                 return
             }
 
-            var listeners = pendingListeners[item.packageName]
+            var listeners = pendingListeners[cacheKey]
             if (listeners != null) {
                 listeners.add(listener)
                 return
@@ -119,33 +126,36 @@ class AppRepository(context: Context) {
 
             listeners = ArrayList()
             listeners.add(listener)
-            pendingListeners[item.packageName] = listeners
+            pendingListeners[cacheKey] = listeners
         }
 
         executor.execute {
-
-            var bitmap = diskCache.getBitmap(item.packageName)
+            var bitmap = diskCache.getBitmap(cacheKey)
 
             if (bitmap == null) {
                 try {
-                    val drawable = pm.getApplicationIcon(item.packageName)
-                    bitmap = drawableToBitmap(drawable)
-                    if (bitmap != null) {
-                        diskCache.saveBitmap(item.packageName, bitmap)
+                    val launcherApps = context.getSystemService(Context.LAUNCHER_APPS_SERVICE) as LauncherApps
+                    val activities = launcherApps.getActivityList(item.packageName, userHandle)
+                    if (activities.isNotEmpty()) {
+                        val drawable = activities[0].getIcon(0)
+                        bitmap = drawableToBitmap(drawable)
+                        if (bitmap != null) {
+                            diskCache.saveBitmap(cacheKey, bitmap)
+                        }
                     }
-                } catch (ignored: PackageManager.NameNotFoundException) {
+                } catch (ignored: Exception) {
                 }
             }
 
             if (bitmap != null) {
-                iconCache.put(item.packageName, bitmap)
+                iconCache.put(cacheKey, bitmap)
             }
 
             val finalBitmap = bitmap
             mainHandler.post {
                 val listeners: MutableList<OnIconLoadedListener>?
                 synchronized(pendingListeners) {
-                    listeners = pendingListeners.remove(item.packageName)
+                    listeners = pendingListeners.remove(cacheKey)
                 }
                 if (listeners != null) {
                     for (l in listeners) {
@@ -165,11 +175,13 @@ class AppRepository(context: Context) {
 
     private fun serializeApps(apps: List<AppItem>): String {
         val array = JSONArray()
+        val userManager = context.getSystemService(Context.USER_SERVICE) as UserManager
         for (app in apps) {
             val obj = JSONObject()
             obj.put("label", app.label)
             obj.put("packageName", app.packageName)
             obj.put("className", app.className)
+            obj.put("userSerial", userManager.getSerialNumberForUser(app.getUserHandleOrDefault()))
             array.put(obj)
         }
         return array.toString()
@@ -179,13 +191,20 @@ class AppRepository(context: Context) {
         val apps = mutableListOf<AppItem>()
         try {
             val array = JSONArray(json)
+            val userManager = context.getSystemService(Context.USER_SERVICE) as UserManager
             for (i in 0 until array.length()) {
                 val obj = array.getJSONObject(i)
-                apps.add(AppItem(
-                    obj.getString("label"),
-                    obj.getString("packageName"),
-                    obj.getString("className")
-                ))
+                val userSerial = if (obj.has("userSerial")) obj.getLong("userSerial") else -1L
+                val userHandle = if (userSerial != -1L) userManager.getUserForSerialNumber(userSerial) else Process.myUserHandle()
+
+                if (userHandle != null) {
+                    apps.add(AppItem(
+                        obj.getString("label"),
+                        obj.getString("packageName"),
+                        obj.getString("className"),
+                        userHandle
+                    ))
+                }
             }
         } catch (ignored: Exception) {}
         return apps

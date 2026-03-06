@@ -11,11 +11,14 @@ import android.widget.TextView
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.riprog.launcher.R
+import com.riprog.launcher.data.model.AppItem
 import com.riprog.launcher.logic.managers.SettingsManager
+import com.riprog.launcher.logic.utils.PackageUtils
 import com.riprog.launcher.theme.ThemeUtils
 
 class AppDrawerContextMenu @JvmOverloads constructor(
     context: Context,
+    private val appItem: AppItem? = null,
     private val settingsManager: SettingsManager? = null,
     private val callback: Callback? = null,
     attrs: AttributeSet? = null,
@@ -25,6 +28,7 @@ class AppDrawerContextMenu @JvmOverloads constructor(
     interface Callback {
         fun onAddToHome()
         fun onAppInfo()
+        fun onUninstall(app: AppItem)
         fun dismiss()
     }
 
@@ -49,6 +53,11 @@ class AppDrawerContextMenu @JvmOverloads constructor(
             val items = mutableListOf<ContextMenuItem>()
             items.add(ContextMenuItem(R.string.action_add_to_home) { callback.onAddToHome() })
             items.add(ContextMenuItem(R.string.action_app_info) { callback.onAppInfo() })
+
+            if (appItem != null && PackageUtils.isUninstallable(context, appItem.packageName, appItem.userHandle)) {
+                items.add(ContextMenuItem(R.string.action_uninstall) { callback.onUninstall(appItem) })
+            }
+
             recyclerView.adapter = ContextMenuAdapter(items, settingsManager, callback)
         }
 

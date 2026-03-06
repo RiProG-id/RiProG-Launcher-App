@@ -3,6 +3,7 @@ package com.riprog.launcher.ui.views.layout
 import com.riprog.launcher.theme.ThemeUtils
 import com.riprog.launcher.logic.managers.SettingsManager
 import com.riprog.launcher.logic.utils.WidgetSizingUtils
+import com.riprog.launcher.logic.utils.PackageUtils
 import com.riprog.launcher.data.model.HomeItem
 import com.riprog.launcher.ui.views.home.HomeView
 import com.riprog.launcher.ui.activities.MainActivity
@@ -70,6 +71,7 @@ class TransformOverlay @JvmOverloads constructor(
         fun onCancel()
         fun onRemove()
         fun onAppInfo()
+        fun onUninstall()
         fun onCollision(otherView: View)
         fun findItemAt(x: Float, y: Float, exclude: View): View?
         fun onSnapToGrid(v: View, isResize: Boolean): Boolean
@@ -137,6 +139,15 @@ class TransformOverlay @JvmOverloads constructor(
 
         if (item.type == HomeItem.Type.APP) {
             addButton(container, R.string.action_app_info, adaptiveColor) { onSaveListener?.onAppInfo() }
+
+            if (item.packageName != null) {
+                val userManager = context.getSystemService(Context.USER_SERVICE) as android.os.UserManager
+                val userHandle = if (item.userSerial != -1L) userManager.getUserForSerialNumber(item.userSerial) else android.os.Process.myUserHandle()
+
+                if (PackageUtils.isUninstallable(context, item.packageName!!, userHandle)) {
+                    addButton(container, R.string.action_uninstall, adaptiveColor) { onSaveListener?.onUninstall() }
+                }
+            }
         }
 
         val lp = LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT)

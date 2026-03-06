@@ -50,4 +50,6 @@
     <string name="action_add_page_left">Add Left</string>
     <string name="action_add_page_right">Add Right</string>
     <string name="page_full">Page is full</string>
+    <string name="action_uninstall">Uninstall</string>
+    <string name="uninstall_failed">Could not start uninstall</string>
 </resources>

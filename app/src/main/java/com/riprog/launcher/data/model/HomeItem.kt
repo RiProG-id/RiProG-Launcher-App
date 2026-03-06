@@ -44,13 +44,16 @@ class HomeItem {
 
     var lastInteractionTime: Long = 0
 
+    var userSerial: Long = -1
+
     companion object {
 
-        fun createApp(packageName: String, className: String, col: Float, row: Float, page: Int): HomeItem {
+        fun createApp(packageName: String, className: String, col: Float, row: Float, page: Int, userSerial: Long = -1): HomeItem {
             val item = HomeItem()
             item.type = Type.APP
             item.packageName = packageName
             item.className = className
+            item.userSerial = userSerial
             item.col = col
             item.row = row
             item.spanX = 1f

@@ -106,6 +106,7 @@ class MainActivity : ComponentActivity() {
     lateinit var drawerView: DrawerView
     lateinit var itemViewFactory: HomeItemViewFactory
     private var packageReceiver: PackageReceiver? = null
+    private var launcherAppsCallback: android.content.pm.LauncherApps.Callback? = null
     var homeItems: MutableList<HomeItem> = ArrayList()
     var allApps: List<AppItem> = ArrayList()
     private var pendingSpanX: Int = 2
@@ -157,6 +158,14 @@ class MainActivity : ComponentActivity() {
             override fun onShowAppInfo(item: HomeItem?) {
                 this@MainActivity.showAppInfo(item)
             }
+
+            override fun onUninstall(item: HomeItem?) {
+                if (item != null && item.packageName != null) {
+                    val userManager = getSystemService(Context.USER_SERVICE) as android.os.UserManager
+                    val userHandle = if (item.userSerial != -1L) userManager.getUserForSerialNumber(item.userSerial) else android.os.Process.myUserHandle()
+                    requestUninstall(item.packageName!!, userHandle)
+                }
+            }
         })
 
         setContentView(mainLayout)
@@ -189,6 +198,7 @@ class MainActivity : ComponentActivity() {
         widgetManager = WidgetManager(this, settingsManager, appWidgetManager, appWidgetHost)
         loadApps()
         registerPackageReceiver()
+        registerLauncherAppsCallback()
 
         homeView.post {
             restoreHomeState()
@@ -369,12 +379,39 @@ class MainActivity : ComponentActivity() {
         val packageName = item?.packageName
         if (packageName.isNullOrEmpty()) return
         try {
-            val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
-            intent.data = "package:$packageName".toUri()
-            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-            startActivity(intent)
+            val userManager = getSystemService(Context.USER_SERVICE) as android.os.UserManager
+            val userHandle = if (item.userSerial != -1L) userManager.getUserForSerialNumber(item.userSerial) else android.os.Process.myUserHandle()
+
+            val launcherApps = getSystemService(Context.LAUNCHER_APPS_SERVICE) as android.content.pm.LauncherApps
+            launcherApps.startAppDetailsActivity(android.content.ComponentName(packageName, ""), userHandle, null, null)
         } catch (e: Exception) {
-            Toast.makeText(this, getString(R.string.app_info_failed), Toast.LENGTH_SHORT).show()
+            try {
+                val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
+                intent.data = "package:$packageName".toUri()
+                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                startActivity(intent)
+            } catch (e2: Exception) {
+                Toast.makeText(this, getString(R.string.app_info_failed), Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
+    private fun requestUninstall(packageName: String, userHandle: android.os.UserHandle? = null) {
+        try {
+            val targetUser = userHandle ?: android.os.Process.myUserHandle()
+            if (Build.VERSION.SDK_INT >= 30) {
+                val launcherApps = getSystemService(Context.LAUNCHER_APPS_SERVICE) as android.content.pm.LauncherApps
+                val method = launcherApps::class.java.getMethod("startPackageUninstallActivity", String::class.java, android.os.UserHandle::class.java, android.content.IntentSender::class.java)
+                method.invoke(launcherApps, packageName, targetUser, null)
+            } else {
+                val uri = Uri.fromParts("package", packageName, null)
+                val intent = Intent(Intent.ACTION_DELETE, uri)
+                intent.putExtra(Intent.EXTRA_USER, targetUser)
+                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                startActivity(intent)
+            }
+        } catch (e: Exception) {
+            Toast.makeText(this, R.string.uninstall_failed, Toast.LENGTH_SHORT).show()
         }
     }
 
@@ -441,7 +478,14 @@ class MainActivity : ComponentActivity() {
                         shouldRemove = true
                     } else {
                         try {
-                            item.packageName?.let { pm.getApplicationInfo(it, 0) } ?: throw Exception()
+                            val userManager = getSystemService(Context.USER_SERVICE) as android.os.UserManager
+                            val userHandle = if (item.userSerial != -1L) userManager.getUserForSerialNumber(item.userSerial) else android.os.Process.myUserHandle()
+                            if (userHandle == null) {
+                                shouldRemove = true
+                            } else {
+                                val launcherApps = getSystemService(Context.LAUNCHER_APPS_SERVICE) as android.content.pm.LauncherApps
+                                launcherApps.getApplicationInfo(item.packageName!!, 0, userHandle)
+                            }
                         } catch (e: Exception) {
                             shouldRemove = true
                         }
@@ -463,7 +507,15 @@ class MainActivity : ComponentActivity() {
                                 changed = true
                             } else {
                                 try {
-                                    subItem.packageName?.let { pm.getApplicationInfo(it, 0) } ?: throw Exception()
+                                    val userManager = getSystemService(Context.USER_SERVICE) as android.os.UserManager
+                                    val userHandle = if (subItem.userSerial != -1L) userManager.getUserForSerialNumber(subItem.userSerial) else android.os.Process.myUserHandle()
+                                    if (userHandle == null) {
+                                        folderIterator.remove()
+                                        changed = true
+                                    } else {
+                                        val launcherApps = getSystemService(Context.LAUNCHER_APPS_SERVICE) as android.content.pm.LauncherApps
+                                        launcherApps.getApplicationInfo(subItem.packageName!!, 0, userHandle)
+                                    }
                                 } catch (e: Exception) {
                                     folderIterator.remove()
                                     changed = true
@@ -492,7 +544,7 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun registerPackageReceiver() {
-        packageReceiver = PackageReceiver(model) {
+        packageReceiver = PackageReceiver(model) { packageName, userHandle ->
             loadApps()
         }
         val filter = IntentFilter()
@@ -541,6 +593,76 @@ class MainActivity : ComponentActivity() {
     override fun onDestroy() {
         super.onDestroy()
         if (packageReceiver != null) unregisterReceiver(packageReceiver)
+        unregisterLauncherAppsCallback()
+    }
+
+    private fun registerLauncherAppsCallback() {
+        val launcherApps = getSystemService(Context.LAUNCHER_APPS_SERVICE) as android.content.pm.LauncherApps
+        launcherAppsCallback = object : android.content.pm.LauncherApps.Callback() {
+            override fun onPackageRemoved(packageName: String, user: android.os.UserHandle) {
+                runOnUiThread {
+                    val userManager = getSystemService(Context.USER_SERVICE) as android.os.UserManager
+                    val userSerial = userManager.getSerialNumberForUser(user)
+                    removeItemsByPackage(packageName, userSerial)
+                    loadApps()
+                }
+            }
+
+            override fun onPackageAdded(packageName: String, user: android.os.UserHandle) {
+                runOnUiThread { loadApps() }
+            }
+
+            override fun onPackageChanged(packageName: String, user: android.os.UserHandle) {
+                runOnUiThread { loadApps() }
+            }
+
+            override fun onPackagesAvailable(packageNames: Array<out String>, user: android.os.UserHandle, replacing: Boolean) {
+                runOnUiThread { loadApps() }
+            }
+
+            override fun onPackagesUnavailable(packageNames: Array<out String>, user: android.os.UserHandle, replacing: Boolean) {
+                runOnUiThread { loadApps() }
+            }
+        }
+        launcherApps.registerCallback(launcherAppsCallback)
+    }
+
+    private fun unregisterLauncherAppsCallback() {
+        launcherAppsCallback?.let {
+            val launcherApps = getSystemService(Context.LAUNCHER_APPS_SERVICE) as android.content.pm.LauncherApps
+            launcherApps.unregisterCallback(it)
+        }
+    }
+
+    private fun removeItemsByPackage(packageName: String, userSerial: Long) {
+        val iterator = homeItems.iterator()
+        var changed = false
+        while (iterator.hasNext()) {
+            val item = iterator.next()
+            if (item.type == HomeItem.Type.APP && item.packageName == packageName && item.userSerial == userSerial) {
+                homeView.removeItemView(item)
+                iterator.remove()
+                changed = true
+            } else if (item.type == HomeItem.Type.FOLDER) {
+                val folderIterator = item.folderItems.iterator()
+                while (folderIterator.hasNext()) {
+                    val subItem = folderIterator.next()
+                    if (subItem.type == HomeItem.Type.APP && subItem.packageName == packageName && subItem.userSerial == userSerial) {
+                        folderIterator.remove()
+                        changed = true
+                    }
+                }
+                if (item.folderItems.isEmpty()) {
+                    homeView.removeItemView(item)
+                    iterator.remove()
+                    changed = true
+                }
+            }
+        }
+        if (changed) {
+            saveHomeState()
+            homeView.refreshLayout()
+        }
     }
 
     private fun configureWidget(data: Intent) {
@@ -766,7 +888,7 @@ class MainActivity : ComponentActivity() {
 
     fun showAppDrawerMenu(anchor: View, app: AppItem) {
         if (isAnyOverlayVisible()) return
-        val menu = AppDrawerContextMenu(this, settingsManager, object : AppDrawerContextMenu.Callback {
+        val menu = AppDrawerContextMenu(this, app, settingsManager, object : AppDrawerContextMenu.Callback {
             override fun onAddToHome() {
                 spawnApp(app)
                 mainLayout.closeDrawer()
@@ -774,6 +896,10 @@ class MainActivity : ComponentActivity() {
 
             override fun onAppInfo() {
                 showAppInfo(HomeItem.createApp(app.packageName, app.className, 0f, 0f, 0))
+            }
+
+            override fun onUninstall(app: AppItem) {
+                requestUninstall(app.packageName, app.userHandle)
             }
 
             override fun dismiss() {
@@ -858,7 +984,9 @@ class MainActivity : ComponentActivity() {
             col = slot.third.toFloat()
         }
 
-        val item = HomeItem.createApp(app.packageName, app.className, col, row, page)
+        val userManager = getSystemService(Context.USER_SERVICE) as android.os.UserManager
+        val userSerial = userManager.getSerialNumberForUser(app.userHandle)
+        val item = HomeItem.createApp(app.packageName, app.className, col, row, page, userSerial)
         homeItems.add(item)
         renderHomeItem(item)
         saveHomeState()

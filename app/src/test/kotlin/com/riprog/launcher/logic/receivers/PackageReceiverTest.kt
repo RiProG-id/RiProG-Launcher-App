@@ -15,7 +15,7 @@ class PackageReceiverTest {
     fun testOnReceiveInvalidatesIconAndCallsCallback() {
         val model: AppRepository = mock()
         var callbackCalled = false
-        val onPackageChanged = { callbackCalled = true }
+        val onPackageChanged = { pkg: String?, user: android.os.UserHandle? -> callbackCalled = true }
         val receiver = PackageReceiver(model, onPackageChanged)
 
         val context: Context = mock()
