@@ -16,6 +16,7 @@ import com.riprog.launcher.logic.managers.FolderManager
 import com.riprog.launcher.logic.controllers.FreeformController
 import com.riprog.launcher.logic.receivers.PackageReceiver
 import com.riprog.launcher.logic.utils.WidgetSizingUtils
+import com.riprog.launcher.logic.utils.AppUtils
 import com.riprog.launcher.ui.activities.WidgetPickerActivity
 import com.riprog.launcher.data.repository.AppRepository
 import com.riprog.launcher.data.model.HomeItem
@@ -156,6 +157,10 @@ class MainActivity : ComponentActivity() {
 
             override fun onShowAppInfo(item: HomeItem?) {
                 this@MainActivity.showAppInfo(item)
+            }
+
+            override fun onUninstallItem(item: HomeItem?) {
+                this@MainActivity.uninstallApp(item?.packageName)
             }
         })
 
@@ -376,6 +381,11 @@ class MainActivity : ComponentActivity() {
         } catch (e: Exception) {
             Toast.makeText(this, getString(R.string.app_info_failed), Toast.LENGTH_SHORT).show()
         }
+    }
+
+    fun uninstallApp(packageName: String?) {
+        if (packageName.isNullOrEmpty()) return
+        AppUtils.uninstallApp(this, packageName)
     }
 
     private fun findApp(packageName: String): AppItem? {
@@ -776,6 +786,11 @@ class MainActivity : ComponentActivity() {
                 showAppInfo(HomeItem.createApp(app.packageName, app.className, 0f, 0f, 0))
             }
 
+            override fun onUninstall() {
+                uninstallApp(app.packageName)
+                mainLayout.closeDrawer()
+            }
+
             override fun dismiss() {
                 if (currentAppDrawerMenu != null) {
                     mainLayout.removeView(currentAppDrawerMenu)
@@ -786,7 +801,8 @@ class MainActivity : ComponentActivity() {
             }
         })
         currentAppDrawerMenu = menu
-        menu.showAt(anchor, mainLayout)
+        val isUninstallable = AppUtils.isUninstallable(this, app.packageName)
+        menu.showAt(anchor, mainLayout, isUninstallable)
         updateContentBlur()
     }
 

@@ -33,6 +33,7 @@ class FreeformController(
         fun onSaveState()
         fun onRemoveItem(item: HomeItem?, view: View?)
         fun onShowAppInfo(item: HomeItem?)
+        fun onUninstallItem(item: HomeItem?)
     }
 
     fun showTransformOverlay(v: View, initialTouchX: Float = -1f, initialTouchY: Float = -1f) {
@@ -97,6 +98,9 @@ class FreeformController(
             }
             override fun onAppInfo() {
                 listener.onShowAppInfo(v.tag as HomeItem?)
+            }
+            override fun onUninstall() {
+                listener.onUninstallItem(v.tag as HomeItem?)
             }
             override fun onCollision(otherView: View) {
                 if (handleFolderDrop(v, otherView)) {

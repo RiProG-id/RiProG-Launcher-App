@@ -25,6 +25,7 @@ class AppDrawerContextMenu @JvmOverloads constructor(
     interface Callback {
         fun onAddToHome()
         fun onAppInfo()
+        fun onUninstall()
         fun dismiss()
     }
 
@@ -44,15 +45,6 @@ class AppDrawerContextMenu @JvmOverloads constructor(
         }
         recyclerView.clipToPadding = false
         recyclerView.setPadding(dpToPx(4), dpToPx(4), dpToPx(4), dpToPx(4))
-
-        if (callback != null && settingsManager != null) {
-            val items = mutableListOf<ContextMenuItem>()
-            items.add(ContextMenuItem(R.string.action_add_to_home) { callback.onAddToHome() })
-            items.add(ContextMenuItem(R.string.action_app_info) { callback.onAppInfo() })
-            recyclerView.adapter = ContextMenuAdapter(items, settingsManager, callback)
-        }
-
-        addView(recyclerView, LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT))
     }
 
     private data class ContextMenuItem(
@@ -88,7 +80,19 @@ class AppDrawerContextMenu @JvmOverloads constructor(
         override fun getItemCount(): Int = items.size
     }
 
-    fun showAt(anchorView: View, root: ViewGroup) {
+    fun showAt(anchorView: View, root: ViewGroup, isUninstallable: Boolean = false) {
+        if (callback != null && settingsManager != null) {
+            val items = mutableListOf<ContextMenuItem>()
+            items.add(ContextMenuItem(R.string.action_add_to_home) { callback.onAddToHome() })
+            items.add(ContextMenuItem(R.string.action_app_info) { callback.onAppInfo() })
+            if (isUninstallable) {
+                items.add(ContextMenuItem(R.string.action_uninstall) { callback.onUninstall() })
+            }
+            recyclerView.adapter = ContextMenuAdapter(items, settingsManager, callback)
+        }
+
+        addView(recyclerView, LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT))
+
         val location = IntArray(2)
         anchorView.getLocationInWindow(location)
         val rootLocation = IntArray(2)
