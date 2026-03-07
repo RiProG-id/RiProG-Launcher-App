@@ -48,6 +48,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.content.ContextCompat
 import androidx.core.net.toUri
 import android.widget.*
 import java.util.*
@@ -226,14 +227,14 @@ class MainActivity : ComponentActivity() {
         title.setText(R.string.prompt_default_launcher_title)
         title.textSize = 18f
         title.setTypeface(null, Typeface.BOLD)
-        title.setTextColor(getColor(R.color.foreground))
+        title.setTextColor(ContextCompat.getColor(this, R.color.foreground))
         prompt.addView(title)
 
         val message = TextView(this)
         message.setText(R.string.prompt_default_launcher_message)
         message.setPadding(0, dpToPx(8), 0, dpToPx(16))
         message.gravity = Gravity.CENTER
-        message.setTextColor(getColor(R.color.foreground_dim))
+        message.setTextColor(ContextCompat.getColor(this, R.color.foreground_dim))
         prompt.addView(message)
 
         val buttons = LinearLayout(this)
@@ -243,7 +244,7 @@ class MainActivity : ComponentActivity() {
         val btnLater = TextView(this)
         btnLater.setText(R.string.action_later)
         btnLater.setPadding(dpToPx(16), dpToPx(8), dpToPx(16), dpToPx(8))
-        btnLater.setTextColor(getColor(R.color.foreground))
+        btnLater.setTextColor(ContextCompat.getColor(this, R.color.foreground))
         btnLater.setOnClickListener {
             mainLayout.removeView(prompt)
             currentDefaultPrompt = null
@@ -253,7 +254,7 @@ class MainActivity : ComponentActivity() {
         val btnSet = TextView(this)
         btnSet.setText(R.string.action_set_default)
         btnSet.setPadding(dpToPx(16), dpToPx(8), dpToPx(16), dpToPx(8))
-        btnSet.setTextColor(getColor(R.color.accent_blue))
+        btnSet.setTextColor(ContextCompat.getColor(this, R.color.accent_blue))
         btnSet.setTypeface(null, Typeface.BOLD)
         btnSet.setOnClickListener {
             mainLayout.removeView(prompt)
@@ -408,7 +409,7 @@ class MainActivity : ComponentActivity() {
     private fun applyDynamicColors() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             try {
-                val accentColor = resources.getColor(android.R.color.system_accent1_400, theme)
+                val accentColor = ContextCompat.getColor(this, android.R.color.system_accent1_400)
                 homeView.setAccentColor(accentColor)
                 drawerView.setAccentColor(accentColor)
             } catch (ignored: Exception) {
@@ -499,11 +500,13 @@ class MainActivity : ComponentActivity() {
         filter.addAction(Intent.ACTION_PACKAGE_ADDED)
         filter.addAction(Intent.ACTION_PACKAGE_REMOVED)
         filter.addDataScheme("package")
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            registerReceiver(packageReceiver, filter, RECEIVER_NOT_EXPORTED)
-        } else {
-            registerReceiver(packageReceiver, filter)
-        }
+
+        ContextCompat.registerReceiver(
+            this,
+            packageReceiver,
+            filter,
+            ContextCompat.RECEIVER_NOT_EXPORTED
+        )
     }
 
     override fun onTrimMemory(level: Int) {

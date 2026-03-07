@@ -6,6 +6,7 @@ import com.riprog.launcher.logic.managers.SettingsManager
 import com.riprog.launcher.ui.views.layout.AutoDimmingBackground
 import com.riprog.launcher.R
 
+import androidx.core.content.ContextCompat
 import androidx.activity.ComponentActivity
 import androidx.activity.enableEdgeToEdge
 import android.app.Activity
@@ -283,8 +284,8 @@ class SettingsActivity : ComponentActivity() {
                 }
                 SettingType.ABOUT -> {
                     val aboutContent = TextView(context)
-                    aboutContent.setTextColor(context.getColor(R.color.foreground_dim))
-                    aboutContent.setLinkTextColor(context.getColor(R.color.accent_blue))
+                    aboutContent.setTextColor(ContextCompat.getColor(context, R.color.foreground_dim))
+                    aboutContent.setLinkTextColor(ContextCompat.getColor(context, R.color.accent_blue))
                     aboutContent.textSize = 14f
                     aboutContent.setPadding(0, 0, 0, dpToPx(32))
                     SimpleViewHolder(aboutContent)
@@ -319,7 +320,7 @@ class SettingsActivity : ComponentActivity() {
         override fun onBindViewHolder(holder: RecyclerView.ViewHolder, position: Int) {
             val item = items[position]
             val adaptiveColor = ThemeUtils.getAdaptiveColor(themedContext, settingsManager, true)
-            val dimColor = themedContext.getColor(R.color.foreground_dim)
+            val dimColor = ContextCompat.getColor(themedContext, R.color.foreground_dim)
 
             when (item.type) {
                 SettingType.TITLE -> {
@@ -383,7 +384,7 @@ class SettingsActivity : ComponentActivity() {
 
                         if (isSelected) {
                             val gd = GradientDrawable()
-                            gd.setColor(themedContext.getColor(R.color.search_background))
+                            gd.setColor(ContextCompat.getColor(themedContext, R.color.search_background))
                             gd.cornerRadius = dpToPx(8).toFloat()
                             option.background = gd
                         }
@@ -420,7 +421,7 @@ class SettingsActivity : ComponentActivity() {
 
                         if (isSelected) {
                             val gd = GradientDrawable()
-                            gd.setColor(themedContext.getColor(R.color.search_background))
+                            gd.setColor(ContextCompat.getColor(themedContext, R.color.search_background))
                             gd.cornerRadius = dpToPx(8).toFloat()
                             option.background = gd
                         }
@@ -438,7 +439,7 @@ class SettingsActivity : ComponentActivity() {
                 SettingType.ABOUT -> {
                     val tv = holder.itemView as TextView
                     tv.setTextColor(dimColor)
-                    tv.setLinkTextColor(themedContext.getColor(R.color.accent_blue))
+                    tv.setLinkTextColor(ContextCompat.getColor(themedContext, R.color.accent_blue))
                     tv.setText(R.string.about_content)
                     Linkify.addLinks(tv, Linkify.WEB_URLS)
                     tv.movementMethod = LinkMovementMethod.getInstance()
