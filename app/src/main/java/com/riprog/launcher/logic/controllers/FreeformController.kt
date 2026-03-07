@@ -224,8 +224,14 @@ class FreeformController(
             val sY: Int
 
             if (item.type == HomeItem.Type.WIDGET) {
-                val newSpanX = (vBounds.width() / cellWidth).roundToInt().coerceIn(1, preferences.columns)
-                val newSpanY = (vBounds.height() / cellHeight).roundToInt().coerceIn(1, homeView.getGridRows())
+                val info = (v as? android.appwidget.AppWidgetHostView)?.appWidgetInfo
+                val minSpanX = info?.let { WidgetSizingUtils.getMinSpanX(it, cellWidth, density) } ?: 1
+                val maxSpanX = info?.let { WidgetSizingUtils.getMaxSpanX(it, cellWidth, density) } ?: preferences.columns
+                val minSpanY = info?.let { WidgetSizingUtils.getMinSpanY(it, cellHeight, density, homeView.getGridRows()) } ?: 1
+                val maxSpanY = info?.let { WidgetSizingUtils.getMaxSpanY(it, cellHeight, density, homeView.getGridRows()) } ?: homeView.getGridRows()
+
+                val newSpanX = (vBounds.width() / cellWidth).roundToInt().coerceIn(minSpanX, maxSpanX)
+                val newSpanY = (vBounds.height() / cellHeight).roundToInt().coerceIn(minSpanY, maxSpanY)
 
                 if (isResize) {
                     if (newSpanX.toFloat() == item.spanX && newSpanY.toFloat() == item.spanY) {
@@ -359,8 +365,15 @@ class FreeformController(
                 val sY: Int
 
                 if (item.type == HomeItem.Type.WIDGET) {
-                    sX = (vBounds.width() / cellWidth).roundToInt().coerceIn(1, preferences.columns)
-                    sY = (vBounds.height() / cellHeight).roundToInt().coerceIn(1, homeView.getGridRows())
+                    val info = (transformingView as? android.appwidget.AppWidgetHostView)?.appWidgetInfo
+                    val density = activity.resources.displayMetrics.density
+                    val minSpanX = info?.let { WidgetSizingUtils.getMinSpanX(it, cellWidth, density) } ?: 1
+                    val maxSpanX = info?.let { WidgetSizingUtils.getMaxSpanX(it, cellWidth, density) } ?: preferences.columns
+                    val minSpanY = info?.let { WidgetSizingUtils.getMinSpanY(it, cellHeight, density, homeView.getGridRows()) } ?: 1
+                    val maxSpanY = info?.let { WidgetSizingUtils.getMaxSpanY(it, cellHeight, density, homeView.getGridRows()) } ?: homeView.getGridRows()
+
+                    sX = (vBounds.width() / cellWidth).roundToInt().coerceIn(minSpanX, maxSpanX)
+                    sY = (vBounds.height() / cellHeight).roundToInt().coerceIn(minSpanY, maxSpanY)
                 } else {
                     sX = 1
                     sY = 1
