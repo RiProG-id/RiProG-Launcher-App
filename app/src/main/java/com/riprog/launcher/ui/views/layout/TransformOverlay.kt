@@ -59,6 +59,8 @@ class TransformOverlay @JvmOverloads constructor(
     private var currentDrx = 0f
     private var currentDry = 0f
     private var hasPassedThreshold = false
+    private var isLongPressDrag = false
+    private var hasMovedSignificantly = false
     private var activeHandle = -1
     private var canResizeHorizontal = true
     private var canResizeVertical = true
@@ -116,6 +118,8 @@ class TransformOverlay @JvmOverloads constructor(
         currentDrx = 0f
         currentDry = 0f
         hasPassedThreshold = true
+        isLongPressDrag = true
+        hasMovedSignificantly = false
         onSaveListener?.onMoveStart(x, y)
     }
 
@@ -389,6 +393,8 @@ class TransformOverlay @JvmOverloads constructor(
             MotionEvent.ACTION_DOWN -> {
                 performClick()
                 activeHandle = findHandle(x, y)
+                isLongPressDrag = false
+                hasMovedSignificantly = false
                 if (activeHandle != ACTION_OUTSIDE) {
                     if (activeHandle == ACTION_MOVE && onSaveListener != null) {
                         onSaveListener.onMoveStart(x, y)
@@ -425,11 +431,15 @@ class TransformOverlay @JvmOverloads constructor(
 
             MotionEvent.ACTION_MOVE -> {
                 if (activeHandle != -1) {
+                    val threshold = dpToPx(MOVE_THRESHOLD_DP).toFloat()
+                    val distance = dist(x, y, initialTouchX, initialTouchY)
                     if (!hasPassedThreshold) {
-                        val threshold = dpToPx(MOVE_THRESHOLD_DP).toFloat()
-                        if (dist(x, y, initialTouchX, initialTouchY) > threshold) {
+                        if (distance > threshold) {
                             hasPassedThreshold = true
                         }
+                    }
+                    if (distance > threshold) {
+                        hasMovedSignificantly = true
                     }
                     if (hasPassedThreshold) {
                         buttonsContainer?.visibility = if (activeHandle == ACTION_MOVE) View.GONE else View.VISIBLE
@@ -444,6 +454,15 @@ class TransformOverlay @JvmOverloads constructor(
 
             MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
                 buttonsContainer?.visibility = View.VISIBLE
+
+                if (settingsManager.isFreeformHome == false && isLongPressDrag && !hasMovedSignificantly) {
+                    onSaveListener?.onCancel()
+                    activeHandle = -1
+                    hasPassedThreshold = false
+                    isLongPressDrag = false
+                    return true
+                }
+
                 if (activeHandle != -1 && activeHandle != ACTION_OUTSIDE && hasPassedThreshold) {
                     val midX = targetView.x + targetView.width / 2f
                     val midY = targetView.y + targetView.height / 2f
