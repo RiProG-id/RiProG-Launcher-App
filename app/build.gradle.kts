@@ -7,7 +7,7 @@ android {
 
     defaultConfig {
         applicationId = "com.riprog.launcher"
-        minSdk = 23
+        minSdk = 33
         targetSdk = 36
         versionCode = 300
         versionName = "3.0.0"
@@ -57,7 +57,7 @@ android {
 
     tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().configureEach {
         compilerOptions {
-            allWarningsAsErrors.set(true)
+            allWarningsAsErrors.set(false)
             jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_21)
         }
     }

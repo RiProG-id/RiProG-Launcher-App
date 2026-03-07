@@ -6,6 +6,7 @@ import android.content.ComponentCallbacks2
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.content.pm.ResolveInfo
 import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.drawable.BitmapDrawable
@@ -77,7 +78,10 @@ class AppRepository(context: Context) {
 
             val mainIntent = Intent(Intent.ACTION_MAIN, null)
             mainIntent.addCategory(Intent.CATEGORY_LAUNCHER)
-            val infos = pm.queryIntentActivities(mainIntent, 0)
+            val infos: List<ResolveInfo> = pm.queryIntentActivities(
+                mainIntent,
+                PackageManager.ResolveInfoFlags.of(0L)
+            )
 
             val apps: MutableList<AppItem> = ArrayList()
             val selfPackage = context.packageName

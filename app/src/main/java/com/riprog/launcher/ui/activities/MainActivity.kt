@@ -24,6 +24,7 @@ import com.riprog.launcher.R
 import com.riprog.launcher.LauncherApplication
 
 import android.app.Activity
+import android.content.pm.PackageManager
 import android.appwidget.AppWidgetHost
 import android.appwidget.AppWidgetHostView
 import android.appwidget.AppWidgetManager
@@ -199,7 +200,10 @@ class MainActivity : ComponentActivity() {
     private fun isDefaultLauncher(): Boolean {
         val intent = Intent(Intent.ACTION_MAIN)
         intent.addCategory(Intent.CATEGORY_HOME)
-        val resolveInfo = packageManager.resolveActivity(intent, android.content.pm.PackageManager.MATCH_DEFAULT_ONLY)
+        val resolveInfo = packageManager.resolveActivity(
+            intent,
+            PackageManager.ResolveInfoFlags.of(PackageManager.MATCH_DEFAULT_ONLY.toLong())
+        )
         if (resolveInfo?.activityInfo == null) return false
         return packageName == resolveInfo.activityInfo.packageName
     }
@@ -442,7 +446,9 @@ class MainActivity : ComponentActivity() {
                         shouldRemove = true
                     } else {
                         try {
-                            item.packageName?.let { pm.getApplicationInfo(it, 0) } ?: throw Exception()
+                            item.packageName?.let {
+                                pm.getApplicationInfo(it, PackageManager.ApplicationInfoFlags.of(0L))
+                            } ?: throw Exception()
                         } catch (e: Exception) {
                             shouldRemove = true
                         }
@@ -464,7 +470,9 @@ class MainActivity : ComponentActivity() {
                                 changed = true
                             } else {
                                 try {
-                                    subItem.packageName?.let { pm.getApplicationInfo(it, 0) } ?: throw Exception()
+                                    subItem.packageName?.let {
+                                        pm.getApplicationInfo(it, PackageManager.ApplicationInfoFlags.of(0L))
+                                    } ?: throw Exception()
                                 } catch (e: Exception) {
                                     folderIterator.remove()
                                     changed = true
@@ -668,7 +676,11 @@ class MainActivity : ComponentActivity() {
 
     fun getAppName(packageName: String): String {
         return try {
-            packageManager.getApplicationLabel(packageManager.getApplicationInfo(packageName, 0)).toString()
+            val ai = packageManager.getApplicationInfo(
+                packageName,
+                PackageManager.ApplicationInfoFlags.of(0L)
+            )
+            packageManager.getApplicationLabel(ai).toString()
         } catch (e: Exception) {
             packageName
         }

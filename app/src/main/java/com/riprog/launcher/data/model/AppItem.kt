@@ -19,7 +19,10 @@ class AppItem(
         fun fromPackage(context: Context, packageName: String): AppItem {
             return try {
                 val pm = context.packageManager
-                val ai = pm.getApplicationInfo(packageName, 0)
+                val ai = pm.getApplicationInfo(
+                    packageName,
+                    PackageManager.ApplicationInfoFlags.of(0L)
+                )
                 AppItem(pm.getApplicationLabel(ai).toString(), packageName, "")
             } catch (e: Exception) {
                 AppItem("...", packageName, "")
