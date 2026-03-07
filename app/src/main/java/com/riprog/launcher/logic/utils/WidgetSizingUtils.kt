@@ -95,8 +95,8 @@ object WidgetSizingUtils {
 
     fun getVisualBounds(view: View): RectF {
         val lp = view.layoutParams
-        val vWidth = if (view.width > 0) view.width.toFloat() else if (lp != null && lp.width > 0) lp.width.toFloat() else 0f
-        val vHeight = if (view.height > 0) view.height.toFloat() else if (lp != null && lp.height > 0) lp.height.toFloat() else 0f
+        val vWidth = if (lp != null && lp.width > 0) lp.width.toFloat() else if (view.width > 0) view.width.toFloat() else 0f
+        val vHeight = if (lp != null && lp.height > 0) lp.height.toFloat() else if (view.height > 0) view.height.toFloat() else 0f
 
         if (view !is ViewGroup) return RectF(0f, 0f, vWidth, vHeight)
 
