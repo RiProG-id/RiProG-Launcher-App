@@ -1,0 +1,85 @@
+package com.riprog.launcher.theme
+
+import com.riprog.launcher.logic.managers.SettingsManager
+import com.riprog.launcher.R
+
+import android.app.UiModeManager
+import android.content.Context
+import android.content.res.ColorStateList
+import android.content.res.Configuration
+import android.graphics.Color
+import android.graphics.drawable.GradientDrawable
+import android.graphics.drawable.RippleDrawable
+import android.os.Build
+import android.util.TypedValue
+import android.widget.LinearLayout
+
+object ThemeManager {
+
+
+    fun applyThemeMode(context: Context, mode: String?) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            val uiModeManager = context.getSystemService(Context.UI_MODE_SERVICE) as UiModeManager
+            val nightMode = when (mode) {
+                "light" -> UiModeManager.MODE_NIGHT_NO
+                "dark" -> UiModeManager.MODE_NIGHT_YES
+                else -> UiModeManager.MODE_NIGHT_AUTO
+            }
+            uiModeManager.setApplicationNightMode(nightMode)
+        }
+    }
+
+
+    fun applyThemeToContext(base: Context, mode: String?): Context {
+        if (mode == null || "system" == mode) return base
+
+        val config = Configuration(base.resources.configuration)
+        if ("light" == mode) {
+            config.uiMode = (config.uiMode and Configuration.UI_MODE_NIGHT_MASK.inv()) or Configuration.UI_MODE_NIGHT_NO
+        } else if ("dark" == mode) {
+            config.uiMode = (config.uiMode and Configuration.UI_MODE_NIGHT_MASK.inv()) or Configuration.UI_MODE_NIGHT_YES
+        }
+
+        return base.createConfigurationContext(config)
+    }
+
+
+    fun getSystemAccentColor(context: Context): Int? {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            return try {
+                context.resources.getColor(android.R.color.system_accent1_400, context.theme)
+            } catch (ignored: Exception) {
+                null
+            }
+        }
+        return null
+    }
+
+
+    fun applySettingItemStyle(context: Context, item: LinearLayout, settingsManager: SettingsManager) {
+        item.isClickable = true
+        item.isFocusable = true
+
+        val radius = dpToPx(context, 12).toFloat()
+
+        val shape = ThemeUtils.getThemedSurface(context, settingsManager, 12f)
+
+        val mask = GradientDrawable()
+        mask.setColor(Color.BLACK)
+        mask.cornerRadius = radius
+
+        val rippleColor = context.getColor(R.color.search_background)
+
+        item.background = RippleDrawable(
+            ColorStateList.valueOf(rippleColor),
+            shape,
+            mask
+        )
+    }
+
+    private fun dpToPx(context: Context, dp: Int): Int {
+        return TypedValue.applyDimension(
+            TypedValue.COMPLEX_UNIT_DIP, dp.toFloat(), context.resources.displayMetrics
+        ).toInt()
+    }
+}
