@@ -31,6 +31,7 @@ import android.appwidget.AppWidgetProviderInfo
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.content.IntentFilter
 import android.graphics.Color
 import android.graphics.Typeface
@@ -198,7 +199,11 @@ class MainActivity : ComponentActivity() {
     private fun isDefaultLauncher(): Boolean {
         val intent = Intent(Intent.ACTION_MAIN)
         intent.addCategory(Intent.CATEGORY_HOME)
-        val resolveInfo = packageManager.resolveActivity(intent, android.content.pm.PackageManager.MATCH_DEFAULT_ONLY)
+        val resolveInfo = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            packageManager.resolveActivity(intent, PackageManager.ResolveInfoFlags.of(PackageManager.MATCH_DEFAULT_ONLY.toLong()))
+        } else {
+            packageManager.resolveActivity(intent, PackageManager.MATCH_DEFAULT_ONLY)
+        }
         if (resolveInfo?.activityInfo == null) return false
         return packageName == resolveInfo.activityInfo.packageName
     }
@@ -441,7 +446,13 @@ class MainActivity : ComponentActivity() {
                         shouldRemove = true
                     } else {
                         try {
-                            item.packageName?.let { pm.getApplicationInfo(it, 0) } ?: throw Exception()
+                            item.packageName?.let {
+                                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                                    pm.getApplicationInfo(it, PackageManager.ApplicationInfoFlags.of(0L))
+                                } else {
+                                    pm.getApplicationInfo(it, 0)
+                                }
+                            } ?: throw Exception()
                         } catch (e: Exception) {
                             shouldRemove = true
                         }
@@ -463,7 +474,13 @@ class MainActivity : ComponentActivity() {
                                 changed = true
                             } else {
                                 try {
-                                    subItem.packageName?.let { pm.getApplicationInfo(it, 0) } ?: throw Exception()
+                                    subItem.packageName?.let {
+                                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                                            pm.getApplicationInfo(it, PackageManager.ApplicationInfoFlags.of(0L))
+                                        } else {
+                                            pm.getApplicationInfo(it, 0)
+                                        }
+                                    } ?: throw Exception()
                                 } catch (e: Exception) {
                                     folderIterator.remove()
                                     changed = true
@@ -665,7 +682,12 @@ class MainActivity : ComponentActivity() {
 
     fun getAppName(packageName: String): String {
         return try {
-            packageManager.getApplicationLabel(packageManager.getApplicationInfo(packageName, 0)).toString()
+            val ai = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                packageManager.getApplicationInfo(packageName, PackageManager.ApplicationInfoFlags.of(0L))
+            } else {
+                packageManager.getApplicationInfo(packageName, 0)
+            }
+            packageManager.getApplicationLabel(ai).toString()
         } catch (e: Exception) {
             packageName
         }

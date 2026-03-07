@@ -3,6 +3,7 @@ package com.riprog.launcher.data.model
 import android.content.ComponentName
 import android.content.Context
 import android.content.pm.PackageManager
+import android.os.Build
 
 class AppItem(
     val label: String,
@@ -19,7 +20,11 @@ class AppItem(
         fun fromPackage(context: Context, packageName: String): AppItem {
             return try {
                 val pm = context.packageManager
-                val ai = pm.getApplicationInfo(packageName, 0)
+                val ai = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                    pm.getApplicationInfo(packageName, PackageManager.ApplicationInfoFlags.of(0L))
+                } else {
+                    pm.getApplicationInfo(packageName, 0)
+                }
                 AppItem(pm.getApplicationLabel(ai).toString(), packageName, "")
             } catch (e: Exception) {
                 AppItem("...", packageName, "")
