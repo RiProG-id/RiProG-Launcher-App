@@ -199,7 +199,11 @@ class MainActivity : ComponentActivity() {
     private fun isDefaultLauncher(): Boolean {
         val intent = Intent(Intent.ACTION_MAIN)
         intent.addCategory(Intent.CATEGORY_HOME)
-        val resolveInfo = packageManager.resolveActivity(intent, android.content.pm.PackageManager.MATCH_DEFAULT_ONLY)
+        val resolveInfo = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            packageManager.resolveActivity(intent, android.content.pm.PackageManager.ResolveInfoFlags.of(android.content.pm.PackageManager.MATCH_DEFAULT_ONLY.toLong()))
+        } else {
+            packageManager.resolveActivity(intent, android.content.pm.PackageManager.MATCH_DEFAULT_ONLY)
+        }
         if (resolveInfo?.activityInfo == null) return false
         return packageName == resolveInfo.activityInfo.packageName
     }
@@ -442,7 +446,13 @@ class MainActivity : ComponentActivity() {
                         shouldRemove = true
                     } else {
                         try {
-                            item.packageName?.let { pm.getApplicationInfo(it, 0) } ?: throw Exception()
+                            item.packageName?.let {
+                                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                                    pm.getApplicationInfo(it, android.content.pm.PackageManager.ApplicationInfoFlags.of(0))
+                                } else {
+                                    pm.getApplicationInfo(it, 0)
+                                }
+                            } ?: throw Exception()
                         } catch (e: Exception) {
                             shouldRemove = true
                         }
@@ -464,7 +474,13 @@ class MainActivity : ComponentActivity() {
                                 changed = true
                             } else {
                                 try {
-                                    subItem.packageName?.let { pm.getApplicationInfo(it, 0) } ?: throw Exception()
+                                    subItem.packageName?.let {
+                                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                                            pm.getApplicationInfo(it, android.content.pm.PackageManager.ApplicationInfoFlags.of(0))
+                                        } else {
+                                            pm.getApplicationInfo(it, 0)
+                                        }
+                                    } ?: throw Exception()
                                 } catch (e: Exception) {
                                     folderIterator.remove()
                                     changed = true
@@ -501,12 +517,11 @@ class MainActivity : ComponentActivity() {
         filter.addAction(Intent.ACTION_PACKAGE_REMOVED)
         filter.addDataScheme("package")
 
-        ContextCompat.registerReceiver(
-            this,
-            packageReceiver,
-            filter,
-            ContextCompat.RECEIVER_NOT_EXPORTED
-        )
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            registerReceiver(packageReceiver, filter, Context.RECEIVER_NOT_EXPORTED)
+        } else {
+            registerReceiver(packageReceiver, filter)
+        }
     }
 
     override fun onTrimMemory(level: Int) {
@@ -668,7 +683,12 @@ class MainActivity : ComponentActivity() {
 
     fun getAppName(packageName: String): String {
         return try {
-            packageManager.getApplicationLabel(packageManager.getApplicationInfo(packageName, 0)).toString()
+            val appInfo = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                packageManager.getApplicationInfo(packageName, android.content.pm.PackageManager.ApplicationInfoFlags.of(0))
+            } else {
+                packageManager.getApplicationInfo(packageName, 0)
+            }
+            packageManager.getApplicationLabel(appInfo).toString()
         } catch (e: Exception) {
             packageName
         }

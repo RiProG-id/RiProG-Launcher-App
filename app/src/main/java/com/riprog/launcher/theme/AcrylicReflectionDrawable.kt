@@ -8,22 +8,19 @@ import android.graphics.drawable.GradientDrawable
 import android.view.animation.LinearInterpolator
 
 class AcrylicReflectionDrawable(
-    private val baseDrawable: GradientDrawable,
     private val isNight: Boolean
-) : Drawable(), Animatable {
+) : GradientDrawable(), Animatable {
 
     private val reflectionPaint = Paint(Paint.ANTI_ALIAS_FLAG)
-    private val matrix = Matrix()
+    private var mCornerRadius: Float = 0f
 
-    private var cornerRadius: Float = 0f
-
-    fun setCornerRadius(radius: Float) {
-        this.cornerRadius = radius
+    override fun setCornerRadius(radius: Float) {
+        super.setCornerRadius(radius)
+        this.mCornerRadius = radius
     }
 
     override fun onBoundsChange(bounds: Rect) {
         super.onBoundsChange(bounds)
-        baseDrawable.bounds = bounds
         updateShader(bounds)
     }
 
@@ -53,7 +50,7 @@ class AcrylicReflectionDrawable(
         val bounds = bounds
         if (bounds.isEmpty) return
 
-        baseDrawable.draw(canvas)
+        super.draw(canvas)
 
         val width = bounds.width().toFloat()
         val height = bounds.height().toFloat()
@@ -71,22 +68,19 @@ class AcrylicReflectionDrawable(
 
         val rect = RectF(0f, 0f, width, height)
         val path = Path()
-        path.addRoundRect(rect, cornerRadius, cornerRadius, Path.Direction.CW)
+        path.addRoundRect(rect, mCornerRadius, mCornerRadius, Path.Direction.CW)
         canvas.drawPath(path, highlightPaint)
     }
 
     override fun setAlpha(alpha: Int) {
-        baseDrawable.alpha = alpha
+        super.setAlpha(alpha)
         reflectionPaint.alpha = alpha
     }
 
     override fun setColorFilter(colorFilter: ColorFilter?) {
-        baseDrawable.colorFilter = colorFilter
+        super.setColorFilter(colorFilter)
         reflectionPaint.colorFilter = colorFilter
     }
-
-    @Deprecated("")
-    override fun getOpacity(): Int = PixelFormat.TRANSLUCENT
 
     override fun start() {
     }

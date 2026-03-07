@@ -5,7 +5,6 @@ import android.content.Context
 import android.content.res.Configuration
 import android.graphics.Color
 import android.graphics.drawable.Drawable
-import android.graphics.drawable.GradientDrawable
 import android.util.TypedValue
 import com.riprog.launcher.R
 import com.riprog.launcher.theme.AcrylicReflectionDrawable
@@ -16,16 +15,14 @@ object AcrylicTheme : ThemeModule {
         val isNight = (context.resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) ==
                 Configuration.UI_MODE_NIGHT_YES
 
-        val gd = GradientDrawable()
+        val reflectionDrawable = AcrylicReflectionDrawable(isNight)
         val backgroundColor = ContextCompat.getColor(context, R.color.background_acrylic)
 
         val cornerRadiusPx = dpToPx(context, cornerRadiusDp).toFloat()
-        gd.setColor(backgroundColor)
-        gd.cornerRadius = cornerRadiusPx
-
-        gd.setStroke(dpToPx(context, 1.5f), ContextCompat.getColor(context, R.color.acrylic_stroke))
-        val reflectionDrawable = AcrylicReflectionDrawable(gd, isNight)
+        reflectionDrawable.setColor(backgroundColor)
         reflectionDrawable.setCornerRadius(cornerRadiusPx)
+
+        reflectionDrawable.setStroke(dpToPx(context, 1.5f), ContextCompat.getColor(context, R.color.acrylic_stroke))
         return reflectionDrawable
     }
 

@@ -7,6 +7,7 @@ import com.riprog.launcher.R
 
 import androidx.activity.ComponentActivity
 import android.app.Activity
+import android.os.Build
 import android.appwidget.AppWidgetManager
 import android.appwidget.AppWidgetProviderInfo
 import android.content.Context
@@ -140,7 +141,12 @@ class WidgetPickerActivity : ComponentActivity() {
 
     private fun getAppName(packageName: String): String {
         return try {
-            packageManager.getApplicationLabel(packageManager.getApplicationInfo(packageName, 0)).toString()
+            val appInfo = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                packageManager.getApplicationInfo(packageName, android.content.pm.PackageManager.ApplicationInfoFlags.of(0))
+            } else {
+                packageManager.getApplicationInfo(packageName, 0)
+            }
+            packageManager.getApplicationLabel(appInfo).toString()
         } catch (e: Exception) {
             packageName
         }
