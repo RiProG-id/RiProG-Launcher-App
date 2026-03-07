@@ -6,6 +6,7 @@ import com.riprog.launcher.logic.utils.WidgetSizingUtils
 import com.riprog.launcher.R
 
 import androidx.activity.ComponentActivity
+import androidx.activity.enableEdgeToEdge
 import android.app.Activity
 import android.appwidget.AppWidgetManager
 import android.appwidget.AppWidgetProviderInfo
@@ -35,12 +36,12 @@ class WidgetPickerActivity : ComponentActivity() {
     private val widgetPreviewExecutor = Executors.newFixedThreadPool(4)
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        enableEdgeToEdge()
         super.onCreate(savedInstanceState)
         settingsManager = SettingsManager(this)
         appWidgetManager = AppWidgetManager.getInstance(this)
 
         val w = window
-        w.setFlags(WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS, WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS)
         WindowCompat.setDecorFitsSystemWindows(w, false)
         ThemeUtils.applyWindowBlur(w, settingsManager.isAcrylic)
 

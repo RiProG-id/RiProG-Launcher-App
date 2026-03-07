@@ -56,7 +56,6 @@ class SettingsActivity : ComponentActivity() {
         ThemeManager.applyThemeMode(this, settingsManager.themeMode)
 
         val w = window
-        w.setFlags(WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS, WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS)
         WindowCompat.setDecorFitsSystemWindows(w, false)
         ThemeUtils.applyWindowBlur(w, settingsManager.isAcrylic)
 

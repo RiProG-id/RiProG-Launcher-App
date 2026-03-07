@@ -125,8 +125,6 @@ class MainActivity : ComponentActivity() {
         ThemeUtils.updateStatusBarContrast(this)
 
         val w = window
-        w.setFlags(WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS, WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS)
-
         WindowCompat.setDecorFitsSystemWindows(w, false)
 
         model = (application as LauncherApplication).model
