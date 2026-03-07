@@ -470,6 +470,7 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
             v.alpha = 0.8f
         }
         v.performHapticFeedback(android.view.HapticFeedbackConstants.LONG_PRESS)
+        invalidate()
     }
 
     fun handleDrag(x: Float, y: Float) {
@@ -623,6 +624,7 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
         edgeHoldStart = 0
         edgeScrollHandler.removeCallbacks(edgeScrollRunnable)
         stopEdgeEffect()
+        invalidate()
     }
 
     fun cancelDragging() {
@@ -639,6 +641,7 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
         isEdgeScrolling = false
         edgeScrollHandler.removeCallbacks(edgeScrollRunnable)
         stopEdgeEffect()
+        invalidate()
     }
 
     fun removeItemView(item: HomeItem?) {
@@ -1020,9 +1023,19 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
     override fun dispatchDraw(canvas: android.graphics.Canvas) {
         super.dispatchDraw(canvas)
         val draggedItem = draggingView?.tag as? HomeItem
-        if (draggingView != null && !settingsManager.isFreeformHome) {
+        val activity = getActivity()
+        val folderOpen = activity?.folderManager?.isFolderOpen() == true
+        if (draggingView != null && !settingsManager.isFreeformHome && !folderOpen) {
             drawGrid(canvas)
         }
+    }
+
+    private fun getActivity(): MainActivity? {
+        var actContext = context
+        while (actContext !is MainActivity && actContext is ContextWrapper) {
+            actContext = actContext.baseContext
+        }
+        return actContext as? MainActivity
     }
 
     private fun drawGrid(canvas: android.graphics.Canvas) {
