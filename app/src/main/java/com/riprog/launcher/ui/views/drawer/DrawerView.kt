@@ -18,6 +18,7 @@ import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
 import android.widget.*
+import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.RecyclerView
@@ -148,7 +149,7 @@ class DrawerView(context: Context) : FrameLayout(context) {
             tv.text = letter
             tv.textSize = 10f
             tv.gravity = Gravity.CENTER
-            tv.setTextColor(context.getColor(R.color.foreground_dim))
+            tv.setTextColor(ContextCompat.getColor(context, R.color.foreground_dim))
             tv.setPadding(0, dpToPx(2), 0, dpToPx(2))
             indexBar.addView(tv, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f))
         }
@@ -227,7 +228,7 @@ class DrawerView(context: Context) : FrameLayout(context) {
         if (lastSelectedIndex in 0 until indexBar.childCount) {
             val prevTv = indexBar.getChildAt(lastSelectedIndex) as? TextView
             prevTv?.let {
-                it.setTextColor(context.getColor(R.color.foreground_dim))
+                it.setTextColor(ContextCompat.getColor(context, R.color.foreground_dim))
                 it.setTypeface(null, android.graphics.Typeface.NORMAL)
                 if (isAcrylic) {
                     it.animate().scaleX(1.0f).scaleY(1.0f).setDuration(100).start()
@@ -260,7 +261,7 @@ class DrawerView(context: Context) : FrameLayout(context) {
         if (lastSelectedIndex != -1) {
             val tv = indexBar.getChildAt(lastSelectedIndex) as? TextView
             tv?.let {
-                it.setTextColor(context.getColor(R.color.foreground_dim))
+                it.setTextColor(ContextCompat.getColor(context, R.color.foreground_dim))
                 it.setTypeface(null, android.graphics.Typeface.NORMAL)
                 if (settingsManager.isAcrylic) {
                     it.animate().scaleX(1.0f).scaleY(1.0f).setDuration(100).start()
@@ -345,10 +346,10 @@ class DrawerView(context: Context) : FrameLayout(context) {
         backgroundView.background = ThemeUtils.getThemedSurface(context, settingsManager, 0f)
         setupIndexBar()
         if (::searchBar.isInitialized) {
-            searchBar.setHintTextColor(context.getColor(R.color.foreground_dim))
-            searchBar.setBackgroundColor(context.getColor(R.color.search_background))
+            searchBar.setHintTextColor(ContextCompat.getColor(context, R.color.foreground_dim))
+            searchBar.setBackgroundColor(ContextCompat.getColor(context, R.color.search_background))
             if (searchBar.compoundDrawables[0] != null) {
-                searchBar.compoundDrawables[0].setTint(context.getColor(R.color.foreground_dim))
+                searchBar.compoundDrawables[0].setTint(ContextCompat.getColor(context, R.color.foreground_dim))
             }
         }
         adapter.notifyItemRangeChanged(0, adapter.itemCount)
@@ -395,14 +396,14 @@ class DrawerView(context: Context) : FrameLayout(context) {
                 searchBar = EditText(context)
                 searchBar.id = View.generateViewId()
                 searchBar.setHint(R.string.search_hint)
-                searchBar.setHintTextColor(context.getColor(R.color.foreground_dim))
+                searchBar.setHintTextColor(ContextCompat.getColor(context, R.color.foreground_dim))
                 searchBar.setTextColor(adaptiveColor)
-                searchBar.setBackgroundColor(context.getColor(R.color.search_background))
+                searchBar.setBackgroundColor(ContextCompat.getColor(context, R.color.search_background))
                 searchBar.setPadding(dpToPx(16), dpToPx(12), dpToPx(16), dpToPx(12))
                 searchBar.setCompoundDrawablesWithIntrinsicBounds(R.drawable.ic_search, 0, 0, 0)
                 searchBar.compoundDrawablePadding = dpToPx(12)
                 if (searchBar.compoundDrawables[0] != null) {
-                    searchBar.compoundDrawables[0].setTint(context.getColor(R.color.foreground_dim))
+                    searchBar.compoundDrawables[0].setTint(ContextCompat.getColor(context, R.color.foreground_dim))
                 }
                 searchBar.setSingleLine(true)
                 searchBar.gravity = Gravity.CENTER_VERTICAL

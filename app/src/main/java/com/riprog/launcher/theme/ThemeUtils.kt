@@ -16,6 +16,7 @@ import android.os.Build
 import android.view.View
 import android.view.Window
 import android.view.WindowManager
+import androidx.core.content.ContextCompat
 import androidx.core.view.WindowCompat
 
 object ThemeUtils {
@@ -36,7 +37,7 @@ object ThemeUtils {
         val luminance = (0.2126 * Color.red(backgroundColor) +
                 0.7152 * Color.green(backgroundColor) +
                 0.0722 * Color.blue(backgroundColor)) / 255.0
-        return if (luminance > 0.5) context.getColor(R.color.foreground) else Color.WHITE
+        return if (luminance > 0.5) ContextCompat.getColor(context, R.color.foreground) else Color.WHITE
     }
 
     fun getAdaptiveColor(context: Context, settingsManager: SettingsManager, isOnAcrylic: Boolean): Int {

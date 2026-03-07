@@ -13,6 +13,7 @@ import android.graphics.drawable.RippleDrawable
 import android.os.Build
 import android.util.TypedValue
 import android.widget.LinearLayout
+import androidx.core.content.ContextCompat
 
 object ThemeManager {
 
@@ -44,7 +45,7 @@ object ThemeManager {
     fun getSystemAccentColor(context: Context): Int? {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             return try {
-                context.resources.getColor(android.R.color.system_accent1_400, context.theme)
+                ContextCompat.getColor(context, android.R.color.system_accent1_400)
             } catch (ignored: Exception) {
                 null
             }
@@ -64,7 +65,7 @@ object ThemeManager {
         mask.setColor(Color.BLACK)
         mask.cornerRadius = radius
 
-        val rippleColor = context.getColor(R.color.search_background)
+        val rippleColor = ContextCompat.getColor(context, R.color.search_background)
 
         item.background = RippleDrawable(
             ColorStateList.valueOf(rippleColor),
