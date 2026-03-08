@@ -15,7 +15,7 @@
         android:icon="@android:drawable/sym_def_app_icon">
 
         <activity
-            android:name=".ui.activities.MainActivity"
+            android:name=".features.main.MainActivity"
             android:exported="true"
             android:launchMode="singleTask"
             android:screenOrientation="portrait">
@@ -28,12 +28,12 @@
         </activity>
 
         <activity
-            android:name=".ui.activities.SettingsActivity"
+            android:name=".features.settings.SettingsActivity"
             android:configChanges="uiMode"
             android:screenOrientation="portrait" />
 
         <activity
-            android:name=".ui.activities.WidgetPickerActivity"
+            android:name=".features.widgets.WidgetPickerActivity"
             android:screenOrientation="portrait" />
     </application>
 </manifest>

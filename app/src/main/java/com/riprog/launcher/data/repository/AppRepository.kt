@@ -1,6 +1,8 @@
 package com.riprog.launcher.data.repository
 
-import com.riprog.launcher.data.model.AppItem
+import com.riprog.launcher.data.local.DiskCacheManager
+
+import com.riprog.launcher.data.models.AppItem
 
 import android.content.ComponentCallbacks2
 import android.content.Context

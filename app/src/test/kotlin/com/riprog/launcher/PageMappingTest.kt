@@ -1,6 +1,6 @@
 package com.riprog.launcher
 
-import com.riprog.launcher.data.model.HomeItem
+import com.riprog.launcher.data.models.HomeItem
 import org.junit.Test
 import org.junit.Assert.assertEquals
 
