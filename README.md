@@ -31,7 +31,7 @@ RiProG Launcher is an ultra-lightweight, high-performance Android launcher desig
 ## 🛠 Technical Specifications
 
 - **Minimum SDK**: API 23 (Android 6.0)
-- **Target SDK**: API 35 (Android 15)
+- **Target SDK**: API 36 (Android 16)
 - **Implementation**: Fully programmatic UI to eliminate XML inflation overhead and maximize performance.
 - **Memory Management**: Active cache management and background task optimization.
 

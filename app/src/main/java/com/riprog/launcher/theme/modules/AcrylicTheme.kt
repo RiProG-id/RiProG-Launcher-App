@@ -1,6 +1,7 @@
 package com.riprog.launcher.theme.modules
 
 import android.content.Context
+import androidx.core.content.ContextCompat
 import android.content.res.Configuration
 import android.graphics.Color
 import android.graphics.drawable.Drawable
@@ -16,13 +17,13 @@ object AcrylicTheme : ThemeModule {
                 Configuration.UI_MODE_NIGHT_YES
 
         val gd = GradientDrawable()
-        val backgroundColor = context.getColor(R.color.background_acrylic)
+        val backgroundColor = ContextCompat.getColor(context, R.color.background_acrylic)
 
         val cornerRadiusPx = dpToPx(context, cornerRadiusDp).toFloat()
         gd.setColor(backgroundColor)
         gd.cornerRadius = cornerRadiusPx
 
-        gd.setStroke(dpToPx(context, 1.5f), context.getColor(R.color.acrylic_stroke))
+        gd.setStroke(dpToPx(context, 1.5f), ContextCompat.getColor(context, R.color.acrylic_stroke))
         val reflectionDrawable = AcrylicReflectionDrawable(gd, isNight)
         reflectionDrawable.setCornerRadius(cornerRadiusPx)
         return reflectionDrawable
@@ -30,7 +31,7 @@ object AcrylicTheme : ThemeModule {
 
     override fun getAdaptiveColor(context: Context, isOnAcrylic: Boolean): Int {
         if (isOnAcrylic) {
-            return ThemeUtils.getAdaptiveColor(context, context.getColor(R.color.background_acrylic))
+            return ThemeUtils.getAdaptiveColor(context, ContextCompat.getColor(context, R.color.background_acrylic))
         } else {
             val isNight = (context.resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) ==
                     Configuration.UI_MODE_NIGHT_YES

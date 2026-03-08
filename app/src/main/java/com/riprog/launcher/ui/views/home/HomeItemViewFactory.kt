@@ -3,6 +3,7 @@ package com.riprog.launcher.ui.views.home
 import android.appwidget.AppWidgetHost
 import android.appwidget.AppWidgetManager
 import android.content.Context
+import androidx.core.content.ContextCompat
 import android.graphics.Typeface
 import android.text.TextUtils
 import android.text.format.DateFormat
@@ -42,7 +43,7 @@ class HomeItemViewFactory(
         iconView.layoutParams = iconParams
 
         val labelView = TextView(context)
-        labelView.setTextColor(context.getColor(R.color.foreground))
+        labelView.setTextColor(ContextCompat.getColor(context, R.color.foreground))
         labelView.setTextSize(TypedValue.COMPLEX_UNIT_SP, 10 * scale)
         labelView.gravity = Gravity.CENTER
         labelView.maxLines = 1
@@ -75,12 +76,12 @@ class HomeItemViewFactory(
 
         val tvTime = TextView(context)
         tvTime.textSize = 64f
-        tvTime.setTextColor(context.getColor(R.color.foreground))
+        tvTime.setTextColor(ContextCompat.getColor(context, R.color.foreground))
         tvTime.typeface = Typeface.create("sans-serif-thin", Typeface.NORMAL)
 
         val tvDate = TextView(context)
         tvDate.textSize = 18f
-        tvDate.setTextColor(context.getColor(R.color.foreground_dim))
+        tvDate.setTextColor(ContextCompat.getColor(context, R.color.foreground_dim))
         tvDate.gravity = Gravity.CENTER
 
         clockRoot.addView(tvTime)

@@ -1,6 +1,7 @@
 package com.riprog.launcher.theme.modules
 
 import android.content.Context
+import androidx.core.content.ContextCompat
 import android.content.res.Configuration
 import android.graphics.Color
 import android.graphics.drawable.Drawable
@@ -11,14 +12,14 @@ import com.riprog.launcher.R
 object StandardTheme : ThemeModule {
     override fun getThemedSurface(context: Context, cornerRadiusDp: Float): Drawable {
         val gd = GradientDrawable()
-        val backgroundColor = context.getColor(R.color.surface)
+        val backgroundColor = ContextCompat.getColor(context, R.color.surface)
 
         val cornerRadiusPx = dpToPx(context, cornerRadiusDp).toFloat()
         gd.setColor(backgroundColor)
         gd.cornerRadius = cornerRadiusPx
 
         if (cornerRadiusDp > 0) {
-            gd.setStroke(dpToPx(context, 1.2f), context.getColor(R.color.surface_stroke))
+            gd.setStroke(dpToPx(context, 1.2f), ContextCompat.getColor(context, R.color.surface_stroke))
         } else {
             gd.setStroke(0, 0)
         }
