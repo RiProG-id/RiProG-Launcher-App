@@ -208,11 +208,24 @@ class TransformOverlay @JvmOverloads constructor(
         var bottom = (bounds.bottom - (if (isEdgeResizing) gestureInitialPivotY else targetView.pivotY)) * sy
 
         if (isEdgeResizing) {
+            val minSize = dpToPx(40f).toFloat()
             when (activeHandle) {
-                HANDLE_RIGHT -> right += currentDrx
-                HANDLE_LEFT -> left += currentDrx
-                HANDLE_BOTTOM -> bottom += currentDry
-                HANDLE_TOP -> top += currentDry
+                HANDLE_RIGHT -> {
+                    val newW = max(minSize, gestureInitialWidth + currentDrx)
+                    right = left + newW * sx
+                }
+                HANDLE_LEFT -> {
+                    val newW = max(minSize, gestureInitialWidth - currentDrx)
+                    left = right - newW * sx
+                }
+                HANDLE_BOTTOM -> {
+                    val newH = max(minSize, gestureInitialHeight + currentDry)
+                    bottom = top + newH * sy
+                }
+                HANDLE_TOP -> {
+                    val newH = max(minSize, gestureInitialHeight - currentDry)
+                    top = bottom - newH * sy
+                }
             }
         }
 
@@ -225,7 +238,9 @@ class TransformOverlay @JvmOverloads constructor(
             paint.strokeWidth = dpToPx(1.2f).toFloat()
             paint.alpha = 80
 
-            if (isFreeform && isWidget) {
+            if (isWidget && isEdgeResizing) {
+                drawRect(left, top, right, bottom, paint)
+            } else if (isFreeform && isWidget) {
                 drawRect(left, top, right, bottom, paint)
             }
 
@@ -446,15 +461,21 @@ class TransformOverlay @JvmOverloads constructor(
             MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
                 buttonsContainer?.visibility = View.VISIBLE
                 if (activeHandle != -1 && activeHandle != ACTION_OUTSIDE && hasPassedThreshold) {
+                    val isResize = activeHandle == HANDLE_TOP || activeHandle == HANDLE_BOTTOM ||
+                                   activeHandle == HANDLE_LEFT || activeHandle == HANDLE_RIGHT
+
+                    if (isResize) {
+                        applyFinalResize()
+                    }
+
                     val midX = targetView.x + targetView.width / 2f
                     val midY = targetView.y + targetView.height / 2f
 
-                    val isResize = activeHandle == HANDLE_TOP || activeHandle == HANDLE_BOTTOM ||
-                                   activeHandle == HANDLE_LEFT || activeHandle == HANDLE_RIGHT ||
+                    val isAnyResize = isResize ||
                                    activeHandle == HANDLE_TOP_LEFT || activeHandle == HANDLE_TOP_RIGHT ||
                                    activeHandle == HANDLE_BOTTOM_LEFT || activeHandle == HANDLE_BOTTOM_RIGHT
 
-                    onSaveListener?.onSnapToGrid(targetView, isResize)
+                    onSaveListener?.onSnapToGrid(targetView, isAnyResize)
 
                     if (activeHandle == ACTION_MOVE) {
                         val other = onSaveListener?.findItemAt(midX, midY, targetView)
@@ -551,9 +572,7 @@ class TransformOverlay @JvmOverloads constructor(
     private fun handleEdgeResize(tx: Float, ty: Float) {
         if (targetView == null) return
         val activity = context as? MainActivity ?: return
-        val cellWidth = activity.homeView.getCellWidth()
-        val cellHeight = activity.homeView.getCellHeight()
-        if (cellWidth <= 0 || cellHeight <= 0) return
+        if (activity.homeView.getCellWidth() <= 0 || activity.homeView.getCellHeight() <= 0) return
 
         val rotAngle = Math.toRadians((-targetView.rotation).toDouble()).toFloat()
         val cx = gestureInitialX + gestureInitialPivotX
@@ -565,27 +584,27 @@ class TransformOverlay @JvmOverloads constructor(
 
         currentDrx = rx - irx
         currentDry = ry - iry
+    }
 
-        val minSize = dpToPx(40f).toFloat()
+    private fun applyFinalResize() {
+        if (targetView == null) return
         val lp = targetView.layoutParams
+        val minSize = dpToPx(40f).toFloat()
+
         when (activeHandle) {
             HANDLE_RIGHT -> {
                 lp.width = max(minSize, gestureInitialWidth + currentDrx).toInt()
-                currentDrx = (lp.width - gestureInitialWidth).toFloat()
             }
             HANDLE_LEFT -> {
                 lp.width = max(minSize, gestureInitialWidth - currentDrx).toInt()
-                currentDrx = (gestureInitialWidth - lp.width).toFloat()
-                targetView.x = gestureInitialX + currentDrx
+                targetView.x = gestureInitialX + (gestureInitialWidth - lp.width)
             }
             HANDLE_BOTTOM -> {
                 lp.height = max(minSize, gestureInitialHeight + currentDry).toInt()
-                currentDry = (lp.height - gestureInitialHeight).toFloat()
             }
             HANDLE_TOP -> {
                 lp.height = max(minSize, gestureInitialHeight - currentDry).toInt()
-                currentDry = (gestureInitialHeight - lp.height).toFloat()
-                targetView.y = gestureInitialY + currentDry
+                targetView.y = gestureInitialY + (gestureInitialHeight - lp.height)
             }
         }
         targetView.layoutParams = lp

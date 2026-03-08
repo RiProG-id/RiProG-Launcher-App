@@ -157,7 +157,22 @@ class FreeformController(
         val density = activity.resources.displayMetrics.density
         val horizontalPadding = (HomeView.HORIZONTAL_PADDING_DP * density).toInt().toFloat()
 
-        val vBounds = WidgetSizingUtils.getVisualBounds(v)
+        var vBounds = WidgetSizingUtils.getVisualBounds(v)
+
+        if (isResize) {
+            val lp = v.layoutParams
+            if (lp.width > 0 && lp.height > 0) {
+                val dw = lp.width.toFloat() - v.width.toFloat()
+                val dh = lp.height.toFloat() - v.height.toFloat()
+                vBounds = android.graphics.RectF(
+                    vBounds.left,
+                    vBounds.top,
+                    vBounds.right + dw,
+                    vBounds.bottom + dh
+                )
+            }
+        }
+
         val midX = v.x + vBounds.centerX()
         val midY = v.y + vBounds.centerY()
 
