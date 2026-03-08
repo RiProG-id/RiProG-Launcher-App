@@ -100,8 +100,6 @@ class TransformOverlay @JvmOverloads constructor(
         gestureInitialScaleY = targetView.scaleY
         gestureInitialX = targetView.x
         gestureInitialY = targetView.y
-        gestureInitialPivotX = targetView.pivotX
-        gestureInitialPivotY = targetView.pivotY
 
         gestureInitialWidth = if (targetView.width > 0) targetView.width else {
             val cw = (context as? MainActivity)?.homeView?.getCellWidth() ?: 0f
@@ -111,6 +109,9 @@ class TransformOverlay @JvmOverloads constructor(
             val ch = (context as? MainActivity)?.homeView?.getCellHeight() ?: 0f
             (ch * item.spanY).toInt()
         }
+
+        gestureInitialPivotX = if (targetView.width > 0) targetView.pivotX else gestureInitialWidth / 2f
+        gestureInitialPivotY = if (targetView.height > 0) targetView.pivotY else gestureInitialHeight / 2f
 
         gestureInitialBounds = contentBounds
         currentDrx = 0f
@@ -401,10 +402,10 @@ class TransformOverlay @JvmOverloads constructor(
                     gestureInitialScaleY = targetView.scaleY
                     gestureInitialX = targetView.x
                     gestureInitialY = targetView.y
-                    gestureInitialPivotX = targetView.pivotX
-                    gestureInitialPivotY = targetView.pivotY
                     gestureInitialWidth = targetView.width
                     gestureInitialHeight = targetView.height
+                    gestureInitialPivotX = if (targetView.width > 0) targetView.pivotX else gestureInitialWidth / 2f
+                    gestureInitialPivotY = if (targetView.height > 0) targetView.pivotY else gestureInitialHeight / 2f
                     gestureInitialBounds = contentBounds
                     currentDrx = 0f
                     currentDry = 0f
@@ -565,24 +566,24 @@ class TransformOverlay @JvmOverloads constructor(
         currentDrx = rx - irx
         currentDry = ry - iry
 
-        val minSize = dpToPx(40f)
+        val minSize = dpToPx(40f).toFloat()
         val lp = targetView.layoutParams
         when (activeHandle) {
             HANDLE_RIGHT -> {
-                lp.width = max(minSize, (gestureInitialWidth + currentDrx).toInt())
+                lp.width = max(minSize, gestureInitialWidth + currentDrx).toInt()
                 currentDrx = (lp.width - gestureInitialWidth).toFloat()
             }
             HANDLE_LEFT -> {
-                lp.width = max(minSize, (gestureInitialWidth - currentDrx).toInt())
+                lp.width = max(minSize, gestureInitialWidth - currentDrx).toInt()
                 currentDrx = (gestureInitialWidth - lp.width).toFloat()
                 targetView.x = gestureInitialX + currentDrx
             }
             HANDLE_BOTTOM -> {
-                lp.height = max(minSize, (gestureInitialHeight + currentDry).toInt())
+                lp.height = max(minSize, gestureInitialHeight + currentDry).toInt()
                 currentDry = (lp.height - gestureInitialHeight).toFloat()
             }
             HANDLE_TOP -> {
-                lp.height = max(minSize, (gestureInitialHeight - currentDry).toInt())
+                lp.height = max(minSize, gestureInitialHeight - currentDry).toInt()
                 currentDry = (gestureInitialHeight - lp.height).toFloat()
                 targetView.y = gestureInitialY + currentDry
             }
