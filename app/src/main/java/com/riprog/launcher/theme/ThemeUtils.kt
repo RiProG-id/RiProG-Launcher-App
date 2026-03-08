@@ -8,6 +8,7 @@ import com.riprog.launcher.R
 
 import android.app.Activity
 import android.content.Context
+import androidx.core.content.ContextCompat
 import android.graphics.Color
 import android.graphics.RenderEffect
 import android.graphics.Shader
@@ -36,7 +37,7 @@ object ThemeUtils {
         val luminance = (0.2126 * Color.red(backgroundColor) +
                 0.7152 * Color.green(backgroundColor) +
                 0.0722 * Color.blue(backgroundColor)) / 255.0
-        return if (luminance > 0.5) context.getColor(R.color.foreground) else Color.WHITE
+        return if (luminance > 0.5) ContextCompat.getColor(context, R.color.foreground) else Color.WHITE
     }
 
     fun getAdaptiveColor(context: Context, settingsManager: SettingsManager, isOnAcrylic: Boolean): Int {

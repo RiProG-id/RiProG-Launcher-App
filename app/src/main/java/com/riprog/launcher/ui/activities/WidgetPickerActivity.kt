@@ -166,7 +166,7 @@ class WidgetPickerActivity : ComponentActivity() {
             val context = parent.context
             val adaptiveColor = ThemeUtils.getAdaptiveColor(context, settingsManager, true)
             val secondaryColor = (adaptiveColor and 0x00FFFFFF) or 0x80000000.toInt()
-            val type = ItemType.values()[viewType]
+            val type = ItemType.entries[viewType]
 
             return when (type) {
                 ItemType.TITLE -> {
