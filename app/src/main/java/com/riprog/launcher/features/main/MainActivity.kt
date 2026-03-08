@@ -20,6 +20,7 @@ import com.riprog.launcher.features.widgets.WidgetPickerActivity
 import com.riprog.launcher.data.repository.AppRepository
 import com.riprog.launcher.data.models.HomeItem
 import com.riprog.launcher.data.models.AppItem
+import com.riprog.launcher.common.utils.DisplayUtils
 import com.riprog.launcher.R
 import com.riprog.launcher.LauncherApplication
 
@@ -177,8 +178,6 @@ class MainActivity : ComponentActivity() {
 
         folderManager = FolderManager(this, settingsManager)
         folderUI = FolderViewFactory(this, settingsManager)
-        appWidgetManager = AppWidgetManager.getInstance(this)
-        appWidgetHost = AppWidgetHost(this, APPWIDGET_HOST_ID)
         itemViewFactory = HomeItemViewFactory(this, settingsManager, model, appWidgetManager, appWidgetHost)
         loadApps()
         registerPackageReceiver()
@@ -214,10 +213,15 @@ class MainActivity : ComponentActivity() {
         currentDefaultPrompt = prompt
         prompt.orientation = LinearLayout.VERTICAL
         prompt.background = ThemeUtils.getThemedSurface(this, settingsManager, 28f)
-        prompt.setPadding(dpToPx(24), dpToPx(24), dpToPx(24), dpToPx(24))
+        prompt.setPadding(
+            DisplayUtils.dpToPx(this, 24),
+            DisplayUtils.dpToPx(this, 24),
+            DisplayUtils.dpToPx(this, 24),
+            DisplayUtils.dpToPx(this, 24)
+        )
         prompt.gravity = Gravity.CENTER
         val isAcrylic = settingsManager.isAcrylic
-        prompt.elevation = if (isAcrylic) dpToPx(8).toFloat() else dpToPx(2).toFloat()
+        prompt.elevation = if (isAcrylic) DisplayUtils.dpToPx(this, 8).toFloat() else DisplayUtils.dpToPx(this, 2).toFloat()
 
         val title = TextView(this)
         title.setText(R.string.prompt_default_launcher_title)
@@ -228,7 +232,7 @@ class MainActivity : ComponentActivity() {
 
         val message = TextView(this)
         message.setText(R.string.prompt_default_launcher_message)
-        message.setPadding(0, dpToPx(8), 0, dpToPx(16))
+        message.setPadding(0, DisplayUtils.dpToPx(this, 8), 0, DisplayUtils.dpToPx(this, 16))
         message.gravity = Gravity.CENTER
         message.setTextColor(ContextCompat.getColor(this, R.color.foreground_dim))
         prompt.addView(message)
@@ -239,7 +243,12 @@ class MainActivity : ComponentActivity() {
 
         val btnLater = TextView(this)
         btnLater.setText(R.string.action_later)
-        btnLater.setPadding(dpToPx(16), dpToPx(8), dpToPx(16), dpToPx(8))
+        btnLater.setPadding(
+            DisplayUtils.dpToPx(this, 16),
+            DisplayUtils.dpToPx(this, 8),
+            DisplayUtils.dpToPx(this, 16),
+            DisplayUtils.dpToPx(this, 8)
+        )
         btnLater.setTextColor(ContextCompat.getColor(this, R.color.foreground))
         btnLater.setOnClickListener {
             mainLayout.removeView(prompt)
@@ -249,7 +258,12 @@ class MainActivity : ComponentActivity() {
 
         val btnSet = TextView(this)
         btnSet.setText(R.string.action_set_default)
-        btnSet.setPadding(dpToPx(16), dpToPx(8), dpToPx(16), dpToPx(8))
+        btnSet.setPadding(
+            DisplayUtils.dpToPx(this, 16),
+            DisplayUtils.dpToPx(this, 8),
+            DisplayUtils.dpToPx(this, 16),
+            DisplayUtils.dpToPx(this, 8)
+        )
         btnSet.setTextColor(ContextCompat.getColor(this, R.color.accent_blue))
         btnSet.setTypeface(null, Typeface.BOLD)
         btnSet.setOnClickListener {
@@ -263,7 +277,7 @@ class MainActivity : ComponentActivity() {
         prompt.addView(buttons)
 
         val lp = FrameLayout.LayoutParams(
-            dpToPx(300), ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.CENTER
+            DisplayUtils.dpToPx(this, 300), ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.CENTER
         )
         mainLayout.addView(prompt, lp)
 
@@ -319,7 +333,7 @@ class MainActivity : ComponentActivity() {
         grid.removeAllViews()
         val count = Math.min(folder.folderItems.size, 4)
         val scale = settingsManager.iconScale
-        val size = (dpToPx(18) * scale).toInt()
+        val size = (DisplayUtils.dpToPx(this, 18) * scale).toInt()
 
         for (i in 0 until count) {
             val sub = folder.folderItems[i]
@@ -424,6 +438,7 @@ class MainActivity : ComponentActivity() {
 
     private fun cleanupHomeItems() {
         val pm = packageManager
+        val installedPackages = pm.getInstalledPackages(0).map { it.packageName }.toSet()
         val awm = AppWidgetManager.getInstance(this)
         val iterator = homeItems.iterator()
         var changed = false
@@ -434,20 +449,8 @@ class MainActivity : ComponentActivity() {
 
             when (item.type) {
                 HomeItem.Type.APP -> {
-                    if (item.packageName == null) {
+                    if (item.packageName == null || !installedPackages.contains(item.packageName)) {
                         shouldRemove = true
-                    } else {
-                        try {
-                            item.packageName?.let {
-                                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                                    pm.getApplicationInfo(it, PackageManager.ApplicationInfoFlags.of(0))
-                                } else {
-                                    pm.getApplicationInfo(it, 0)
-                                }
-                            } ?: throw Exception()
-                        } catch (e: Exception) {
-                            shouldRemove = true
-                        }
                     }
                 }
                 HomeItem.Type.WIDGET -> {
@@ -461,22 +464,9 @@ class MainActivity : ComponentActivity() {
                     while (folderIterator.hasNext()) {
                         val subItem = folderIterator.next()
                         if (subItem.type == HomeItem.Type.APP) {
-                            if (subItem.packageName == null) {
+                            if (subItem.packageName == null || !installedPackages.contains(subItem.packageName)) {
                                 folderIterator.remove()
                                 changed = true
-                            } else {
-                                try {
-                                    subItem.packageName?.let {
-                                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                                            pm.getApplicationInfo(it, PackageManager.ApplicationInfoFlags.of(0))
-                                        } else {
-                                            pm.getApplicationInfo(it, 0)
-                                        }
-                                    } ?: throw Exception()
-                                } catch (e: Exception) {
-                                    folderIterator.remove()
-                                    changed = true
-                                }
                             }
                         }
                     }
@@ -866,12 +856,6 @@ class MainActivity : ComponentActivity() {
 
         homeView.scrollToPage(page)
         Toast.makeText(this, getString(R.string.app_added_to_home, app.label), Toast.LENGTH_SHORT).show()
-    }
-
-    private fun dpToPx(dp: Int): Int {
-        return TypedValue.applyDimension(
-            TypedValue.COMPLEX_UNIT_DIP, dp.toFloat(), resources.displayMetrics
-        ).toInt()
     }
 
     companion object {

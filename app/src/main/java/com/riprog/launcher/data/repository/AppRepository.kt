@@ -200,6 +200,9 @@ class AppRepository(context: Context) {
 
     private fun drawableToBitmap(drawable: Drawable?): Bitmap? {
         if (drawable == null) return null
+        if (drawable is BitmapDrawable) {
+            return drawable.bitmap
+        }
 
         val size = 192
 
@@ -210,9 +213,7 @@ class AppRepository(context: Context) {
             drawable.draw(canvas)
             bitmap
         } catch (e: OutOfMemoryError) {
-            if (drawable is BitmapDrawable) {
-                drawable.bitmap
-            } else null
+            null
         }
     }
 

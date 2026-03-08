@@ -2,6 +2,7 @@ package com.riprog.launcher.features.main
 
 import com.riprog.launcher.features.main.MainActivity
 import com.riprog.launcher.data.models.HomeItem
+import com.riprog.launcher.common.utils.DisplayUtils
 import com.riprog.launcher.R
 
 import android.content.Context
@@ -70,10 +71,7 @@ class MainLayout @JvmOverloads constructor(
         lastY = ev.y
 
         if (activity.freeformInteraction.isTransforming() && longPressTriggered) {
-            val action = ev.action and MotionEvent.ACTION_MASK
-            if (action == MotionEvent.ACTION_MOVE || action == MotionEvent.ACTION_UP || action == MotionEvent.ACTION_CANCEL) {
-                return true
-            }
+            return true
         }
 
         if (activity.isAnyOverlayVisible()) {
@@ -162,11 +160,8 @@ class MainLayout @JvmOverloads constructor(
         lastY = event.y
 
         if (activity.freeformInteraction.isTransforming()) {
-            val action = event.action and MotionEvent.ACTION_MASK
-            if (action == MotionEvent.ACTION_MOVE || action == MotionEvent.ACTION_UP || action == MotionEvent.ACTION_CANCEL) {
-                activity.freeformInteraction.currentTransformOverlay?.dispatchTouchEvent(event)
-                return true
-            }
+            activity.freeformInteraction.currentTransformOverlay?.dispatchTouchEvent(event)
+            return true
         }
 
         if (activity.isAnyOverlayVisible()) {
@@ -204,19 +199,20 @@ class MainLayout @JvmOverloads constructor(
                     return true
                 }
 
-                if (!isGestureCanceled && (abs(dx.toDouble()) > touchSlop || abs(dy.toDouble()) > touchSlop)) {
+                if (!isGestureCanceled && (abs(dx) > touchSlop || abs(dy) > touchSlop)) {
                     longPressHandler.removeCallbacks(longPressRunnable)
-                    if (abs(dy.toDouble()) > abs(dx.toDouble())) {
+                    if (abs(dy) > abs(dx)) {
                         if (dy < -touchSlop * 2) {
                             openDrawer()
                             isGestureCanceled = true
                         }
                     } else {
-                        if (dx > touchSlop * 2 && activity.homeView.currentPage > 0) {
-                            activity.homeView.scrollToPage(activity.homeView.currentPage - 1)
+                        val homeView = activity.homeView
+                        if (dx > touchSlop * 2 && homeView.currentPage > 0) {
+                            homeView.scrollToPage(homeView.currentPage - 1)
                             isGestureCanceled = true
-                        } else if (dx < -touchSlop * 2 && activity.homeView.currentPage < activity.homeView.getPageCount() - 1) {
-                            activity.homeView.scrollToPage(activity.homeView.currentPage + 1)
+                        } else if (dx < -touchSlop * 2 && homeView.currentPage < homeView.getPageCount() - 1) {
+                            homeView.scrollToPage(homeView.currentPage + 1)
                             isGestureCanceled = true
                         }
                     }
@@ -558,11 +554,5 @@ class MainLayout @JvmOverloads constructor(
         } else if (item.type == HomeItem.Type.FOLDER) {
             activity.folderManager.openFolder(item, v, activity.homeItems, activity.allApps)
         }
-    }
-
-    private fun dpToPx(dp: Int): Int {
-        return TypedValue.applyDimension(
-            TypedValue.COMPLEX_UNIT_DIP, dp.toFloat(), resources.displayMetrics
-        ).toInt()
     }
 }
