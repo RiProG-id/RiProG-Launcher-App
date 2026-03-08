@@ -10,12 +10,10 @@ import com.riprog.launcher.ui.views.drawer.DrawerView
 import com.riprog.launcher.ui.views.drawer.AppDrawerContextMenu
 import com.riprog.launcher.theme.ThemeUtils
 import com.riprog.launcher.theme.ThemeManager
-import com.riprog.launcher.logic.managers.WidgetManager
 import com.riprog.launcher.logic.managers.SettingsManager
 import com.riprog.launcher.logic.managers.FolderManager
 import com.riprog.launcher.logic.controllers.FreeformController
 import com.riprog.launcher.logic.receivers.PackageReceiver
-import com.riprog.launcher.logic.utils.WidgetSizingUtils
 import com.riprog.launcher.ui.activities.WidgetPickerActivity
 import com.riprog.launcher.data.repository.AppRepository
 import com.riprog.launcher.data.model.HomeItem
@@ -25,25 +23,18 @@ import com.riprog.launcher.LauncherApplication
 
 import android.app.Activity
 import android.appwidget.AppWidgetHost
-import android.appwidget.AppWidgetHostView
 import android.appwidget.AppWidgetManager
 import android.appwidget.AppWidgetProviderInfo
-import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.content.pm.PackageManager
-import android.graphics.Color
 import android.graphics.Typeface
-import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
-import android.text.TextUtils
-import android.text.format.DateFormat
 import android.util.TypedValue
 import android.view.*
-import android.view.inputmethod.InputMethodManager
 import androidx.core.view.WindowCompat
 import androidx.activity.ComponentActivity
 import androidx.activity.OnBackPressedCallback
@@ -100,7 +91,6 @@ class MainActivity : ComponentActivity() {
     lateinit var folderManager: FolderManager
     private lateinit var folderUI: FolderViewFactory
     lateinit var freeformInteraction: FreeformController
-    private var widgetManager: WidgetManager? = null
     private lateinit var appWidgetHost: AppWidgetHost
     private lateinit var appWidgetManager: AppWidgetManager
     lateinit var mainLayout: MainLayout
@@ -188,7 +178,6 @@ class MainActivity : ComponentActivity() {
         appWidgetManager = AppWidgetManager.getInstance(this)
         appWidgetHost = AppWidgetHost(this, APPWIDGET_HOST_ID)
         itemViewFactory = HomeItemViewFactory(this, settingsManager, model, appWidgetManager, appWidgetHost)
-        widgetManager = WidgetManager(this, settingsManager, appWidgetManager, appWidgetHost)
         loadApps()
         registerPackageReceiver()
 
@@ -681,19 +670,6 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    fun getAppName(packageName: String): String {
-        return try {
-            val ai = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                packageManager.getApplicationInfo(packageName, PackageManager.ApplicationInfoFlags.of(0))
-            } else {
-                packageManager.getApplicationInfo(packageName, 0)
-            }
-            packageManager.getApplicationLabel(ai).toString()
-        } catch (e: Exception) {
-            packageName
-        }
-    }
-
     fun handleItemClick(v: View) {
         mainLayout.handleItemClick(v)
     }
@@ -897,9 +873,6 @@ class MainActivity : ComponentActivity() {
     }
 
     companion object {
-        private const val REQUEST_PICK_APPWIDGET = 1
-        private const val REQUEST_CREATE_APPWIDGET = 2
-        private const val REQUEST_PICK_WIDGET_SCREEN = 3
         private const val APPWIDGET_HOST_ID = 1024
     }
 }

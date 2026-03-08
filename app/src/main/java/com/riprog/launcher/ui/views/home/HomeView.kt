@@ -1216,36 +1216,6 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
         }
     }
 
-    private fun findNearestAvailable(occupied: Array<BooleanArray>, r: Int, c: Int, spanX: Int, spanY: Int): Pair<Int, Int>? {
-        var minDest = Double.MAX_VALUE
-        var bestPos: Pair<Int, Int>? = null
-        val columns = settingsManager.columns
-        val rows = getGridRows()
-
-        for (i in 0..rows - spanY) {
-            for (j in 0..columns - spanX) {
-                if (canPlace(occupied, i, j, spanX, spanY)) {
-                    val d = Math.sqrt(Math.pow((i - r).toDouble(), 2.0) + Math.pow((j - c).toDouble(), 2.0))
-                    if (d < minDest) {
-                        minDest = d
-                        bestPos = Pair(i, j)
-                    }
-                }
-            }
-        }
-        return bestPos
-    }
-
-    private fun canPlace(occupied: Array<BooleanArray>, r: Int, c: Int, spanX: Int, spanY: Int): Boolean {
-        val columns = settingsManager.columns
-        val rows = getGridRows()
-        for (i in r until r + spanY) {
-            for (j in c until c + spanX) {
-                if (i >= rows || j >= columns || occupied[i][j]) return false
-            }
-        }
-        return true
-    }
 
     private fun findViewForItem(item: HomeItem): View? {
         for (page in pages) {
@@ -1433,35 +1403,6 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
         return occupied
     }
 
-    fun isSpanValid(item: HomeItem, newSpanX: Float, newSpanY: Float, newCol: Int, newRow: Int): Boolean {
-        val columns = settingsManager.columns
-        val rows = getGridRows()
-        if (newCol < 0 || newRow < 0 || newCol + newSpanX.roundToInt() > columns || newRow + newSpanY.roundToInt() > rows) return false
-        val occupied = getOccupiedCells(item.page, item)
-        return canPlace(occupied, newRow, newCol, newSpanX.roundToInt(), newSpanY.roundToInt())
-    }
-
-    fun doesFit(spanX: Float, spanY: Float, col: Int, row: Int, pageIndex: Int, excludeItem: HomeItem? = null): Boolean {
-        val columns = settingsManager.columns
-        val rows = getGridRows()
-        val sX = ceil(spanX.toDouble() - 0.01).toInt()
-        val sY = ceil(spanY.toDouble() - 0.01).toInt()
-        if (col < 0 || row < 0 || col + sX > columns || row + sY > rows) return false
-        val occupied = getOccupiedCells(pageIndex, excludeItem)
-        return canPlace(occupied, row, col, sX, sY)
-    }
-
-    fun hasAnySpace(spanX: Float, spanY: Float, pageIndex: Int): Boolean {
-        val columns = settingsManager.columns
-        val rows = getGridRows()
-        val occupied = getOccupiedCells(pageIndex)
-        for (r in 0..rows - spanY.roundToInt()) {
-            for (c in 0..columns - spanX.roundToInt()) {
-                if (canPlace(occupied, r, c, spanX.roundToInt(), spanY.roundToInt())) return true
-            }
-        }
-        return false
-    }
 
     companion object {
         const val GRID_COLUMNS = 4

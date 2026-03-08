@@ -6,16 +6,11 @@ import com.riprog.launcher.logic.utils.WidgetSizingUtils
 import com.riprog.launcher.R
 
 import androidx.activity.ComponentActivity
-import android.app.Activity
 import android.appwidget.AppWidgetManager
 import android.appwidget.AppWidgetProviderInfo
-import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
-import android.content.res.Configuration
-import android.graphics.Color
 import android.graphics.Typeface
-import android.graphics.drawable.GradientDrawable
 import android.os.Build
 import android.os.Bundle
 import android.util.TypedValue
