@@ -571,21 +571,19 @@ class TransformOverlay @JvmOverloads constructor(
         when (activeHandle) {
             HANDLE_RIGHT -> {
                 lp.width = max(minSize, gestureInitialWidth + currentDrx).toInt()
-                currentDrx = (lp.width - gestureInitialWidth).toFloat()
             }
             HANDLE_LEFT -> {
                 lp.width = max(minSize, gestureInitialWidth - currentDrx).toInt()
-                currentDrx = (gestureInitialWidth - lp.width).toFloat()
-                targetView.x = gestureInitialX + currentDrx
+                val appliedDelta = (gestureInitialWidth - lp.width).toFloat()
+                targetView.x = gestureInitialX + appliedDelta
             }
             HANDLE_BOTTOM -> {
                 lp.height = max(minSize, gestureInitialHeight + currentDry).toInt()
-                currentDry = (lp.height - gestureInitialHeight).toFloat()
             }
             HANDLE_TOP -> {
                 lp.height = max(minSize, gestureInitialHeight - currentDry).toInt()
-                currentDry = (gestureInitialHeight - lp.height).toFloat()
-                targetView.y = gestureInitialY + currentDry
+                val appliedDelta = (gestureInitialHeight - lp.height).toFloat()
+                targetView.y = gestureInitialY + appliedDelta
             }
         }
         targetView.layoutParams = lp
