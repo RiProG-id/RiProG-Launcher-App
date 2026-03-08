@@ -77,6 +77,5 @@ dependencies {
     implementation("androidx.activity:activity-ktx:1.12.4")
     implementation("androidx.recyclerview:recyclerview:1.4.0")
     testImplementation("junit:junit:4.13.2")
-    testImplementation("org.mockito:mockito-core:5.22.0")
     testImplementation("org.mockito.kotlin:mockito-kotlin:6.2.3")
 }

@@ -8,8 +8,6 @@ import com.riprog.launcher.R
 
 import android.content.Context
 import androidx.core.content.ContextCompat
-import android.content.Intent
-import android.graphics.Color
 import android.text.Editable
 import android.text.TextUtils
 import android.text.TextWatcher

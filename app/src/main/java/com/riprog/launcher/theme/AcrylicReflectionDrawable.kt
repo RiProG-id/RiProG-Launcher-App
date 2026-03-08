@@ -1,11 +1,8 @@
 package com.riprog.launcher.theme
 
-import android.animation.ValueAnimator
 import android.graphics.*
 import android.graphics.drawable.Animatable
-import android.graphics.drawable.Drawable
 import android.graphics.drawable.GradientDrawable
-import android.view.animation.LinearInterpolator
 
 class AcrylicReflectionDrawable(
     private val baseDrawable: GradientDrawable,

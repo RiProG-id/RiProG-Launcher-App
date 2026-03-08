@@ -4,13 +4,11 @@ import com.riprog.launcher.ui.activities.MainActivity
 import com.riprog.launcher.theme.ThemeUtils
 import com.riprog.launcher.data.model.HomeItem
 import com.riprog.launcher.data.model.AppItem
-import com.riprog.launcher.ui.views.home.HomeView
 
 import androidx.core.view.ViewCompat
 import android.content.ClipData
 import android.content.Context
 import android.graphics.Typeface
-import android.os.Build
 import android.text.Editable
 import android.text.TextWatcher
 import android.view.DragEvent

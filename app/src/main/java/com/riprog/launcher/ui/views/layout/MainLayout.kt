@@ -1,26 +1,21 @@
 package com.riprog.launcher.ui.views.layout
 
-import com.riprog.launcher.ui.views.home.HomeView
 import com.riprog.launcher.ui.activities.MainActivity
 import com.riprog.launcher.data.model.HomeItem
 import com.riprog.launcher.R
 
 import android.content.Context
 import android.view.DragEvent
-import android.graphics.Color
 import android.os.Handler
 import android.util.AttributeSet
 import android.util.TypedValue
 import android.os.Looper
-import android.view.Gravity
 import android.view.MotionEvent
 import android.view.View
 import android.view.ViewConfiguration
 import android.view.ViewGroup
 import android.view.inputmethod.InputMethodManager
 import android.widget.FrameLayout
-import android.widget.ImageView
-import android.widget.LinearLayout
 import androidx.core.view.isVisible
 import androidx.recyclerview.widget.RecyclerView
 import kotlin.math.abs

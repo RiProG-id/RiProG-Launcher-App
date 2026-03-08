@@ -8,19 +8,14 @@ import com.riprog.launcher.R
 
 import androidx.activity.ComponentActivity
 import androidx.activity.enableEdgeToEdge
-import android.app.Activity
-import android.app.ActivityManager
 import android.content.Context
 import android.content.Intent
-import android.graphics.Color
 import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
 import androidx.core.content.ContextCompat
-import android.os.Build
 import android.os.Bundle
 import android.text.method.LinkMovementMethod
 import android.text.util.Linkify
-import android.util.AttributeSet
 import android.util.TypedValue
 import android.view.*
 import android.widget.*

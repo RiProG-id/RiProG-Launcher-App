@@ -42,17 +42,6 @@ object ThemeManager {
         return base.createConfigurationContext(config)
     }
 
-    fun getSystemAccentColor(context: Context): Int? {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            return try {
-                ContextCompat.getColor(context, android.R.color.system_accent1_400)
-            } catch (ignored: Exception) {
-                null
-            }
-        }
-        return null
-    }
-
     fun applySettingItemStyle(context: Context, item: LinearLayout, settingsManager: SettingsManager) {
         item.isClickable = true
         item.isFocusable = true
