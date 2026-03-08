@@ -1,0 +1,880 @@
+package com.riprog.launcher.features.main
+
+import com.riprog.launcher.features.settings.SettingsActivity
+
+import com.riprog.launcher.features.main.MainLayout
+import com.riprog.launcher.features.main.AutoDimmingBackground
+import com.riprog.launcher.features.home.HomeView
+import com.riprog.launcher.features.home.HomeMenuOverlay
+import com.riprog.launcher.features.home.HomeItemViewFactory
+import com.riprog.launcher.features.folder.FolderViewFactory
+import com.riprog.launcher.features.drawer.DrawerView
+import com.riprog.launcher.features.drawer.AppDrawerContextMenu
+import com.riprog.launcher.core.theme.ThemeUtils
+import com.riprog.launcher.core.theme.ThemeManager
+import com.riprog.launcher.core.preferences.LauncherPreferences
+import com.riprog.launcher.features.folder.FolderManager
+import com.riprog.launcher.features.home.FreeformController
+import com.riprog.launcher.common.receivers.PackageReceiver
+import com.riprog.launcher.features.widgets.WidgetPickerActivity
+import com.riprog.launcher.data.repository.AppRepository
+import com.riprog.launcher.data.models.HomeItem
+import com.riprog.launcher.data.models.AppItem
+import com.riprog.launcher.R
+import com.riprog.launcher.LauncherApplication
+
+import android.app.Activity
+import android.appwidget.AppWidgetHost
+import android.appwidget.AppWidgetManager
+import android.appwidget.AppWidgetProviderInfo
+import android.content.Context
+import android.content.Intent
+import android.content.IntentFilter
+import android.content.pm.PackageManager
+import android.graphics.Typeface
+import android.os.Build
+import android.os.Bundle
+import android.provider.Settings
+import android.util.TypedValue
+import android.view.*
+import androidx.core.view.WindowCompat
+import androidx.activity.ComponentActivity
+import androidx.activity.OnBackPressedCallback
+import androidx.activity.enableEdgeToEdge
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.net.toUri
+import android.widget.*
+import androidx.core.content.ContextCompat
+import java.util.*
+
+class MainActivity : ComponentActivity() {
+
+    private val settingsLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+        if (result.resultCode == Activity.RESULT_OK) {
+            loadApps()
+            homeView.refreshLayout()
+            drawerView.refreshTheme()
+        }
+    }
+
+    private val widgetPickerLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+        if (result.resultCode == Activity.RESULT_OK && result.data != null) {
+            val data = result.data!!
+            val info = try {
+                androidx.core.content.IntentCompat.getParcelableExtra(data, "EXTRA_WIDGET_INFO", AppWidgetProviderInfo::class.java)
+            } catch (e: Exception) {
+                null
+            }
+            val spanX = data.getIntExtra("EXTRA_SPAN_X", 2)
+            val spanY = data.getIntExtra("EXTRA_SPAN_Y", 1)
+            if (info != null) {
+                spawnWidget(info, spanX, spanY)
+            }
+        }
+    }
+
+    private val bindWidgetLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+        if (result.resultCode == Activity.RESULT_OK && result.data != null) {
+            configureWidget(result.data!!)
+        }
+    }
+
+    private val createWidgetLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+        if (result.resultCode == Activity.RESULT_OK && result.data != null) {
+            createWidget(result.data!!)
+        }
+    }
+
+    private val wallPaperPickerLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { }
+
+    lateinit var model: AppRepository
+    lateinit var settingsManager: LauncherPreferences
+    private var autoDimmingBackground: AutoDimmingBackground? = null
+    lateinit var folderManager: FolderManager
+    private lateinit var folderUI: FolderViewFactory
+    lateinit var freeformInteraction: FreeformController
+    private lateinit var appWidgetHost: AppWidgetHost
+    private lateinit var appWidgetManager: AppWidgetManager
+    lateinit var mainLayout: MainLayout
+    lateinit var homeView: HomeView
+    lateinit var drawerView: DrawerView
+    lateinit var itemViewFactory: HomeItemViewFactory
+    private var packageReceiver: PackageReceiver? = null
+    var homeItems: MutableList<HomeItem> = ArrayList()
+    var allApps: List<AppItem> = ArrayList()
+    private var pendingSpanX: Int = 2
+    private var pendingSpanY: Int = 1
+    private var currentDefaultPrompt: View? = null
+
+    override fun attachBaseContext(newBase: Context) {
+        val sm = LauncherPreferences(newBase)
+        super.attachBaseContext(ThemeManager.applyThemeToContext(newBase, sm.themeMode))
+    }
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        enableEdgeToEdge()
+        super.onCreate(savedInstanceState)
+        settingsManager = LauncherPreferences(this)
+        ThemeManager.applyThemeMode(this, settingsManager.themeMode)
+        ThemeUtils.updateStatusBarContrast(this)
+
+        val w = window
+        w.setFlags(WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS, WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS)
+
+        WindowCompat.setDecorFitsSystemWindows(w, false)
+
+        model = (application as LauncherApplication).model
+
+        mainLayout = MainLayout(this)
+        homeView = HomeView(this)
+        drawerView = DrawerView(this)
+        drawerView.setColumns(settingsManager.columns)
+        drawerView.setOnAppLongClickListener(object : DrawerView.OnAppLongClickListener {
+            override fun onAppLongClick(view: View, app: AppItem) {
+                showAppDrawerMenu(view, app)
+            }
+        })
+
+        mainLayout.addView(homeView)
+        mainLayout.addView(drawerView)
+        drawerView.visibility = View.GONE
+
+        freeformInteraction = FreeformController(this, mainLayout, settingsManager, object : FreeformController.FreeformInteractionListener {
+            override fun onSaveState() {
+                saveHomeState()
+            }
+
+            override fun onRemoveItem(item: HomeItem?, view: View?) {
+                this@MainActivity.removeHomeItem(item, view)
+            }
+
+            override fun onShowAppInfo(item: HomeItem?) {
+                this@MainActivity.showAppInfo(item)
+            }
+        })
+
+        setContentView(mainLayout)
+
+        autoDimmingBackground = AutoDimmingBackground(this, mainLayout, settingsManager)
+
+        appWidgetManager = AppWidgetManager.getInstance(this)
+        appWidgetHost = AppWidgetHost(this, APPWIDGET_HOST_ID)
+        appWidgetHost.startListening()
+
+        applyDynamicColors()
+
+        onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
+            override fun handleOnBackPressed() {
+                if (isAnyOverlayVisible()) {
+                    dismissAllOverlays()
+                    return
+                }
+                if (mainLayout.closeDrawer()) {
+                    return
+                }
+            }
+        })
+
+        folderManager = FolderManager(this, settingsManager)
+        folderUI = FolderViewFactory(this, settingsManager)
+        appWidgetManager = AppWidgetManager.getInstance(this)
+        appWidgetHost = AppWidgetHost(this, APPWIDGET_HOST_ID)
+        itemViewFactory = HomeItemViewFactory(this, settingsManager, model, appWidgetManager, appWidgetHost)
+        loadApps()
+        registerPackageReceiver()
+
+        homeView.post {
+            restoreHomeState()
+        }
+    }
+
+    private fun isDefaultLauncher(): Boolean {
+        val intent = Intent(Intent.ACTION_MAIN)
+        intent.addCategory(Intent.CATEGORY_HOME)
+        val resolveInfo = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            packageManager.resolveActivity(intent, PackageManager.ResolveInfoFlags.of(PackageManager.MATCH_DEFAULT_ONLY.toLong()))
+        } else {
+            packageManager.resolveActivity(intent, PackageManager.MATCH_DEFAULT_ONLY)
+        }
+        if (resolveInfo?.activityInfo == null) return false
+        return packageName == resolveInfo.activityInfo.packageName
+    }
+
+    private fun showDefaultLauncherPrompt() {
+        if (isDefaultLauncher()) return
+        if (currentDefaultPrompt != null) return
+
+        val lastShown = settingsManager.lastDefaultPromptTimestamp
+        val count = settingsManager.defaultPromptCount
+
+        if (System.currentTimeMillis() - lastShown < 24 * 60 * 60 * 1000) return
+        if (count >= 5) return
+
+        val prompt = LinearLayout(this)
+        currentDefaultPrompt = prompt
+        prompt.orientation = LinearLayout.VERTICAL
+        prompt.background = ThemeUtils.getThemedSurface(this, settingsManager, 28f)
+        prompt.setPadding(dpToPx(24), dpToPx(24), dpToPx(24), dpToPx(24))
+        prompt.gravity = Gravity.CENTER
+        val isAcrylic = settingsManager.isAcrylic
+        prompt.elevation = if (isAcrylic) dpToPx(8).toFloat() else dpToPx(2).toFloat()
+
+        val title = TextView(this)
+        title.setText(R.string.prompt_default_launcher_title)
+        title.textSize = 18f
+        title.setTypeface(null, Typeface.BOLD)
+        title.setTextColor(ContextCompat.getColor(this, R.color.foreground))
+        prompt.addView(title)
+
+        val message = TextView(this)
+        message.setText(R.string.prompt_default_launcher_message)
+        message.setPadding(0, dpToPx(8), 0, dpToPx(16))
+        message.gravity = Gravity.CENTER
+        message.setTextColor(ContextCompat.getColor(this, R.color.foreground_dim))
+        prompt.addView(message)
+
+        val buttons = LinearLayout(this)
+        buttons.orientation = LinearLayout.HORIZONTAL
+        buttons.gravity = Gravity.END
+
+        val btnLater = TextView(this)
+        btnLater.setText(R.string.action_later)
+        btnLater.setPadding(dpToPx(16), dpToPx(8), dpToPx(16), dpToPx(8))
+        btnLater.setTextColor(ContextCompat.getColor(this, R.color.foreground))
+        btnLater.setOnClickListener {
+            mainLayout.removeView(prompt)
+            currentDefaultPrompt = null
+        }
+        buttons.addView(btnLater)
+
+        val btnSet = TextView(this)
+        btnSet.setText(R.string.action_set_default)
+        btnSet.setPadding(dpToPx(16), dpToPx(8), dpToPx(16), dpToPx(8))
+        btnSet.setTextColor(ContextCompat.getColor(this, R.color.accent_blue))
+        btnSet.setTypeface(null, Typeface.BOLD)
+        btnSet.setOnClickListener {
+            mainLayout.removeView(prompt)
+            currentDefaultPrompt = null
+            val intent = Intent(Settings.ACTION_HOME_SETTINGS)
+            startActivity(intent)
+        }
+        buttons.addView(btnSet)
+
+        prompt.addView(buttons)
+
+        val lp = FrameLayout.LayoutParams(
+            dpToPx(300), ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.CENTER
+        )
+        mainLayout.addView(prompt, lp)
+
+        settingsManager.lastDefaultPromptTimestamp = System.currentTimeMillis()
+        settingsManager.incrementDefaultPromptCount()
+    }
+
+    fun saveHomeState() {
+        settingsManager.saveHomeItems(homeItems)
+    }
+
+    private fun restoreHomeState() {
+        homeItems = settingsManager.getHomeItems().toMutableList()
+        if (homeItems.isEmpty()) {
+            setupDefaultHome()
+        } else {
+            for (item in homeItems) {
+                renderHomeItem(item)
+            }
+        }
+    }
+
+    private fun setupDefaultHome() {
+        saveHomeState()
+    }
+
+    fun renderHomeItem(item: HomeItem?): View? {
+        if (item == null) return null
+        var view: View? = null
+        when (item.type) {
+            HomeItem.Type.APP -> view = itemViewFactory.createAppView(item, allApps)
+            HomeItem.Type.WIDGET -> view = itemViewFactory.createWidgetView(item)
+            HomeItem.Type.CLOCK -> view = itemViewFactory.createClockView()
+            HomeItem.Type.FOLDER -> view = folderUI.createFolderView(
+                item,
+                true,
+                homeView.getCellWidth().toInt(),
+                homeView.getCellHeight().toInt()
+            )
+            else -> {}
+        }
+        if (view != null) {
+            homeView.addItemView(item, view)
+            if (item.type == HomeItem.Type.FOLDER) {
+                val grid = findGridLayout(view as ViewGroup)
+                if (grid != null) refreshFolderPreview(item, grid)
+            }
+        }
+        return view
+    }
+
+    fun refreshFolderPreview(folder: HomeItem, grid: GridLayout) {
+        grid.removeAllViews()
+        val count = Math.min(folder.folderItems.size, 4)
+        val scale = settingsManager.iconScale
+        val size = (dpToPx(18) * scale).toInt()
+
+        for (i in 0 until count) {
+            val sub = folder.folderItems[i]
+            val packageName = sub.packageName ?: continue
+            val iv = ImageView(this)
+
+            val lp = GridLayout.LayoutParams(
+                GridLayout.spec(i / 2, GridLayout.CENTER, 1f),
+                GridLayout.spec(i % 2, GridLayout.CENTER, 1f)
+            )
+            lp.width = size
+            lp.height = size
+            iv.layoutParams = lp
+
+            model.loadIcon(AppItem.fromPackage(this, packageName)) { bitmap ->
+                iv.setImageBitmap(bitmap)
+            }
+            grid.addView(iv)
+        }
+    }
+
+    private fun findGridLayout(container: ViewGroup): GridLayout? {
+        for (i in 0 until container.childCount) {
+            val child = container.getChildAt(i)
+            if (child is GridLayout) return child
+            if (child is ViewGroup) {
+                val g = findGridLayout(child)
+                if (g != null) return g
+            }
+        }
+        return null
+    }
+
+    fun removeHomeItem(item: HomeItem?, view: View?) {
+        homeItems.remove(item)
+        if (view != null && view.parent is ViewGroup) {
+            (view.parent as ViewGroup).removeView(view)
+        }
+        saveHomeState()
+        homeView.refreshIcons(model, allApps)
+    }
+
+    fun showAppInfo(item: HomeItem?) {
+        val packageName = item?.packageName
+        if (packageName.isNullOrEmpty()) return
+        try {
+            val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
+            intent.data = "package:$packageName".toUri()
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            startActivity(intent)
+        } catch (e: Exception) {
+            Toast.makeText(this, getString(R.string.app_info_failed), Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    private fun findApp(packageName: String): AppItem? {
+        for (app in allApps) {
+            if (app.packageName == packageName) return app
+        }
+        return null
+    }
+
+    private fun openWallpaperPicker() {
+        val intent = Intent(Intent.ACTION_SET_WALLPAPER)
+        try {
+            wallPaperPickerLauncher.launch(intent)
+        } catch (e: Exception) {
+            try {
+                val pickIntent = Intent(Intent.ACTION_GET_CONTENT)
+                pickIntent.type = "image/*"
+                wallPaperPickerLauncher.launch(Intent.createChooser(pickIntent, getString(R.string.title_select_wallpaper)))
+            } catch (e2: Exception) {
+                Toast.makeText(this, getString(R.string.wallpaper_picker_failed), Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
+    private fun openSettings() {
+        val intent = Intent(this, SettingsActivity::class.java)
+        settingsLauncher.launch(intent)
+    }
+
+    private fun applyDynamicColors() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            try {
+                val accentColor = ContextCompat.getColor(this, android.R.color.system_accent1_400)
+                homeView.setAccentColor(accentColor)
+                drawerView.setAccentColor(accentColor)
+            } catch (ignored: Exception) {
+            }
+        }
+    }
+
+    private fun loadApps() {
+        model.loadApps { apps ->
+            this.allApps = apps
+            drawerView.setApps(apps, model)
+            homeView.refreshIcons(model, apps)
+            cleanupHomeItems()
+        }
+    }
+
+    private fun cleanupHomeItems() {
+        val pm = packageManager
+        val awm = AppWidgetManager.getInstance(this)
+        val iterator = homeItems.iterator()
+        var changed = false
+
+        while (iterator.hasNext()) {
+            val item = iterator.next()
+            var shouldRemove = false
+
+            when (item.type) {
+                HomeItem.Type.APP -> {
+                    if (item.packageName == null) {
+                        shouldRemove = true
+                    } else {
+                        try {
+                            item.packageName?.let {
+                                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                                    pm.getApplicationInfo(it, PackageManager.ApplicationInfoFlags.of(0))
+                                } else {
+                                    pm.getApplicationInfo(it, 0)
+                                }
+                            } ?: throw Exception()
+                        } catch (e: Exception) {
+                            shouldRemove = true
+                        }
+                    }
+                }
+                HomeItem.Type.WIDGET -> {
+                    val info = if (item.widgetId != -1) awm.getAppWidgetInfo(item.widgetId) else null
+                    if (info == null) {
+                        shouldRemove = true
+                    }
+                }
+                HomeItem.Type.FOLDER -> {
+                    val folderIterator = item.folderItems.iterator()
+                    while (folderIterator.hasNext()) {
+                        val subItem = folderIterator.next()
+                        if (subItem.type == HomeItem.Type.APP) {
+                            if (subItem.packageName == null) {
+                                folderIterator.remove()
+                                changed = true
+                            } else {
+                                try {
+                                    subItem.packageName?.let {
+                                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                                            pm.getApplicationInfo(it, PackageManager.ApplicationInfoFlags.of(0))
+                                        } else {
+                                            pm.getApplicationInfo(it, 0)
+                                        }
+                                    } ?: throw Exception()
+                                } catch (e: Exception) {
+                                    folderIterator.remove()
+                                    changed = true
+                                }
+                            }
+                        }
+                    }
+                    if (item.folderItems.isEmpty()) {
+                        shouldRemove = true
+                    }
+                }
+                else -> {}
+            }
+
+            if (shouldRemove) {
+                homeView.removeItemView(item)
+                iterator.remove()
+                changed = true
+            }
+        }
+
+        if (changed) {
+            saveHomeState()
+            homeView.refreshLayout()
+        }
+    }
+
+    private fun registerPackageReceiver() {
+        packageReceiver = PackageReceiver(model) {
+            loadApps()
+        }
+        val filter = IntentFilter()
+        filter.addAction(Intent.ACTION_PACKAGE_ADDED)
+        filter.addAction(Intent.ACTION_PACKAGE_REMOVED)
+        filter.addDataScheme("package")
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            registerReceiver(packageReceiver, filter, RECEIVER_NOT_EXPORTED)
+        } else {
+            registerReceiver(packageReceiver, filter)
+        }
+    }
+
+    override fun onTrimMemory(level: Int) {
+        super.onTrimMemory(level)
+        model.onTrimMemory(level)
+    }
+
+    override fun onResume() {
+        super.onResume()
+        autoDimmingBackground?.updateDimVisibility()
+        homeView.refreshLayout()
+        homeView.refreshIcons(model, allApps)
+
+        if (isDefaultLauncher()) {
+            if (currentDefaultPrompt != null) {
+                mainLayout.removeView(currentDefaultPrompt)
+                currentDefaultPrompt = null
+            }
+        } else {
+            showDefaultLauncherPrompt()
+        }
+    }
+
+    override fun onStart() {
+        super.onStart()
+        appWidgetHost.startListening()
+    }
+
+    override fun onStop() {
+        super.onStop()
+        appWidgetHost.stopListening()
+        saveHomeState()
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        if (packageReceiver != null) unregisterReceiver(packageReceiver)
+    }
+
+    private fun configureWidget(data: Intent) {
+        val appWidgetId = data.getIntExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, -1)
+        val info = appWidgetManager.getAppWidgetInfo(appWidgetId) ?: return
+        if (info.configure != null) {
+            val intent = Intent(AppWidgetManager.ACTION_APPWIDGET_CONFIGURE)
+            intent.component = info.configure
+            intent.putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, appWidgetId)
+            createWidgetLauncher.launch(intent)
+        } else {
+            createWidget(data)
+        }
+    }
+
+    private fun createWidget(data: Intent) {
+        val appWidgetId = data.getIntExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, -1)
+        val info = appWidgetManager.getAppWidgetInfo(appWidgetId) ?: return
+
+        val sX = pendingSpanX.coerceAtMost(settingsManager.columns)
+        val sY = pendingSpanY.coerceAtMost(homeView.getGridRows())
+
+        var col = 0
+        var row = 0
+        var page = homeView.currentPage
+
+        if (!settingsManager.isFreeformHome) {
+            val slot = findFirstAvailableSlot(sX, sY)
+            if (slot == null) {
+                Toast.makeText(this, R.string.page_full, Toast.LENGTH_SHORT).show()
+                return
+            }
+            page = slot.first
+            row = slot.second
+            col = slot.third
+        } else {
+            col = maxOf(0, (settingsManager.columns - sX) / 2)
+            row = maxOf(0, (homeView.getGridRows() - sY) / 2)
+            if (col + sX > settingsManager.columns) col = settingsManager.columns - sX
+            if (row + sY > homeView.getGridRows()) row = homeView.getGridRows() - sY
+        }
+
+        val item = HomeItem.createWidget(appWidgetId, col.toFloat(), row.toFloat(), sX, sY, page)
+        homeItems.add(item)
+        renderHomeItem(item)
+        saveHomeState()
+        homeView.scrollToPage(page)
+        val label = info.loadLabel(packageManager)
+        Toast.makeText(this, getString(R.string.app_added_to_home, label), Toast.LENGTH_SHORT).show()
+    }
+
+    fun pickWidget() {
+        val intent = Intent(this, WidgetPickerActivity::class.java)
+        widgetPickerLauncher.launch(intent)
+    }
+
+    fun spawnWidget(info: AppWidgetProviderInfo, spanX: Int, spanY: Int) {
+        val sX = spanX.coerceAtMost(settingsManager.columns)
+        val sY = spanY.coerceAtMost(homeView.getGridRows())
+
+        pendingSpanX = sX
+        pendingSpanY = sY
+
+        val appWidgetId = appWidgetHost.allocateAppWidgetId()
+        val allowed = appWidgetManager.bindAppWidgetIdIfAllowed(appWidgetId, info.provider)
+        if (allowed) {
+            var col = 0
+            var row = 0
+            var page = homeView.currentPage
+
+            if (!settingsManager.isFreeformHome) {
+                val slot = findFirstAvailableSlot(sX, sY)
+                if (slot == null) {
+                    Toast.makeText(this, R.string.page_full, Toast.LENGTH_SHORT).show()
+                    return
+                }
+                page = slot.first
+                row = slot.second
+                col = slot.third
+            } else {
+                col = maxOf(0, (settingsManager.columns - sX) / 2)
+                row = maxOf(0, (homeView.getGridRows() - sY) / 2)
+                if (col + sX > settingsManager.columns) col = settingsManager.columns - sX
+                if (row + sY > homeView.getGridRows()) row = homeView.getGridRows() - sY
+            }
+
+            val item = HomeItem.createWidget(appWidgetId, col.toFloat(), row.toFloat(), sX, sY, page)
+            homeItems.add(item)
+            renderHomeItem(item)
+            saveHomeState()
+            homeView.scrollToPage(page)
+            val label = info.loadLabel(packageManager)
+            Toast.makeText(this, getString(R.string.app_added_to_home, label), Toast.LENGTH_SHORT).show()
+        } else {
+            val intent = Intent(AppWidgetManager.ACTION_APPWIDGET_BIND)
+            intent.putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, appWidgetId)
+            intent.putExtra(AppWidgetManager.EXTRA_APPWIDGET_PROVIDER, info.provider)
+            bindWidgetLauncher.launch(intent)
+        }
+    }
+
+    fun startNewWidgetDrag(info: AppWidgetProviderInfo, spanX: Int, spanY: Int) {
+        val sX = spanX
+        val sY = spanY
+
+        val appWidgetId = appWidgetHost.allocateAppWidgetId()
+        val allowed = appWidgetManager.bindAppWidgetIdIfAllowed(appWidgetId, info.provider)
+        if (allowed) {
+            val item = HomeItem.createWidget(appWidgetId, 0f, 0f, sX, sY, homeView.currentPage)
+            val view = itemViewFactory.createWidgetView(item)
+            if (view != null) {
+                view.tag = item
+                mainLayout.startExternalDrag(view)
+            }
+        } else {
+            val intent = Intent(AppWidgetManager.ACTION_APPWIDGET_BIND)
+            intent.putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, appWidgetId)
+            intent.putExtra(AppWidgetManager.EXTRA_APPWIDGET_PROVIDER, info.provider)
+            bindWidgetLauncher.launch(intent)
+        }
+    }
+
+    fun handleItemClick(v: View) {
+        mainLayout.handleItemClick(v)
+    }
+
+    fun handleAppLaunch(packageName: String) {
+        val intent = packageManager.getLaunchIntentForPackage(packageName)
+        if (intent != null) startActivity(intent)
+    }
+
+    fun isAnyOverlayVisible(): Boolean {
+        return currentHomeMenu != null || currentAppDrawerMenu != null || folderManager.isFolderOpen()
+    }
+
+    var lastOverlayDismissTime: Long = 0
+
+    fun dismissAllOverlays() {
+        if (currentHomeMenu != null) {
+            mainLayout.removeView(currentHomeMenu)
+            currentHomeMenu = null
+            lastOverlayDismissTime = System.currentTimeMillis()
+        }
+        if (currentAppDrawerMenu != null) {
+            mainLayout.removeView(currentAppDrawerMenu)
+            currentAppDrawerMenu = null
+            lastOverlayDismissTime = System.currentTimeMillis()
+        }
+        if (folderManager.isFolderOpen()) {
+            folderManager.closeFolder()
+            lastOverlayDismissTime = System.currentTimeMillis()
+        }
+        updateContentBlur()
+    }
+
+    fun updateContentBlur() {
+        val isDrawerOpen = if (::mainLayout.isInitialized) mainLayout.isDrawerOpen() else false
+        val isFolderOpen = folderManager.isFolderOpen()
+        val isAcrylic = settingsManager.isAcrylic
+
+        ThemeUtils.applyBlurIfSupported(homeView, (isDrawerOpen || isFolderOpen) && isAcrylic)
+        ThemeUtils.applyBlurIfSupported(drawerView, isFolderOpen && isDrawerOpen && isAcrylic)
+        ThemeUtils.applyWindowBlur(window, (isFolderOpen || isDrawerOpen) && isAcrylic)
+    }
+
+    fun showHomeMenu(x: Float, y: Float) {
+        if (isAnyOverlayVisible()) return
+        val menu = HomeMenuOverlay(this, settingsManager, object : HomeMenuOverlay.Callback {
+            override fun onAddPageLeft() {
+                homeView.addPageLeft()
+                homeView.scrollToPage(0)
+            }
+
+            override fun onAddPageRight() {
+                homeView.addPageRight()
+                homeView.scrollToPage(homeView.pages.size - 1)
+            }
+
+            override fun onRemovePage() {
+                homeView.onRemovePage()
+            }
+
+            override fun getPageCount(): Int {
+                return homeView.getPageCount()
+            }
+
+            override fun onPickWidget() {
+                pickWidget()
+            }
+
+            override fun onOpenWallpaper() {
+                openWallpaperPicker()
+            }
+
+            override fun onOpenSettings() {
+                openSettings()
+            }
+
+            override fun dismiss() {
+                if (currentHomeMenu != null) {
+                    mainLayout.removeView(currentHomeMenu)
+                    currentHomeMenu = null
+                    lastOverlayDismissTime = System.currentTimeMillis()
+                }
+                updateContentBlur()
+            }
+        })
+        currentHomeMenu = menu
+        mainLayout.addView(menu, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
+        updateContentBlur()
+    }
+
+    private var currentHomeMenu: View? = null
+    private var currentAppDrawerMenu: View? = null
+
+    fun showAppDrawerMenu(anchor: View, app: AppItem) {
+        if (isAnyOverlayVisible()) return
+        val menu = AppDrawerContextMenu(this, settingsManager, object : AppDrawerContextMenu.Callback {
+            override fun onAddToHome() {
+                spawnApp(app)
+                mainLayout.closeDrawer()
+            }
+
+            override fun onAppInfo() {
+                showAppInfo(HomeItem.createApp(app.packageName, app.className, 0f, 0f, 0))
+            }
+
+            override fun dismiss() {
+                if (currentAppDrawerMenu != null) {
+                    mainLayout.removeView(currentAppDrawerMenu)
+                    currentAppDrawerMenu = null
+                    lastOverlayDismissTime = System.currentTimeMillis()
+                }
+                updateContentBlur()
+            }
+        })
+        currentAppDrawerMenu = menu
+        menu.showAt(anchor, mainLayout)
+        updateContentBlur()
+    }
+
+    private fun findFirstAvailableSlot(spanX: Int, spanY: Int): Triple<Int, Int, Int>? {
+        val startPage = homeView.currentPage
+        val pageCount = homeView.getPageCount()
+        val gridRows = homeView.getGridRows()
+
+        for (p in startPage until pageCount) {
+            val occupied = homeView.getOccupiedCells(p)
+            for (r in 0..gridRows - spanY) {
+                for (c in 0..settingsManager.columns - spanX) {
+                    var canPlace = true
+                    for (ri in r until r + spanY) {
+                        for (ci in c until c + spanX) {
+                            if (ri >= gridRows || ci >= settingsManager.columns || occupied[ri][ci]) {
+                                canPlace = false
+                                break
+                            }
+                        }
+                        if (!canPlace) break
+                    }
+                    if (canPlace) return Triple(p, r, c)
+                }
+            }
+        }
+
+        for (p in 0 until startPage) {
+            val occupied = homeView.getOccupiedCells(p)
+            for (r in 0..gridRows - spanY) {
+                for (c in 0..settingsManager.columns - spanX) {
+                    var canPlace = true
+                    for (ri in r until r + spanY) {
+                        for (ci in c until c + spanX) {
+                            if (ri >= gridRows || ci >= settingsManager.columns || occupied[ri][ci]) {
+                                canPlace = false
+                                break
+                            }
+                        }
+                        if (!canPlace) break
+                    }
+                    if (canPlace) return Triple(p, r, c)
+                }
+            }
+        }
+
+        return null
+    }
+
+    fun spawnApp(app: AppItem) {
+        val sX = 1
+        val sY = 1
+        var col = 0f
+        var row = 0f
+        var page = homeView.currentPage
+
+        val slot = findFirstAvailableSlot(sX, sY)
+        if (slot == null) {
+            if (!settingsManager.isFreeformHome) {
+                Toast.makeText(this, R.string.page_full, Toast.LENGTH_SHORT).show()
+                return
+            } else {
+                col = (settingsManager.columns - sX) / 2f
+                row = (homeView.getGridRows() - sY) / 2f
+            }
+        } else {
+            page = slot.first
+            row = slot.second.toFloat()
+            col = slot.third.toFloat()
+        }
+
+        val item = HomeItem.createApp(app.packageName, app.className, col, row, page)
+        homeItems.add(item)
+        renderHomeItem(item)
+        saveHomeState()
+
+        homeView.scrollToPage(page)
+        Toast.makeText(this, getString(R.string.app_added_to_home, app.label), Toast.LENGTH_SHORT).show()
+    }
+
+    private fun dpToPx(dp: Int): Int {
+        return TypedValue.applyDimension(
+            TypedValue.COMPLEX_UNIT_DIP, dp.toFloat(), resources.displayMetrics
+        ).toInt()
+    }
+
+    companion object {
+        private const val APPWIDGET_HOST_ID = 1024
+    }
+}

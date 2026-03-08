@@ -1,6 +1,6 @@
 package com.riprog.launcher.data.repository
 
-import com.riprog.launcher.data.model.AppItem
+import com.riprog.launcher.data.models.AppItem
 
 import org.junit.Test
 import org.junit.Assert.assertEquals
