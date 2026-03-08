@@ -17,6 +17,7 @@ import com.riprog.launcher.R
 import com.riprog.launcher.data.models.AppItem
 import com.riprog.launcher.data.models.HomeItem
 import com.riprog.launcher.data.repository.AppRepository
+import com.riprog.launcher.common.utils.DisplayUtils
 import com.riprog.launcher.core.preferences.LauncherPreferences
 import java.util.Calendar
 
@@ -108,11 +109,5 @@ class HomeItemViewFactory(
         } catch (e: Exception) {
             null
         }
-    }
-
-    private fun dpToPx(dp: Int): Int {
-        return TypedValue.applyDimension(
-            TypedValue.COMPLEX_UNIT_DIP, dp.toFloat(), context.resources.displayMetrics
-        ).toInt()
     }
 }

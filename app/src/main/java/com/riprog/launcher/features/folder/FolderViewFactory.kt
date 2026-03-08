@@ -3,6 +3,7 @@ package com.riprog.launcher.features.folder
 import com.riprog.launcher.core.theme.ThemeUtils
 import com.riprog.launcher.core.preferences.LauncherPreferences
 import com.riprog.launcher.data.models.HomeItem
+import com.riprog.launcher.common.utils.DisplayUtils
 import com.riprog.launcher.R
 
 import android.content.Context
@@ -44,7 +45,7 @@ class FolderViewFactory(private val context: Context, private val preferences: L
 
         previewContainer.layoutParams = LinearLayout.LayoutParams(sizeW, sizeH)
         previewContainer.background = ThemeUtils.getThemedSurface(context, preferences, 12f)
-        val padding = dpToPx(6f)
+        val padding = DisplayUtils.dpToPx(context, 6f)
         previewContainer.setPadding(padding, padding, padding, padding)
 
         val grid = GridLayout(context)
@@ -75,11 +76,5 @@ class FolderViewFactory(private val context: Context, private val preferences: L
             labelView.visibility = View.GONE
         }
         return container
-    }
-
-    private fun dpToPx(dp: Float): Int {
-        return TypedValue.applyDimension(
-            TypedValue.COMPLEX_UNIT_DIP, dp, context.resources.displayMetrics
-        ).toInt()
     }
 }

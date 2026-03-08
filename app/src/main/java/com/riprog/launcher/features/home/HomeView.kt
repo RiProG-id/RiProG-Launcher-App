@@ -5,6 +5,7 @@ import com.riprog.launcher.core.preferences.LauncherPreferences
 import com.riprog.launcher.data.repository.AppRepository
 import com.riprog.launcher.data.models.HomeItem
 import com.riprog.launcher.data.models.AppItem
+import com.riprog.launcher.common.utils.DisplayUtils
 import com.riprog.launcher.common.callbacks.PageActionCallback
 import com.riprog.launcher.features.widgets.WidgetUtils
 import com.riprog.launcher.R
@@ -53,6 +54,7 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
     private var model: AppRepository? = null
     private var allApps: List<AppItem>? = null
     private val gridPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG)
+    private var reusableOccupiedGrid: Array<BooleanArray>? = null
 
     private var draggingView: View? = null
     private var lastX: Float = 0f
@@ -144,7 +146,7 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
         recyclerView = RecyclerView(context)
         val layoutManager = LinearLayoutManager(context, LinearLayoutManager.HORIZONTAL, false)
         recyclerView.layoutManager = layoutManager
-        recyclerView.setPadding(0, dpToPx(32), 0, 0)
+        recyclerView.setPadding(0, DisplayUtils.dpToPx(context, 32), 0, 0)
         recyclerView.clipChildren = false
         recyclerView.clipToPadding = false
 
@@ -154,19 +156,22 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
         recyclerView.addOnScrollListener(object : RecyclerView.OnScrollListener() {
             override fun onScrolled(recyclerView: RecyclerView, dx: Int, dy: Int) {
                 val centerX = recyclerView.width / 2f
-                for (i in 0 until recyclerView.childCount) {
-                    val child = recyclerView.getChildAt(i)
-                    val childCenterX = child.left + child.width / 2f
-                    val distanceFromCenter = Math.abs(centerX - childCenterX)
-                    val factor = (distanceFromCenter / centerX).coerceIn(0f, 1f)
+                if (centerX > 0) {
+                    val invCenterX = 1f / centerX
+                    for (i in 0 until recyclerView.childCount) {
+                        val child = recyclerView.getChildAt(i)
+                        val childCenterX = child.left + child.width / 2f
+                        val distanceFromCenter = Math.abs(centerX - childCenterX)
+                        val factor = (distanceFromCenter * invCenterX).coerceIn(0f, 1f)
 
-                    val scale = 1f - 0.12f * factor
-                    val alpha = 1f - 0.6f * factor
+                        val scale = 1f - 0.12f * factor
+                        val alpha = 1f - 0.6f * factor
 
-                    child.scaleX = scale
-                    child.scaleY = scale
-                    child.alpha = alpha
-                    (child.background as? GradientDrawable)?.alpha = (factor * 30).toInt()
+                        child.scaleX = scale
+                        child.scaleY = scale
+                        child.alpha = alpha
+                        (child.background as? GradientDrawable)?.alpha = (factor * 30).toInt()
+                    }
                 }
 
                 val scrollX = recyclerView.computeHorizontalScrollOffset()
@@ -193,10 +198,10 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
             val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
             systemTopInset = systemBars.top
             systemBottomInset = systemBars.bottom
-            recyclerView.setPadding(0, dpToPx(32) + systemTopInset, 0, 0)
+            recyclerView.setPadding(0, DisplayUtils.dpToPx(context, 32) + systemTopInset, 0, 0)
 
             val indicatorParams = pageIndicator.layoutParams as LayoutParams
-            indicatorParams.bottomMargin = systemBottomInset + dpToPx(8)
+            indicatorParams.bottomMargin = systemBottomInset + DisplayUtils.dpToPx(context, 8)
             pageIndicator.layoutParams = indicatorParams
 
             post { refreshLayout() }
@@ -213,7 +218,7 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
         pageIndicator.translationZ = 100f
         val indicatorParams = LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT)
         indicatorParams.gravity = Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL
-        indicatorParams.bottomMargin = dpToPx(80)
+        indicatorParams.bottomMargin = DisplayUtils.dpToPx(context, 80)
         addView(pageIndicator, indicatorParams)
 
         val pc = settingsManager.pageCount
@@ -236,7 +241,7 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
         hint.alpha = 0f
         val lp = LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT)
         lp.gravity = Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL
-        lp.bottomMargin = dpToPx(120)
+        lp.bottomMargin = DisplayUtils.dpToPx(context, 120)
         addView(hint, lp)
 
         if (Math.random() < 0.3 && !settingsManager.isAcrylic) {
@@ -344,7 +349,7 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
 
     fun getAvailableHeight(): Float {
         val topPadding = recyclerView.paddingTop
-        val bottomArea = systemBottomInset + dpToPx(64)
+        val bottomArea = systemBottomInset + DisplayUtils.dpToPx(context, 64)
         return max(0f, height.toFloat() - topPadding - bottomArea)
     }
 
@@ -357,7 +362,7 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
     }
 
     fun getCellWidth(): Float {
-        val horizontalPadding = dpToPx(HORIZONTAL_PADDING_DP) * 2
+        val horizontalPadding = DisplayUtils.dpToPx(context, HORIZONTAL_PADDING_DP) * 2
         val columnCount = settingsManager.columns
         val w = if (width > 0) width else resources.displayMetrics.widthPixels
         return if (w > horizontalPadding) (w - horizontalPadding) / columnCount.toFloat() else 0f
@@ -373,7 +378,7 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
     fun getSnapPosition(item: HomeItem, view: View): Pair<Float, Float> {
         val cellWidth = getCellWidth()
         val cellHeight = getCellHeight()
-        val horizontalPadding = dpToPx(HORIZONTAL_PADDING_DP)
+        val horizontalPadding = DisplayUtils.dpToPx(context, HORIZONTAL_PADDING_DP)
 
         if (settingsManager.isFreeformHome) {
             return Pair(item.col * cellWidth + horizontalPadding, item.row * cellHeight)
@@ -555,7 +560,7 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
                 if (!settingsManager.isFreeformHome) {
                     val cellWidth = getCellWidth()
                     val cellHeight = getCellHeight()
-                    val horizontalPadding = dpToPx(HORIZONTAL_PADDING_DP).toFloat()
+                    val horizontalPadding = DisplayUtils.dpToPx(context, HORIZONTAL_PADDING_DP).toFloat()
                     val offsetY = recyclerView.paddingTop.toFloat()
 
                     val sX = if (item.type == HomeItem.Type.WIDGET) (vBounds.width() / cellWidth).roundToInt().coerceAtLeast(1) else 1
@@ -762,22 +767,10 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
                 }
             }
 
-            if (false && !settingsManager.isFreeformHome && otherView != null && item.type == HomeItem.Type.APP && otherView.parent != null) {
-                val otherItem = otherView.tag as HomeItem?
-                if (otherItem != null && otherItem !== item) {
-                    if (otherItem.type == HomeItem.Type.APP) {
-                        activity.folderManager.mergeToFolder(otherItem, item, activity.homeItems)
-                        return true
-                    } else if (otherItem.type == HomeItem.Type.FOLDER) {
-                        activity.folderManager.addToFolder(otherItem, item, activity.homeItems)
-                        return true
-                    }
-                }
-            }
         }
 
         if (settingsManager.isFreeformHome) {
-            val horizontalPadding = dpToPx(HORIZONTAL_PADDING_DP)
+            val horizontalPadding = DisplayUtils.dpToPx(context, HORIZONTAL_PADDING_DP)
             item.col = (v.x - horizontalPadding) / cellWidth
             item.row = v.y / cellHeight
             item.rotation = v.rotation
@@ -787,7 +780,7 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
             item.lastInteractionTime = System.currentTimeMillis()
             (v.parent as? ViewGroup)?.let { refreshStackingOrder(it) }
         } else {
-            val horizontalPadding = dpToPx(HORIZONTAL_PADDING_DP)
+            val horizontalPadding = DisplayUtils.dpToPx(context, HORIZONTAL_PADDING_DP)
 
             val sX: Int
             val sY: Int
@@ -858,7 +851,7 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
         val vBounds = WidgetUtils.getVisualBounds(view)
         val cellWidth = getCellWidth()
         val cellHeight = getCellHeight()
-        val horizontalPadding = dpToPx(HORIZONTAL_PADDING_DP)
+        val horizontalPadding = DisplayUtils.dpToPx(context, HORIZONTAL_PADDING_DP)
 
         val vCenterX = if (item.visualOffsetX >= 0) item.visualOffsetX else if (vBounds.width() > 0) vBounds.centerX() else (item.spanX * cellWidth) / 2f
         val vCenterY = if (item.visualOffsetY >= 0) item.visualOffsetY else if (vBounds.height() > 0) vBounds.centerY() else (item.spanY * cellHeight) / 2f
@@ -1045,12 +1038,12 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
 
         val columns = settingsManager.columns
         val rows = getGridRows()
-        val horizontalPadding = dpToPx(HORIZONTAL_PADDING_DP).toFloat()
+        val horizontalPadding = DisplayUtils.dpToPx(context, HORIZONTAL_PADDING_DP).toFloat()
         val offsetY = recyclerView.paddingTop.toFloat()
 
         gridPaint.color = Color.WHITE
         gridPaint.style = android.graphics.Paint.Style.STROKE
-        gridPaint.strokeWidth = dpToPx(1).toFloat()
+        gridPaint.strokeWidth = DisplayUtils.dpToPx(context, 1).toFloat()
 
         gridPaint.alpha = 30
         for (i in 0..rows) {
@@ -1083,7 +1076,7 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
 
             gridPaint.style = android.graphics.Paint.Style.FILL
             gridPaint.alpha = 40
-            canvas.drawRoundRect(snapX, snapY, snapX + snapW, snapY + snapH, dpToPx(8).toFloat(), dpToPx(8).toFloat(), gridPaint)
+            canvas.drawRoundRect(snapX, snapY, snapX + snapW, snapY + snapH, DisplayUtils.dpToPx(context, 8).toFloat(), DisplayUtils.dpToPx(context, 8).toFloat(), gridPaint)
         }
     }
 
@@ -1261,12 +1254,6 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
         return index.coerceIn(0, pages.size - 1)
     }
 
-    private fun dpToPx(dp: Int): Int {
-        return TypedValue.applyDimension(
-            TypedValue.COMPLEX_UNIT_DIP, dp.toFloat(), resources.displayMetrics
-        ).toInt()
-    }
-
     inner class HomePagerAdapter : RecyclerView.Adapter<HomePagerAdapter.ViewHolder>() {
         inner class ViewHolder(val container: FrameLayout) : RecyclerView.ViewHolder(container)
 
@@ -1279,7 +1266,7 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
             val bg = GradientDrawable()
             bg.setColor(Color.WHITE)
             bg.alpha = 0
-            bg.cornerRadius = dpToPx(16).toFloat()
+            bg.cornerRadius = DisplayUtils.dpToPx(context, 16).toFloat()
             frame.background = bg
 
             return ViewHolder(frame)
@@ -1355,9 +1342,9 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
                 removeAllViews()
                 for (i in 0 until count) {
                     val dot = View(context)
-                    val size = dpToPx(6)
+                    val size = DisplayUtils.dpToPx(context, 6)
                     val lp = LayoutParams(size, size)
-                    lp.setMargins(dpToPx(4), 0, dpToPx(4), 0)
+                    lp.setMargins(DisplayUtils.dpToPx(context, 4), 0, DisplayUtils.dpToPx(context, 4), 0)
                     dot.layoutParams = lp
 
                     val shape = GradientDrawable()
@@ -1382,7 +1369,17 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
     fun getOccupiedCells(pageIndex: Int, excludeItem: HomeItem? = null): Array<BooleanArray> {
         val columns = settingsManager.columns
         val rows = getGridRows()
-        val occupied = Array(rows) { BooleanArray(columns) }
+
+        if (reusableOccupiedGrid == null || reusableOccupiedGrid!!.size != rows || reusableOccupiedGrid!![0].size != columns) {
+            reusableOccupiedGrid = Array(rows) { BooleanArray(columns) }
+        }
+        val occupied = reusableOccupiedGrid!!
+        for (r in 0 until rows) {
+            for (c in 0 until columns) {
+                occupied[r][c] = false
+            }
+        }
+
         if (context is MainActivity) {
             val activity = context as MainActivity
             for (item in activity.homeItems) {
