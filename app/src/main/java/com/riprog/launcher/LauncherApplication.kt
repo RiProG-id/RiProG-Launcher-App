@@ -16,7 +16,6 @@ class LauncherApplication : Application() {
         model = AppRepository(this)
         registerActivityLifecycleCallbacks(object : ActivityLifecycleCallbacks {
             override fun onActivityCreated(activity: Activity, savedInstanceState: Bundle?) {
-                activity.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
             }
 
             override fun onActivityStarted(activity: Activity) {}

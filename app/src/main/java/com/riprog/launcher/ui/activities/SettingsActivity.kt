@@ -138,7 +138,10 @@ class SettingsActivity : ComponentActivity() {
         ThemeUtils.updateStatusBarContrast(this)
         autoDimmingBackground?.updateDimVisibility()
 
-        recyclerView.adapter?.notifyDataSetChanged()
+        val adapter = recyclerView.adapter as? SettingsAdapter
+        if (adapter != null) {
+            adapter.notifyItemRangeChanged(0, adapter.itemCount)
+        }
     }
 
     private fun refreshTheme() {
