@@ -32,6 +32,7 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import android.content.pm.PackageManager
 import android.graphics.Color
 import android.graphics.Typeface
 import android.net.Uri
@@ -50,6 +51,7 @@ import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.net.toUri
 import android.widget.*
+import androidx.core.content.ContextCompat
 import java.util.*
 
 class MainActivity : ComponentActivity() {
@@ -198,7 +200,11 @@ class MainActivity : ComponentActivity() {
     private fun isDefaultLauncher(): Boolean {
         val intent = Intent(Intent.ACTION_MAIN)
         intent.addCategory(Intent.CATEGORY_HOME)
-        val resolveInfo = packageManager.resolveActivity(intent, android.content.pm.PackageManager.MATCH_DEFAULT_ONLY)
+        val resolveInfo = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            packageManager.resolveActivity(intent, PackageManager.ResolveInfoFlags.of(PackageManager.MATCH_DEFAULT_ONLY.toLong()))
+        } else {
+            packageManager.resolveActivity(intent, PackageManager.MATCH_DEFAULT_ONLY)
+        }
         if (resolveInfo?.activityInfo == null) return false
         return packageName == resolveInfo.activityInfo.packageName
     }
@@ -226,14 +232,14 @@ class MainActivity : ComponentActivity() {
         title.setText(R.string.prompt_default_launcher_title)
         title.textSize = 18f
         title.setTypeface(null, Typeface.BOLD)
-        title.setTextColor(getColor(R.color.foreground))
+        title.setTextColor(ContextCompat.getColor(this, R.color.foreground))
         prompt.addView(title)
 
         val message = TextView(this)
         message.setText(R.string.prompt_default_launcher_message)
         message.setPadding(0, dpToPx(8), 0, dpToPx(16))
         message.gravity = Gravity.CENTER
-        message.setTextColor(getColor(R.color.foreground_dim))
+        message.setTextColor(ContextCompat.getColor(this, R.color.foreground_dim))
         prompt.addView(message)
 
         val buttons = LinearLayout(this)
@@ -243,7 +249,7 @@ class MainActivity : ComponentActivity() {
         val btnLater = TextView(this)
         btnLater.setText(R.string.action_later)
         btnLater.setPadding(dpToPx(16), dpToPx(8), dpToPx(16), dpToPx(8))
-        btnLater.setTextColor(getColor(R.color.foreground))
+        btnLater.setTextColor(ContextCompat.getColor(this, R.color.foreground))
         btnLater.setOnClickListener {
             mainLayout.removeView(prompt)
             currentDefaultPrompt = null
@@ -253,7 +259,7 @@ class MainActivity : ComponentActivity() {
         val btnSet = TextView(this)
         btnSet.setText(R.string.action_set_default)
         btnSet.setPadding(dpToPx(16), dpToPx(8), dpToPx(16), dpToPx(8))
-        btnSet.setTextColor(getColor(R.color.accent_blue))
+        btnSet.setTextColor(ContextCompat.getColor(this, R.color.accent_blue))
         btnSet.setTypeface(null, Typeface.BOLD)
         btnSet.setOnClickListener {
             mainLayout.removeView(prompt)
@@ -408,7 +414,7 @@ class MainActivity : ComponentActivity() {
     private fun applyDynamicColors() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             try {
-                val accentColor = resources.getColor(android.R.color.system_accent1_400, theme)
+                val accentColor = ContextCompat.getColor(this, android.R.color.system_accent1_400)
                 homeView.setAccentColor(accentColor)
                 drawerView.setAccentColor(accentColor)
             } catch (ignored: Exception) {
@@ -441,7 +447,13 @@ class MainActivity : ComponentActivity() {
                         shouldRemove = true
                     } else {
                         try {
-                            item.packageName?.let { pm.getApplicationInfo(it, 0) } ?: throw Exception()
+                            item.packageName?.let {
+                                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                                    pm.getApplicationInfo(it, PackageManager.ApplicationInfoFlags.of(0))
+                                } else {
+                                    pm.getApplicationInfo(it, 0)
+                                }
+                            } ?: throw Exception()
                         } catch (e: Exception) {
                             shouldRemove = true
                         }
@@ -463,7 +475,13 @@ class MainActivity : ComponentActivity() {
                                 changed = true
                             } else {
                                 try {
-                                    subItem.packageName?.let { pm.getApplicationInfo(it, 0) } ?: throw Exception()
+                                    subItem.packageName?.let {
+                                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                                            pm.getApplicationInfo(it, PackageManager.ApplicationInfoFlags.of(0))
+                                        } else {
+                                            pm.getApplicationInfo(it, 0)
+                                        }
+                                    } ?: throw Exception()
                                 } catch (e: Exception) {
                                     folderIterator.remove()
                                     changed = true
@@ -665,7 +683,12 @@ class MainActivity : ComponentActivity() {
 
     fun getAppName(packageName: String): String {
         return try {
-            packageManager.getApplicationLabel(packageManager.getApplicationInfo(packageName, 0)).toString()
+            val ai = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                packageManager.getApplicationInfo(packageName, PackageManager.ApplicationInfoFlags.of(0))
+            } else {
+                packageManager.getApplicationInfo(packageName, 0)
+            }
+            packageManager.getApplicationLabel(ai).toString()
         } catch (e: Exception) {
             packageName
         }

@@ -67,7 +67,6 @@ android {
 
     tasks.withType<JavaCompile>().configureEach {
         options.compilerArgs.add("-Xlint:all")
-        options.compilerArgs.add("-Xlint:-serial")
     }
 
     namespace = "com.riprog.launcher"

@@ -421,7 +421,7 @@ class SettingsActivity : ComponentActivity() {
 
                         if (isSelected) {
                             val gd = GradientDrawable()
-                            gd.setColor(themedContext.getColor(R.color.search_background))
+                            gd.setColor(ContextCompat.getColor(themedContext, R.color.search_background))
                             gd.cornerRadius = dpToPx(8).toFloat()
                             option.background = gd
                         }

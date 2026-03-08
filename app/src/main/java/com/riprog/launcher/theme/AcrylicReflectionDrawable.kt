@@ -10,20 +10,22 @@ import android.view.animation.LinearInterpolator
 class AcrylicReflectionDrawable(
     private val baseDrawable: GradientDrawable,
     private val isNight: Boolean
-) : Drawable(), Animatable {
+) : GradientDrawable(), Animatable {
 
     private val reflectionPaint = Paint(Paint.ANTI_ALIAS_FLAG)
     private val matrix = Matrix()
 
-    private var cornerRadius: Float = 0f
+    private var radius: Float = 0f
 
-    fun setCornerRadius(radius: Float) {
-        this.cornerRadius = radius
+    override fun setCornerRadius(radius: Float) {
+        super.setCornerRadius(radius)
+        this.radius = radius
     }
 
     override fun onBoundsChange(bounds: Rect) {
         super.onBoundsChange(bounds)
         baseDrawable.bounds = bounds
+        this.bounds = bounds
         updateShader(bounds)
     }
 
@@ -71,22 +73,21 @@ class AcrylicReflectionDrawable(
 
         val rect = RectF(0f, 0f, width, height)
         val path = Path()
-        path.addRoundRect(rect, cornerRadius, cornerRadius, Path.Direction.CW)
+        path.addRoundRect(rect, radius, radius, Path.Direction.CW)
         canvas.drawPath(path, highlightPaint)
     }
 
     override fun setAlpha(alpha: Int) {
         baseDrawable.alpha = alpha
         reflectionPaint.alpha = alpha
+        super.setAlpha(alpha)
     }
 
     override fun setColorFilter(colorFilter: ColorFilter?) {
         baseDrawable.colorFilter = colorFilter
         reflectionPaint.colorFilter = colorFilter
+        super.setColorFilter(colorFilter)
     }
-
-    @Deprecated("")
-    override fun getOpacity(): Int = PixelFormat.TRANSLUCENT
 
     override fun start() {
     }

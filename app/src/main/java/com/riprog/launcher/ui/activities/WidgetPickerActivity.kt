@@ -11,10 +11,12 @@ import android.appwidget.AppWidgetManager
 import android.appwidget.AppWidgetProviderInfo
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.content.res.Configuration
 import android.graphics.Color
 import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
+import android.os.Build
 import android.os.Bundle
 import android.util.TypedValue
 import android.view.*
@@ -140,7 +142,12 @@ class WidgetPickerActivity : ComponentActivity() {
 
     private fun getAppName(packageName: String): String {
         return try {
-            packageManager.getApplicationLabel(packageManager.getApplicationInfo(packageName, 0)).toString()
+            val ai = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                packageManager.getApplicationInfo(packageName, PackageManager.ApplicationInfoFlags.of(0))
+            } else {
+                packageManager.getApplicationInfo(packageName, 0)
+            }
+            packageManager.getApplicationLabel(ai).toString()
         } catch (e: Exception) {
             packageName
         }
