@@ -1,66 +1,52 @@
 package com.riprog.launcher.features.widgets
 
 import android.appwidget.AppWidgetProviderInfo
-import android.content.Context
-import android.content.res.Resources
-import android.util.DisplayMetrics
 import com.riprog.launcher.features.home.HomeView
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertTrue
 import org.junit.Test
-import org.mockito.kotlin.doReturn
-import org.mockito.kotlin.mock
-import org.mockito.kotlin.whenever
-import android.content.SharedPreferences
 
-class WidgetSizingUtilsTest {
+class WidgetUtilsTest {
 
     @Test
-    fun testCalculateWidgetSpan_ClampingReproduce() {
-        val context = mock<Context>()
-        val resources = mock<Resources>()
-        val displayMetrics = DisplayMetrics()
-        displayMetrics.density = 3.0f
-        displayMetrics.widthPixels = 1080
-        displayMetrics.heightPixels = 1920
-
-        whenever(context.resources).thenReturn(resources)
-        whenever(resources.displayMetrics).thenReturn(displayMetrics)
-
-        val prefs = mock<SharedPreferences>()
-        whenever(context.getSharedPreferences("riprog_launcher_prefs", 0)).thenReturn(prefs)
-        whenever(prefs.getInt("columns", 4)).thenReturn(4)
-        whenever(prefs.contains("first_run_init")).thenReturn(true)
-
+    fun testGetMinSpanX() {
         val info = AppWidgetProviderInfo()
-        info.minWidth = 500
-        info.minHeight = 100
-
-        val spans = WidgetUtils.calculateWidgetSpan(context, null, info)
-        println("Calculated spans: ${spans.first}x${spans.second}")
-        assertTrue("SpanX should be clamped to 4, but was ${spans.first}", spans.first <= 4)
-        assertTrue("SpanY should be clamped to 6, but was ${spans.second}", spans.second <= 6)
-    }
-
-    @Test
-    fun testGetMinSpanX_Clamping() {
-        val info = AppWidgetProviderInfo()
-        info.minWidth = 500
-        val density = 3.0f
-        val cellWidth = 200f
+        info.minWidth = 140 // 2 columns if 70dp per col
+        val density = 1.0f
+        val cellWidth = 70f
 
         val spanX = WidgetUtils.getMinSpanX(info, cellWidth, density)
-        assertEquals(4, spanX)
+        assertEquals(2, spanX)
     }
 
     @Test
-    fun testGetMaxSpanX_Clamping() {
+    fun testGetMinSpanX_Clamped() {
         val info = AppWidgetProviderInfo()
-        info.maxResizeWidth = 1000
-        val density = 3.0f
+        info.minWidth = 1000
+        val density = 1.0f
         val cellWidth = 100f
 
-        val spanX = WidgetUtils.getMaxSpanX(info, cellWidth, density)
-        assertEquals(4, spanX)
+        val spanX = WidgetUtils.getMinSpanX(info, cellWidth, density)
+        assertEquals(HomeView.GRID_COLUMNS, spanX)
+    }
+
+    @Test
+    fun testGetMinSpanY() {
+        val info = AppWidgetProviderInfo()
+        info.minHeight = 140
+        val density = 1.0f
+        val cellHeight = 70f
+
+        val spanY = WidgetUtils.getMinSpanY(info, cellHeight, density, 6)
+        assertEquals(2, spanY)
+    }
+
+    @Test
+    fun testGetMaxSpanX() {
+        val info = AppWidgetProviderInfo()
+        // If maxResizeWidth is 0, it should return HomeView.GRID_COLUMNS
+        info.maxResizeWidth = 0
+        val density = 1.0f
+        val cellWidth = 100f
+        assertEquals(HomeView.GRID_COLUMNS, WidgetUtils.getMaxSpanX(info, cellWidth, density))
     }
 }

@@ -8,19 +8,20 @@ import org.junit.Test
 import org.mockito.kotlin.mock
 import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
+import org.junit.Assert.assertTrue
 
 class PackageReceiverTest {
 
     @Test
     fun testOnReceiveInvalidatesIconAndCallsCallback() {
-        val model: AppRepository = mock()
+        val model = mock<AppRepository>()
         var callbackCalled = false
         val onPackageChanged = { callbackCalled = true }
         val receiver = PackageReceiver(model, onPackageChanged)
 
-        val context: Context = mock()
-        val intent: Intent = mock()
-        val uri: Uri = mock()
+        val context = mock<Context>()
+        val intent = mock<Intent>()
+        val uri = mock<Uri>()
 
         whenever(intent.data).thenReturn(uri)
         whenever(uri.schemeSpecificPart).thenReturn("com.test.app")
@@ -28,6 +29,6 @@ class PackageReceiverTest {
         receiver.onReceive(context, intent)
 
         verify(model).invalidateIcon("com.test.app")
-        assert(callbackCalled)
+        assertTrue(callbackCalled)
     }
 }
