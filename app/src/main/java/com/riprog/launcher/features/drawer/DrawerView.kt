@@ -4,6 +4,7 @@ import com.riprog.launcher.core.theme.ThemeUtils
 import com.riprog.launcher.core.preferences.LauncherPreferences
 import com.riprog.launcher.data.repository.AppRepository
 import com.riprog.launcher.data.models.AppItem
+import com.riprog.launcher.common.utils.DisplayUtils
 import com.riprog.launcher.R
 
 import android.content.Context
@@ -63,7 +64,7 @@ class DrawerView(context: Context) : FrameLayout(context) {
 
         contentLayout = LinearLayout(context)
         contentLayout.orientation = LinearLayout.VERTICAL
-        contentLayout.setPadding(0, dpToPx(48), 0, 0)
+        contentLayout.setPadding(0, DisplayUtils.dpToPx(context, 48), 0, 0)
         addView(contentLayout, LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
 
         val contentFrame = FrameLayout(context)
@@ -78,7 +79,7 @@ class DrawerView(context: Context) : FrameLayout(context) {
             }
         }
         recyclerView.layoutManager = layoutManager
-        recyclerView.setPadding(dpToPx(8), dpToPx(16), dpToPx(32), dpToPx(16))
+        recyclerView.setPadding(DisplayUtils.dpToPx(context, 8), DisplayUtils.dpToPx(context, 16), DisplayUtils.dpToPx(context, 32), DisplayUtils.dpToPx(context, 16))
         recyclerView.clipToPadding = false
         contentFrame.addView(recyclerView)
 
@@ -115,7 +116,7 @@ class DrawerView(context: Context) : FrameLayout(context) {
             }
             false
         }
-        val indexParams = FrameLayout.LayoutParams(dpToPx(40), ViewGroup.LayoutParams.MATCH_PARENT)
+        val indexParams = FrameLayout.LayoutParams(DisplayUtils.dpToPx(context, 40), ViewGroup.LayoutParams.MATCH_PARENT)
         indexParams.gravity = Gravity.END
         contentFrame.addView(indexBar, indexParams)
         setupIndexBar()
@@ -148,7 +149,7 @@ class DrawerView(context: Context) : FrameLayout(context) {
             tv.textSize = 10f
             tv.gravity = Gravity.CENTER
             tv.setTextColor(ContextCompat.getColor(context, R.color.foreground_dim))
-            tv.setPadding(0, dpToPx(2), 0, dpToPx(2))
+            tv.setPadding(0, DisplayUtils.dpToPx(context, 2), 0, DisplayUtils.dpToPx(context, 2))
             indexBar.addView(tv, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f))
         }
     }
@@ -353,12 +354,6 @@ class DrawerView(context: Context) : FrameLayout(context) {
         adapter.notifyItemRangeChanged(0, adapter.itemCount)
     }
 
-    private fun dpToPx(dp: Int): Int {
-        return TypedValue.applyDimension(
-            TypedValue.COMPLEX_UNIT_DIP, dp.toFloat(), resources.displayMetrics
-        ).toInt()
-    }
-
     private inner class AppViewHolder(view: View) : RecyclerView.ViewHolder(view) {
         var icon: ImageView? = null
         var label: TextView? = null
@@ -397,9 +392,9 @@ class DrawerView(context: Context) : FrameLayout(context) {
                 searchBar.setHintTextColor(ContextCompat.getColor(context, R.color.foreground_dim))
                 searchBar.setTextColor(adaptiveColor)
                 searchBar.setBackgroundColor(ContextCompat.getColor(context, R.color.search_background))
-                searchBar.setPadding(dpToPx(16), dpToPx(12), dpToPx(16), dpToPx(12))
+                searchBar.setPadding(DisplayUtils.dpToPx(context, 16), DisplayUtils.dpToPx(context, 12), DisplayUtils.dpToPx(context, 16), DisplayUtils.dpToPx(context, 12))
                 searchBar.setCompoundDrawablesWithIntrinsicBounds(R.drawable.ic_search, 0, 0, 0)
-                searchBar.compoundDrawablePadding = dpToPx(12)
+                searchBar.compoundDrawablePadding = DisplayUtils.dpToPx(context, 12)
                 if (searchBar.compoundDrawables[0] != null) {
                     searchBar.compoundDrawables[0].setTint(ContextCompat.getColor(context, R.color.foreground_dim))
                 }
@@ -413,7 +408,7 @@ class DrawerView(context: Context) : FrameLayout(context) {
                     override fun afterTextChanged(s: Editable) {}
                 })
                 val lp = RecyclerView.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
-                lp.setMargins(0, 0, 0, dpToPx(16))
+                lp.setMargins(0, 0, 0, DisplayUtils.dpToPx(context, 16))
                 searchBar.layoutParams = lp
                 return object : RecyclerView.ViewHolder(searchBar) {}
             } else {
@@ -423,7 +418,7 @@ class DrawerView(context: Context) : FrameLayout(context) {
                 itemLayout.gravity = Gravity.CENTER
                 itemLayout.isClickable = true
                 itemLayout.isFocusable = true
-                itemLayout.setPadding(0, dpToPx(8), 0, dpToPx(8))
+                itemLayout.setPadding(0, DisplayUtils.dpToPx(context, 8), 0, DisplayUtils.dpToPx(context, 8))
 
                 val icon = ImageView(context)
                 icon.scaleType = ImageView.ScaleType.FIT_CENTER
