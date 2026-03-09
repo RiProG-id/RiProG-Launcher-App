@@ -12,7 +12,7 @@ class PageMappingTest {
         items.add(HomeItem.createApp("pkg1", "cls1", 0f, 0f, 0))
         items.add(HomeItem.createApp("pkg2", "cls2", 0f, 0f, 1))
 
-        // Simulating addPageAtIndex(0)
+
         val indexToAdd = 0
         items.forEach {
             if (it.page >= indexToAdd) it.page++
@@ -28,7 +28,7 @@ class PageMappingTest {
         items.add(HomeItem.createApp("pkg1", "cls1", 0f, 0f, 0))
         items.add(HomeItem.createApp("pkg2", "cls2", 0f, 0f, 1))
 
-        // Simulating addPageAtIndex(1)
+
         val indexToAdd = 1
         items.forEach {
             if (it.page >= indexToAdd) it.page++
@@ -45,7 +45,7 @@ class PageMappingTest {
         items.add(HomeItem.createApp("pkg1", "cls1", 0f, 0f, 1))
         items.add(HomeItem.createApp("pkg2", "cls2", 0f, 0f, 2))
 
-        // Simulating removePage(1)
+
         val indexToRemove = 1
         items.removeAll { it.page == indexToRemove }
         items.forEach {
