@@ -1209,7 +1209,6 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
         }
     }
 
-
     private fun findViewForItem(item: HomeItem): View? {
         for (page in pages) {
             for (i in 0 until page.childCount) {
@@ -1399,7 +1398,6 @@ class HomeView(context: Context) : FrameLayout(context), PageActionCallback {
         }
         return occupied
     }
-
 
     companion object {
         const val GRID_COLUMNS = 4
