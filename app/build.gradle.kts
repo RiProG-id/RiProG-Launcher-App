@@ -9,8 +9,8 @@ android {
         applicationId = "com.riprog.launcher"
         minSdk = 23
         targetSdk = 36
-        versionCode = 300
-        versionName = "3.0.0"
+        versionCode = 301
+        versionName = "3.0.1"
     }
 
     signingConfigs {
