@@ -22,7 +22,7 @@ class OverlapCleanupTest {
         assertTrue(intersects(item1, item2))
 
         val item3 = HomeItem.createApp("pkg3", "cls3", 1f, 1f, 0)
-        assertTrue(intersects(item1, item3) == false) // Should not intersect
+        assertTrue(intersects(item1, item3) == false)
     }
 
     @Test
@@ -31,12 +31,7 @@ class OverlapCleanupTest {
         large.spanX = 2f
         large.spanY = 2f
 
-        // Cell (0,0), (0,1), (1,0), (1,1) are occupied.
-        // Try to find a 1x1 area near (1,1)
         val nearest = findNearestEmptyArea(0, 1, 1, 1, 1, listOf(large))
-
-        // Potential nearest areas: (0,2), (1,2), (2,0), (2,1), (2,2)
-        // (1,2) or (2,1) or (2,2) are close to (1,1).
 
         assertTrue(nearest != null)
         val (col, row) = nearest!!
