@@ -1,70 +1,60 @@
 # RiProG Launcher
 
-RiProG Launcher is a modern, high-performance Android launcher built for users who value speed, simplicity, and a refined aesthetic. Engineered with a focus on efficiency, it provides a fluid experience even on resource-constrained devices.
+RiProG Launcher is a high-performance, minimalist Android launcher designed for speed and simplicity. It focuses on providing a smooth, lightweight experience with a modern aesthetic, even on devices with limited resources.
 
----
+## Key Features
 
-## 🚀 Key Features
+### Performance Optimization
+- **Ultra-Lightweight Design**: Minimal memory and CPU footprint for maximum efficiency.
+- **Programmatic UI**: Interface components are built programmatically to avoid the overhead of XML inflation, ensuring rapid responsiveness.
+- **Efficient Caching**: Uses active cache management to maintain high performance over time.
 
-### ⚡ Optimized Performance
-- **Ultra-Lightweight**: Designed with a minimal footprint to ensure low RAM and CPU usage.
-- **Programmatic UI**: Built without XML inflation to maximize rendering speed and responsiveness.
-- **Intelligent Resource Management**: Features active cache optimization for a consistently smooth experience.
+### Modern Aesthetics
+- **Acrylic UI**: Features a sophisticated translucent design system for a premium look.
+- **Dynamic Theming**: Supports Light and Dark modes with an option to follow system settings.
+- **Wallpaper Dimming**: Optional darkening of the wallpaper to enhance readability and visual comfort.
 
-### 🎨 Premium Acrylic Aesthetic
-- **Acrylic Design System**: A sophisticated, translucent UI that brings modern elegance to your device.
-- **Adaptive Theming**: Seamlessly transitions between Light and Dark modes, with an option to follow system preferences.
-- **Wallpaper Integration**: Dynamic UI elements that harmonize with your background, including optional wallpaper dimming.
+### App Management & Organization
+- **Intelligent App Drawer**: Includes a powerful search bar and alphabetical index for quick app access.
+- **Flexible Home Screen**: Offers both traditional grid-based and freeform layouts for personalized organization.
+- **Folder Support**: Easily group and manage applications into folders.
 
-### 📱 Advanced App Organization
-- **Smart App Drawer**: Quickly find what you need with an integrated search bar and a smooth alphabetical index.
-- **Flexible Home Screen**: Support for both grid-based and freeform layouts, allowing for precise placement of icons and widgets.
-- **Folder Management**: Organize your workspace with intuitive folder creation and management.
+### Advanced Customization
+- **Widget Integration**: A streamlined widget selection process with visual previews.
+- **Icon & Label Scaling**: On-the-fly adjustments to customize the appearance of icons and labels.
+- **Minimalist Mode**: Option to hide app labels for a cleaner, distraction-free home screen.
 
-### 🛠 Powerful Customization
-- **Widget Ecosystem**: A refined widget picker with shape previews for easier selection.
-- **Dynamic Scaling**: On-the-fly adjustment of icon sizes and labels to match your personal style.
-- **Accessibility**: Support for hiding labels to achieve a truly minimalist look.
+## Project Architecture
 
----
+The application is structured into several core modules to ensure maintainability:
 
-## 📂 Project Structure
+- **`core/`**: Core infrastructure, including theme management and preference handling.
+- **`data/`**: Data layer, managing app models, local storage, and the main application repository.
+- **`features/`**: Contains the functional modules of the launcher:
+    - `home/`: Logic for the home screen and its various layout modes.
+    - `drawer/`: Implementation of the app drawer and search features.
+    - `folder/`: Functionality for creating and managing app folders.
+    - `widgets/`: Services for widget selection and management.
+    - `settings/`: Comprehensive settings for user configuration.
+    - `main/`: Main activity that orchestrates the overall application layout.
+- **`common/`**: Shared utility classes, callbacks, and system broadcast receivers.
 
-The codebase is organized into logical modules for maintainability and clarity:
+## Project Links
 
-- **`core/`**: Essential infrastructure including `ThemeManager` and `LauncherPreferences`.
-- **`data/`**: Data models, local storage management (`DiskCacheManager`), and the main `AppRepository`.
-- **`features/`**: Implementation of core launcher functionalities:
-    - `home/`: Home screen logic and layout controllers.
-    - `drawer/`: App drawer UI and search functionality.
-    - `folder/`: Folder behavior and view factory.
-    - `widgets/`: Widget picking and utility services.
-    - `settings/`: Comprehensive launcher configuration.
-    - `main/`: Main activity and layout orchestration.
-- **`common/`**: Shared utilities, callbacks, and system broadcast receivers.
-
----
-
-## 🔗 Project Links
-
-Stay updated and join our community:
 - **GitHub Repository**: [RiProG-id/RiProG-Launcher-App](https://github.com/RiProG-id/RiProG-Launcher-App)
 - **Telegram Official Channel**: [@RiOpSo](https://t.me/RiOpSo)
 - **Telegram Discussion Group**: [@RiOpSoDisc](https://t.me/RiOpSoDisc)
 
----
+## Support Development
 
-## 💖 Support the Developer
+If you enjoy using RiProG Launcher and would like to support its development:
 
-Your support helps keep the development of RiProG Launcher active and free for everyone.
-
-### Financial Contributions
+### Financial Support
 - **PayPal**: [paypal.me/RiProG](https://paypal.me/RiProG)
 - **Sociabuzz Tribe**: [sociabuzz.com/riprog/tribe](https://sociabuzz.com/riprog/tribe)
 - **E-Wallet (Dana / GoPay / ShopeePay)**: `0831-4095-0951`
 - **Bank Jago Syariah**: `503442488516`
 
 ### Free Support
-Support the project at no cost by visiting these links:
 - **Safelinku**: [https://sfl.gl/NTX6](https://sfl.gl/NTX6)
 - **Arahlink**: [https://arahlink.id/WAUR](https://arahlink.id/WAUR)
