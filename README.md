@@ -1,61 +1,46 @@
 # RiProG Launcher
 
-RiProG Launcher is an ultra-lightweight, high-performance Android launcher designed for simplicity, speed, and a distraction-free user experience.
+RiProG Launcher is a lightweight, high-performance Android launcher focused on simplicity, speed, and providing a clean, distraction-free environment for users.
 
----
+## 🎯 Purpose
+The primary goal of RiProG Launcher is to offer a streamlined mobile experience. By minimizing resource consumption and maximizing efficiency, it ensures that even older devices run smoothly while providing modern aesthetics and essential features for power users.
 
-## 🚀 Key Features
+## ✨ Features
+- **Ultra-Lightweight**: Optimized to use minimal RAM and CPU, ensuring fast response times.
+- **Acrylic UI**: A modern, translucent design aesthetic applied across all system interfaces.
+- **Efficient App Drawer**: Organized app list with quick search and alphabetical navigation.
+- **Freeform Layout**: Break away from standard grids with precise placement of icons and widgets.
+- **Privacy Focused**: No unnecessary tracking or bloatware.
+- **Material Design**: Seamless integration with Android's Material Design theme system.
 
-### Exceptional Performance
-- **Minimal Footprint**: Optimized APK size and extremely low RAM utilization.
-- **Fast Execution**: Engineered for rapid app launching and smooth navigation.
+## 🛠 Behavior
+- **Adaptive Theming**: Automatically switches between Light and Dark modes based on system settings.
+- **Smooth Animations**: High-performance transitions that maintain 60 FPS on most hardware.
+- **Dynamic Resizing**: Icons and labels scale gracefully to fit your chosen layout density.
+- **Wallpaper Dimming**: Optional darkening of the background to improve readability and reduce eye strain.
 
-### Acrylic Design
-- **Consistent Aesthetic**: Features a sophisticated acrylic UI across the app drawer, settings, and menus.
-- **Visual Harmony**: Transparent and translucent elements that adapt to your wallpaper.
-
-### Advanced App Drawer
-- **Intelligent Search**: Quickly locate applications with a built-in search bar.
-- **Quick Index**: Alphabetical scroll bar for efficient navigation through large app lists.
-
-### Customization & Flexibility
-- **Widget Support**: Grouped widget selection with visual shape previews for easy identification.
-- **Freeform Home**: Optional mode to bypass grid constraints for precise item placement.
-- **Dynamic Scaling**: Real-time adjustment of icon and label sizes to suit your preferences.
-
-### Intelligent Theming
-- **Adaptive Modes**: Support for Light, Dark, and System-following themes that transition seamlessly.
-
----
-
-## 🛠 Technical Specifications
-
-- **Minimum SDK**: API 23 (Android 6.0)
-- **Target SDK**: API 36 (Android 16)
-- **Implementation**: Fully programmatic UI to eliminate XML inflation overhead and maximize performance.
-- **Memory Management**: Active cache management and background task optimization.
+## 📖 Usage
+- **Navigation**: Swipe up from the home screen to access the app drawer.
+- **Customization**: Long-press on any empty space on the home screen to access Wallpaper, Widgets, and Launcher Settings.
+- **Organization**: Drag and drop apps to move them. In Freeform mode, items can be placed anywhere.
+- **Quick Search**: Use the search bar in the app drawer to find your applications instantly.
 
 ---
 
 ## 🔗 Project Links
-
 - **GitHub Repository**: [RiProG-id/RiProG-Launcher-App](https://github.com/RiProG-id/RiProG-Launcher-App)
 - **Telegram Official Channel**: [@RiOpSo](https://t.me/RiOpSo)
 - **Telegram Discussion Group**: [@RiOpSoDisc](https://t.me/RiOpSoDisc)
 
----
+## 💖 Support the Development
+If you enjoy using RiProG Launcher, please consider supporting the developer:
 
-## 💖 Support the Developer
-
-If you find RiProG Launcher useful, please consider supporting its ongoing development:
-
-### Financial Contributions
-- **E-Wallet (Dana / GoPay / ShopeePay)**: `0831-4095-0951`
-- **Bank Jago Syariah**: `503442488516`
+### Financial Support
 - **PayPal**: [paypal.me/RiProG](https://paypal.me/RiProG)
 - **Sociabuzz Tribe**: [sociabuzz.com/riprog/tribe](https://sociabuzz.com/riprog/tribe)
+- **E-Wallet (Dana / GoPay / ShopeePay)**: `0831-4095-0951`
+- **Bank Jago Syariah**: `503442488516`
 
 ### Free Support
-You can also support the project at no cost by visiting these links:
 - **Safelinku**: [https://sfl.gl/NTX6](https://sfl.gl/NTX6)
 - **Arahlink**: [https://arahlink.id/WAUR](https://arahlink.id/WAUR)
