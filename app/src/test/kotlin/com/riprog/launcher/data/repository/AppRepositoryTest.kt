@@ -14,25 +14,20 @@ class AppRepositoryTest {
         apps.add(AppItem("Settings", "com.android.settings", "cls2"))
         apps.add(AppItem("Phone", "com.android.phone", "cls3"))
 
-        // Exact match
         var filtered = AppRepository.filterApps(apps, "Camera")
         assertEquals(1, filtered.size)
         assertEquals("Camera", filtered[0].label)
 
-        // Case-insensitive partial match
         filtered = AppRepository.filterApps(apps, "set")
         assertEquals(1, filtered.size)
         assertEquals("Settings", filtered[0].label)
 
-        // No match
         filtered = AppRepository.filterApps(apps, "xyz")
         assertEquals(0, filtered.size)
 
-        // Empty query
         filtered = AppRepository.filterApps(apps, "")
         assertEquals(3, filtered.size)
 
-        // Null query
         filtered = AppRepository.filterApps(apps, null)
         assertEquals(3, filtered.size)
     }

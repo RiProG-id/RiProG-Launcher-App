@@ -10,7 +10,7 @@ class WidgetUtilsTest {
     @Test
     fun testGetMinSpanX() {
         val info = AppWidgetProviderInfo()
-        info.minWidth = 140 // 2 columns if 70dp per col
+        info.minWidth = 140
         val density = 1.0f
         val cellWidth = 70f
 
@@ -43,7 +43,7 @@ class WidgetUtilsTest {
     @Test
     fun testGetMaxSpanX() {
         val info = AppWidgetProviderInfo()
-        // If maxResizeWidth is 0, it should return HomeView.GRID_COLUMNS
+
         info.maxResizeWidth = 0
         val density = 1.0f
         val cellWidth = 100f
