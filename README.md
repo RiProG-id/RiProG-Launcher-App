@@ -1,6 +1,6 @@
 # RiProG Launcher
 
-RiProG Launcher is a modern, high-performance Android launcher built for users who value speed, simplicity, and a refined aesthetic. Engineered with a focus on efficiency, it provides a fluid experience even on resource-constrained devices.
+RiProG Launcher is a modern, high-performance Android launcher designed for speed, simplicity, and a refined aesthetic. It is engineered with a focus on efficiency, providing a fluid experience even on resource-constrained devices.
 
 ---
 
