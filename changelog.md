@@ -1,0 +1,12 @@
+Changelog
+- **Kotlin Migration**: Entire codebase rewritten in Kotlin for improved performance and responsiveness.
+- **Folder Support**: Added ability to group applications into folders on the home screen with customizable names.
+- **Acrylic Theme Engine**: Introduced a new premium "Acrylic" theme style featuring dynamic blur effects and improved aesthetics.
+- **Interactive Freeform Layout**: Enhanced freeform mode with support for multi-touch rotation, scaling, and 3D tilting of home screen items.
+- **Enhanced Page Management**: New controls to add pages to the left or right and improved page removal logic.
+- **Dedicated Widget Picker**: Replaced dialog-based selection with a full-screen widget picker featuring improved previews.
+- **Auto-Dimming Background**: Added support for automatic wallpaper dimming to improve contrast and readability.
+- **Refined App Drawer**: Upgraded the app drawer with an interactive quick-scroll index bar and optimized search filtering.
+- **Performance Optimizations**: Achieved smooth 60 FPS animations and reduced memory footprint through optimized icon caching.
+- **Robust Cleanup Logic**: Improved handling of uninstalled apps and orphaned widgets to ensure a clean home screen state.
+- **Layout Stability**: Fixed various item overlap and grid alignment issues in the standard layout mode.
