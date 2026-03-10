@@ -1,6 +1,6 @@
 # Changelog
 
-## [3.0.1] - Post-Production Release
+## [3.0.1] - 2026-03-10
 
 ### New Features
 - **Kotlin Migration**: Entire codebase successfully migrated to Kotlin for improved stability and performance.
