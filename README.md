@@ -2,6 +2,9 @@
 
 RiProG Launcher is a lightweight, high-performance Android launcher focused on simplicity, speed, and providing a clean, distraction-free environment for users.
 
+[![Ask DeepWiki](https://img.shields.io/badge/Ask%20DeepWiki-Open-blue?style=for-the-badge)](https://deepwiki.com/RiProG-id/RiProG-Launcher-App)
+[![Changelog](https://img.shields.io/badge/Changelog-View-blue?style=for-the-badge)](https://github.com/RiProG-id/RiProG-Launcher-App/tree/main/changelog)
+
 ## 🎯 Purpose
 The primary goal of RiProG Launcher is to offer a streamlined mobile experience. By minimizing resource consumption and maximizing efficiency, it ensures that even older devices run smoothly while providing modern aesthetics and essential features for power users.
 
