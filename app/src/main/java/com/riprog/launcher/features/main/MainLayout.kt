@@ -1,15 +1,12 @@
 package com.riprog.launcher.features.main
 
-import com.riprog.launcher.features.main.MainActivity
 import com.riprog.launcher.data.models.HomeItem
-import com.riprog.launcher.common.utils.DisplayUtils
 import com.riprog.launcher.R
 
 import android.content.Context
 import android.view.DragEvent
 import android.os.Handler
 import android.util.AttributeSet
-import android.util.TypedValue
 import android.os.Looper
 import android.view.MotionEvent
 import android.view.View
