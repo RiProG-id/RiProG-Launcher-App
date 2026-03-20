@@ -40,6 +40,11 @@ class DiskCacheManager(context: Context) {
         }
     }
 
+    fun removeData(key: String) {
+        val file = File(dataDir, getSafeKey(key))
+        if (file.exists()) file.delete()
+    }
+
     fun removeBitmap(key: String) {
         val file = File(cacheDir, getSafeKey(key))
         if (file.exists()) file.delete()

@@ -75,6 +75,7 @@ class AppRepository(context: Context) {
                 val cachedApps = deserializeApps(cachedJson)
                 if (cachedApps.isNotEmpty()) {
                     mainHandler.post { listener.onAppsLoaded(cachedApps) }
+                    return@execute
                 }
             }
 
@@ -167,6 +168,12 @@ class AppRepository(context: Context) {
         iconCache.remove(packageName)
         executor.execute {
             diskCache.removeBitmap(packageName)
+        }
+    }
+
+    fun invalidateAppList() {
+        executor.execute {
+            diskCache.removeData("app_list")
         }
     }
 

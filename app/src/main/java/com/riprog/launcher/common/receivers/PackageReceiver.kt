@@ -14,6 +14,7 @@ class PackageReceiver(
         if (packageName != null) {
 
             model.invalidateIcon(packageName)
+            model.invalidateAppList()
         }
         onPackageChanged()
     }
